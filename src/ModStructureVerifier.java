@@ -678,8 +678,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                     "will print out the checks run by the bot in the current channel.\n\n" +
                     "`--reactions`\n" +
                     "will give a message explaining what the different reactions from the bot mean.\n\n" +
-                    "This bot is brought to you by max480 (max480#4596 on <https://discord.gg/celeste>) - decal and" +
-                    " styleground checks use BinToXML by iSkLz (available at <https://github.com/iSkLz/celestial-compass>).").queue();
+                    "This bot is brought to you by max480 (max480#4596 on <https://discord.gg/celeste>) - checks on map bins " +
+                    "use BinToXML by iSkLz (available at <https://github.com/iSkLz/celestial-compass>).").queue();
         } else if (msg.startsWith("--setup ")) {
             // setting up a new channel!
             String[] settings = msg.split(" ");
@@ -752,7 +752,9 @@ public class ModStructureVerifier extends ListenerAdapter {
             event.getChannel().sendMessage(successMessage).queue();
         } catch (IOException e) {
             logger.error("Error while writing file", e);
-            event.getChannel().sendMessage(":x: A technical error occurred. <@354341658352943115> :a:").queue();
+            event.getChannel().sendMessage(":x: A technical error occurred.").queue();
+            event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
+                    .sendMessage("Error occurred while saving response channels list: " + event.getGuild().getName()).queue();
         }
     }
 
