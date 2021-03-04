@@ -648,13 +648,32 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     private static void parseProblematicPaths(List<String> problemList, String problemLabel, List<String> paths) {
+        logger.debug("{}: {}", problemLabel, paths);
+
         // just a formatting method: to display "x", "x and y" or "x and 458 others" depending on how many problematic paths there are.
         if (paths.size() == 1) {
-            problemList.add(problemLabel + ": `" + paths.get(0).replace("`", "") + "`");
+            problemList.add(problemLabel + ": `"
+                    + paths.get(0).replace("`", "") + "`");
         } else if (paths.size() == 2) {
-            problemList.add(problemLabel + ": `" + paths.get(0).replace("`", "") + "` and `" + paths.get(1).replace("`", "") + "`");
-        } else if (paths.size() > 2) {
-            problemList.add(problemLabel + ": `" + paths.get(0).replace("`", "") + "` and " + (paths.size() - 1) + " others");
+            problemList.add(problemLabel + ": `"
+                    + paths.get(0).replace("`", "")
+                    + "` and `" + paths.get(1).replace("`", "") + "`");
+        } else if (paths.size() == 3) {
+            problemList.add(problemLabel + ": `"
+                    + paths.get(0).replace("`", "")
+                    + "`, `" + paths.get(1).replace("`", "")
+                    + "` and `" + paths.get(2).replace("`", "") + "`");
+        } else if (paths.size() == 4) {
+            problemList.add(problemLabel + ": `"
+                    + paths.get(0).replace("`", "")
+                    + "`, `" + paths.get(1).replace("`", "")
+                    + "`, `" + paths.get(2).replace("`", "")
+                    + "` and `" + paths.get(3).replace("`", "") + "`");
+        } else if (paths.size() > 4) {
+            problemList.add(problemLabel + ": `" + paths.get(0).replace("`", "")
+                    + "`, `" + paths.get(1).replace("`", "")
+                    + "`, `" + paths.get(2).replace("`", "")
+                    + "` and " + (paths.size() - 3) + " others");
         }
     }
 
