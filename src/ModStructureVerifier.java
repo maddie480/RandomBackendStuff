@@ -1,9 +1,6 @@
 package com.max480.discord.randombots;
 
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.Event;
@@ -195,6 +192,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
         try (ZipFile zipFile = new ZipFile(file)) {
             List<String> problemList = new ArrayList<>();
+            Set<String> websiteProblemList = new HashSet<>();
 
             logger.debug("Scanning invalid asset paths...");
 
@@ -205,7 +203,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     .map(ZipEntry::getName)
                     .collect(Collectors.toList());
 
-            parseProblematicPaths(problemList, "You have assets with illegal paths, please move them", fileListing.stream()
+            parseProblematicPaths(problemList, websiteProblemList, "assets", "You have assets that are at the wrong place, please move them", fileListing.stream()
                     .filter(entry -> entry.startsWith("Assets/") || entry.startsWith("Graphics/ColorGrading/")
                             || entry.startsWith("Graphics/Atlases/") || entry.startsWith("Tutorials/"))
                     .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabPrefix + "/.+/.+$"))
@@ -215,7 +213,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             // XMLs are anything that matches Graphics/[anything].xml
             // should match: Graphics/collabnamexmls/[anything]/[anything].xml
-            parseProblematicPaths(problemList, "You have XMLs with illegal paths, please move them", fileListing.stream()
+            parseProblematicPaths(problemList, websiteProblemList, "xmls", "You have XMLs that are at the wrong place, please move them", fileListing.stream()
                     .filter(entry -> entry.startsWith("Graphics/") && entry.endsWith(".xml"))
                     .filter(entry -> !entry.matches("^Graphics/" + expectedCollabPrefix + "xmls/.+/.+\\.xml$"))
                     .collect(Collectors.toList()));
@@ -230,8 +228,10 @@ public class ModStructureVerifier extends ListenerAdapter {
             String mapPath = null;
             if (mapCount == 0) {
                 problemList.add("**There is no map in the Maps folder!** No map will appear in-game.");
+                websiteProblemList.add("nomap");
             } else if (mapCount >= 2) {
                 problemList.add("There are " + mapCount + " maps in this zip. :thinking:");
+                websiteProblemList.add("multiplemaps");
             } else {
                 // save it for later
                 mapPath = fileListing.stream()
@@ -263,7 +263,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     }
                 }
 
-                parseProblematicPaths(problemList, "You have invalid English.txt entries, please rename them", badDialogEntries);
+                parseProblematicPaths(problemList, websiteProblemList, "badenglish", "You have English.txt entries with invalid names, please rename them", badDialogEntries);
             }
 
             logger.debug("Scanning everest.yaml...");
@@ -277,8 +277,10 @@ public class ModStructureVerifier extends ListenerAdapter {
                 if (fileListing.stream().anyMatch(f -> f.endsWith("/everest.yaml"))) {
                     problemList.add("You have an everest.yaml, but it is in a subfolder. **Hint:** when zipping your mod, don't zip the folder, but the contents of it. " +
                             "That is, go inside your mod folder, select everything, and compress that!");
+                    websiteProblemList.add("misplacedyaml");
                 } else {
                     problemList.add("You have no everest.yaml, please create one. You can install this tool to help you out: <https://gamebanana.com/tools/6908>");
+                    websiteProblemList.add("noyaml");
                 }
             } else {
                 try (InputStream is = zipFile.getInputStream(everestYaml)) {
@@ -300,6 +302,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
                     if (!resultBody.contains("Your everest.yaml file seems valid!")) {
                         problemList.add("Your everest.yaml seems to have problems, send it to <https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator> for more details");
+                        websiteProblemList.add("yamlinvalid");
                     } else {
                         // grab the mod name and dependency names given by the validator so that we don't have to do that ourselves later. h
                         dependencies = Jsoup.parse(resultBody)
@@ -314,7 +317,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (mapPath != null && dependencies != null) {
                 // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
-                searchForMissingComponents(problemList, fileListing, zipFile, mapPath, dependencies);
+                searchForMissingComponents(problemList, websiteProblemList, fileListing, zipFile, mapPath, dependencies);
             }
 
             if (problemList.isEmpty()) {
@@ -342,9 +345,20 @@ public class ModStructureVerifier extends ListenerAdapter {
                     message = message.substring(0, 1997) + "...";
                 }
 
+                // if there is any "website problem", attach a link to the help website.
+                MessageBuilder discordMessage = new MessageBuilder(message);
+                if (!websiteProblemList.isEmpty()) {
+                    String url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?collabName=" + expectedCollabPrefix
+                            + (!expectedCollabPrefix.equals(expectedCollabEnglishTxtPrefix) ? "&collabMapName=" + expectedCollabEnglishTxtPrefix : "")
+                            + "&" + String.join("&", websiteProblemList);
+                    discordMessage.setEmbed(new EmbedBuilder()
+                            .setTitle("Click here for more help", url)
+                            .build());
+                }
+
                 Optional.ofNullable(event.getGuild().getTextChannelById(responseChannels.get(event.getChannel().getIdLong())))
                         .orElse(event.getChannel())
-                        .sendMessage(message).queue();
+                        .sendMessage(discordMessage.build()).queue();
 
                 event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
                 event.getMessage().addReaction("❌").queue(); // :x:
@@ -372,7 +386,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private void searchForMissingComponents(List<String> problemList, List<String> fileListing, ZipFile zipFile,
+    private void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, List<String> fileListing, ZipFile zipFile,
                                             String mapPath, List<String> dependencies) throws IOException {
 
         // first, let's collect what is available to us with vanilla, the map's assets, and the dependencies.
@@ -539,11 +553,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                 checkForMissingEntities(availableEffects, "Backgrounds", badEffects, document);
 
                 // and list out every single problem!
-                parseProblematicPaths(problemList, "You use missing decals in your map, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals));
-                parseProblematicPaths(problemList, "You use missing parallax stylegrounds in your map, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs));
-                parseProblematicPaths(problemList, "You use missing entities in your map, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
-                parseProblematicPaths(problemList, "You use missing triggers in your map, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
-                parseProblematicPaths(problemList, "You use missing effects in your map, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in your map, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing parallax stylegrounds in your map, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in your map, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in your map, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in your map, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
             } catch (ParserConfigurationException | SAXException e) {
                 // something went wrong, so just delete the XML and rethrow the exception to trigger an alert.
                 tempXml.delete();
@@ -647,8 +661,13 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private static void parseProblematicPaths(List<String> problemList, String problemLabel, List<String> paths) {
+    private static void parseProblematicPaths(List<String> problemList, Set<String> websiteProblemList,
+                                              String websiteProblem, String problemLabel, List<String> paths) {
         logger.debug("{}: {}", problemLabel, paths);
+
+        if (paths.size() != 0) {
+            websiteProblemList.add(websiteProblem);
+        }
 
         // just a formatting method: to display "x", "x and y" or "x and 458 others" depending on how many problematic paths there are.
         if (paths.size() == 1) {
