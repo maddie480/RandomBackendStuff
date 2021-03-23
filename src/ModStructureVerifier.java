@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -482,6 +483,15 @@ public class ModStructureVerifier extends ListenerAdapter {
                     addStuffFromSJ2021(availableEntities, availableTriggers, availableEffects, whereIsStrawberryJam);
                 }
             }
+
+            if (dep.equals("GravityHelper")) {
+                // download and analyze Gravity Helper.
+                try (InputStream gravityHelperTags = new URL("https://api.github.com/repos/swoolcock/GravityHelper/tags").openStream()) {
+                    JSONArray tagsObject = new JSONArray(IOUtils.toString(gravityHelperTags, StandardCharsets.UTF_8));
+                    addStuffFromGravityHelper(availableEntities, availableTriggers, availableEffects,
+                            tagsObject.getJSONObject(0).getString("zipball_url"));
+                }
+            }
         }
 
         // extract the map bin.
@@ -625,6 +635,45 @@ public class ModStructureVerifier extends ListenerAdapter {
         availableEffects.addAll(ahornEffects);
 
         FileUtils.forceDelete(new File("mod-ahornscan-sj.zip"));
+    }
+
+    private void addStuffFromGravityHelper(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
+                                           String whereIsGravityHelper) throws IOException {
+
+        List<String> ahornEntities = new LinkedList<>();
+        List<String> ahornTriggers = new LinkedList<>();
+        List<String> ahornEffects = new LinkedList<>();
+
+        try (InputStream is = new URL(whereIsGravityHelper).openStream()) {
+            FileUtils.copyToFile(is, new File("mod-ahornscan-gh.zip"));
+        }
+
+        // scan its contents, opening Ahorn plugin files
+        try (ZipFile zipFile = new ZipFile(new File("mod-ahornscan-gh.zip"))) {
+            final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
+            while (zipEntries.hasMoreElements()) {
+                ZipEntry entry = zipEntries.nextElement();
+                String name = entry.getName();
+                name = name.substring(name.indexOf("/") + 1);
+                if (name.startsWith("Ahorn/") && name.endsWith(".jl")) {
+                    InputStream inputStream = zipFile.getInputStream(entry);
+                    extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, name, inputStream);
+                }
+            }
+
+            logger.info("Found {} Ahorn entities, {} triggers, {} effects in Gravity Helper.",
+                    ahornEntities.size(), ahornTriggers.size(), ahornEffects.size());
+        } catch (IOException | IllegalArgumentException e) {
+            logger.error("Could not analyze Ahorn plugins from Gravity Helper", e);
+            throw new IOException(e);
+        }
+
+        // merge the result into available entities.
+        availableEntities.addAll(ahornEntities);
+        availableTriggers.addAll(ahornTriggers);
+        availableEffects.addAll(ahornEffects);
+
+        FileUtils.forceDelete(new File("mod-ahornscan-gh.zip"));
     }
 
     // litteral copy-paste from update checker code
