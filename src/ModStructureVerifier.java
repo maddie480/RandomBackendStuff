@@ -238,6 +238,12 @@ public class ModStructureVerifier extends ListenerAdapter {
                 mapPath = fileListing.stream()
                         .filter(entry -> entry.startsWith("Maps/") && entry.endsWith(".bin"))
                         .findFirst().orElse(null);
+
+                // check its path
+                if (!mapPath.matches("^Maps/" + expectedCollabEnglishTxtPrefix + "/.+/.+\\.bin$")) {
+                    parseProblematicPaths(problemList, websiteProblemList, "badmappath",
+                            "Your map is not in the right folder", Collections.singletonList(mapPath));
+                }
             }
 
             // Dialog/English.txt is not required to exist, but if it does, it'd better be valid.
@@ -755,9 +761,9 @@ public class ModStructureVerifier extends ListenerAdapter {
         if (msg.equals("--help")) {
             event.getChannel().sendMessage("`--setup [response channel] [collab assets folder name] [collab maps folder name]`\n" +
                     "will tell the bot to analyze all the .zip files in the current channel, and to post issues in [response channel]." +
-                    "\n- [collab assets folder name] should identify the collab/contest and be alphanumeric." +
-                    "\n- [collab maps folder name] is the name of the folder the collab/contest map bins will be in, to make the map names tolerated in English.txt." +
-                    " It can be identical to the assets folder name.\n\n" +
+                    "\n- [collab assets folder name] should identify the collab/contest and be alphanumeric. It will have to be used for asset folders (graphics, tutorials, etc)." +
+                    "\n- [collab maps folder name] is the name of the folder the collab/contest map bins will be in." +
+                    " It has to be alphanumeric, and can be identical to the assets folder name.\n\n" +
                     "`--remove-setup`\n" +
                     "will tell the bot to stop analyzing the .zip files in the current channel.\n\n" +
                     "`--rules`\n" +
@@ -861,7 +867,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         String collabEnglishTxtName = collabEnglishTxtPrefixes.get(channelId);
         return "- files in `Assets/`, `Graphics/Atlases/`, `Graphics/ColorGrading/` and `Tutorials/` should have this path: `[basePath]/" + collabName + "/[subfolder]/[anything]`\n" +
                 "- XMLs in `Graphics/` should match: `Graphics/" + collabName + "xmls/[subfolder]/[anything].xml`\n" +
-                "- there should be exactly 1 file in the `Maps` folder\n" +
+                "- there should be exactly 1 file in the `Maps` folder, and its path should match: `Maps/" + collabEnglishTxtName + "/[subfolder]/[anything].bin`\n" +
                 "- if there is an `English.txt`, dialog IDs should match: `" + collabName + "_[anything]_[anything]`" +
                 (collabEnglishTxtName.equals(collabName) ? "" : "or `" + collabEnglishTxtName + "_[anything]_[anything]`") + "\n" +
                 "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
