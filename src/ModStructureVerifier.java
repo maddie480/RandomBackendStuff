@@ -44,6 +44,8 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public class ModStructureVerifier extends ListenerAdapter {
     private static Logger logger = LoggerFactory.getLogger(ModStructureVerifier.class);
 
@@ -492,7 +494,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (dep.equals("GravityHelper")) {
                 // download and analyze Gravity Helper.
-                try (InputStream gravityHelperTags = new URL("https://api.github.com/repos/swoolcock/GravityHelper/tags").openStream()) {
+                try (InputStream gravityHelperTags = authenticatedGitHubRequest("https://api.github.com/repos/swoolcock/GravityHelper/tags")) {
                     JSONArray tagsObject = new JSONArray(IOUtils.toString(gravityHelperTags, StandardCharsets.UTF_8));
                     addStuffFromGravityHelper(availableEntities, availableTriggers, availableEffects,
                             tagsObject.getJSONObject(0).getString("zipball_url"));
@@ -650,7 +652,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         List<String> ahornTriggers = new LinkedList<>();
         List<String> ahornEffects = new LinkedList<>();
 
-        try (InputStream is = new URL(whereIsGravityHelper).openStream()) {
+        try (InputStream is = authenticatedGitHubRequest(whereIsGravityHelper)) {
             FileUtils.copyToFile(is, new File("mod-ahornscan-gh.zip"));
         }
 
@@ -680,6 +682,13 @@ public class ModStructureVerifier extends ListenerAdapter {
         availableEffects.addAll(ahornEffects);
 
         FileUtils.forceDelete(new File("mod-ahornscan-gh.zip"));
+    }
+
+    private InputStream authenticatedGitHubRequest(String url) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString(
+                (SecretConstants.GITHUB_USERNAME + ":" + SecretConstants.GITHUB_PERSONAL_ACCESS_TOKEN).getBytes(UTF_8)));
+        return connection.getInputStream();
     }
 
     // litteral copy-paste from update checker code
