@@ -11,6 +11,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 /**
@@ -124,7 +125,7 @@ public class YieldReturnOrigPolice {
                                     WebhookExecutor.executeWebhook(webhook,
                                             "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
                                             "Banana Watch",
-                                            ":warning: The mod called **" + modName + "** contains `yield return orig(self)`!" +
+                                            ":warning: The mod called **" + modName + "** uses `yield return orig(self)`!" +
                                                     " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
                                                     + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
                                             false, null, Collections.emptyList());
@@ -132,6 +133,21 @@ public class YieldReturnOrigPolice {
                                     logger.error("Sleep interrupted(???)", e);
                                 }
                             }
+                        }
+                    } catch (ZipException e) {
+                        logger.warn("Error while reading zip. Adding to the whitelist so that it isn't retried.", e);
+                        newGoodFileList.add(fileName);
+
+                        // send an angry ping to the owner to have the mod manually checked
+                        try {
+                            WebhookExecutor.executeWebhook(SecretConstants.YIELD_RETURN_ALERT_HOOKS.get(0),
+                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "Banana Watch",
+                                    "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
+                                            ":arrow_right: https://gamebanana.com/" + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
+                                    false, SecretConstants.OWNER_ID, Collections.emptyList());
+                        } catch (InterruptedException e2) {
+                            logger.error("Sleep interrupted(???)", e2);
                         }
                     }
 
