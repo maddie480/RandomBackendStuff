@@ -50,11 +50,15 @@ public class ModStructureVerifier extends ListenerAdapter {
     private static Logger logger = LoggerFactory.getLogger(ModStructureVerifier.class);
 
     private static final String CHANNELS_SAVE_FILE_NAME = "mod_structure_police_save.csv";
+    private static final String FREE_CHANNELS_SAVE_FILE_NAME = "mod_structure_police_save_free.csv";
     private static final String MESSAGES_TO_ANSWERS_FILE_NAME = "mod_structure_police_messages_to_answers.csv";
 
     private static final Map<Long, Long> responseChannels = new HashMap<>(); // watched channel ID > response channel ID
-    private static final Map<Long, String> collabPrefixes = new HashMap<>(); // watched channel ID > collab prefix
-    private static final Map<Long, String> collabEnglishTxtPrefixes = new HashMap<>(); // watched channel ID > English.txt collab prefix
+    private static final Map<Long, String> collabAssetPrefixes = new HashMap<>(); // watched channel ID > collab assets prefix
+    private static final Map<Long, String> collabMapPrefixes = new HashMap<>(); // watched channel ID > collab maps prefix
+
+    // watched channel ID > response channel ID but for channels allowing to use the bot freely with --verify
+    private static final Map<Long, Long> freeResponseChannels = new HashMap<>();
 
     private static final Map<Long, Long> messagesToEmbeds = new HashMap<>(); // message ID > embed message ID from the bot
 
@@ -65,8 +69,17 @@ public class ModStructureVerifier extends ListenerAdapter {
                 lines.forEach(line -> {
                     String[] split = line.split(";", 4);
                     responseChannels.put(Long.parseLong(split[0]), Long.parseLong(split[1]));
-                    collabPrefixes.put(Long.parseLong(split[0]), split[2]);
-                    collabEnglishTxtPrefixes.put(Long.parseLong(split[0]), split[3]);
+                    collabAssetPrefixes.put(Long.parseLong(split[0]), split[2]);
+                    collabMapPrefixes.put(Long.parseLong(split[0]), split[3]);
+                });
+            }
+        }
+
+        if (new File(FREE_CHANNELS_SAVE_FILE_NAME).exists()) {
+            try (Stream<String> lines = Files.lines(Paths.get(FREE_CHANNELS_SAVE_FILE_NAME))) {
+                lines.forEach(line -> {
+                    String[] split = line.split(";", 2);
+                    freeResponseChannels.put(Long.parseLong(split[0]), Long.parseLong(split[1]));
                 });
             }
         }
@@ -101,8 +114,14 @@ public class ModStructureVerifier extends ListenerAdapter {
             if (jda.getGuilds().stream().noneMatch(guild -> guild.getTextChannelById(channelId) != null)) {
                 logger.warn("Forgetting channel {} because it does not exist", channelId);
                 responseChannels.remove(channelId);
-                collabPrefixes.remove(channelId);
-                collabEnglishTxtPrefixes.remove(channelId);
+                collabAssetPrefixes.remove(channelId);
+                collabMapPrefixes.remove(channelId);
+            }
+        }
+        for (Long channelId : new ArrayList<>(freeResponseChannels.keySet())) {
+            if (jda.getGuilds().stream().noneMatch(guild -> guild.getTextChannelById(channelId) != null)) {
+                logger.warn("Forgetting channel {} because it does not exist", channelId);
+                freeResponseChannels.remove(channelId);
             }
         }
 
@@ -131,52 +150,81 @@ public class ModStructureVerifier extends ListenerAdapter {
             parseAdminCommand(event);
         }
 
-        if (responseChannels.containsKey(event.getChannel().getIdLong()) && !event.getAuthor().isBot()) {
+        if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
+            // a --verify command was sent in a channel where people are allowed to send --verify commands, hmm...
+            // there should be 3 parts (so 2 parameters including --verify itself), with all 2 being alphanumeric.
+            String[] settings = event.getMessage().getContentRaw().split(" ", 4);
+            if (settings.length >= 3 && settings[1].matches("[A-Za-z0-9]+") && settings[2].matches("[A-Za-z0-9]+")) {
+                scanMapFromMessage(event, settings[1], settings[2], freeResponseChannels.get(event.getChannel().getIdLong()));
+            } else {
+                // print help if one of the parameters is invalid.
+                event.getChannel().sendMessage("Usage: `--verify [assets folder name] [maps folder name]`\n" +
+                        "`[assets folder name]` and `[maps folder name]` should be alphanumeric.").queue();
+            }
+        } else if (responseChannels.containsKey(event.getChannel().getIdLong()) && !event.getAuthor().isBot()) {
             // message was sent in a watched channel...
 
-            final String expectedCollabPrefix = collabPrefixes.get(event.getChannel().getIdLong());
-            final String expectedCollabEnglishTxtPrefix = collabEnglishTxtPrefixes.get(event.getChannel().getIdLong());
+            final String expectedCollabAssetPrefix = collabAssetPrefixes.get(event.getChannel().getIdLong());
+            final String expectedCollabMapPrefix = collabMapPrefixes.get(event.getChannel().getIdLong());
 
-            for (Message.Attachment attachment : event.getMessage().getAttachments()) {
-                if (attachment.getFileName().toLowerCase(Locale.ROOT).endsWith(".zip")) {
-                    // this is a zip attachment! analyze it.
+            scanMapFromMessage(event, expectedCollabAssetPrefix, expectedCollabMapPrefix, responseChannels.get(event.getChannel().getIdLong()));
+        }
+    }
 
-                    event.getMessage().addReaction("\uD83E\uDD14").complete(); // :thinking:
-
-                    logger.info("{} sent a file named {} in {} that we should analyze!", event.getMember(), attachment.getFileName(), event.getChannel());
-                    attachment.downloadToFile(new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip"))
-                            .thenAcceptAsync(file -> analyzeZipFile(event, attachment, expectedCollabPrefix, expectedCollabEnglishTxtPrefix, file));
-                }
-            }
-
-            // try recognizing Google Drive links by regex in the message text.
-            String messageText = event.getMessage().getContentRaw();
-            String googleDriveId = null;
-            Matcher googleDriveLinkFormat1 = Pattern.compile(".*https://drive\\.google\\.com/open\\?id=([A-Za-z0-9_-]+).*").matcher(messageText);
-            if (googleDriveLinkFormat1.matches()) {
-                googleDriveId = googleDriveLinkFormat1.group(1);
-            }
-            Matcher googleDriveLinkFormat2 = Pattern.compile(".*https://drive\\.google\\.com/file/d/([A-Za-z0-9_-]+).*").matcher(messageText);
-            if (googleDriveLinkFormat2.matches()) {
-                googleDriveId = googleDriveLinkFormat2.group(1);
-            }
-
-            if (googleDriveId != null) {
-                logger.info("{} sent a Google Drive file with id {} in {} that we should analyze!", event.getMember(), googleDriveId, event.getChannel());
+    /**
+     * Scans a map contained in a message (no matter if it is scanned automatically, or with the --verify command).
+     *
+     * @param event                     The message to scan
+     * @param expectedCollabAssetPrefix The prefix for assets to check in the structure
+     * @param expectedCollabMapPrefix   The prefix for maps to check in the structure
+     * @param responseChannelId         The channel where all problems with the map will be sent
+     */
+    private void scanMapFromMessage(@NotNull GuildMessageReceivedEvent event, String expectedCollabAssetPrefix, String expectedCollabMapPrefix, long responseChannelId) {
+        for (Message.Attachment attachment : event.getMessage().getAttachments()) {
+            if (attachment.getFileName().toLowerCase(Locale.ROOT).endsWith(".zip")) {
+                // this is a zip attachment! analyze it.
 
                 event.getMessage().addReaction("\uD83E\uDD14").complete(); // :thinking:
 
-                try (InputStream is = new URL("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media").openStream()) {
-                    // download the file through the Google Drive API and analyze it.
-                    File target = new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip");
-                    FileUtils.copyToFile(is, target);
-                    analyzeZipFile(event, null, expectedCollabPrefix, expectedCollabEnglishTxtPrefix, target);
-                } catch (IOException e) {
-                    // the file could not be downloaded (the file is probably private or non-existent).
-                    logger.warn("Could not download file id {}", googleDriveId, e);
-                    event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-                    event.getMessage().addReaction("\uD83D\uDCA3").queue(); // :bomb:
-                }
+                logger.info("{} sent a file named {} in {} that we should analyze!", event.getMember(), attachment.getFileName(), event.getChannel());
+                attachment.downloadToFile(new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip"))
+                        .thenAcceptAsync(file -> analyzeZipFile(event, attachment, expectedCollabAssetPrefix, expectedCollabMapPrefix, file, responseChannelId));
+            }
+        }
+
+        // try recognizing Google Drive links by regex in the message text.
+        String messageText = event.getMessage().getContentRaw();
+        String googleDriveId = null;
+        Matcher googleDriveLinkFormat1 = Pattern.compile(".*https://drive\\.google\\.com/open\\?id=([A-Za-z0-9_-]+).*", Pattern.DOTALL).matcher(messageText);
+        if (googleDriveLinkFormat1.matches()) {
+            googleDriveId = googleDriveLinkFormat1.group(1);
+        }
+        Matcher googleDriveLinkFormat2 = Pattern.compile(".*https://drive\\.google\\.com/file/d/([A-Za-z0-9_-]+).*", Pattern.DOTALL).matcher(messageText);
+        if (googleDriveLinkFormat2.matches()) {
+            googleDriveId = googleDriveLinkFormat2.group(1);
+        }
+
+        if (googleDriveId != null) {
+            logger.info("{} sent a Google Drive file with id {} in {} that we should analyze!", event.getMember(), googleDriveId, event.getChannel());
+
+            event.getMessage().addReaction("\uD83E\uDD14").complete(); // :thinking:
+
+            try (InputStream is = new URL("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media").openStream()) {
+                // download the file through the Google Drive API and analyze it.
+                File target = new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip");
+                FileUtils.copyToFile(is, target);
+                analyzeZipFile(event, null, expectedCollabAssetPrefix, expectedCollabMapPrefix, target, responseChannelId);
+            } catch (IOException e) {
+                // the file could not be downloaded (the file is probably private or non-existent).
+                logger.warn("Could not download file id {}", googleDriveId, e);
+                event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
+                event.getMessage().addReaction("\uD83D\uDCA3").queue(); // :bomb:
+
+                // post a message, since this kind of error might be on the user.
+                Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId))
+                        .orElse(event.getChannel())
+                        .sendMessage(event.getAuthor().getAsMention() + " I couldn't download the file from the Google Drive link you posted in " + event.getChannel().getAsMention() + "." +
+                                " Maybe the file is private or it doesn't exist anymore? :thinking:\nMake sure anyone that has the link can download it.").queue();
             }
         }
     }
@@ -184,14 +232,17 @@ public class ModStructureVerifier extends ListenerAdapter {
     /**
      * Scans a zip file.
      *
-     * @param event                          The message event that triggered the scan
-     * @param attachment                     The Discord attachment file, or null if the file comes from Google Drive
-     * @param expectedCollabPrefix           The collab prefix for this channel
-     * @param expectedCollabEnglishTxtPrefix The English.txt collab prefix for that channel
-     * @param file                           The file to scan
+     * @param event                     The message event that triggered the scan
+     * @param attachment                The Discord attachment file, or null if the file comes from Google Drive
+     * @param expectedCollabAssetPrefix The expected collab assets prefix
+     * @param expectedCollabMapsPrefix  The expected collab maps prefix for that channel
+     * @param file                      The file to scan
+     * @param responseChannelId         The channel where all problems with the map will be sent
      */
-    private void analyzeZipFile(@NotNull GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabPrefix,
-                                String expectedCollabEnglishTxtPrefix, File file) {
+    private void analyzeZipFile(@NotNull GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
+                                String expectedCollabMapsPrefix, File file, long responseChannelId) {
+
+        logger.debug("Collab assets folder = {}, Collab maps folder = {}", expectedCollabAssetPrefix, expectedCollabMapsPrefix);
 
         try (ZipFile zipFile = new ZipFile(file)) {
             List<String> problemList = new ArrayList<>();
@@ -209,7 +260,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             parseProblematicPaths(problemList, websiteProblemList, "assets", "You have assets that are at the wrong place, please move them", fileListing.stream()
                     .filter(entry -> entry.startsWith("Assets/") || entry.startsWith("Graphics/ColorGrading/")
                             || entry.startsWith("Graphics/Atlases/") || entry.startsWith("Tutorials/"))
-                    .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabPrefix + "/.+/.+$"))
+                    .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabAssetPrefix + "/.+/.+$"))
                     .collect(Collectors.toList()));
 
             logger.debug("Scanning invalid XML paths...");
@@ -218,7 +269,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             // should match: Graphics/collabnamexmls/[anything]/[anything].xml
             parseProblematicPaths(problemList, websiteProblemList, "xmls", "You have XMLs that are at the wrong place, please move them", fileListing.stream()
                     .filter(entry -> entry.startsWith("Graphics/") && entry.endsWith(".xml"))
-                    .filter(entry -> !entry.matches("^Graphics/" + expectedCollabPrefix + "xmls/.+/.+\\.xml$"))
+                    .filter(entry -> !entry.matches("^Graphics/" + expectedCollabAssetPrefix + "xmls/.+/.+\\.xml$"))
                     .collect(Collectors.toList()));
 
             logger.debug("Scanning presence of map bins...");
@@ -242,7 +293,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         .findFirst().orElse(null);
 
                 // check its path
-                if (!mapPath.matches("^Maps/" + expectedCollabEnglishTxtPrefix + "/.+/.+\\.bin$")) {
+                if (!mapPath.matches("^Maps/" + expectedCollabMapsPrefix + "/.+/.+\\.bin$")) {
                     parseProblematicPaths(problemList, websiteProblemList, "badmappath",
                             "Your map is not in the right folder", Collections.singletonList(mapPath));
                 }
@@ -258,8 +309,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                 // dialog entries are matched using the same regex as in-game.
                 // it should match: [collabname]_[anything]_[anything] or [englishtxtname]_[anything]_[anything]
                 Pattern dialogEntry = Pattern.compile("^\\w+=.*");
-                Pattern validDialogEntry = Pattern.compile("^(" + expectedCollabPrefix + ")_[^_]+_.*=.*");
-                Pattern altValidDialogEntry = Pattern.compile("^(" + expectedCollabEnglishTxtPrefix + ")_[^_]+_.*=.*");
+                Pattern validDialogEntry = Pattern.compile("^(" + expectedCollabAssetPrefix + ")_[^_]+_.*=.*");
+                Pattern altValidDialogEntry = Pattern.compile("^(" + expectedCollabMapsPrefix + ")_[^_]+_.*=.*");
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(zipFile.getInputStream(englishTxt)))) {
                     String s;
                     while ((s = br.readLine()) != null) {
@@ -357,15 +408,15 @@ public class ModStructureVerifier extends ListenerAdapter {
                 // if there is any "website problem", attach a link to the help website.
                 MessageBuilder discordMessage = new MessageBuilder(message);
                 if (!websiteProblemList.isEmpty()) {
-                    String url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?collabName=" + expectedCollabPrefix
-                            + (!expectedCollabPrefix.equals(expectedCollabEnglishTxtPrefix) ? "&collabMapName=" + expectedCollabEnglishTxtPrefix : "")
+                    String url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?collabName=" + expectedCollabAssetPrefix
+                            + (!expectedCollabAssetPrefix.equals(expectedCollabMapsPrefix) ? "&collabMapName=" + expectedCollabMapsPrefix : "")
                             + "&" + String.join("&", websiteProblemList);
                     discordMessage.setEmbed(new EmbedBuilder()
                             .setTitle("Click here for more help", url)
                             .build());
                 }
 
-                Optional.ofNullable(event.getGuild().getTextChannelById(responseChannels.get(event.getChannel().getIdLong())))
+                Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId))
                         .orElse(event.getChannel())
                         .sendMessage(discordMessage.build()).queue();
 
@@ -773,6 +824,10 @@ public class ModStructureVerifier extends ListenerAdapter {
                     "\n- [collab assets folder name] should identify the collab/contest and be alphanumeric. It will have to be used for asset folders (graphics, tutorials, etc)." +
                     "\n- [collab maps folder name] is the name of the folder the collab/contest map bins will be in." +
                     " It has to be alphanumeric, and can be identical to the assets folder name.\n\n" +
+                    "`--setup-free [response channel]`\n" +
+                    "allows everyone on the server to use the `--verify` command in the channel it is posted in, and will post issues in [response channel].\n\n" +
+                    "`--verify [assets folder name] [maps folder name]`\n" +
+                    "will verify the given map (as an attachment, or as a Google Drive link) with the given parameters, with the same checks as collabs. Both names should be alphanumeric.\n\n" +
                     "`--remove-setup`\n" +
                     "will tell the bot to stop analyzing the .zip files in the current channel.\n\n" +
                     "`--rules`\n" +
@@ -800,8 +855,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                         // save the new association!
                         valid = true;
                         responseChannels.put(event.getChannel().getIdLong(), Long.parseLong(channelId));
-                        collabPrefixes.put(event.getChannel().getIdLong(), settings[2]);
-                        collabEnglishTxtPrefixes.put(event.getChannel().getIdLong(), settings[3]);
+                        collabAssetPrefixes.put(event.getChannel().getIdLong(), settings[2]);
+                        collabMapPrefixes.put(event.getChannel().getIdLong(), settings[3]);
 
                         saveMap(event, ":white_check_mark: The bot will check zips posted in this channel against those rules:\n"
                                 + getRules(event.getChannel().getIdLong()) + "\n\nAny issue found will be posted in <#" + channelId + ">.");
@@ -814,12 +869,38 @@ public class ModStructureVerifier extends ListenerAdapter {
                 event.getChannel().sendMessage("Usage: `--setup [response channel] [collab assets folder name] [collab maps folder name]`\n" +
                         "[response channel] should be a mention, and folder names should be alphanumeric.").queue();
             }
+        } else if (msg.startsWith("--setup-free ")) {
+            // setting up a new free use channel!
+            String[] settings = msg.split(" ");
+            boolean valid = false;
+
+            // there should be 2 parts (so 1 parameter including --setup-free itself).
+            if (settings.length == 2) {
+                // parameter 1 should be a channel mention.
+                Matcher regex = Pattern.compile("^<#!?([0-9]+)>$").matcher(settings[1]);
+                if (regex.matches()) {
+                    String channelId = regex.group(1);
+                    if (event.getGuild().getTextChannelById(channelId) != null) {
+                        valid = true;
+                        freeResponseChannels.put(event.getChannel().getIdLong(), Long.parseLong(channelId));
+                        saveMap(event, ":white_check_mark: Everyone will be able to use the `--verify [assets folder name] [maps folder name]` " +
+                                "command in this channel to check the structure of their mod. Any issue found will be posted in <#" + channelId + ">.");
+                    }
+                }
+            }
+
+            if (!valid) {
+                // print help if one of the parameters is invalid.
+                event.getChannel().sendMessage("Usage: `--setup-free [response channel]`\n" +
+                        "[response channel] should be a mention.").queue();
+            }
         } else if (msg.equals("--remove-setup")) {
-            if (responseChannels.containsKey(event.getChannel().getIdLong())) {
+            if (responseChannels.containsKey(event.getChannel().getIdLong()) || freeResponseChannels.containsKey(event.getChannel().getIdLong())) {
                 // forget about the channel.
                 responseChannels.remove(event.getChannel().getIdLong());
-                collabPrefixes.remove(event.getChannel().getIdLong());
-                collabEnglishTxtPrefixes.remove(event.getChannel().getIdLong());
+                collabAssetPrefixes.remove(event.getChannel().getIdLong());
+                collabMapPrefixes.remove(event.getChannel().getIdLong());
+                freeResponseChannels.remove(event.getChannel().getIdLong());
                 saveMap(event, ":white_check_mark: The bot will not scan zips posted in this channel anymore.");
             } else {
                 event.getChannel().sendMessage(":x: The bot is not set up to scan zips sent to this channel.").queue();
@@ -845,9 +926,17 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     private static void saveMap(GuildMessageReceivedEvent event, String successMessage) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(CHANNELS_SAVE_FILE_NAME))) {
-            for (Long channelId : responseChannels.keySet()) {
-                writer.write(channelId + ";" + responseChannels.get(channelId) + ";" + collabPrefixes.get(channelId) + ";" + collabEnglishTxtPrefixes.get(channelId) + "\n");
+        try {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(CHANNELS_SAVE_FILE_NAME))) {
+                for (Long channelId : responseChannels.keySet()) {
+                    writer.write(channelId + ";" + responseChannels.get(channelId) + ";" + collabAssetPrefixes.get(channelId) + ";" + collabMapPrefixes.get(channelId) + "\n");
+                }
+            }
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(FREE_CHANNELS_SAVE_FILE_NAME))) {
+                for (Long channelId : freeResponseChannels.keySet()) {
+                    writer.write(channelId + ";" + freeResponseChannels.get(channelId) + "\n");
+                }
             }
 
             event.getChannel().sendMessage(successMessage).queue();
@@ -872,13 +961,13 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     private static String getRules(Long channelId) {
-        String collabName = collabPrefixes.get(channelId);
-        String collabEnglishTxtName = collabEnglishTxtPrefixes.get(channelId);
-        return "- files in `Assets/`, `Graphics/Atlases/`, `Graphics/ColorGrading/` and `Tutorials/` should have this path: `[basePath]/" + collabName + "/[subfolder]/[anything]`\n" +
-                "- XMLs in `Graphics/` should match: `Graphics/" + collabName + "xmls/[subfolder]/[anything].xml`\n" +
-                "- there should be exactly 1 file in the `Maps` folder, and its path should match: `Maps/" + collabEnglishTxtName + "/[subfolder]/[anything].bin`\n" +
-                "- if there is an `English.txt`, dialog IDs should match: `" + collabName + "_[anything]_[anything]`" +
-                (collabEnglishTxtName.equals(collabName) ? "" : "or `" + collabEnglishTxtName + "_[anything]_[anything]`") + "\n" +
+        String collabAssetsName = collabAssetPrefixes.get(channelId);
+        String collabMapsName = collabMapPrefixes.get(channelId);
+        return "- files in `Assets/`, `Graphics/Atlases/`, `Graphics/ColorGrading/` and `Tutorials/` should have this path: `[basePath]/" + collabAssetsName + "/[subfolder]/[anything]`\n" +
+                "- XMLs in `Graphics/` should match: `Graphics/" + collabAssetsName + "xmls/[subfolder]/[anything].xml`\n" +
+                "- there should be exactly 1 file in the `Maps` folder, and its path should match: `Maps/" + collabMapsName + "/[subfolder]/[anything].bin`\n" +
+                "- if there is an `English.txt`, dialog IDs should match: `" + collabAssetsName + "_[anything]_[anything]`" +
+                (collabMapsName.equals(collabAssetsName) ? "" : "or `" + collabMapsName + "_[anything]_[anything]`") + "\n" +
                 "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
                 "- all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies";
     }
