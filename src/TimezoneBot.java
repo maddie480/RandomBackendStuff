@@ -49,7 +49,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         // start up the bot.
         jda = JDABuilder.create(SecretConstants.TIMEZONE_BOT_TOKEN,
                 GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES, GatewayIntent.GUILD_MEMBERS)
-                .addEventListeners(new TimezoneBot(), new StrawberryJamUpdate() /* private handler for the Strawberry Jam server */)
+                .addEventListeners(new TimezoneBot(),
+                        // some code specific to the Strawberry Jam 2021 server, not published and has nothing to do with timezones
+                        // but that wasn't really enough to warrant a separate bot
+                        new StrawberryJamUpdate())
                 .build().awaitReady();
 
         // look up existing timezone roles by regex.
