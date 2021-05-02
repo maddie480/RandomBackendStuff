@@ -62,6 +62,9 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     private static final Map<Long, Long> messagesToEmbeds = new HashMap<>(); // message ID > embed message ID from the bot
 
+    private static JDA jda;
+    private static int analyzedZipCount = 0;
+
     public static void main(String[] args) throws Exception {
         // load the list of channels the bot should be listening to from disk.
         if (new File(CHANNELS_SAVE_FILE_NAME).exists()) {
@@ -104,7 +107,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         // start up the bot.
-        JDA jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, GatewayIntent.GUILD_MESSAGES)
+        jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new ModStructureVerifier())
                 .setActivity(Activity.playing("Type --help for setup instructions"))
                 .build().awaitReady();
@@ -241,6 +244,10 @@ public class ModStructureVerifier extends ListenerAdapter {
      */
     private void analyzeZipFile(@NotNull GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
                                 String expectedCollabMapsPrefix, File file, long responseChannelId) {
+
+        analyzedZipCount++;
+        jda.getPresence().setActivity(Activity.playing(
+                analyzedZipCount + " zip" + (analyzedZipCount == 1 ? "" : "s") + " analyzed since startup | --help"));
 
         logger.debug("Collab assets folder = {}, Collab maps folder = {}", expectedCollabAssetPrefix, expectedCollabMapsPrefix);
 
