@@ -81,7 +81,8 @@ public class YieldReturnOrigPolice {
                             yamlContent = new Yaml().load(is);
                         }
 
-                        boolean problem = false;
+                        boolean yieldReturnIssue = false;
+                        boolean intPtrIssue = false;
 
                         // read "DLL" fields for each everest.yaml entry
                         for (Map<String, Object> yamlEntry : yamlContent) {
@@ -106,7 +107,10 @@ public class YieldReturnOrigPolice {
                                 // search for anything looking like yield return orig(self)
                                 if (fullDecompile.contains("yield return orig.Invoke")) {
                                     logger.warn("Mod {} uses yield return orig(self)!", modName);
-                                    problem = true;
+                                    yieldReturnIssue = true;
+                                } else if (fullDecompile.contains(".MethodHandle.GetFunctionPointer()")) {
+                                    logger.warn("Mod {} might be using the IntPtr trick", modName);
+                                    intPtrIssue = true;
                                 } else {
                                     logger.info("No yield return orig(self) detected in mod {}", modName);
                                 }
@@ -116,19 +120,30 @@ public class YieldReturnOrigPolice {
                             }
                         }
 
-                        if (!problem) {
+                        if (!yieldReturnIssue && !intPtrIssue) {
                             newGoodFileList.add(fileName);
                         } else {
                             // yell because mod bad :MADeline:
                             for (String webhook : SecretConstants.YIELD_RETURN_ALERT_HOOKS) {
                                 try {
-                                    WebhookExecutor.executeWebhook(webhook,
-                                            "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
-                                            "Banana Watch",
-                                            ":warning: The mod called **" + modName + "** uses `yield return orig(self)`!" +
-                                                    " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
-                                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
-                                            false, null, Collections.emptyList());
+                                    if (yieldReturnIssue) {
+                                        WebhookExecutor.executeWebhook(webhook,
+                                                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                                "Banana Watch",
+                                                ":warning: The mod called **" + modName + "** uses `yield return orig(self)`!" +
+                                                        " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
+                                                        + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
+                                                false, null, Collections.emptyList());
+                                    }
+                                    if (intPtrIssue) {
+                                        WebhookExecutor.executeWebhook(webhook,
+                                                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                                "Banana Watch",
+                                                ":warning: The mod called **" + modName + "** might be using the `IntPtr` trick to call base methods!" +
+                                                        " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
+                                                        + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
+                                                false, null, Collections.emptyList());
+                                    }
                                 } catch (InterruptedException e) {
                                     logger.error("Sleep interrupted(???)", e);
                                 }
