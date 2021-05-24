@@ -313,20 +313,24 @@ public class GameBananaAutomatedChecks {
 
     private static Pair<String, String> whichModDoesFileBelongTo(String fileId) throws IOException {
         // load mod list
-        List<String> mods;
-        try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-            mods = new Yaml().load(is);
-        }
+        List<String> mods = runWithRetry(() -> {
+            try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
+                return new Yaml().load(is);
+            }
+        });
 
         for (String mod : mods) {
             // load file list for the mod
             String modName;
             List<String> files;
-            try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-                Map<String, Object> info = new Yaml().load(is);
-                modName = info.get("Name").toString();
-                files = (List<String>) info.get("Files");
-            }
+            Map<String, Object> info = runWithRetry(() -> {
+                try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
+                    return new Yaml().load(is);
+                }
+            });
+
+            modName = info.get("Name").toString();
+            files = (List<String>) info.get("Files");
 
             if (files.contains(fileId)) {
                 return Pair.of(modName, mod);
