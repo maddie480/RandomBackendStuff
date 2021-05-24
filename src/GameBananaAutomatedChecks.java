@@ -3,6 +3,7 @@ package com.max480.discord.randombots;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -33,7 +34,7 @@ public class GameBananaAutomatedChecks {
             "libEGL.dll", "libGLESv2.dll", "libjpeg-9.dll", "libpng16-16.dll", "lua53.dll", "steam_api.dll", "zlib1.dll", "Microsoft.Xna.Framework.dll",
             "Microsoft.Xna.Framework.Game.dll", "Microsoft.Xna.Framework.Graphics.dll");
 
-    private static Pattern gamebananaLinkRegex = Pattern.compile(".*(https://gamebanana.com/mmdl/[0-9]+).*");
+    private static final Pattern gamebananaLinkRegex = Pattern.compile(".*(https://gamebanana.com/mmdl/[0-9]+).*");
 
     public static void main(String[] args) throws IOException {
         checkYieldReturnOrigAndIntPtrTrick();
@@ -243,6 +244,8 @@ public class GameBananaAutomatedChecks {
     /**
      * Checks for any mod that is blacklisted due to having the same ID as another file... that does not belong to the same mod.
      * This allows to catch if two different mods use the same ID.
+     * <p>
+     * Mods that are marked as Obsolete are excluded from the alerts.
      */
     private static void checkForDuplicateModIds() throws IOException {
         Map<String, String> excludedFilesList;
@@ -270,15 +273,41 @@ public class GameBananaAutomatedChecks {
                     String nameForUrl1 = mod1.getValue().split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod1.getValue().split("/")[1];
                     String nameForUrl2 = mod2.getValue().split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod2.getValue().split("/")[1];
 
-                    System.out.println(":warning: Mods **" + mod1.getKey() + "** and **" + mod2.getKey() + "** seem to be using the same mod ID! " +
-                            "This is illegal <:landeline:458158726558384149>\n:arrow_right: " +
-                            "https://gamebanana.com/" + nameForUrl1 + " and https://gamebanana.com/" + nameForUrl2);
+                    if (!modIsObsolete(mod1.getValue()) && !modIsObsolete(mod2.getValue())) {
+                        sendAlertToWebhook(":warning: Mods **" + mod1.getKey() + "** and **" + mod2.getKey() + "** seem to be using the same mod ID! " +
+                                "This is illegal <:landeline:458158726558384149>\n:arrow_right: " +
+                                "https://gamebanana.com/" + nameForUrl1 + " and https://gamebanana.com/" + nameForUrl2);
+                    } else {
+                        logger.info(mod1.getValue() + " and " + mod2.getValue() + " use the same ID, but alert will not be sent" +
+                                " because at least one of them is obsolete.");
+                    }
 
                     // avoid warning about this conflict again.
                     alreadyFoundConflicts.add(Pair.of(mod1.getValue(), mod2.getValue()));
                     alreadyFoundConflicts.add(Pair.of(mod2.getValue(), mod1.getValue()));
                 }
             }
+        }
+    }
+
+    /**
+     * Calls GameBanana to check if the given mod is obsolete.
+     * If GameBanana is down, returns false (so that an alert gets sent no matter what).
+     *
+     * @param mod The mod to check, in the format used in modfilesdatabase/list.yaml (for example "Mod/53678")
+     * @return Whether the mod is obsolete or not (false if GameBanana is unreachable)
+     */
+    private static boolean modIsObsolete(String mod) {
+        try {
+            return runWithRetry(() -> {
+                try (InputStream is = new URL("https://gamebanana.com/apiv3/" + mod).openStream()) {
+                    JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    return modInfo.getBoolean("_bIsObsolete");
+                }
+            });
+        } catch (IOException e) {
+            logger.error("Cannot get whether {} is obsolete or not, so we will assume it is not.", mod, e);
+            return false;
         }
     }
 
@@ -318,5 +347,43 @@ public class GameBananaAutomatedChecks {
                 logger.error("Sleep interrupted(???)", e);
             }
         }
+    }
+
+    /**
+     * Much like {@link java.util.function.Supplier} but throwing an IOException (which a network operation may do).
+     *
+     * @param <T> The return type for the operation
+     */
+    private interface NetworkingOperation<T> {
+        T run() throws IOException;
+    }
+
+    /**
+     * Runs a task (typically a network operation), retrying up to 3 times if it throws an IOException.
+     *
+     * @param task The task to run and retry
+     * @param <T>  The return type for the task
+     * @return What the task returned
+     * @throws IOException If the task failed 3 times
+     */
+    private static <T> T runWithRetry(NetworkingOperation<T> task) throws IOException {
+        for (int i = 1; i < 3; i++) {
+            try {
+                return task.run();
+            } catch (IOException e) {
+                logger.warn("I/O exception while doing networking operation (try {}/3).", i, e);
+
+                // wait a bit before retrying
+                try {
+                    logger.debug("Waiting {} seconds before next try.", i * 5);
+                    Thread.sleep(i * 5000);
+                } catch (InterruptedException e2) {
+                    logger.warn("Sleep interrupted", e2);
+                }
+            }
+        }
+
+        // 3rd try: this time, if it crashes, let it crash
+        return task.run();
     }
 }

@@ -10,5 +10,4 @@ This repository also contains a seemingly unrelated class called `GameBananaAuto
 - code mods that use `yield return orig(self)` are reported, because using that in a hook causes 1 or 2-frame delays that are only noticed by people TASing the game.
 - code mods that use `GetFunctionPointer()` to get a pointer to a function and "skip" some parent classes (for example calling `ParentOfParentClass.Method()` instead of `ParentClass.Method()`) are reported, because those cause crashes on Mac only and with no error log, making troubleshooting quite tedious.
 - mods that ship with files included with Celeste or Everest are reported, because this is unnecessary at best... or illegal at worst (in the case of Celeste.exe).
-- files that have the same everest.yaml as another file while being attached to a different mod are reported, because that probably means there is a mod name conflict.
- 
+- files that have the same everest.yaml name as another file while being attached to a different mod are reported, because that probably means there is a mod name conflict. **If one of them is marked "Obsolete" on GameBanana, it will not raise an alert**, since it means one mod makes the other obsolete.
