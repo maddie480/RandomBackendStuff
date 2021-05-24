@@ -6,4 +6,9 @@ This repository contains source code for 2 bots I am currently hosting:
 
 This is not structured as a proper Java project since those bots are run as part of a bigger package, and running them requires some server setup. This is open sourced in case someone wants to know how the bots work, or wants to reuse them. As such, the pom.xml has dependencies that are not needed for any of the code that was published here. (This allows me to keep them up-to-date as well with Dependabot.)
 
-This repository also contains code for a script that checks if one of the Celeste mods on GameBanana uses `yield return orig(self)`, as it can cause issues such as TAS desyncs. This is here because I'm packaging it with the bots, and invoking it from them.
+This repository also contains a seemingly unrelated class called `GameBananaAutomatedChecks`, which is actually bundled with the bots in order to be run once a day, at midnight French time. This runs some checks on all GameBanana submissions to help with moderation and detection of common issues:
+- code mods that use `yield return orig(self)` are reported, because using that in a hook causes 1 or 2-frame delays that are only noticed by people TASing the game.
+- code mods that use `GetFunctionPointer()` to get a pointer to a function and "skip" some parent classes (for example calling `ParentOfParentClass.Method()` instead of `ParentClass.Method()`) are reported, because those cause crashes on Mac only and with no error log, making troubleshooting quite tedious.
+- mods that ship with files included with Celeste or Everest are reported, because this is unnecessary at best... or illegal at worst (in the case of Celeste.exe).
+- files that have the same everest.yaml as another file while being attached to a different mod are reported, because that probably means there is a mod name conflict.
+ 
