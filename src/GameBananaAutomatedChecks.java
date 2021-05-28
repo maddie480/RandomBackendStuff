@@ -219,8 +219,8 @@ public class GameBananaAutomatedChecks {
         }
 
         for (String file : files) {
-            // check for forbidden files in any file more recent that Crowd Control (502895)
-            if (Integer.parseInt(file) > 502895) {
+            // check for forbidden files in any file more recent than AltSidesHelper (563180)
+            if (Integer.parseInt(file) > 563180) {
                 List<String> contents;
                 try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
                     contents = new Yaml().load(is);
