@@ -146,6 +146,11 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     @Override
     public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
+        if (event.getAuthor().getIdLong() == event.getJDA().getSelfUser().getIdLong()) {
+            // failsafe: do not react to our own messages.
+            return;
+        }
+
         if (!event.getAuthor().isBot() && (event.getMember().hasPermission(Permission.ADMINISTRATOR)
                 || event.getMember().hasPermission(Permission.MANAGE_SERVER))) {
 
@@ -164,7 +169,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 event.getChannel().sendMessage("Usage: `--verify [assets folder name] [maps folder name]`\n" +
                         "`[assets folder name]` and `[maps folder name]` should be alphanumeric.").queue();
             }
-        } else if (responseChannels.containsKey(event.getChannel().getIdLong()) && !event.getAuthor().isBot()) {
+        } else if (responseChannels.containsKey(event.getChannel().getIdLong())) {
             // message was sent in a watched channel...
 
             final String expectedCollabAssetPrefix = collabAssetPrefixes.get(event.getChannel().getIdLong());
