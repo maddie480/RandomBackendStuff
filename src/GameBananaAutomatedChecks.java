@@ -1,5 +1,6 @@
 package com.max480.discord.randombots;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -42,6 +43,31 @@ public class GameBananaAutomatedChecks {
         checkForDuplicateModIds();
     }
 
+    private static class GameBananaCheckResults {
+        // files checked that have no issues
+        public List<String> goodFiles;
+
+        // files with issues (file ID => pre-built alert messages that can be sent again)
+        public Map<String, List<String>> badFiles;
+
+        public GameBananaCheckResults() {
+            goodFiles = new ArrayList<>();
+            badFiles = new HashMap<>();
+        }
+
+        public GameBananaCheckResults(Map<String, Object> source) {
+            goodFiles = (List<String>) source.get("GoodFiles");
+            badFiles = (Map<String, List<String>>) source.get("BadFiles");
+        }
+
+        public Map<String, Object> toMap() {
+            return ImmutableMap.of(
+                    "GoodFiles", goodFiles,
+                    "BadFiles", badFiles
+            );
+        }
+    }
+
     /**
      * Downloads every mod with a DLL and decompiles it looking for a "yield return orig.Invoke",
      * because mods shouldn't use those.
@@ -53,12 +79,16 @@ public class GameBananaAutomatedChecks {
      * Otherwise, webhooks will be called to warn some people about the mod.
      */
     private static void checkYieldReturnOrigAndIntPtrTrick() throws IOException {
-        List<String> newGoodFileList = new ArrayList<>();
+        // the new file list is built from scratch (only files that still exist are copied over from the previous list).
+        GameBananaCheckResults newResults = new GameBananaCheckResults();
 
-        List<String> goodFiles;
-        try (InputStream is = new FileInputStream("yield_return_orig_police_whitelist.yaml")) {
-            goodFiles = new Yaml().load(is);
+        // and we want to load the previous state to be sure we don't handle already handled mods.
+        GameBananaCheckResults oldResults;
+        try (InputStream is = new FileInputStream("gamebanana_check_results_list.yaml")) {
+            oldResults = new GameBananaCheckResults(new Yaml().load(is));
         }
+
+        // download the updater database to figure out which mods we should scan...
         Map<String, Map<String, Object>> updaterDatabase;
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
             updaterDatabase = new Yaml().load(is);
@@ -71,9 +101,15 @@ public class GameBananaAutomatedChecks {
             // does the file have a dll?
             String fileName = mod.get("URL").toString().substring("https://gamebanana.com/mmdl/".length());
 
-            if (goodFiles.contains(fileName)) {
-                // skip
-                newGoodFileList.add(fileName);
+            if (oldResults.goodFiles.contains(fileName)) {
+                // skip scanning known good files.
+                newResults.goodFiles.add(fileName);
+            } else if (oldResults.badFiles.containsKey(fileName)) {
+                // skip scanning the file again, we know it is bad... alert about it again though, as a reminder.
+                for (String message : oldResults.badFiles.get(fileName)) {
+                    sendAlertToWebhook(message);
+                }
+                newResults.badFiles.put(fileName, oldResults.badFiles.get(fileName));
             } else {
                 // check file listing
                 List<String> fileList;
@@ -149,23 +185,31 @@ public class GameBananaAutomatedChecks {
                         }
 
                         if (!yieldReturnIssue && !intPtrIssue) {
-                            newGoodFileList.add(fileName);
+                            newResults.goodFiles.add(fileName);
                         } else {
+                            List<String> messages = new ArrayList<>();
+
                             // yell because mod bad :MADeline:
                             if (yieldReturnIssue) {
-                                sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `yield return orig(self)`!" +
+                                String message = ":warning: The mod called **" + modName + "** uses `yield return orig(self)`!" +
                                         " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
-                                        + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                                        + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId");
+                                sendAlertToWebhook(message);
+                                messages.add(message);
                             }
                             if (intPtrIssue) {
-                                sendAlertToWebhook(":warning: The mod called **" + modName + "** might be using the `IntPtr` trick to call base methods!" +
+                                String message = ":warning: The mod called **" + modName + "** might be using the `IntPtr` trick to call base methods!" +
                                         " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
-                                        + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                                        + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId");
+                                sendAlertToWebhook(message);
+                                messages.add(message);
                             }
+
+                            newResults.badFiles.put(fileName, messages);
                         }
                     } catch (ZipException e) {
                         logger.warn("Error while reading zip. Adding to the whitelist so that it isn't retried.", e);
-                        newGoodFileList.add(fileName);
+                        newResults.goodFiles.add(fileName);
 
                         // send an angry ping to the owner to have the mod manually checked
                         try {
@@ -186,8 +230,8 @@ public class GameBananaAutomatedChecks {
             }
         }
 
-        try (FileWriter writer = new FileWriter("yield_return_orig_police_whitelist.yaml")) {
-            new Yaml().dump(newGoodFileList, writer);
+        try (FileWriter writer = new FileWriter("gamebanana_check_results_list.yaml")) {
+            new Yaml().dump(newResults.toMap(), writer);
         }
     }
 
