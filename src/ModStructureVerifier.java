@@ -499,7 +499,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         for (String dep : dependencies) {
             if (databaseContents.containsKey(dep)) { // to exclude Everest
 
-                String depUrl = (String) databaseContents.get(dep).get("URL");
+                String depUrl = (String) databaseContents.get(dep).get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
                 if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
                     // instead of downloading the file, let's grab its contents from the mod files database left by the update checker.
                     File modFilesDatabaseFile = new File("modfilesdatabase/" +

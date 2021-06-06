@@ -99,7 +99,8 @@ public class GameBananaAutomatedChecks {
             Map<String, Object> mod = modEntry.getValue();
 
             // does the file have a dll?
-            String fileName = mod.get("URL").toString().substring("https://gamebanana.com/mmdl/".length());
+            String fileName = mod.get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL")
+                    .toString().substring("https://gamebanana.com/mmdl/".length());
 
             if (oldResults.goodFiles.contains(fileName)) {
                 // skip scanning known good files.
@@ -123,7 +124,7 @@ public class GameBananaAutomatedChecks {
                     // file listing contains dll, so download!
                     logger.debug("Downloading mod {} (file id {})", modName, fileName);
 
-                    try (InputStream is = new URL(mod.get("MirrorURL").toString()).openStream()) {
+                    try (InputStream is = new URL(mod.get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString()).openStream()) {
                         FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.zip"));
                     }
 
