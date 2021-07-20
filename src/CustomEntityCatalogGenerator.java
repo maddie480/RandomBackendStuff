@@ -32,8 +32,8 @@ public class CustomEntityCatalogGenerator {
         gen.reloadList();
 
         JSONObject output = new JSONObject();
-        output.append("modInfo", gen.modInfo);
-        output.append("lastUpdated", gen.lastUpdated);
+        output.put("modInfo", gen.modInfo);
+        output.put("lastUpdated", gen.lastUpdated);
         FileUtils.writeStringToFile(new File("uploads/customentitycatalog.json"), output.toString(4), UTF_8);
     }
 
