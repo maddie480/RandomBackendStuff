@@ -23,6 +23,11 @@ public class SecretConstantsDummy {
     static final String GITHUB_USERNAME = "";
     static final String GITHUB_PERSONAL_ACCESS_TOKEN = "";
 
+    // API to call to reload the custom entity catalog, mod search and everest_update.yaml on the frontend
+    static final String CUSTOM_ENTITY_CATALOG_RELOAD_API = "";
+    static final String EVEREST_UPDATE_RELOAD_API = "";
+    static final String MOD_SEARCH_RELOAD_API = "";
+
     // Discord webhooks to call about yield return orig(self) issues
     // the first entry is the "owner" one and will also be called for analysis errors
     static final List<String> YIELD_RETURN_ALERT_HOOKS = Collections.emptyList();

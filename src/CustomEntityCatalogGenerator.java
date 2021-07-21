@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -35,6 +36,12 @@ public class CustomEntityCatalogGenerator {
         output.put("modInfo", gen.modInfo);
         output.put("lastUpdated", gen.lastUpdated);
         FileUtils.writeStringToFile(new File("uploads/customentitycatalog.json"), output.toString(4), UTF_8);
+
+        // refresh the custom entity catalog on the frontend.
+        HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.CUSTOM_ENTITY_CATALOG_RELOAD_API).openConnection();
+        if (conn.getResponseCode() != 200) {
+            throw new IOException("Custom Entity Catalog Reload API sent non 200 code: " + conn.getResponseCode());
+        }
     }
 
     /**
