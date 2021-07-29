@@ -8,6 +8,7 @@ public class SecretConstantsDummy {
     static final Long OWNER_ID = 0L;
     static final Long REPORT_SERVER_ID = 0L;
     static final Long REPORT_SERVER_CHANNEL = 0L;
+    static final Long UPDATE_CHECKER_CHANNEL = 0L;
 
     // bot credentials
     static final String TIMEZONE_BOT_TOKEN = "";
@@ -27,6 +28,7 @@ public class SecretConstantsDummy {
     static final String CUSTOM_ENTITY_CATALOG_RELOAD_API = "";
     static final String EVEREST_UPDATE_RELOAD_API = "";
     static final String MOD_SEARCH_RELOAD_API = "";
+    static final String LUA_CUTSCENES_DOC_UPLOAD_API = "";
 
     // Discord webhooks to call about yield return orig(self) issues
     // the first entry is the "owner" one and will also be called for analysis errors
