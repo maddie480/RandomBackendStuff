@@ -20,7 +20,7 @@ public class UpdateCheckerTracker implements TailerListener {
     private static final Logger log = LoggerFactory.getLogger(UpdateCheckerTracker.class);
 
     private static boolean lastLineIsNetworkError = false;
-    public static ZonedDateTime lastLogLineDate = ZonedDateTime.now();
+    protected static ZonedDateTime lastLogLineDate = ZonedDateTime.now();
 
     private static boolean luaCutscenesUpdated = false;
 

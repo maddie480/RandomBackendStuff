@@ -14,6 +14,9 @@ public class SecretConstantsDummy {
     static final String TIMEZONE_BOT_TOKEN = "";
     static final String MOD_STRUCTURE_VERIFIER_TOKEN = "";
 
+    // the URL on which the backend is exposed
+    static final String BACKEND_BASE_URL = "";
+
     // the timezone bot currently only support one server, which ID should be filled out here
     static final Long TIMEZONE_BOT_SERVER = 0L;
 
