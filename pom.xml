@@ -115,7 +115,7 @@
         <dependency>
             <groupId>com.max480.everest.updatechecker</groupId>
             <artifactId>update-checker</artifactId>
-            <version>0.0.32</version>
+            <version>0.0.33</version>
         </dependency>
     </dependencies>
 

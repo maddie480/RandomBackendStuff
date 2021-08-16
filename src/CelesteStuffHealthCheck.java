@@ -244,6 +244,11 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Categories list API failed");
         }
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10").openStream(), UTF_8)
+                .contains("<title>Outcast Outback Helper</title>")) {
+
+            throw new IOException("RSS feed by category API failed");
+        }
 
         HttpURLConnection connection = (HttpURLConnection)
                 new URL("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();

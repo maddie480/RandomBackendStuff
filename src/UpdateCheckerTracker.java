@@ -56,7 +56,7 @@ public class UpdateCheckerTracker implements TailerListener {
         if (line != null &&
                 !line.contains("=== Started searching for updates") &&
                 !line.contains("=== Ended searching for updates.") &&
-                !line.contains("Waiting for 20 minute(s) before next update.")) {
+                !line.contains("Waiting for 15 minute(s) before next update.")) {
 
             if (line.contains("I/O exception while doing networking operation (try ")) {
                 lastLineIsNetworkError = true;
