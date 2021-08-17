@@ -340,7 +340,7 @@ public class CustomEntityCatalogGenerator {
         }
 
         // sort the list by ascending name.
-        modInfo.sort(Comparator.comparing(a -> a.modName));
+        modInfo.sort(Comparator.comparing(a -> a.modName.toLowerCase(Locale.ROOT)));
 
         // fill out the category IDs for all mods.
         List<Map<String, Object>> modSearchDatabase;
