@@ -1,5 +1,6 @@
 package com.max480.discord.randombots;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -8,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -17,10 +19,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -106,6 +105,16 @@ public class CelesteStuffHealthCheck {
                 .contains(expectedRefreshDate)) {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog is not \"" + expectedRefreshDate + "\" :a:");
+        }
+
+        expectedRefreshDate = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("UTC"))
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH));
+
+        log.debug("Loading custom entity catalog JSON... (expecting date: {})", expectedRefreshDate);
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog.json"), UTF_8)
+                .contains(expectedRefreshDate)) {
+
+            throw new IOException("The latest refresh date of the Custom Entity Catalog JSON is not \"" + expectedRefreshDate + "\" :a:");
         }
     }
 
@@ -258,6 +267,15 @@ public class CelesteStuffHealthCheck {
             throw new IOException("WebP to PNG API test failed");
         }
         connection.disconnect();
+
+        connection = (HttpURLConnection)
+                new URL("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
+        connection.setInstanceFollowRedirects(true);
+        connection.connect();
+        if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
+            throw new IOException("Banana Mirror Image API test failed");
+        }
+        connection.disconnect();
     }
 
     /**
@@ -282,9 +300,109 @@ public class CelesteStuffHealthCheck {
             }
         }
 
+        String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
+        if (!fileIds.contains("'484937'")) {
+            throw new IOException("file_ids.yaml check failed");
+        }
+
+        String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status"), UTF_8);
+        if (!updateCheckerStatus.contains("The update checker is up and running!")) {
+            throw new IOException("Update checker is not OK according to status page!");
+        }
+
         if (UpdateCheckerTracker.lastLogLineDate.isBefore(ZonedDateTime.now().minusMinutes(20))) {
             throw new IOException("Update Checker did not emit any log line since " +
                     UpdateCheckerTracker.lastLogLineDate.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)));
+        }
+    }
+
+    /**
+     * Checks that the everest.yaml validator is still up and considers the Winter Collab everest.yaml valid.
+     * Run daily.
+     */
+    public static void everestYamlValidatorHealthCheck() throws IOException {
+        // write the Winter Collab everest.yaml to a file.
+        FileUtils.writeStringToFile(new File("/tmp/everest.yaml"),
+                "- Name: WinterCollab2021\n" +
+                        "  Version: 1.3.4\n" +
+                        "  DLL: \"Code/bin/Debug/WinterCollabHelper.dll\"\n" +
+                        "  Dependencies:\n" +
+                        "    - Name: Everest\n" +
+                        "      Version: 1.2707.0\n" +
+                        "    - Name: AdventureHelper\n" +
+                        "      Version: 1.5.1\n" +
+                        "    - Name: Anonhelper\n" +
+                        "      Version: 1.0.4\n" +
+                        "    - Name: BrokemiaHelper\n" +
+                        "      Version: 1.2.3\n" +
+                        "    - Name: CherryHelper\n" +
+                        "      Version: 1.6.7\n" +
+                        "    - Name: ColoredLights\n" +
+                        "      Version: 1.1.1\n" +
+                        "    - Name: CollabUtils2\n" +
+                        "      Version: 1.3.11\n" +
+                        "    - Name: CommunalHelper\n" +
+                        "      Version: 1.7.0\n" +
+                        "    - Name: ContortHelper\n" +
+                        "      Version: 1.5.4\n" +
+                        "    - Name: CrystallineHelper\n" +
+                        "      Version: 1.10.0\n" +
+                        "    - Name: DJMapHelper\n" +
+                        "      Version: 1.8.27\n" +
+                        "    - Name: ExtendedVariantMode\n" +
+                        "      Version: 0.19.11\n" +
+                        "    - Name: FactoryHelper\n" +
+                        "      Version: 1.2.4\n" +
+                        "    - Name: FancyTileEntities\n" +
+                        "      Version: 1.4.0\n" +
+                        "    - Name: FemtoHelper\n" +
+                        "      Version: 1.1.1\n" +
+                        "    - Name: FlaglinesAndSuch\n" +
+                        "      Version: 1.4.6\n" +
+                        "    - Name: FrostHelper\n" +
+                        "      Version: 1.22.4\n" +
+                        "    - Name: HonlyHelper\n" +
+                        "      Version: 1.3.2\n" +
+                        "    - Name: JackalHelper\n" +
+                        "      Version: 1.3.5\n" +
+                        "    - Name: LunaticHelper\n" +
+                        "      Version: 1.1.1\n" +
+                        "    - Name: MaxHelpingHand\n" +
+                        "      Version: 1.13.3\n" +
+                        "    - Name: memorialHelper\n" +
+                        "      Version: 1.0.3\n" +
+                        "    - Name: MoreDasheline\n" +
+                        "      Version: 1.6.3\n" +
+                        "    - Name: OutbackHelper\n" +
+                        "      Version: 1.4.0\n" +
+                        "    - Name: PandorasBox\n" +
+                        "      Version: 1.0.29\n" +
+                        "    - Name: Sardine7\n" +
+                        "      Version: 1.0.0\n" +
+                        "    - Name: ShroomHelper\n" +
+                        "      Version: 1.0.1\n" +
+                        "    - Name: TwigHelper\n" +
+                        "      Version: 1.1.5\n" +
+                        "    - Name: VivHelper\n" +
+                        "      Version: 1.4.1\n" +
+                        "    - Name: VortexHelper\n" +
+                        "      Version: 1.1.0\n" +
+                        "    - Name: WinterCollab2021Audio\n" +
+                        "      Version: 1.3.0", UTF_8);
+
+        // build a request to everest.yaml validator
+        HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+        submit.addFilePart("file", new File("/tmp/everest.yaml"));
+        HttpURLConnection result = submit.finish();
+
+        // delete the temp file
+        new File("/tmp/everest.yaml").delete();
+
+        // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
+        String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
+        if (!resultBody.contains("Your everest.yaml file seems valid!")
+                || !resultBody.contains("WinterCollab2021Audio") || !resultBody.contains("VivHelper") || !resultBody.contains("1.4.1")) {
+            throw new IOException("everest.yaml validator gave unexpected output for Winter Collab yaml file");
         }
     }
 }
