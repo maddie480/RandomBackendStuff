@@ -107,7 +107,7 @@ public class CelesteStuffHealthCheck {
             throw new IOException("The latest refresh date of the Custom Entity Catalog is not \"" + expectedRefreshDate + "\" :a:");
         }
 
-        expectedRefreshDate = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("UTC"))
+        expectedRefreshDate = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("Europe/Paris"))
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH));
 
         log.debug("Loading custom entity catalog JSON... (expecting date: {})", expectedRefreshDate);
