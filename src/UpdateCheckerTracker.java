@@ -1,6 +1,8 @@
 package com.max480.discord.randombots;
 
+import com.google.cloud.storage.*;
 import com.max480.quest.modmanagerbot.BotClient;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListener;
 import org.slf4j.Logger;
@@ -23,6 +25,8 @@ public class UpdateCheckerTracker implements TailerListener {
     protected static ZonedDateTime lastLogLineDate = ZonedDateTime.now();
 
     private static boolean luaCutscenesUpdated = false;
+
+    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
 
     /**
      * Method to call to start the watcher thread.
@@ -84,6 +88,11 @@ public class UpdateCheckerTracker implements TailerListener {
             log.info("Calling frontend to refresh mod search and Everest update");
 
             try {
+                // send database files to Cloud Storage
+                sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
+                sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
+                sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml", false);
+
                 // refresh mod search and everest_update.yaml on the frontend
                 HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.EVEREST_UPDATE_RELOAD_API).openConnection();
                 if (conn.getResponseCode() != 200) {
@@ -118,5 +127,19 @@ public class UpdateCheckerTracker implements TailerListener {
         BotClient.getInstance().getTextChannelById(SecretConstants.UPDATE_CHECKER_CHANNEL)
                 .sendMessage("Error while tracking /tmp/update_checker.log: " + ex.toString())
                 .queue();
+    }
+
+    public static void sendToCloudStorage(String file, String name, String contentType, boolean isPublic) throws IOException {
+        BlobId blobId = BlobId.of("max480-random-stuff.appspot.com", name);
+        BlobInfo.Builder blobInfoBuilder = BlobInfo.newBuilder(blobId).setContentType(contentType);
+        if (!isPublic) {
+            // do not cache private stuff.
+            blobInfoBuilder.setCacheControl("no-store");
+        }
+        storage.create(blobInfoBuilder.build(), FileUtils.readFileToByteArray(new File(file)));
+
+        if (isPublic) {
+            storage.createAcl(blobId, Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER));
+        }
     }
 }

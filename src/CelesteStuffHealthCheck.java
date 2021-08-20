@@ -286,26 +286,17 @@ public class CelesteStuffHealthCheck {
     public static void updateCheckerHealthCheck() throws IOException {
         log.debug("Checking Update Checker");
 
-        String[] files = new String[]{"everestupdate.yaml", "everestupdateexcluded.yaml", "everestupdatenoyaml.yaml"};
-        for (String file : files) {
-            log.debug("GET " + SecretConstants.BACKEND_BASE_URL + file);
-            String file1 = IOUtils.toString(new URL(SecretConstants.BACKEND_BASE_URL + file), UTF_8);
-
-            if (file.equals("everestupdate.yaml")) {
-                log.debug("GET https://max480-random-stuff.appspot.com/celeste/everest_update.yaml");
-                String file2 = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"), UTF_8);
-                if (!file1.equals(file2)) {
-                    throw new IOException("Both " + file + " files are not identical");
-                }
-            }
+        final String everestUpdate = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"), UTF_8);
+        if (!everestUpdate.contains("SpringCollab2020Audio:") || !everestUpdate.contains("URL: https://gamebanana.com/mmdl/484937")) {
+            throw new IOException("everest_update.yaml check failed");
         }
 
-        String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
+        final String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
         if (!fileIds.contains("'484937'")) {
             throw new IOException("file_ids.yaml check failed");
         }
 
-        String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status"), UTF_8);
+        final String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status"), UTF_8);
         if (!updateCheckerStatus.contains("The update checker is up and running!")) {
             throw new IOException("Update checker is not OK according to status page!");
         }

@@ -32,6 +32,18 @@
         </repository>
     </repositories>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>21.0.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- https://bintray.com/dv8fromtheworld/maven/JDA/_latestVersion -->
         <dependency>
@@ -110,6 +122,11 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-logging-logback</artifactId>
             <version>0.121.8-alpha</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage</artifactId>
         </dependency>
 
         <dependency>
