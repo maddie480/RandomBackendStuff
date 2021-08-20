@@ -33,4 +33,5 @@ public class SecretConstantsDummy {
     // Discord webhooks to call about yield return orig(self) issues
     // the first entry is the "owner" one and will also be called for analysis errors
     static final List<String> YIELD_RETURN_ALERT_HOOKS = Collections.emptyList();
+    static final List<String> UPDATE_CHECKER_HOOKS = Collections.emptyList();
 }

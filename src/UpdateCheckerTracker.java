@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
+import java.util.Collections;
 
 /**
  * A service that follows the Update Checker logs and re-posts them to a Discord channel.
@@ -79,6 +80,31 @@ public class UpdateCheckerTracker implements TailerListener {
                 // flag Lua Cutscenes updates
                 if (line.contains("name='LuaCutscenes'")) {
                     luaCutscenesUpdated = true;
+                }
+
+                // when a mod change or anything Banana Mirror happens, call a webhook.
+                if (line.contains("Saved new information to database:")
+                        || line.contains("was deleted from the database")
+                        || (line.contains("Adding to the excluded files list.") && !line.contains("database already contains more recent file"))
+                        || line.contains("Adding to the no yaml files list.")
+                        || line.contains("to Banana Mirror")
+                        || line.contains("from Banana Mirror")) {
+
+                    for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+                        String truncatedLine = line;
+                        if (truncatedLine.contains(" - ")) {
+                            truncatedLine = truncatedLine.substring(truncatedLine.indexOf(" - ") + 3);
+                        }
+
+                        try {
+                            WebhookExecutor.executeWebhook(webhook,
+                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "Everest Update Checker",
+                                    truncatedLine, false, null, Collections.emptyList());
+                        } catch (InterruptedException | IOException e) {
+                            log.error("Error while sending alert", e);
+                        }
+                    }
                 }
             }
         }
