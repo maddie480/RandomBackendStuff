@@ -291,6 +291,11 @@ public class CelesteStuffHealthCheck {
             throw new IOException("everest_update.yaml check failed");
         }
 
+        final String fileOnDisk = FileUtils.readFileToString(new File("uploads/everestupdate.yaml"), UTF_8);
+        if (!fileOnDisk.equals(everestUpdate)) {
+            throw new IOException("everest_update.yaml on disk and on Cloud Storage don't match!");
+        }
+
         final String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
         if (!fileIds.contains("'484937'")) {
             throw new IOException("file_ids.yaml check failed");
