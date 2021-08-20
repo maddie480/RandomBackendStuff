@@ -95,6 +95,10 @@ public class UpdateCheckerTracker implements TailerListener {
                         if (truncatedLine.contains(" - ")) {
                             truncatedLine = truncatedLine.substring(truncatedLine.indexOf(" - ") + 3);
                         }
+                        if (!truncatedLine.startsWith("=> ")) {
+                            truncatedLine = "=> " + truncatedLine;
+                        }
+                        truncatedLine = truncatedLine.replace("=> ", ":arrow_right: ");
 
                         try {
                             WebhookExecutor.executeWebhook(webhook,
