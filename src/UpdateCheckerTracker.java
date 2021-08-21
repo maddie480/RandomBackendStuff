@@ -102,7 +102,7 @@ public class UpdateCheckerTracker implements TailerListener {
 
                         try {
                             WebhookExecutor.executeWebhook(webhook,
-                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
                                     "Everest Update Checker",
                                     truncatedLine, false, null, Collections.emptyList());
                         } catch (InterruptedException | IOException e) {
