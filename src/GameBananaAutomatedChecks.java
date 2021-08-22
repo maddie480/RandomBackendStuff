@@ -391,7 +391,8 @@ public class GameBananaAutomatedChecks {
                 WebhookExecutor.executeWebhook(webhook,
                         "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
                         "Banana Watch",
-                        message);
+                        message,
+                        ImmutableMap.of("X-Everest-Log", "true"));
             } catch (InterruptedException e) {
                 logger.error("Sleep interrupted(???)", e);
             }
