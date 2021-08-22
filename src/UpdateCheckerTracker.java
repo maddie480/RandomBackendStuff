@@ -95,10 +95,10 @@ public class UpdateCheckerTracker implements TailerListener {
                         if (truncatedLine.contains(" - ")) {
                             truncatedLine = truncatedLine.substring(truncatedLine.indexOf(" - ") + 3);
                         }
-                        if (!truncatedLine.startsWith("=> ")) {
-                            truncatedLine = "=> " + truncatedLine;
+                        if (truncatedLine.startsWith("=> ")) {
+                            truncatedLine = truncatedLine.substring(3);
                         }
-                        truncatedLine = truncatedLine.replace("=> ", ":arrow_right: ");
+                        truncatedLine = findEmoji(truncatedLine) + " " + truncatedLine;
 
                         try {
                             WebhookExecutor.executeWebhook(webhook,
@@ -149,6 +149,24 @@ public class UpdateCheckerTracker implements TailerListener {
                         .sendMessage("Frontend call failed: " + e.toString()).queue();
             }
         }
+    }
+
+    /**
+     * Gives the most appropriate emoji for an update checker log line.
+     */
+    private String findEmoji(String line) {
+        if (line.contains("Saved new information to database:")) {
+            return ":white_check_mark:";
+        } else if (line.contains("was deleted from the database")) {
+            return ":x:";
+        } else if (line.contains("Adding to the excluded files list.") || line.contains("Adding to the no yaml files list.")) {
+            return ":warning:";
+        } else if (line.contains("to Banana Mirror")) {
+            return ":outbox_tray:";
+        } else if (line.contains("from Banana Mirror")) {
+            return ":wastebasket:";
+        }
+        return ":arrow_right:";
     }
 
     @Override
