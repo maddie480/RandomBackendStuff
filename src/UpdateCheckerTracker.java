@@ -1,6 +1,7 @@
 package com.max480.discord.randombots;
 
 import com.google.cloud.storage.*;
+import com.google.common.collect.ImmutableMap;
 import com.max480.quest.modmanagerbot.BotClient;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.Tailer;
@@ -13,7 +14,6 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
-import java.util.Collections;
 
 /**
  * A service that follows the Update Checker logs and re-posts them to a Discord channel.
@@ -104,7 +104,8 @@ public class UpdateCheckerTracker implements TailerListener {
                             WebhookExecutor.executeWebhook(webhook,
                                     "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
                                     "Everest Update Checker",
-                                    truncatedLine, false, null, Collections.emptyList());
+                                    truncatedLine,
+                                    ImmutableMap.of("X-Everest-Log", "true"));
                         } catch (InterruptedException | IOException e) {
                             log.error("Error while sending alert", e);
                         }

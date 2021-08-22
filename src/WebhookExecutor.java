@@ -13,8 +13,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class WebhookExecutor {
@@ -22,9 +24,40 @@ public class WebhookExecutor {
 
     private static ZonedDateTime retryAfter = null;
 
-    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body,
-                                      boolean allowUserMentions, Long allowedUserMentionId,
-                                      List<File> attachments) throws IOException, InterruptedException {
+    /**
+     * Calls a Discord webhook without enabling mentions.
+     */
+    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body) throws IOException, InterruptedException {
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList());
+    }
+
+    /**
+     * Calls a Discord webhook without enabling mentions, with specific HTTP headers.
+     */
+    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, Map<String, String> httpHeaders)
+            throws IOException, InterruptedException {
+        executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, false, null, Collections.emptyList());
+    }
+
+    /**
+     * Calls a Discord webhook, allowing it to ping someone in particular.
+     */
+    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, long allowedUserMentionId)
+            throws IOException, InterruptedException {
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, allowedUserMentionId, Collections.emptyList());
+    }
+
+    /**
+     * Calls a Discord webhook, optionally enabling user mentions and with attachments.
+     */
+    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, boolean allowUserMentions, List<File> attachments)
+            throws IOException, InterruptedException {
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), allowUserMentions, null, attachments);
+    }
+
+    private static void executeWebhook(String webhookUrl, String avatar, String nickname, String body,
+                                       Map<String, String> httpHeaders, boolean allowUserMentions, Long allowedUserMentionId,
+                                       List<File> attachments) throws IOException, InterruptedException {
 
         // primitive handling for rate limits.
         if (retryAfter != null) {
@@ -70,6 +103,10 @@ public class WebhookExecutor {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0");
 
+            for (Map.Entry<String, String> header : httpHeaders.entrySet()) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
+            }
+
             connection.connect();
 
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(connection.getOutputStream()));
@@ -82,6 +119,7 @@ public class WebhookExecutor {
 
             HashMap<String, String> headers = new HashMap<>();
             headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0");
+            headers.putAll(httpHeaders);
             HttpPostMultipart multipart = new HttpPostMultipart(webhookUrl, "UTF-8", headers);
 
             multipart.addFormField("payload_json", request.toString());

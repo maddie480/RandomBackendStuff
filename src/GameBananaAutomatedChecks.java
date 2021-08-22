@@ -219,7 +219,7 @@ public class GameBananaAutomatedChecks {
                                     "Banana Watch",
                                     "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
                                             ":arrow_right: https://gamebanana.com/" + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
-                                    false, SecretConstants.OWNER_ID, Collections.emptyList());
+                                    SecretConstants.OWNER_ID);
                         } catch (InterruptedException e2) {
                             logger.error("Sleep interrupted(???)", e2);
                         }
@@ -391,7 +391,7 @@ public class GameBananaAutomatedChecks {
                 WebhookExecutor.executeWebhook(webhook,
                         "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
                         "Banana Watch",
-                        message, false, null, Collections.emptyList());
+                        message);
             } catch (InterruptedException e) {
                 logger.error("Sleep interrupted(???)", e);
             }
