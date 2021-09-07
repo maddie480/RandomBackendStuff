@@ -9,9 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.ZipInputStream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -399,6 +398,64 @@ public class CelesteStuffHealthCheck {
         if (!resultBody.contains("Your everest.yaml file seems valid!")
                 || !resultBody.contains("WinterCollab2021Audio") || !resultBody.contains("VivHelper") || !resultBody.contains("1.4.1")) {
             throw new IOException("everest.yaml validator gave unexpected output for Winter Collab yaml file");
+        }
+    }
+
+    /**
+     * Checks that the wipe converter works by sending it a wipe from the unit test dataset on GitHub (black wipe => 2 triangles).
+     * Run daily at midnight.
+     */
+    public static void checkWipeConverter() throws IOException {
+        try (InputStream is = new URL("https://raw.githubusercontent.com/max4805/RandomStuffWebsiteJS/main/api/tests/assets/testwipe_black.png").openStream();
+             OutputStream os = new FileOutputStream("/tmp/testwipe.png")) {
+
+            IOUtils.copy(is, os);
+        }
+
+        // build a request to wipe converter
+        HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.herokuapp.com/api/wipes", "UTF-8", new HashMap<>());
+        submit.addFilePart("wipe", new File("/tmp/testwipe.png"));
+        HttpURLConnection result = submit.finish();
+
+        // delete the temp file
+        new File("/tmp/testwipe.png").delete();
+
+        // read the response as JSON
+        JSONArray array = new JSONArray(IOUtils.toString(result.getInputStream(), UTF_8));
+        if (array.length() != 2) {
+            throw new IOException("Wipe converter gave an unexpected amount of triangles!");
+        }
+    }
+
+    /**
+     * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation.
+     * Run daily at midnight.
+     */
+    public static void checkFontGenerator() throws IOException {
+        try (InputStream is = new URL("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt").openStream();
+             OutputStream os = new FileOutputStream("/tmp/Japanese.txt")) {
+
+            IOUtils.copy(is, os);
+        }
+
+        // build a request to font generator
+        HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/font-generator", "UTF-8", new HashMap<>());
+        submit.addFormField("fontFileName", "collabutils2_japanese_healthcheck");
+        submit.addFormField("font", "japanese");
+        submit.addFilePart("dialogFile", new File("/tmp/Japanese.txt"));
+        HttpURLConnection result = submit.finish();
+
+        // delete the temp file
+        new File("/tmp/Japanese.txt").delete();
+
+        // read the response as a zip file
+        try (ZipInputStream zip = new ZipInputStream(result.getInputStream())) {
+            if (!zip.getNextEntry().getName().equals("collabutils2_japanese_healthcheck.png")
+                    || !zip.getNextEntry().getName().equals("japanese.fnt")
+                    || zip.getNextEntry() != null) {
+
+                throw new IOException("Font generator ZIP had unexpected contents!");
+            }
         }
     }
 }
