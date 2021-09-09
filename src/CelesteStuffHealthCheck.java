@@ -234,12 +234,6 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Extended Variant Mode search test failed");
         }
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE&version=2").openStream(), UTF_8)
-                .contains("\"https://gamebanana.com/mods/53650\"")) {
-
-            throw new IOException("Extended Variant Mode search test through API v2 failed");
-        }
-
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1").openStream(), UTF_8)
                 .contains("{itemtype: Tool, itemid: 6449}")) { // Everest
 
