@@ -299,6 +299,11 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Update checker is not OK according to status page!");
         }
 
+        final String updateCheckerStatus2 = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
+        if (!updateCheckerStatus2.contains("<span class=\"GreenColor\">Up</span>")) {
+            throw new IOException("Update checker is not OK according to status widget!");
+        }
+
         if (UpdateCheckerTracker.lastLogLineDate.isBefore(ZonedDateTime.now().minusMinutes(20))) {
             throw new IOException("Update Checker did not emit any log line since " +
                     UpdateCheckerTracker.lastLogLineDate.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)));
