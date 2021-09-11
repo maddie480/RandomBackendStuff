@@ -1,8 +1,8 @@
 # Random Discord Bots + Backend Stuff
 
 This repository contains source code for 2 bots I am currently hosting:
-- **Timezone Bot**: a bot allowing people to assign timezone roles to themselves. The roles then get updated on an hourly basis to be able to tell what time it is for someone by looking at their roles.
-- **Mod Structure Verifier**: a bot that downloads zips from Discord attachments or Google Drive links posted in a specific channel, and check if they are properly structured Celeste mods for [Everest](https://github.com/EverestAPI/Everest). This is useful to enforce a structure for collabs/contests.
+- **Timezone Bot**: a bot allowing people to assign timezone roles to themselves. The roles then get updated on an hourly basis to be able to tell what time it is for someone by looking at their roles. [Invite it!](https://discord.com/oauth2/authorize?client_id=806514800045064213&scope=bot&permissions=268438528) (Beware that the hourly role updating causes a lot of messages to be added to your server's audit logs.)
+- **Mod Structure Verifier**: a bot that downloads zips from Discord attachments or Google Drive links posted in a specific channel, and check if they are properly structured Celeste mods for [Everest](https://github.com/EverestAPI/Everest). This is useful to enforce a structure for collabs/contests. You can also assign a channel for users to check their zips with the parameters of their choice. [Invite it!](https://discord.com/oauth2/authorize?client_id=809572233953542154&scope=bot&permissions=19520)
 
 This is not structured as a proper Java project since those bots are run as part of a bigger package (among a lot of private and personal stuff), and running them requires some server setup. This is open sourced in case someone wants to know how the bots work, or wants to reuse them. As such, the pom.xml has dependencies that are not needed for any of the code that was published here. (This allows me to keep them up-to-date as well with Dependabot.)
 
