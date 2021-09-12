@@ -148,6 +148,7 @@ public class GameBananaAutomatedChecks {
 
                         boolean yieldReturnIssue = false;
                         boolean intPtrIssue = false;
+                        boolean readonlyStructIssue = false;
 
                         // read "DLL" fields for each everest.yaml entry
                         for (Map<String, Object> yamlEntry : yamlContent) {
@@ -176,6 +177,9 @@ public class GameBananaAutomatedChecks {
                                 } else if (fullDecompile.contains(".MethodHandle.GetFunctionPointer()")) {
                                     logger.warn("Mod {} might be using the IntPtr trick", modName);
                                     intPtrIssue = true;
+                                } else if (fullDecompile.contains("readonly struct")) {
+                                    logger.warn("Mod {} might have a readonly struct", modName);
+                                    readonlyStructIssue = true;
                                 } else {
                                     logger.info("No yield return orig(self) detected in mod {}", modName);
                                 }
@@ -185,7 +189,7 @@ public class GameBananaAutomatedChecks {
                             }
                         }
 
-                        if (!yieldReturnIssue && !intPtrIssue) {
+                        if (!yieldReturnIssue && !intPtrIssue && !readonlyStructIssue) {
                             newResults.goodFiles.add(fileName);
                         } else {
                             List<String> messages = new ArrayList<>();
@@ -200,6 +204,13 @@ public class GameBananaAutomatedChecks {
                             }
                             if (intPtrIssue) {
                                 String message = ":warning: The mod called **" + modName + "** might be using the `IntPtr` trick to call base methods!" +
+                                        " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
+                                        + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId");
+                                sendAlertToWebhook(message);
+                                messages.add(message);
+                            }
+                            if (readonlyStructIssue) {
+                                String message = ":warning: The mod called **" + modName + "** is using a `readonly struct`!" +
                                         " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
                                         + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId");
                                 sendAlertToWebhook(message);
