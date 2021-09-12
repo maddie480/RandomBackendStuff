@@ -357,7 +357,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 userTimezones.removeAll(toDelete);
 
                 jda.getPresence().setActivity(Activity.playing("!timezone | " + timezoneOffsetRoles.size() + " roles | " +
-                        userTimezones.stream().map(u -> u.userId).distinct().count() + " users"));
+                        userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " + jda.getGuilds().size() + " servers"));
 
             } catch (Exception e) {
                 logger.error("Refresh roles failed", e);

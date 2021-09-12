@@ -109,8 +109,11 @@ public class ModStructureVerifier extends ListenerAdapter {
         // start up the bot.
         jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new ModStructureVerifier())
-                .setActivity(Activity.playing("Type --help for setup instructions"))
                 .build().awaitReady();
+
+        int serverCount = jda.getGuilds().size();
+        jda.getPresence().setActivity(Activity.playing(
+                "--help | " + serverCount + " server" + (serverCount == 1 ? "" : "s")));
 
         // clean up channels that do not exist anymore.
         for (Long channelId : new ArrayList<>(responseChannels.keySet())) {
@@ -251,8 +254,10 @@ public class ModStructureVerifier extends ListenerAdapter {
                                 String expectedCollabMapsPrefix, File file, long responseChannelId) {
 
         analyzedZipCount++;
+        int serverCount = event.getJDA().getGuilds().size();
         jda.getPresence().setActivity(Activity.playing(
-                analyzedZipCount + " zip" + (analyzedZipCount == 1 ? "" : "s") + " analyzed since startup | --help"));
+                "--help | " + analyzedZipCount + " zip" + (analyzedZipCount == 1 ? "" : "s") + " analyzed since startup | "
+                        + serverCount + " server" + (serverCount == 1 ? "" : "s")));
 
         logger.debug("Collab assets folder = {}, Collab maps folder = {}", expectedCollabAssetPrefix, expectedCollabMapsPrefix);
 
