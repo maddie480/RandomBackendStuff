@@ -227,6 +227,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     public void run() {
         while (true) {
             try {
+                boolean usersDeleted = false;
+
                 for (Guild server : jda.getGuilds()) {
                     logger.info("=== Refreshing timezones for server {}", server);
                     final long guildId = server.getIdLong();
@@ -304,6 +306,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         userTimezones.stream()
                                 .filter(u -> u.serverId == guildId && u.userId == user)
                                 .findFirst().map(u -> userTimezones.remove(u));
+                        usersDeleted = true;
                     }
 
                     // delete timezone roles that are assigned to no-one.
@@ -342,7 +345,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         String roleName = "Timezone " + timezoneOffsetFormatted + " (" + now.format(DateTimeFormatter.ofPattern("ha")).toLowerCase(Locale.ROOT) + ")";
                         if (!roleName.equals(role.getName())) {
                             role.getManager().setName(roleName).reason("Time passed").queue();
-                            logger.debug("Timezone role renamed for offset {}: {}", zoneOffset, roleName);
+                            logger.debug("Timezone role renamed for offset {}: {} -> {}", zoneOffset, role, roleName);
                         }
                     }
                 }
@@ -352,9 +355,20 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     if (jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == userTimezone.serverId)) {
                         logger.info("Removing user {} belonging to non-existing server", userTimezone);
                         toDelete.add(userTimezone);
+                        usersDeleted = true;
                     }
                 }
                 userTimezones.removeAll(toDelete);
+
+                if (usersDeleted) {
+                    // save the new list, after users were deleted, to disk.
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(SAVE_FILE_NAME))) {
+                        for (UserTimezone entry : userTimezones) {
+                            writer.write(entry.serverId + ";" + entry.userId + ";" + entry.timezoneName + "\n");
+                        }
+                        logger.info("Saved user timezones to disk");
+                    }
+                }
 
                 jda.getPresence().setActivity(Activity.playing("!timezone | " + timezoneOffsetRoles.size() + " roles | " +
                         userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " + jda.getGuilds().size() + " servers"));

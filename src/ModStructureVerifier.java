@@ -131,6 +131,10 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
         }
 
+        // save the files after cleanup.
+        saveMap(null, null);
+        savePostedMessagesMap(null);
+
         logger.debug("Bot is currently in following guilds: {}", jda.getGuilds());
     }
 
@@ -956,12 +960,17 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
-            event.getChannel().sendMessage(successMessage).queue();
+            if (event != null) {
+                event.getChannel().sendMessage(successMessage).queue();
+            }
         } catch (IOException e) {
             logger.error("Error while writing file", e);
-            event.getChannel().sendMessage(":x: A technical error occurred.").queue();
-            event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                    .sendMessage("Error occurred while saving response channels list: " + event.getGuild().getName()).queue();
+
+            if (event != null) {
+                event.getChannel().sendMessage(":x: A technical error occurred.").queue();
+                event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
+                        .sendMessage("Error occurred while saving response channels list: " + event.getGuild().getName()).queue();
+            }
         }
     }
 
@@ -972,8 +981,11 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
         } catch (IOException e) {
             logger.error("Error while writing file", e);
-            event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                    .sendMessage("An error occurred while saving sent messages list: " + e.toString()).queue();
+
+            if (event != null) {
+                event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
+                        .sendMessage("An error occurred while saving sent messages list: " + e.toString()).queue();
+            }
         }
     }
 
