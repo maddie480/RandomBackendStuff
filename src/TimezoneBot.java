@@ -385,10 +385,13 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
 
             try {
+                logger.info("Done! Sleeping.");
                 // wait until the clock hits a time divisible by 15
-                long sleepTime = 900_000L - (ZonedDateTime.now().getMinute() % 15) * 60_000L;
-                logger.debug("Next update will happen in {} minutes", sleepTime / 60_000L);
-                Thread.sleep(sleepTime);
+                do {
+                    // sleep to the start of the next minute
+                    Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
+                            + ZonedDateTime.now().getNano() / 1_000_000) + 50);
+                } while (ZonedDateTime.now().getMinute() % 15 != 0);
             } catch (InterruptedException e) {
                 logger.error("Sleep interrupted(???)", e);
             }
