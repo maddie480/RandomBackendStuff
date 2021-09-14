@@ -51,6 +51,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     private static final String CHANNELS_SAVE_FILE_NAME = "mod_structure_police_save.csv";
     private static final String FREE_CHANNELS_SAVE_FILE_NAME = "mod_structure_police_save_free.csv";
+    private static final String NO_NAME_CHANNELS_SAVE_FILE_NAME = "mod_structure_police_save_noname.csv";
     private static final String MESSAGES_TO_ANSWERS_FILE_NAME = "mod_structure_police_messages_to_answers.csv";
 
     private static final Map<Long, Long> responseChannels = new HashMap<>(); // watched channel ID > response channel ID
@@ -59,6 +60,8 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     // watched channel ID > response channel ID but for channels allowing to use the bot freely with --verify
     private static final Map<Long, Long> freeResponseChannels = new HashMap<>();
+    // watched channel ID > response channel ID but for channels that don't check file names
+    private static final Map<Long, Long> noNameResponseChannels = new HashMap<>();
 
     private static final Map<Long, Long> messagesToEmbeds = new HashMap<>(); // message ID > embed message ID from the bot
 
@@ -83,6 +86,15 @@ public class ModStructureVerifier extends ListenerAdapter {
                 lines.forEach(line -> {
                     String[] split = line.split(";", 2);
                     freeResponseChannels.put(Long.parseLong(split[0]), Long.parseLong(split[1]));
+                });
+            }
+        }
+
+        if (new File(NO_NAME_CHANNELS_SAVE_FILE_NAME).exists()) {
+            try (Stream<String> lines = Files.lines(Paths.get(NO_NAME_CHANNELS_SAVE_FILE_NAME))) {
+                lines.forEach(line -> {
+                    String[] split = line.split(";", 2);
+                    noNameResponseChannels.put(Long.parseLong(split[0]), Long.parseLong(split[1]));
                 });
             }
         }
@@ -118,7 +130,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         // clean up channels that do not exist anymore.
         for (Long channelId : new ArrayList<>(responseChannels.keySet())) {
             if (jda.getGuilds().stream().noneMatch(guild -> guild.getTextChannelById(channelId) != null)) {
-                logger.warn("Forgetting channel {} because it does not exist", channelId);
+                logger.warn("Forgetting channel {} (fixed-name) because it does not exist", channelId);
                 responseChannels.remove(channelId);
                 collabAssetPrefixes.remove(channelId);
                 collabMapPrefixes.remove(channelId);
@@ -126,8 +138,14 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
         for (Long channelId : new ArrayList<>(freeResponseChannels.keySet())) {
             if (jda.getGuilds().stream().noneMatch(guild -> guild.getTextChannelById(channelId) != null)) {
-                logger.warn("Forgetting channel {} because it does not exist", channelId);
+                logger.warn("Forgetting channel {} (free-name) because it does not exist", channelId);
                 freeResponseChannels.remove(channelId);
+            }
+        }
+        for (Long channelId : new ArrayList<>(noNameResponseChannels.keySet())) {
+            if (jda.getGuilds().stream().noneMatch(guild -> guild.getTextChannelById(channelId) != null)) {
+                logger.warn("Forgetting channel {} (no-name) because it does not exist", channelId);
+                noNameResponseChannels.remove(channelId);
             }
         }
 
@@ -176,6 +194,10 @@ public class ModStructureVerifier extends ListenerAdapter {
                 event.getChannel().sendMessage("Usage: `--verify [assets folder name] [maps folder name]`\n" +
                         "`[assets folder name]` and `[maps folder name]` should be alphanumeric.").queue();
             }
+        } else if (noNameResponseChannels.containsKey(event.getChannel().getIdLong())) {
+            // message was sent in a no-name channel! scan it with null names.
+            scanMapFromMessage(event, null, null, noNameResponseChannels.get(event.getChannel().getIdLong()));
+
         } else if (responseChannels.containsKey(event.getChannel().getIdLong())) {
             // message was sent in a watched channel...
 
@@ -269,82 +291,87 @@ public class ModStructureVerifier extends ListenerAdapter {
             List<String> problemList = new ArrayList<>();
             Set<String> websiteProblemList = new HashSet<>();
 
-            logger.debug("Scanning invalid asset paths...");
-
-            // asset paths being Assets/ (lua cutscenes), Graphics/Atlases/, Graphics/ColorGrading/ and Tutorials/
-            // should match: Graphics/Atlases/[anything]/collabname/[anything]/[anything]
             final List<String> fileListing = zipFile.stream()
                     .filter(entry -> !entry.isDirectory())
                     .map(ZipEntry::getName)
                     .collect(Collectors.toList());
 
-            parseProblematicPaths(problemList, websiteProblemList, "assets", "You have assets that are at the wrong place, please move them", fileListing.stream()
-                    .filter(entry -> entry.startsWith("Assets/") || entry.startsWith("Graphics/ColorGrading/")
-                            || entry.startsWith("Graphics/Atlases/") || entry.startsWith("Tutorials/"))
-                    .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabAssetPrefix + "/.+/.+$"))
-                    .collect(Collectors.toList()));
+            boolean hasNameScan = (expectedCollabAssetPrefix != null && expectedCollabMapsPrefix != null);
 
-            logger.debug("Scanning invalid XML paths...");
+            if (hasNameScan) {
+                logger.debug("Scanning invalid asset paths...");
 
-            // XMLs are anything that matches Graphics/[anything].xml
-            // should match: Graphics/collabnamexmls/[anything]/[anything].xml
-            parseProblematicPaths(problemList, websiteProblemList, "xmls", "You have XMLs that are at the wrong place, please move them", fileListing.stream()
-                    .filter(entry -> entry.startsWith("Graphics/") && entry.endsWith(".xml"))
-                    .filter(entry -> !entry.matches("^Graphics/" + expectedCollabAssetPrefix + "xmls/.+/.+\\.xml$"))
-                    .collect(Collectors.toList()));
+                // asset paths being Assets/ (lua cutscenes), Graphics/Atlases/, Graphics/ColorGrading/ and Tutorials/
+                // should match: Graphics/Atlases/[anything]/collabname/[anything]/[anything]
+                parseProblematicPaths(problemList, websiteProblemList, "assets", "You have assets that are at the wrong place, please move them", fileListing.stream()
+                        .filter(entry -> entry.startsWith("Assets/") || entry.startsWith("Graphics/ColorGrading/")
+                                || entry.startsWith("Graphics/Atlases/") || entry.startsWith("Tutorials/"))
+                        .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabAssetPrefix + "/.+/.+$"))
+                        .collect(Collectors.toList()));
+
+                logger.debug("Scanning invalid XML paths...");
+
+                // XMLs are anything that matches Graphics/[anything].xml
+                // should match: Graphics/collabnamexmls/[anything]/[anything].xml
+                parseProblematicPaths(problemList, websiteProblemList, "xmls", "You have XMLs that are at the wrong place, please move them", fileListing.stream()
+                        .filter(entry -> entry.startsWith("Graphics/") && entry.endsWith(".xml"))
+                        .filter(entry -> !entry.matches("^Graphics/" + expectedCollabAssetPrefix + "xmls/.+/.+\\.xml$"))
+                        .collect(Collectors.toList()));
+            }
 
             logger.debug("Scanning presence of map bins...");
 
-            // there must be exactly 1 file in the Maps folder.
-            long mapCount = fileListing.stream()
+            // if name scan is enabled, there should be exactly one map in the zip.
+            // otherwise, there should be at least one.
+            List<String> maps = fileListing.stream()
                     .filter(entry -> entry.startsWith("Maps/") && entry.endsWith(".bin"))
-                    .count();
+                    .collect(Collectors.toList());
 
-            String mapPath = null;
-            if (mapCount == 0) {
+            boolean shouldScanMapContents = true;
+            if (maps.size() == 0) {
                 problemList.add("**There is no map in the Maps folder!** No map will appear in-game.");
                 websiteProblemList.add("nomap");
-            } else if (mapCount >= 2) {
-                problemList.add("There are " + mapCount + " maps in this zip. :thinking:");
+                shouldScanMapContents = false;
+            } else if (maps.size() >= 2 && hasNameScan) {
+                problemList.add("There are " + maps.size() + " maps in this zip. :thinking:");
                 websiteProblemList.add("multiplemaps");
-            } else {
-                // save it for later
-                mapPath = fileListing.stream()
-                        .filter(entry -> entry.startsWith("Maps/") && entry.endsWith(".bin"))
-                        .findFirst().orElse(null);
-
+                shouldScanMapContents = false;
+            } else if (hasNameScan) {
                 // check its path
+                String mapPath = maps.get(0);
                 if (!mapPath.matches("^Maps/" + expectedCollabMapsPrefix + "/.+/.+\\.bin$")) {
                     parseProblematicPaths(problemList, websiteProblemList, "badmappath",
                             "Your map is not in the right folder", Collections.singletonList(mapPath));
                 }
             }
 
-            // Dialog/English.txt is not required to exist, but if it does, it'd better be valid.
-            ZipEntry englishTxt = zipFile.getEntry("Dialog/English.txt");
-            if (englishTxt != null) {
-                logger.debug("Scanning invalid English.txt entries...");
+            if (hasNameScan) {
+                // Dialog/English.txt is not required to exist, but if it does, it'd better be valid.
+                ZipEntry englishTxt = zipFile.getEntry("Dialog/English.txt");
+                if (englishTxt != null) {
+                    logger.debug("Scanning invalid English.txt entries...");
 
-                List<String> badDialogEntries = new ArrayList<>();
+                    List<String> badDialogEntries = new ArrayList<>();
 
-                // dialog entries are matched using the same regex as in-game.
-                // it should match: [collabname]_[anything]_[anything] or [englishtxtname]_[anything]_[anything]
-                Pattern dialogEntry = Pattern.compile("^\\w+=.*");
-                Pattern validDialogEntry = Pattern.compile("^(" + expectedCollabAssetPrefix + ")_[^_]+_.*=.*");
-                Pattern altValidDialogEntry = Pattern.compile("^(" + expectedCollabMapsPrefix + ")_[^_]+_.*=.*");
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(zipFile.getInputStream(englishTxt)))) {
-                    String s;
-                    while ((s = br.readLine()) != null) {
-                        s = s.trim();
-                        if (dialogEntry.matcher(s).matches() && !validDialogEntry.matcher(s).matches()
-                                && !altValidDialogEntry.matcher(s).matches()) {
+                    // dialog entries are matched using the same regex as in-game.
+                    // it should match: [collabname]_[anything]_[anything] or [englishtxtname]_[anything]_[anything]
+                    Pattern dialogEntry = Pattern.compile("^\\w+=.*");
+                    Pattern validDialogEntry = Pattern.compile("^(" + expectedCollabAssetPrefix + ")_[^_]+_.*=.*");
+                    Pattern altValidDialogEntry = Pattern.compile("^(" + expectedCollabMapsPrefix + ")_[^_]+_.*=.*");
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(zipFile.getInputStream(englishTxt)))) {
+                        String s;
+                        while ((s = br.readLine()) != null) {
+                            s = s.trim();
+                            if (dialogEntry.matcher(s).matches() && !validDialogEntry.matcher(s).matches()
+                                    && !altValidDialogEntry.matcher(s).matches()) {
 
-                            badDialogEntries.add(s.substring(0, s.indexOf("=")));
+                                badDialogEntries.add(s.substring(0, s.indexOf("=")));
+                            }
                         }
                     }
-                }
 
-                parseProblematicPaths(problemList, websiteProblemList, "badenglish", "You have English.txt entries with invalid names, please rename them", badDialogEntries);
+                    parseProblematicPaths(problemList, websiteProblemList, "badenglish", "You have English.txt entries with invalid names, please rename them", badDialogEntries);
+                }
             }
 
             logger.debug("Scanning everest.yaml...");
@@ -396,9 +423,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
-            if (mapPath != null && dependencies != null) {
-                // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
-                searchForMissingComponents(problemList, websiteProblemList, fileListing, zipFile, mapPath, dependencies);
+            if (shouldScanMapContents && dependencies != null) {
+                for (String mapPath : maps) {
+                    // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
+                    searchForMissingComponents(problemList, websiteProblemList, fileListing, zipFile, mapPath, dependencies);
+                }
             }
 
             if (problemList.isEmpty()) {
@@ -429,9 +458,14 @@ public class ModStructureVerifier extends ListenerAdapter {
                 // if there is any "website problem", attach a link to the help website.
                 MessageBuilder discordMessage = new MessageBuilder(message);
                 if (!websiteProblemList.isEmpty()) {
-                    String url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?collabName=" + expectedCollabAssetPrefix
-                            + (!expectedCollabAssetPrefix.equals(expectedCollabMapsPrefix) ? "&collabMapName=" + expectedCollabMapsPrefix : "")
-                            + "&" + String.join("&", websiteProblemList);
+                    String url;
+                    if (hasNameScan) {
+                        url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?collabName=" + expectedCollabAssetPrefix
+                                + (!expectedCollabAssetPrefix.equals(expectedCollabMapsPrefix) ? "&collabMapName=" + expectedCollabMapsPrefix : "")
+                                + "&" + String.join("&", websiteProblemList);
+                    } else {
+                        url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?" + String.join("&", websiteProblemList);
+                    }
                     discordMessage.setEmbed(new EmbedBuilder()
                             .setTitle("Click here for more help", url)
                             .build());
@@ -840,13 +874,17 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         if (msg.equals("--help")) {
-            event.getChannel().sendMessage("`--setup [response channel] [collab assets folder name] [collab maps folder name]`\n" +
+            event.getChannel().sendMessage("`--setup-fixed-names [response channel] [collab assets folder name] [collab maps folder name]`\n" +
                     "will tell the bot to analyze all the .zip files in the current channel, and to post issues in [response channel]." +
                     "\n- [collab assets folder name] should identify the collab/contest and be alphanumeric. It will have to be used for asset folders (graphics, tutorials, etc)." +
                     "\n- [collab maps folder name] is the name of the folder the collab/contest map bins will be in." +
                     " It has to be alphanumeric, and can be identical to the assets folder name.\n\n" +
-                    "`--setup-free [response channel]`\n" +
-                    "allows everyone on the server to use the `--verify` command in the channel it is posted in, and will post issues in [response channel].\n\n" +
+                    "`--setup-free-names [response channel]`\n" +
+                    "allows everyone on the server to use the `--verify` command in the channel it is posted in, and will post issues in [response channel].\n" +
+                    "This allows people to verify their mods with the folder names they want.\n\n" +
+                    "`--setup-no-name [response channel]`\n" +
+                    "will tell the bot to analyze all the .zip files in the current channel, and to post issues in [response channel].\n" +
+                    "No checks will be done on folder names, and multiple maps are allowed.\n\n" +
                     "`--verify [assets folder name] [maps folder name]`\n" +
                     "will verify the given map (as an attachment, or as a Google Drive link) with the given parameters, with the same checks as collabs. Both names should be alphanumeric.\n\n" +
                     "`--remove-setup`\n" +
@@ -857,12 +895,12 @@ public class ModStructureVerifier extends ListenerAdapter {
                     "will give a message explaining what the different reactions from the bot mean.\n\n" +
                     "This bot is brought to you by max480 (max480#4596 on <https://discord.gg/celeste>) - checks on map bins " +
                     "use BinToXML by iSkLz (available at <https://github.com/iSkLz/celestial-compass>).").queue();
-        } else if (msg.startsWith("--setup ")) {
+        } else if (msg.startsWith("--setup-fixed-names ")) {
             // setting up a new channel!
             String[] settings = msg.split(" ");
             boolean valid = false;
 
-            // there should be 4 parts (so 3 parameters including --setup itself).
+            // there should be 4 parts (so 3 parameters including --setup-fixed-names itself).
             if (settings.length == 4) {
                 // parameter 1 should be a channel mention.
                 Matcher regex = Pattern.compile("^<#!?([0-9]+)>$").matcher(settings[1]);
@@ -887,15 +925,15 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (!valid) {
                 // print help if one of the parameters is invalid.
-                event.getChannel().sendMessage("Usage: `--setup [response channel] [collab assets folder name] [collab maps folder name]`\n" +
+                event.getChannel().sendMessage("Usage: `--setup-fixed-names [response channel] [collab assets folder name] [collab maps folder name]`\n" +
                         "[response channel] should be a mention, and folder names should be alphanumeric.").queue();
             }
-        } else if (msg.startsWith("--setup-free ")) {
+        } else if (msg.startsWith("--setup-free-names ")) {
             // setting up a new free use channel!
             String[] settings = msg.split(" ");
             boolean valid = false;
 
-            // there should be 2 parts (so 1 parameter including --setup-free itself).
+            // there should be 2 parts (so 1 parameter including --setup-free-names itself).
             if (settings.length == 2) {
                 // parameter 1 should be a channel mention.
                 Matcher regex = Pattern.compile("^<#!?([0-9]+)>$").matcher(settings[1]);
@@ -905,14 +943,40 @@ public class ModStructureVerifier extends ListenerAdapter {
                         valid = true;
                         freeResponseChannels.put(event.getChannel().getIdLong(), Long.parseLong(channelId));
                         saveMap(event, ":white_check_mark: Everyone will be able to use the `--verify [assets folder name] [maps folder name]` " +
-                                "command in this channel to check the structure of their mod. Any issue found will be posted in <#" + channelId + ">.");
+                                "command in this channel to check the structure of their mod against those rules:\n" + getRules(null)
+                                + "\n\nAny issue found will be posted in <#" + channelId + ">.");
                     }
                 }
             }
 
             if (!valid) {
                 // print help if one of the parameters is invalid.
-                event.getChannel().sendMessage("Usage: `--setup-free [response channel]`\n" +
+                event.getChannel().sendMessage("Usage: `--setup-free-names [response channel]`\n" +
+                        "[response channel] should be a mention.").queue();
+            }
+        } else if (msg.startsWith("--setup-no-name ")) {
+            // setting up a no-name channel!
+            String[] settings = msg.split(" ");
+            boolean valid = false;
+
+            // there should be 2 parts (so 1 parameter including --setup-no-names itself).
+            if (settings.length == 2) {
+                // parameter 1 should be a channel mention.
+                Matcher regex = Pattern.compile("^<#!?([0-9]+)>$").matcher(settings[1]);
+                if (regex.matches()) {
+                    String channelId = regex.group(1);
+                    if (event.getGuild().getTextChannelById(channelId) != null) {
+                        valid = true;
+                        noNameResponseChannels.put(event.getChannel().getIdLong(), Long.parseLong(channelId));
+                        saveMap(event, ":white_check_mark: The bot will check zips posted in this channel against those rules:\n"
+                                + getRulesForNoFolderName() + "\n\nAny issue found will be posted in <#" + channelId + ">.");
+                    }
+                }
+            }
+
+            if (!valid) {
+                // print help if one of the parameters is invalid.
+                event.getChannel().sendMessage("Usage: `--setup-free-names [response channel]`\n" +
                         "[response channel] should be a mention.").queue();
             }
         } else if (msg.equals("--remove-setup")) {
@@ -927,8 +991,12 @@ public class ModStructureVerifier extends ListenerAdapter {
                 event.getChannel().sendMessage(":x: The bot is not set up to scan zips sent to this channel.").queue();
             }
         } else if (msg.equals("--rules")) {
-            if (responseChannels.containsKey(event.getChannel().getIdLong())) {
+            if (noNameResponseChannels.containsKey(event.getChannel().getIdLong())) {
+                event.getChannel().sendMessage("Here is what the bot checks in submitted zips: \n" + getRulesForNoFolderName()).queue();
+            } else if (responseChannels.containsKey(event.getChannel().getIdLong())) {
                 event.getChannel().sendMessage("Here is what the bot checks in submitted zips: \n" + getRules(event.getChannel().getIdLong())).queue();
+            } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong())) {
+                event.getChannel().sendMessage("Here is what the bot checks in submitted zips: \n" + getRules(null)).queue();
             } else {
                 event.getChannel().sendMessage(":x: The bot is not set up to scan zips sent to this channel.").queue();
             }
@@ -957,6 +1025,12 @@ public class ModStructureVerifier extends ListenerAdapter {
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(FREE_CHANNELS_SAVE_FILE_NAME))) {
                 for (Long channelId : freeResponseChannels.keySet()) {
                     writer.write(channelId + ";" + freeResponseChannels.get(channelId) + "\n");
+                }
+            }
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(NO_NAME_CHANNELS_SAVE_FILE_NAME))) {
+                for (Long channelId : noNameResponseChannels.keySet()) {
+                    writer.write(channelId + ";" + noNameResponseChannels.get(channelId) + "\n");
                 }
             }
 
@@ -990,14 +1064,22 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     private static String getRules(Long channelId) {
-        String collabAssetsName = collabAssetPrefixes.get(channelId);
-        String collabMapsName = collabMapPrefixes.get(channelId);
+        String collabAssetsName = "[assets folder name]";
+        String collabMapsName = "[maps folder name]";
+        if (channelId != null) {
+            collabAssetsName = collabAssetPrefixes.get(channelId);
+            collabMapsName = collabMapPrefixes.get(channelId);
+        }
         return "- files in `Assets/`, `Graphics/Atlases/`, `Graphics/ColorGrading/` and `Tutorials/` should have this path: `[basePath]/" + collabAssetsName + "/[subfolder]/[anything]`\n" +
                 "- XMLs in `Graphics/` should match: `Graphics/" + collabAssetsName + "xmls/[subfolder]/[anything].xml`\n" +
                 "- there should be exactly 1 file in the `Maps` folder, and its path should match: `Maps/" + collabMapsName + "/[subfolder]/[anything].bin`\n" +
                 "- if there is an `English.txt`, dialog IDs should match: `" + collabAssetsName + "_[anything]_[anything]`" +
                 (collabMapsName.equals(collabAssetsName) ? "" : "or `" + collabMapsName + "_[anything]_[anything]`") + "\n" +
-                "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
+                getRulesForNoFolderName();
+    }
+
+    private static String getRulesForNoFolderName() {
+        return "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
                 "- all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies";
     }
 }
