@@ -1,17 +1,25 @@
 package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
+import io.github.furstenheim.CopyDown;
+import io.github.furstenheim.Options;
+import io.github.furstenheim.OptionsBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,6 +33,10 @@ import java.util.zip.ZipFile;
  */
 public class GameBananaAutomatedChecks {
     private static final Logger logger = LoggerFactory.getLogger(GameBananaAutomatedChecks.class);
+
+    private static final Options markdownOptions = OptionsBuilder.anOptions()
+            .withBulletListMaker("-")
+            .build();
 
     // files that should trigger a warning when present in a mod (files that ship with Celeste or Everest)
     private static final List<String> BAD_FILE_LIST = Arrays.asList("Celeste.exe",
@@ -41,6 +53,7 @@ public class GameBananaAutomatedChecks {
         checkYieldReturnOrigAndIntPtrTrick();
         checkForForbiddenFiles();
         checkForDuplicateModIds();
+        checkAllModsWithEverestYamlValidator();
     }
 
     private static class GameBananaCheckResults {
@@ -394,6 +407,81 @@ public class GameBananaAutomatedChecks {
         }
 
         return null;
+    }
+
+    public static void checkAllModsWithEverestYamlValidator() throws IOException {
+        List<String> oldAlreadyChecked;
+        List<String> newAlreadyChecked = new ArrayList<>();
+        try (InputStream is = new FileInputStream("already_validated_yaml_files.yaml")) {
+            oldAlreadyChecked = new Yaml().load(is);
+        }
+
+        Map<String, Map<String, Object>> updaterDatabase;
+        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+            updaterDatabase = new Yaml().load(is);
+        }
+
+        for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
+            String modName = modMap.getKey();
+            String url = modMap.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString();
+            if (!oldAlreadyChecked.contains(url)) {
+                logger.debug("Downloading {} ({}) for everest.yaml checking", url, modName);
+                try (InputStream is = new URL(url).openStream()) {
+                    FileUtils.copyToFile(is, new File("/tmp/everest_yaml_police.zip"));
+                }
+
+                try (ZipFile zip = new ZipFile(new File("/tmp/everest_yaml_police.zip"))) {
+                    // find the everest.yaml name used in this mod.
+                    ZipEntry yaml = zip.getEntry("everest.yaml");
+                    if (yaml == null) {
+                        yaml = zip.getEntry("everest.yml");
+                    }
+                    if (yaml == null) {
+                        yaml = zip.getEntry("multimetadata.yaml");
+                    }
+
+                    logger.debug("Extracting {}", yaml.getName());
+                    Path destination = Paths.get("/tmp", yaml.getName());
+                    try (InputStream is = zip.getInputStream(yaml)) {
+                        FileUtils.copyToFile(is, destination.toFile());
+                    }
+
+                    logger.debug("Sending to validator");
+                    HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+                    submit.addFilePart("file", destination.toFile());
+                    HttpURLConnection result = submit.finish();
+
+                    logger.debug("Deleting temp file");
+                    Files.delete(destination);
+
+                    String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
+                    logger.debug("Checking result");
+                    if (!resultBody.contains("Your everest.yaml file seems valid!")) {
+                        // this doesn't sound good...
+                        String resultHtml = Jsoup.parse(resultBody).select(".alert").html();
+                        String resultMd = new CopyDown(markdownOptions).convert(resultHtml);
+                        while (resultMd.contains("\n\n")) {
+                            resultMd = resultMd.replace("\n\n", "\n");
+                        }
+                        if (resultMd.length() > 1000) {
+                            resultMd = resultMd.substring(0, 1000) + "...";
+                        }
+                        sendAlertToWebhook(":warning: The mod called **" + modName + "** doesn't pass the everest.yaml validator. It said:\n" +
+                                resultMd + "\n:arrow_right: https://gamebanana.com/"
+                                + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
+                    }
+                }
+
+                logger.debug("Deleting temporary ZIP");
+                FileUtils.forceDelete(new File("/tmp/everest_yaml_police.zip"));
+            }
+
+            newAlreadyChecked.add(url);
+        }
+
+        try (FileWriter writer = new FileWriter("already_validated_yaml_files.yaml")) {
+            new Yaml().dump(newAlreadyChecked, writer);
+        }
     }
 
     private static void sendAlertToWebhook(String message) throws IOException {

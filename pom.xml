@@ -134,6 +134,12 @@
             <artifactId>update-checker</artifactId>
             <version>0.0.34</version>
         </dependency>
+
+        <dependency>
+            <groupId>io.github.furstenheim</groupId>
+            <artifactId>copy_down</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
     <build>
