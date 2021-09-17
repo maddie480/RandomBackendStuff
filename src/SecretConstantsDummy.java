@@ -11,10 +11,8 @@ public class SecretConstantsDummy {
     static final Long UPDATE_CHECKER_CHANNEL = 0L;
 
     // bot credentials
+    static final String TIMEZONE_BOT_TOKEN = "";
     static final String MOD_STRUCTURE_VERIFIER_TOKEN = "";
-
-    // the timezone bot currently only support one server, which ID should be filled out here
-    static final Long TIMEZONE_BOT_SERVER = 0L;
 
     // API key allowing to download stuff from Google Drive
     static final String GOOGLE_DRIVE_API_KEY = "";

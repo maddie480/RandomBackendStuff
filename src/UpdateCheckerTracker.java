@@ -3,6 +3,7 @@ package com.max480.discord.randombots;
 import com.google.cloud.storage.*;
 import com.google.common.collect.ImmutableMap;
 import com.max480.quest.modmanagerbot.BotClient;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListener;
@@ -10,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
@@ -28,6 +31,10 @@ public class UpdateCheckerTracker implements TailerListener {
     private static boolean luaCutscenesUpdated = false;
 
     private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
+
+    private static String everestUpdateSha256 = "[first check]";
+    private static String modSearchDatabaseSha256 = "[first check]";
+    private static String fileIdsSha256 = "[first check]";
 
     /**
      * Method to call to start the watcher thread.
@@ -116,27 +123,45 @@ public class UpdateCheckerTracker implements TailerListener {
 
         if (line != null && line.contains("=== Ended searching for updates.")) {
             // refresh is done! we should tell the frontend about it.
-            log.info("Calling frontend to refresh mod search and Everest update");
-
             try {
-                // send database files to Cloud Storage
-                sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
-                sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
-                sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml", false);
+                String newEverestUpdateHash = hash("uploads/everestupdate.yaml");
+                String newModSearchDatabaseHash = hash("uploads/modsearchdatabase.yaml");
+                String newFileIdsHash = hash("modfilesdatabase/file_ids.yaml");
 
-                // refresh mod search and everest_update.yaml on the frontend
-                HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.EVEREST_UPDATE_RELOAD_API).openConnection();
-                if (conn.getResponseCode() != 200) {
-                    throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
+                if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
+                    log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
+                    sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
+
+                    HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.EVEREST_UPDATE_RELOAD_API).openConnection();
+                    if (conn.getResponseCode() != 200) {
+                        throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
+                    }
+
+                    everestUpdateSha256 = newEverestUpdateHash;
                 }
-                conn = (HttpURLConnection) new URL(SecretConstants.MOD_SEARCH_RELOAD_API).openConnection();
-                if (conn.getResponseCode() != 200) {
-                    throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
+
+                if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
+                    log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
+                    sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
+
+                    HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.MOD_SEARCH_RELOAD_API).openConnection();
+                    if (conn.getResponseCode() != 200) {
+                        throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
+                    }
+
+                    modSearchDatabaseSha256 = newModSearchDatabaseHash;
+                }
+
+                if (!newFileIdsHash.equals(fileIdsSha256)) {
+                    log.info("Reloading file_ids.yaml as hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
+                    sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml", false);
+                    fileIdsSha256 = newFileIdsHash;
                 }
 
                 if (luaCutscenesUpdated) {
                     // also tell the frontend that Lua Cutscenes got updated, so that it can mirror the docs again.
-                    conn = (HttpURLConnection) new URL(SecretConstants.LUA_CUTSCENES_DOC_UPLOAD_API).openConnection();
+                    log.info("Re-uploading Lua Cutscenes docs!");
+                    HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.LUA_CUTSCENES_DOC_UPLOAD_API).openConnection();
                     if (conn.getResponseCode() != 200) {
                         throw new IOException("Lua Cutscenes Documentation Upload API sent non 200 code: " + conn.getResponseCode());
                     } else {
@@ -148,6 +173,12 @@ public class UpdateCheckerTracker implements TailerListener {
                 BotClient.getInstance().getTextChannelById(SecretConstants.UPDATE_CHECKER_CHANNEL)
                         .sendMessage("Frontend call failed: " + e.toString()).queue();
             }
+        }
+    }
+
+    private static String hash(String filePath) throws IOException {
+        try (InputStream is = new FileInputStream(filePath)) {
+            return DigestUtils.sha256Hex(is);
         }
     }
 
