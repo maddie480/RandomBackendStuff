@@ -2,6 +2,7 @@ package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
@@ -77,17 +78,25 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
     private static List<UserTimezone> userTimezones; // user ID > timezone name
     private static List<TimezoneOffsetRole> timezoneOffsetRoles; // UTC offset in minutes > role ID
+    private static Set<Long> serversWithTime; // servers that want times in timezone roles
     private static JDA jda;
 
     private static final String SAVE_FILE_NAME = "user_timezones.csv";
+    private static final String SERVERS_WITH_TIME_FILE_NAME = "servers_with_time.txt";
 
     public static void main(String[] args) throws Exception {
-        // load the saved users' timezones.
+        // load the saved users' timezones, and the "servers with time" list.
         userTimezones = new ArrayList<>();
         if (new File(SAVE_FILE_NAME).exists()) {
             try (Stream<String> lines = Files.lines(Paths.get(SAVE_FILE_NAME))) {
                 lines.forEach(line -> userTimezones.add(new UserTimezone(
                         Long.parseLong(line.split(";")[0]), Long.parseLong(line.split(";")[1]), line.split(";", 3)[2])));
+            }
+        }
+        serversWithTime = new HashSet<>();
+        if (new File(SERVERS_WITH_TIME_FILE_NAME).exists()) {
+            try (Stream<String> lines = Files.lines(Paths.get(SERVERS_WITH_TIME_FILE_NAME))) {
+                lines.forEach(line -> serversWithTime.add(Long.parseLong(line)));
             }
         }
 
@@ -99,8 +108,21 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         new StrawberryJamUpdate())
                 .build().awaitReady();
 
+        // cleanup non-existing servers from servers with time, and save.
+        for (Long serverId : new HashSet<>(serversWithTime)) {
+            if (jda.getGuildById(serverId) == null) {
+                logger.warn("Removing non-existing server {} from servers with time list", serverId);
+                serversWithTime.remove(serverId);
+            }
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(SERVERS_WITH_TIME_FILE_NAME))) {
+            for (Long server : serversWithTime) {
+                writer.write(server + "\n");
+            }
+        }
+
         // look up existing timezone roles by regex.
-        Pattern roleName = Pattern.compile("^Timezone UTC([+-][0-9][0-9]):([0-9][0-9]) \\([0-2]?[0-9][ap]m\\)$");
+        Pattern roleName = Pattern.compile("^Timezone UTC([+-][0-9][0-9]):([0-9][0-9])(?: \\([0-2]?[0-9][ap]m\\))?$");
         timezoneOffsetRoles = new ArrayList<>();
         for (Guild g : jda.getGuilds()) {
             final long guildId = g.getIdLong();
@@ -118,7 +140,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     });
         }
 
-        logger.debug("Users by timezone = {}, roles by timezone = {}", userTimezones, timezoneOffsetRoles);
+        logger.debug("Users by timezone = {}, roles by timezone = {}, servers with time = {}", userTimezones, timezoneOffsetRoles, serversWithTime);
 
         // start the background process to update users' roles.
         new Thread(new TimezoneBot()).start();
@@ -140,10 +162,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     @Override
     public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
         String message = event.getMessage().getContentRaw().trim();
-        processMessage(event.getAuthor(), event.getChannel(), message);
+        processMessage(event.getAuthor(), event.getChannel(), event.getMember(), message);
     }
 
-    private void processMessage(User user, TextChannel channel, String message) {
+    private void processMessage(User user, TextChannel channel, Member member, String message) {
         if (!user.isBot() && message.equals("!timezone")) {
             // print help
             channel.sendMessage("Usage: `!timezone [tzdata timezone name]` (example: `!timezone Europe/Paris`)\n" +
@@ -178,7 +200,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 } catch (IOException e) {
                     // I/O error while saving to disk??
                     logger.error("Error while writing file", e);
-                    channel.sendMessage(":x: A technical error occurred. <@" + SecretConstants.OWNER_ID + "> :a:").queue();
+                    channel.sendMessage(":x: A technical error occurred.").queue();
                 }
             } catch (DateTimeException ex) {
                 // ZoneId.of blew up so the timezone is probably invalid.
@@ -196,7 +218,6 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             if (userTimezone != null) {
                 // remove all timezone roles from the user.
                 Guild server = channel.getGuild();
-                Member member = server.getMemberById(user.getIdLong());
                 for (Role userRole : member.getRoles()) {
                     if (timezoneOffsetRoles.stream().anyMatch(l -> l.serverId == server.getIdLong() && l.roleId == userRole.getIdLong())) {
                         logger.info("Removing timezone role {} from {}", userRole, member);
@@ -215,13 +236,41 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 } catch (IOException e) {
                     // I/O error while saving to disk??
                     logger.error("Error while writing file", e);
-                    channel.sendMessage(":x: A technical error occurred. <@" + SecretConstants.OWNER_ID + "> :a:").queue();
+                    channel.sendMessage(":x: A technical error occurred.").queue();
                 }
             } else {
                 // user asked for their timezone to be forgotten, but doesn't have a timezone to start with :thonk:
                 channel.sendMessage(":x: You don't currently have a timezone role!").queue();
             }
         }
+
+        if (!user.isBot() && message.equals("!toggle_times") && (member.hasPermission(Permission.ADMINISTRATOR)
+                || member.hasPermission(Permission.MANAGE_SERVER))) {
+
+            long guildId = channel.getGuild().getIdLong();
+            boolean newValue = !serversWithTime.contains(guildId);
+            if (newValue) {
+                serversWithTime.add(guildId);
+            } else {
+                serversWithTime.remove(guildId);
+            }
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(SERVERS_WITH_TIME_FILE_NAME))) {
+                for (Long server : serversWithTime) {
+                    writer.write(server + "\n");
+                }
+
+                channel.sendMessage(":white_check_mark: " + (newValue ?
+                        "The timezone roles will now show the time it is in the timezone." :
+                        "The timezone roles won't show the time it is in the timezone anymore.") + "\n" +
+                        "It may take some time for the roles to update, as they are updated every 15 minutes.").queue();
+            } catch (IOException e) {
+                // I/O error while saving to disk??
+                logger.error("Error while writing file", e);
+                channel.sendMessage(":x: A technical error occurred.").queue();
+            }
+        }
+
     }
 
     public void run() {
@@ -342,7 +391,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         ZonedDateTime now = ZonedDateTime.now(ZoneId.of(timezoneOffsetFormatted));
 
                         // build the final role name, and update the role if the name doesn't match.
-                        String roleName = "Timezone " + timezoneOffsetFormatted + " (" + now.format(DateTimeFormatter.ofPattern("ha")).toLowerCase(Locale.ROOT) + ")";
+                        String roleName = "Timezone " + timezoneOffsetFormatted +
+                                (serversWithTime.contains(guildId) ? " (" + now.format(DateTimeFormatter.ofPattern("ha")).toLowerCase(Locale.ROOT) + ")" : "");
                         if (!roleName.equals(role.getName())) {
                             role.getManager().setName(roleName).reason("Time passed").queue();
                             logger.debug("Timezone role renamed for offset {}: {} -> {}", zoneOffset, role, roleName);
