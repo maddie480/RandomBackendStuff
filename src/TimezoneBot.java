@@ -25,10 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
@@ -88,12 +85,12 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         }
     }
 
-    private static class MemberCache {
+    private static class MemberCache implements Serializable {
         private final long serverId;
         private final long memberId;
-        private final List<Long> roleIds;
+        private final ArrayList<Long> roleIds;
 
-        public MemberCache(long serverId, long memberId, List<Long> roleIds) {
+        public MemberCache(long serverId, long memberId, ArrayList<Long> roleIds) {
             this.serverId = serverId;
             this.memberId = memberId;
             this.roleIds = roleIds;
@@ -123,7 +120,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 .orElseGet(() -> {
                     try {
                         Member m = g.retrieveMemberById(memberId).complete();
-                        MemberCache cached = new MemberCache(g.getIdLong(), memberId, m.getRoles().stream().map(Role::getIdLong).collect(Collectors.toList()));
+                        MemberCache cached = new MemberCache(g.getIdLong(), memberId, m.getRoles().stream().map(Role::getIdLong).collect(Collectors.toCollection(ArrayList::new)));
                         membersCached.add(cached);
                         logger.debug("Cache miss for member {} => adding {} to cache", m, cached);
                         return cached;
@@ -160,7 +157,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
     private static List<UserTimezone> userTimezones; // user ID > timezone name
     private static Set<Long> serversWithTime; // servers that want times in timezone roles
-    private static final List<MemberCache> membersCached = new ArrayList<>();
+    private static ArrayList<MemberCache> membersCached = new ArrayList<>();
 
     private static JDA jda;
 
@@ -182,10 +179,14 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 lines.forEach(line -> serversWithTime.add(Long.parseLong(line)));
             }
         }
+        if (new File("timezone_bot_member_cache.ser").exists()) {
+            try (ObjectInputStream input = new ObjectInputStream(new FileInputStream("timezone_bot_member_cache.ser"))) {
+                membersCached = (ArrayList<MemberCache>) input.readObject();
+            }
+        }
 
         // start up the bot.
         jda = JDABuilder.create(SecretConstants.TIMEZONE_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)
-                .setActivity(Activity.playing("Starting up..."))
                 .addEventListeners(new TimezoneBot(),
                         // some code specific to the Strawberry Jam 2021 server, not published and has nothing to do with timezones
                         // but that wasn't really enough to warrant a separate bot
@@ -205,7 +206,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
-        logger.debug("Users by timezone = {}, servers with time = {}", userTimezones, serversWithTime);
+        logger.debug("Users by timezone = {}, servers with time = {}, member cache = {}", userTimezones.size(), serversWithTime.size(), membersCached.size());
 
         updateToggleTimesPermsForGuilds(jda.getGuilds());
 
@@ -634,10 +635,13 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     }
                 }
                 userTimezones.removeAll(toDelete);
-                
+
                 for (MemberCache memberCache : new ArrayList<>(membersCached)) {
                     if (jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == memberCache.serverId)) {
                         logger.info("Removing user {} from cache belonging to non-existing server", memberCache);
+                        membersCached.remove(memberCache);
+                    } else if (userTimezones.stream().noneMatch(u -> u.serverId == memberCache.serverId && u.userId == memberCache.memberId)) {
+                        logger.info("Removing user {} from cache because they are not a bot user", memberCache);
                         membersCached.remove(memberCache);
                     }
                 }
@@ -652,11 +656,24 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     }
                 }
 
+                try (ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream("timezone_bot_member_cache.ser"))) {
+                    output.writeObject(membersCached);
+                }
+
+                if (ZonedDateTime.now().getHour() == 0 && ZonedDateTime.now().getMinute() == 0) {
+                    // midnight housekeeping: remove a chunk of users from the cache, in order to check they're still alive.
+                    logger.info("Removing users from cache for housekeeping!");
+                    for (int i = 0; i < 1000; i++) {
+                        if (!membersCached.isEmpty()) {
+                            membersCached.remove(0);
+                        }
+                    }
+                }
+
                 jda.getPresence().setActivity(Activity.playing("/timezone | " +
                         jda.getGuilds().stream().mapToInt(g -> getTimezoneOffsetRolesForGuild(g).size()).sum() + " roles | " +
                         userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " +
                         jda.getGuilds().size() + " servers"));
-
             } catch (Exception e) {
                 logger.error("Refresh roles failed", e);
 
