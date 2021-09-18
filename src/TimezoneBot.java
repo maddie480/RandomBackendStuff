@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -87,9 +88,71 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         }
     }
 
+    private static class MemberCache {
+        private final long serverId;
+        private final long memberId;
+        private final List<Long> roleIds;
+
+        public MemberCache(long serverId, long memberId, List<Long> roleIds) {
+            this.serverId = serverId;
+            this.memberId = memberId;
+            this.roleIds = roleIds;
+        }
+    }
+
+    /**
+     * Gets a member from the cache, or retrieve it if they are not in the cache.
+     *
+     * @param g        The guild the member is part of
+     * @param memberId The member to retrieve
+     * @return The cached entry that was retrieved from cache or loaded from Discord
+     */
+    private MemberCache getMemberWithCache(Guild g, long memberId) {
+        return membersCached.stream()
+                .filter(m -> m.serverId == g.getIdLong() && m.memberId == memberId)
+                .findFirst()
+                .orElseGet(() -> {
+                    try {
+                        Member m = g.retrieveMemberById(memberId).complete();
+                        MemberCache cached = new MemberCache(g.getIdLong(), memberId, m.getRoles().stream().map(Role::getIdLong).collect(Collectors.toList()));
+                        membersCached.add(cached);
+                        logger.debug("Cache miss for member {} => adding {} to cache", m, cached);
+                        return cached;
+                    } catch (ErrorResponseException error) {
+                        logger.warn("Got error when trying to get member {} in guild {}", memberId, g, error);
+
+                        if (error.isServerError()) throw error;
+
+                        // user is gone?
+                        return null;
+                    }
+                });
+    }
+
+    /**
+     * Gets the actual Member object from Discord for a MemberCache object.
+     *
+     * @param member The cached member object
+     * @return The actual member object from Discord
+     */
+    private Member getMemberForReal(MemberCache member) {
+        try {
+            logger.debug("Fetching member {} for real", member);
+            return jda.getGuildById(member.serverId).retrieveMemberById(member.memberId).complete();
+        } catch (ErrorResponseException error) {
+            logger.warn("Got error when trying to get member {}", membersCached, error);
+
+            if (error.isServerError()) throw error;
+
+            // user is gone?
+            return null;
+        }
+    }
+
     private static List<UserTimezone> userTimezones; // user ID > timezone name
     private static List<TimezoneOffsetRole> timezoneOffsetRoles; // UTC offset in minutes > role ID
     private static Set<Long> serversWithTime; // servers that want times in timezone roles
+    private static List<MemberCache> membersCached = new ArrayList<>();
     private static JDA jda;
 
     private static final String SAVE_FILE_NAME = "user_timezones.csv";
@@ -112,7 +175,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         }
 
         // start up the bot.
-        jda = JDABuilder.create(SecretConstants.TIMEZONE_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MEMBERS)
+        jda = JDABuilder.create(SecretConstants.TIMEZONE_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new TimezoneBot(),
                         // some code specific to the Strawberry Jam 2021 server, not published and has nothing to do with timezones
                         // but that wasn't really enough to warrant a separate bot
@@ -197,7 +260,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         .map(r -> new CommandPrivilege(CommandPrivilege.Type.ROLE, true, r.getIdLong()))
                         .collect(Collectors.toCollection(ArrayList::new));
 
-                boolean ownerOverrideRequired = g.getOwner().getRoles().stream().noneMatch(rolesWithPerms::contains);
+                Member owner = g.retrieveOwner().complete();
+                boolean ownerOverrideRequired = owner.getRoles().stream().noneMatch(rolesWithPerms::contains);
                 if (ownerOverrideRequired) {
                     // the owner has no admin role! but under Discord rules they're still an admin, so they need a privilege
                     privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
@@ -214,7 +278,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                             .queue();
                 } else {
                     logger.debug("The following entities have access to /toggle_times in {}: roles {}{}", g, rolesWithPerms,
-                            (ownerOverrideRequired ? ", owner " + g.getOwner() : ""));
+                            (ownerOverrideRequired ? ", owner " + owner : ""));
                     g.updateCommandPrivileges(ImmutableMap.of(
                                     timezone.getId(), allowEveryone,
                                     detectTimezone.getId(), allowEveryone,
@@ -344,6 +408,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 for (Role userRole : member.getRoles()) {
                     if (timezoneOffsetRoles.stream().anyMatch(l -> l.serverId == server.getIdLong() && l.roleId == userRole.getIdLong())) {
                         logger.info("Removing timezone role {} from {}", userRole, member);
+                        membersCached.remove(getMemberWithCache(server, member.getIdLong()));
                         server.removeRoleFromMember(member, userRole).reason("User used !remove_timezone").complete();
                     }
                 }
@@ -410,6 +475,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
                 for (Guild server : jda.getGuilds()) {
                     logger.info("=== Refreshing timezones for server {}", server);
+                    if (!server.getSelfMember().hasPermission(Permission.MANAGE_ROLES)) {
+                        logger.warn("I can't manage roles here! Skipping.");
+                        continue;
+                    }
+                    
                     final long guildId = server.getIdLong();
 
                     // timezones no one has anymore
@@ -429,7 +499,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     List<Role> existingRoles = new ArrayList<>(server.getRoles()); // all server roles
 
                     for (Map.Entry<Long, String> timezone : userTimezonesThisServer.entrySet()) {
-                        Member member = server.getMemberById(timezone.getKey());
+                        MemberCache member = getMemberWithCache(server, timezone.getKey());
                         if (member == null) {
                             // user was not found, they probably left.
                             obsoleteUsers.add(timezone.getKey());
@@ -459,12 +529,15 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                             }
 
                             boolean userHasCorrectRole = false;
-                            for (Role userRole : member.getRoles()) {
-                                if (userRole.getIdLong() != targetRole.getIdLong() && timezoneOffsetRolesThisServer.values().stream().anyMatch(l -> l == userRole.getIdLong())) {
+                            for (Long roleId : member.roleIds) {
+                                if (roleId != targetRole.getIdLong() && timezoneOffsetRolesThisServer.values().stream().anyMatch(l -> l == roleId)) {
                                     // the user has a timezone role that doesn't match their timezone!
-                                    logger.info("Removing timezone role {} from {}", userRole, member);
-                                    server.removeRoleFromMember(member, userRole).reason("Timezone of user changed to " + offset).complete();
-                                } else if (userRole.getIdLong() == targetRole.getIdLong()) {
+                                    Role serverRole = server.getRoleById(roleId);
+                                    logger.info("Removing timezone role {} from {}", serverRole, member);
+                                    membersCached.remove(member);
+                                    server.removeRoleFromMember(getMemberForReal(member), serverRole)
+                                            .reason("Timezone of user changed to " + offset).complete();
+                                } else if (roleId == targetRole.getIdLong()) {
                                     // this is the role the user is supposed to have.
                                     userHasCorrectRole = true;
                                 }
@@ -473,7 +546,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                             if (!userHasCorrectRole) {
                                 // the user doesn't have the timezone role they're supposed to have!
                                 logger.info("Adding timezone role {} to {}", targetRole, member);
-                                server.addRoleToMember(member, targetRole).reason("Timezone of user changed to " + offset).queue();
+                                membersCached.remove(member);
+                                server.addRoleToMember(getMemberForReal(member), targetRole).reason("Timezone of user changed to " + offset).queue();
                             }
                         }
                     }
