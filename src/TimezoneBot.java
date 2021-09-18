@@ -410,7 +410,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     if (timezoneOffsetRoles.stream().anyMatch(l -> l.serverId == server.getIdLong() && l.roleId == userRole.getIdLong())) {
                         logger.info("Removing timezone role {} from {}", userRole, member);
                         membersCached.remove(getMemberWithCache(server, member.getIdLong()));
-                        server.removeRoleFromMember(member, userRole).reason("User used !remove_timezone").complete();
+                        server.removeRoleFromMember(member, userRole).reason("User used /remove_timezone").complete();
                     }
                 }
 
