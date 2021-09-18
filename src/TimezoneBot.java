@@ -159,9 +159,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     }
 
     private static List<UserTimezone> userTimezones; // user ID > timezone name
-    private static List<TimezoneOffsetRole> timezoneOffsetRoles; // UTC offset in minutes > role ID
     private static Set<Long> serversWithTime; // servers that want times in timezone roles
     private static final List<MemberCache> membersCached = new ArrayList<>();
+
     private static JDA jda;
 
     private static final String SAVE_FILE_NAME = "user_timezones.csv";
@@ -205,26 +205,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
-        // look up existing timezone roles by regex.
-        Pattern roleName = Pattern.compile("^Timezone UTC([+-][0-9][0-9]):([0-9][0-9])(?: \\([0-2]?[0-9][ap]m\\))?$");
-        timezoneOffsetRoles = new ArrayList<>();
-        for (Guild g : jda.getGuilds()) {
-            final long guildId = g.getIdLong();
-            g.getRoles().stream()
-                    .filter(role -> roleName.matcher(role.getName()).matches())
-                    .forEach(role -> {
-                        // parse the UTC offset.
-                        Matcher nameMatch = roleName.matcher(role.getName());
-                        nameMatch.matches();
-                        int hours = Integer.parseInt(nameMatch.group(1));
-                        int minutes = Integer.parseInt(nameMatch.group(2));
-                        if (hours < 0) minutes *= -1;
-
-                        timezoneOffsetRoles.add(new TimezoneOffsetRole(guildId, hours * 60 + minutes, role.getIdLong()));
-                    });
-        }
-
-        logger.debug("Users by timezone = {}, roles by timezone = {}, servers with time = {}", userTimezones, timezoneOffsetRoles, serversWithTime);
+        logger.debug("Users by timezone = {}, servers with time = {}", userTimezones, serversWithTime);
 
         updateToggleTimesPermsForGuilds(jda.getGuilds());
 
@@ -315,6 +296,30 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     public void onGuildLeave(@NotNull GuildLeaveEvent event) {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
                 .sendMessage("I just left a server: " + event.getGuild().getName()).queue();
+    }
+
+    /**
+     * Looks up timezone offset roles for a server by matching them by role name.
+     *
+     * @param g The server to retrieve offset roles for
+     * @return The retrieved offset roles
+     */
+    private static List<TimezoneOffsetRole> getTimezoneOffsetRolesForGuild(Guild g) {
+        Pattern roleName = Pattern.compile("^Timezone UTC([+-][0-9][0-9]):([0-9][0-9])(?: \\([0-2]?[0-9][ap]m\\))?$");
+        final long guildId = g.getIdLong();
+        return g.getRoles().stream()
+                .filter(role -> roleName.matcher(role.getName()).matches())
+                .map(role -> {
+                    // parse the UTC offset.
+                    Matcher nameMatch = roleName.matcher(role.getName());
+                    nameMatch.matches();
+                    int hours = Integer.parseInt(nameMatch.group(1));
+                    int minutes = Integer.parseInt(nameMatch.group(2));
+                    if (hours < 0) minutes *= -1;
+
+                    return new TimezoneOffsetRole(guildId, hours * 60 + minutes, role.getIdLong());
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     @Override
@@ -417,7 +422,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 // remove all timezone roles from the user.
                 Guild server = member.getGuild();
                 for (Role userRole : member.getRoles()) {
-                    if (timezoneOffsetRoles.stream().anyMatch(l -> l.serverId == server.getIdLong() && l.roleId == userRole.getIdLong())) {
+                    if (getTimezoneOffsetRolesForGuild(server).stream().anyMatch(l -> l.roleId == userRole.getIdLong())) {
                         logger.info("Removing timezone role {} from {}", userRole, member);
                         membersCached.remove(getMemberWithCache(server, member.getIdLong()));
                         server.removeRoleFromMember(member, userRole).reason("User used /remove_timezone").complete();
@@ -494,16 +499,14 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     final long guildId = server.getIdLong();
 
                     // timezones no one has anymore
-                    Set<Integer> obsoleteTimezones = timezoneOffsetRoles.stream()
-                            .filter(s -> s.serverId == guildId)
-                            .map(s -> s.utcOffsetMinutes).collect(Collectors.toSet());
+                    Set<Integer> obsoleteTimezones = getTimezoneOffsetRolesForGuild(server).stream()
+                            .map(t -> t.utcOffsetMinutes).collect(Collectors.toSet());
 
                     // user-timezone couples for this server
                     Map<Long, String> userTimezonesThisServer = userTimezones.stream()
                             .filter(s -> s.serverId == guildId)
                             .collect(Collectors.toMap(s -> s.userId, s -> s.timezoneName));
-                    Map<Integer, Long> timezoneOffsetRolesThisServer = timezoneOffsetRoles.stream()
-                            .filter(s -> s.serverId == guildId)
+                    Map<Integer, Long> timezoneOffsetRolesThisServer = getTimezoneOffsetRolesForGuild(server).stream()
                             .collect(Collectors.toMap(s -> s.utcOffsetMinutes, s -> s.roleId));
 
                     Set<Long> obsoleteUsers = new HashSet<>(); // users that left the server
@@ -536,7 +539,6 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                         .reason("User has non currently existing timezone " + offset).complete();
                                 existingRoles.add(targetRole);
                                 timezoneOffsetRolesThisServer.put(offset, targetRole.getIdLong());
-                                timezoneOffsetRoles.add(new TimezoneOffsetRole(guildId, offset, targetRole.getIdLong()));
                             }
 
                             boolean userHasCorrectRole = false;
@@ -596,9 +598,6 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                 .orElseThrow(() -> new RuntimeException("Managed role for " + timezone + " somehow disappeared, send help"));
 
                         timezoneOffsetRolesThisServer.remove(timezone);
-                        timezoneOffsetRoles.stream()
-                                .filter(t -> t.serverId == guildId && t.utcOffsetMinutes == timezone)
-                                .findFirst().map(t -> timezoneOffsetRoles.remove(t));
                     }
 
                     // update the remaining roles!
@@ -646,8 +645,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     }
                 }
 
-                jda.getPresence().setActivity(Activity.playing("/timezone | " + timezoneOffsetRoles.size() + " roles | " +
-                        userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " + jda.getGuilds().size() + " servers"));
+                jda.getPresence().setActivity(Activity.playing("/timezone | " +
+                        jda.getGuilds().stream().mapToInt(g -> getTimezoneOffsetRolesForGuild(g).size()).sum() + " roles | " +
+                        userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " +
+                        jda.getGuilds().size() + " servers"));
 
             } catch (Exception e) {
                 logger.error("Refresh roles failed", e);
