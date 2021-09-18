@@ -1,13 +1,23 @@
 package com.max480.discord.randombots;
 
+import com.google.common.collect.ImmutableMap;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
+import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
+import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -26,6 +36,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -142,8 +153,77 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
         logger.debug("Users by timezone = {}, roles by timezone = {}, servers with time = {}", userTimezones, timezoneOffsetRoles, serversWithTime);
 
+        updateToggleTimesPermsForGuilds(jda.getGuilds());
+
         // start the background process to update users' roles.
         new Thread(new TimezoneBot()).start();
+    }
+
+    // call this only once when the slash commands or their descriptions change.
+    private static void registerSlashCommands() {
+        // register the slash commands, then assign per-guild permissions for /toggle_times.
+        // all commands have defaultEnabled = false to disable them in DMs.
+        jda.updateCommands()
+                .addCommands(new CommandData("timezone", "Configures your timezone role")
+                        .addOption(OptionType.STRING, "tz_name", "Timezone name, use /detect_timezone to figure it out", true)
+                        .setDefaultEnabled(false))
+                .addCommands(new CommandData("detect_timezone", "Sets up or replaces your timezone role")
+                        .setDefaultEnabled(false))
+                .addCommands(new CommandData("remove_timezone", "Removes your timezone role")
+                        .setDefaultEnabled(false))
+                .addCommands(new CommandData("toggle_times", "Switches on/off whether to show the time it is in timezone roles")
+                        .setDefaultEnabled(false))
+                .queue(success -> updateToggleTimesPermsForGuilds(jda.getGuilds()));
+    }
+
+    private static void updateToggleTimesPermsForGuilds(List<Guild> guilds) {
+        jda.retrieveCommands().queue(commands -> {
+            Command timezone = commands.stream().filter(c -> c.getName().equals("timezone")).findFirst().orElse(null);
+            Command detectTimezone = commands.stream().filter(c -> c.getName().equals("detect_timezone")).findFirst().orElse(null);
+            Command removeTimezone = commands.stream().filter(c -> c.getName().equals("remove_timezone")).findFirst().orElse(null);
+            Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle_times")).findFirst().orElse(null);
+
+            for (Guild g : guilds) {
+                // figure out which roles in the guild have Admin or Manage Server.
+                List<Role> rolesWithPerms = new ArrayList<>();
+                for (Role r : g.getRoles()) {
+                    if (!r.isManaged() && (r.hasPermission(Permission.ADMINISTRATOR) || r.hasPermission(Permission.MANAGE_SERVER))) {
+                        rolesWithPerms.add(r);
+                    }
+                }
+
+                // turn them into privilege objects.
+                List<CommandPrivilege> privileges = rolesWithPerms.stream()
+                        .map(r -> new CommandPrivilege(CommandPrivilege.Type.ROLE, true, r.getIdLong()))
+                        .collect(Collectors.toCollection(ArrayList::new));
+
+                boolean ownerOverrideRequired = g.getOwner().getRoles().stream().noneMatch(rolesWithPerms::contains);
+                if (ownerOverrideRequired) {
+                    // the owner has no admin role! but under Discord rules they're still an admin, so they need a privilege
+                    privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
+                }
+
+                List<CommandPrivilege> allowEveryone = Collections.singletonList(new CommandPrivilege(CommandPrivilege.Type.ROLE, true, g.getPublicRole().getIdLong()));
+                if (privileges.size() > 10) {
+                    logger.debug("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
+                    g.updateCommandPrivileges(ImmutableMap.of(
+                                    timezone.getId(), allowEveryone,
+                                    detectTimezone.getId(), allowEveryone,
+                                    removeTimezone.getId(), allowEveryone,
+                                    toggleTimes.getId(), allowEveryone))
+                            .queue();
+                } else {
+                    logger.debug("The following entities have access to /toggle_times in {}: roles {}{}", g, rolesWithPerms,
+                            (ownerOverrideRequired ? ", owner " + g.getOwner() : ""));
+                    g.updateCommandPrivileges(ImmutableMap.of(
+                                    timezone.getId(), allowEveryone,
+                                    detectTimezone.getId(), allowEveryone,
+                                    removeTimezone.getId(), allowEveryone,
+                                    toggleTimes.getId(), privileges))
+                            .queue();
+                }
+            }
+        });
     }
 
     // let the owner know when the bot joins or leaves servers
@@ -151,6 +231,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     public void onGuildJoin(@NotNull GuildJoinEvent event) {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
                 .sendMessage("I just joined a new server: " + event.getGuild().getName()).queue();
+
+        // set up privileges for the new server!
+        updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
     }
 
     @Override
@@ -162,62 +245,102 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     @Override
     public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
         String message = event.getMessage().getContentRaw().trim();
-        processMessage(event.getAuthor(), event.getChannel(), event.getMember(), message);
+
+        if (!event.getAuthor().isBot() && message.startsWith("!")) {
+            // for example, !timezone UTC+8 will become command = timezone and timezoneParam = UTC+8.
+            // and !remove_timezone will become command = remove_timezone ana timezoneParam = null
+            String command = message.substring(1);
+            String timezoneParam = null;
+            if (command.contains(" ")) {
+                String[] split = command.split(" ", 2);
+                command = split[0];
+                timezoneParam = split[1];
+            }
+
+            // handle the command and respond to the same channel.
+            processMessage(event.getMember(), command, timezoneParam, response -> event.getChannel().sendMessage(response + "\n\n" +
+                    ":warning: Commands starting with `!` are deprecated and may be removed in the future. Use slash commands instead!").queue(), false);
+        }
     }
 
-    private void processMessage(User user, TextChannel channel, Member member, String message) {
-        if (!user.isBot() && message.equals("!timezone")) {
+    @Override
+    public void onSlashCommand(SlashCommandEvent event) {
+        if (!event.isFromGuild()) {
+            // wtf??? slash commands are disabled in DMs
+            event.reply("This bot is not usable in DMs!").setEphemeral(true).queue();
+        } else {
+            OptionMapping option = event.getOption("tz_name");
+            processMessage(event.getMember(), event.getName(),
+                    option == null ? null : option.getAsString(),
+                    response -> event.reply(response).setEphemeral(true).queue(), true);
+        }
+    }
+
+    /**
+     * Processes a command, received either by message or by slash command.
+     *
+     * @param member         The member that sent the command
+     * @param command        The command that was sent, without the ! or /
+     * @param timezoneParam  The parameter passed (only /timezone takes a parameter so...)
+     * @param respond        The method to call to respond to the message (either posting to the channel, or responding to the slash command)
+     * @param isSlashCommand Indicates if we are using a slash command (so we should always answer)
+     */
+    private void processMessage(Member member, String command, String timezoneParam, Consumer<String> respond, boolean isSlashCommand) {
+        if (command.equals("timezone") && timezoneParam == null) {
             // print help
-            channel.sendMessage("Usage: `!timezone [tzdata timezone name]` (example: `!timezone Europe/Paris`)\n" +
+            respond.accept("Usage: `!timezone [tzdata timezone name]` (example: `!timezone Europe/Paris`)\n" +
                     "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html\n" +
-                    "If you don't want to share your timezone name, you can use an offset like UTC+8" +
-                    " (it won't automatically adjust with daylight saving though).\n\n" +
-                    "If you want to get rid of your timezone role, use `!remove_timezone`.").queue();
+                    "If you don't want to share your timezone name, you can use the slash command (it will only be visible by you)" +
+                    " or use an offset like UTC+8 (it won't automatically adjust with daylight saving though).\n\n" +
+                    "If you want to get rid of your timezone role, use `!remove_timezone`.");
         }
 
-        if (!user.isBot() && message.startsWith("!timezone ")) {
+        if (command.equals("detect_timezone")) {
+            respond.accept("To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.");
+        }
+
+        if (command.equals("timezone") && timezoneParam != null) {
             try {
                 // check that the timezone is valid by passing it to ZoneId.of and discarding the result.
-                String zoneName = message.substring(10).trim();
-                ZoneId.of(zoneName);
+                ZoneId.of(timezoneParam);
 
                 // remove old link if there is any.
                 userTimezones.stream()
-                        .filter(u -> u.serverId == channel.getGuild().getIdLong() && u.userId == user.getIdLong())
+                        .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
                         .findFirst()
                         .map(u -> userTimezones.remove(u));
 
                 // save the link, both in userTimezones and on disk.
-                userTimezones.add(new UserTimezone(channel.getGuild().getIdLong(), user.getIdLong(), zoneName));
-                logger.info("User {} now has timezone {}", user.getIdLong(), zoneName);
+                userTimezones.add(new UserTimezone(member.getGuild().getIdLong(), member.getIdLong(), timezoneParam));
+                logger.info("User {} now has timezone {}", member.getIdLong(), timezoneParam);
                 try (BufferedWriter writer = new BufferedWriter(new FileWriter(SAVE_FILE_NAME))) {
                     for (UserTimezone entry : userTimezones) {
                         writer.write(entry.serverId + ";" + entry.userId + ";" + entry.timezoneName + "\n");
                     }
 
-                    channel.sendMessage(":white_check_mark: Your timezone was saved as **" + zoneName + "**.\n" +
-                            "It may take some time for the timezone role to show up, as they are updated every 15 minutes.").queue();
+                    respond.accept(":white_check_mark: Your timezone was saved as **" + timezoneParam + "**.\n" +
+                            "It may take some time for the timezone role to show up, as they are updated every 15 minutes.");
                 } catch (IOException e) {
                     // I/O error while saving to disk??
                     logger.error("Error while writing file", e);
-                    channel.sendMessage(":x: A technical error occurred.").queue();
+                    respond.accept(":x: A technical error occurred.");
                 }
             } catch (DateTimeException ex) {
                 // ZoneId.of blew up so the timezone is probably invalid.
-                logger.info("Could not parse timezone from command " + message, ex);
-                channel.sendMessage(":x: The given timezone was not recognized.\n" +
-                        "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html").queue();
+                logger.info("Could not parse timezone " + timezoneParam, ex);
+                respond.accept(":x: The given timezone was not recognized.\n" +
+                        "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html");
             }
         }
 
-        if (!user.isBot() && message.equals("!remove_timezone")) {
+        if (command.equals("remove_timezone")) {
             UserTimezone userTimezone = userTimezones.stream()
-                    .filter(u -> u.serverId == channel.getGuild().getIdLong() && u.userId == user.getIdLong())
+                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
                     .findFirst().orElse(null);
 
             if (userTimezone != null) {
                 // remove all timezone roles from the user.
-                Guild server = channel.getGuild();
+                Guild server = member.getGuild();
                 for (Role userRole : member.getRoles()) {
                     if (timezoneOffsetRoles.stream().anyMatch(l -> l.serverId == server.getIdLong() && l.roleId == userRole.getIdLong())) {
                         logger.info("Removing timezone role {} from {}", userRole, member);
@@ -232,22 +355,22 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         writer.write(entry.serverId + ";" + entry.userId + ";" + entry.timezoneName + "\n");
                     }
 
-                    channel.sendMessage(":white_check_mark: Your timezone role has been removed.").queue();
+                    respond.accept(":white_check_mark: Your timezone role has been removed.");
                 } catch (IOException e) {
                     // I/O error while saving to disk??
                     logger.error("Error while writing file", e);
-                    channel.sendMessage(":x: A technical error occurred.").queue();
+                    respond.accept(":x: A technical error occurred.");
                 }
             } else {
                 // user asked for their timezone to be forgotten, but doesn't have a timezone to start with :thonk:
-                channel.sendMessage(":x: You don't currently have a timezone role!").queue();
+                respond.accept(":x: You don't currently have a timezone role!");
             }
         }
 
-        if (!user.isBot() && message.equals("!toggle_times") && (member.hasPermission(Permission.ADMINISTRATOR)
+        if (command.equals("toggle_times") && (member.hasPermission(Permission.ADMINISTRATOR)
                 || member.hasPermission(Permission.MANAGE_SERVER))) {
 
-            long guildId = channel.getGuild().getIdLong();
+            long guildId = member.getGuild().getIdLong();
             boolean newValue = !serversWithTime.contains(guildId);
             if (newValue) {
                 serversWithTime.add(guildId);
@@ -260,17 +383,24 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     writer.write(server + "\n");
                 }
 
-                channel.sendMessage(":white_check_mark: " + (newValue ?
+                respond.accept(":white_check_mark: " + (newValue ?
                         "The timezone roles will now show the time it is in the timezone." :
                         "The timezone roles won't show the time it is in the timezone anymore.") + "\n" +
-                        "It may take some time for the roles to update, as they are updated every 15 minutes.").queue();
+                        "It may take some time for the roles to update, as they are updated every 15 minutes.");
             } catch (IOException e) {
                 // I/O error while saving to disk??
                 logger.error("Error while writing file", e);
-                channel.sendMessage(":x: A technical error occurred.").queue();
+                respond.accept(":x: A technical error occurred.");
             }
         }
 
+
+        if (command.equals("toggle_times") && isSlashCommand && !member.hasPermission(Permission.ADMINISTRATOR)
+                && !member.hasPermission(Permission.MANAGE_SERVER)) {
+
+            // we should always respond to slash commands!
+            respond.accept("You must have the Administrator or Manage Server permission to use this!");
+        }
     }
 
     public void run() {
@@ -420,7 +550,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     }
                 }
 
-                jda.getPresence().setActivity(Activity.playing("!timezone | " + timezoneOffsetRoles.size() + " roles | " +
+                jda.getPresence().setActivity(Activity.playing("/timezone | " + timezoneOffsetRoles.size() + " roles | " +
                         userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " + jda.getGuilds().size() + " servers"));
 
             } catch (Exception e) {
