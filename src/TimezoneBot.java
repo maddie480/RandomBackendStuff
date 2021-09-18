@@ -260,32 +260,33 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         .map(r -> new CommandPrivilege(CommandPrivilege.Type.ROLE, true, r.getIdLong()))
                         .collect(Collectors.toCollection(ArrayList::new));
 
-                Member owner = g.retrieveOwner().complete();
-                boolean ownerOverrideRequired = owner.getRoles().stream().noneMatch(rolesWithPerms::contains);
-                if (ownerOverrideRequired) {
-                    // the owner has no admin role! but under Discord rules they're still an admin, so they need a privilege
-                    privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
-                }
+                g.retrieveOwner().queue(owner -> {
+                    boolean ownerOverrideRequired = owner.getRoles().stream().noneMatch(rolesWithPerms::contains);
+                    if (ownerOverrideRequired) {
+                        // the owner has no admin role! but under Discord rules they're still an admin, so they need a privilege
+                        privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
+                    }
 
-                List<CommandPrivilege> allowEveryone = Collections.singletonList(new CommandPrivilege(CommandPrivilege.Type.ROLE, true, g.getPublicRole().getIdLong()));
-                if (privileges.size() > 10) {
-                    logger.debug("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
-                    g.updateCommandPrivileges(ImmutableMap.of(
-                                    timezone.getId(), allowEveryone,
-                                    detectTimezone.getId(), allowEveryone,
-                                    removeTimezone.getId(), allowEveryone,
-                                    toggleTimes.getId(), allowEveryone))
-                            .queue();
-                } else {
-                    logger.debug("The following entities have access to /toggle_times in {}: roles {}{}", g, rolesWithPerms,
-                            (ownerOverrideRequired ? ", owner " + owner : ""));
-                    g.updateCommandPrivileges(ImmutableMap.of(
-                                    timezone.getId(), allowEveryone,
-                                    detectTimezone.getId(), allowEveryone,
-                                    removeTimezone.getId(), allowEveryone,
-                                    toggleTimes.getId(), privileges))
-                            .queue();
-                }
+                    List<CommandPrivilege> allowEveryone = Collections.singletonList(new CommandPrivilege(CommandPrivilege.Type.ROLE, true, g.getPublicRole().getIdLong()));
+                    if (privileges.size() > 10) {
+                        logger.debug("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
+                        g.updateCommandPrivileges(ImmutableMap.of(
+                                        timezone.getId(), allowEveryone,
+                                        detectTimezone.getId(), allowEveryone,
+                                        removeTimezone.getId(), allowEveryone,
+                                        toggleTimes.getId(), allowEveryone))
+                                .queue();
+                    } else {
+                        logger.debug("The following entities have access to /toggle_times in {}: roles {}{}", g, rolesWithPerms,
+                                (ownerOverrideRequired ? ", owner " + owner : ""));
+                        g.updateCommandPrivileges(ImmutableMap.of(
+                                        timezone.getId(), allowEveryone,
+                                        detectTimezone.getId(), allowEveryone,
+                                        removeTimezone.getId(), allowEveryone,
+                                        toggleTimes.getId(), privileges))
+                                .queue();
+                    }
+                });
             }
         });
     }
@@ -479,7 +480,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         logger.warn("I can't manage roles here! Skipping.");
                         continue;
                     }
-                    
+
                     final long guildId = server.getIdLong();
 
                     // timezones no one has anymore
@@ -535,8 +536,13 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                     Role serverRole = server.getRoleById(roleId);
                                     logger.info("Removing timezone role {} from {}", serverRole, member);
                                     membersCached.remove(member);
-                                    server.removeRoleFromMember(getMemberForReal(member), serverRole)
-                                            .reason("Timezone of user changed to " + offset).complete();
+
+                                    Member memberDiscord = getMemberForReal(member);
+                                    if (memberDiscord != null && memberDiscord.getRoles().contains(serverRole)) {
+                                        server.removeRoleFromMember(memberDiscord, serverRole).reason("Timezone of user changed to " + offset).complete();
+                                    } else {
+                                        logger.warn("Member left or does not have the role!");
+                                    }
                                 } else if (roleId == targetRole.getIdLong()) {
                                     // this is the role the user is supposed to have.
                                     userHasCorrectRole = true;
@@ -547,7 +553,13 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                 // the user doesn't have the timezone role they're supposed to have!
                                 logger.info("Adding timezone role {} to {}", targetRole, member);
                                 membersCached.remove(member);
-                                server.addRoleToMember(getMemberForReal(member), targetRole).reason("Timezone of user changed to " + offset).queue();
+
+                                Member memberDiscord = getMemberForReal(member);
+                                if (memberDiscord != null && !memberDiscord.getRoles().contains(targetRole)) {
+                                    server.addRoleToMember(memberDiscord, targetRole).reason("Timezone of user changed to " + offset).queue();
+                                } else {
+                                    logger.warn("Member left or already has the role!");
+                                }
                             }
                         }
                     }
