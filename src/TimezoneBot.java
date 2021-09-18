@@ -98,6 +98,15 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             this.memberId = memberId;
             this.roleIds = roleIds;
         }
+
+        @Override
+        public String toString() {
+            return "MemberCache{" +
+                    "serverId=" + serverId +
+                    ", memberId=" + memberId +
+                    ", roleIds=" + roleIds +
+                    '}';
+        }
     }
 
     /**
@@ -176,6 +185,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
         // start up the bot.
         jda = JDABuilder.create(SecretConstants.TIMEZONE_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)
+                .setActivity(Activity.playing("Starting up..."))
                 .addEventListeners(new TimezoneBot(),
                         // some code specific to the Strawberry Jam 2021 server, not published and has nothing to do with timezones
                         // but that wasn't really enough to warrant a separate bot
