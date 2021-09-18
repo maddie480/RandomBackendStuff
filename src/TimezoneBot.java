@@ -161,7 +161,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     private static List<UserTimezone> userTimezones; // user ID > timezone name
     private static List<TimezoneOffsetRole> timezoneOffsetRoles; // UTC offset in minutes > role ID
     private static Set<Long> serversWithTime; // servers that want times in timezone roles
-    private static List<MemberCache> membersCached = new ArrayList<>();
+    private static final List<MemberCache> membersCached = new ArrayList<>();
     private static JDA jda;
 
     private static final String SAVE_FILE_NAME = "user_timezones.csv";
@@ -540,7 +540,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                             }
 
                             boolean userHasCorrectRole = false;
-                            for (Long roleId : member.roleIds) {
+                            for (long roleId : member.roleIds) {
                                 if (roleId != targetRole.getIdLong() && timezoneOffsetRolesThisServer.values().stream().anyMatch(l -> l == roleId)) {
                                     // the user has a timezone role that doesn't match their timezone!
                                     Role serverRole = server.getRoleById(roleId);
@@ -548,10 +548,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                     membersCached.remove(member);
 
                                     Member memberDiscord = getMemberForReal(member);
-                                    if (memberDiscord != null && memberDiscord.getRoles().contains(serverRole)) {
+                                    if (memberDiscord != null && serverRole != null && memberDiscord.getRoles().contains(serverRole)) {
                                         server.removeRoleFromMember(memberDiscord, serverRole).reason("Timezone of user changed to " + offset).complete();
                                     } else {
-                                        logger.warn("Member left or does not have the role!");
+                                        logger.warn("Member left, does not have the role, or the role is gone!");
                                     }
                                 } else if (roleId == targetRole.getIdLong()) {
                                     // this is the role the user is supposed to have.
