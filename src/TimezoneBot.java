@@ -634,6 +634,13 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     }
                 }
                 userTimezones.removeAll(toDelete);
+                
+                for (MemberCache memberCache : new ArrayList<>(membersCached)) {
+                    if (jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == memberCache.serverId)) {
+                        logger.info("Removing user {} from cache belonging to non-existing server", memberCache);
+                        membersCached.remove(memberCache);
+                    }
+                }
 
                 if (usersDeleted) {
                     // save the new list, after users were deleted, to disk.
