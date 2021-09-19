@@ -11,7 +11,6 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
@@ -25,7 +24,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -203,27 +201,6 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             result.put(fakeIndex++, roleId);
         }
         return result;
-    }
-
-    @Override
-    public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
-        String message = event.getMessage().getContentRaw().trim();
-
-        if (!event.getAuthor().isBot() && message.startsWith("!")) {
-            // for example, !timezone UTC+8 will become command = timezone and timezoneParam = UTC+8.
-            // and !remove_timezone will become command = remove_timezone ana timezoneParam = null
-            String command = message.substring(1);
-            String timezoneParam = null;
-            if (command.contains(" ")) {
-                String[] split = command.split(" ", 2);
-                command = split[0];
-                timezoneParam = split[1];
-            }
-
-            // handle the command and respond to the same channel, appending a deprecation warning to any message.
-            processMessage(event.getMember(), command, timezoneParam, response -> event.getChannel().sendMessage(response + "\n\n" +
-                    ":warning: Commands starting with `!` are deprecated and may be removed in the future. Use slash commands instead!").queue(), false);
-        }
     }
 
     @Override
