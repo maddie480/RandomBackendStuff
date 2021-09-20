@@ -120,7 +120,10 @@ public class ModStructureVerifier extends ListenerAdapter {
 
         // start up the bot.
         jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, GatewayIntent.GUILD_MESSAGES)
-                .addEventListeners(new ModStructureVerifier())
+                .addEventListeners(new ModStructureVerifier(),
+                        // some code specific to the Strawberry Jam 2021 server, not published and has nothing to do with timezones
+                        // but that wasn't really enough to warrant a separate bot
+                        new StrawberryJamUpdate())
                 .build().awaitReady();
 
         int serverCount = jda.getGuilds().size();

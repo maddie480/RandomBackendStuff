@@ -18,7 +18,6 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -125,11 +124,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         }
 
         // start up the bot.
-        jda = JDABuilder.create(SecretConstants.TIMEZONE_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)
-                .addEventListeners(new TimezoneBot(),
-                        // some code specific to the Strawberry Jam 2021 server, not published and has nothing to do with timezones
-                        // but that wasn't really enough to warrant a separate bot
-                        new StrawberryJamUpdate())
+        jda = JDABuilder.createLight(SecretConstants.TIMEZONE_BOT_TOKEN, Collections.emptyList())
+                .addEventListeners(new TimezoneBot())
                 .build().awaitReady();
 
         // cleanup non-existing servers from servers with time, and save.
