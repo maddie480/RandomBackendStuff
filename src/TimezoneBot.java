@@ -10,7 +10,11 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
+import net.dv8tion.jda.api.events.guild.update.GuildUpdateOwnerEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
+import net.dv8tion.jda.api.events.role.RoleCreateEvent;
+import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
+import net.dv8tion.jda.api.events.role.update.RoleUpdatePermissionsEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
@@ -143,17 +147,23 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
         logger.debug("Users by timezone = {}, servers with time = {}, member cache = {}", userTimezones.size(), serversWithTime.size(), memberCache.size());
 
+        // also ensure the /toggle_times permissions are appropriate (in case we missed an event while being down).
+        logger.info("Updating /toggle_times permissions on all known guilds...");
+        updateToggleTimesPermsForGuilds(jda.getGuilds());
+
         // start the background process to update users' roles.
         new Thread(new TimezoneBot()).start();
     }
 
-    // let the owner know when the bot joins or leaves servers
+    // === BEGIN event handling for /toggle_times
+
     @Override
     public void onGuildJoin(@NotNull GuildJoinEvent event) {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
                 .sendMessage("I just joined a new server: " + event.getGuild().getName()).queue();
 
         // set up privileges for the new server!
+        logger.info("Updating /toggle_times permissions on newly joined guild {}", event.getGuild());
         updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
     }
 
@@ -162,6 +172,48 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
                 .sendMessage("I just left a server: " + event.getGuild().getName()).queue();
     }
+
+    @Override
+    public void onGuildUpdateOwner(@NotNull GuildUpdateOwnerEvent event) {
+        // this means the privileges should be given to the new owner!
+        logger.info("Updating /toggle_times permissions after ownership transfer on {} ({} -> {})", event.getGuild(), event.getOldOwner(), event.getNewOwner());
+        updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
+    }
+
+    @Override
+    public void onRoleCreate(@NotNull RoleCreateEvent event) {
+        if (event.getRole().hasPermission(Permission.ADMINISTRATOR) || event.getRole().hasPermission(Permission.MANAGE_SERVER)) {
+            // the new role has permission to call /toggle_times, so we should give it to it.
+            logger.info("Updating /toggle_times permissions after new role was created on {} ({} with permissions {})", event.getGuild(),
+                    event.getRole(), event.getRole().getPermissions());
+            updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
+        }
+    }
+
+    @Override
+    public void onRoleUpdatePermissions(@NotNull RoleUpdatePermissionsEvent event) {
+        if (event.getOldPermissions().contains(Permission.ADMINISTRATOR) != event.getNewPermissions().contains(Permission.ADMINISTRATOR)
+                || event.getOldPermissions().contains(Permission.MANAGE_SERVER) != event.getNewPermissions().contains(Permission.MANAGE_SERVER)) {
+
+            // the role was just added / removed a permission giving access to /toggle_times, so we need to update!
+            logger.info("Updating /toggle_times permissions after role {} was updated on {} ({} -> {})",
+                    event.getRole(), event.getGuild(), event.getOldPermissions(), event.getNewPermissions());
+            updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
+        }
+    }
+
+    @Override
+    public void onRoleDelete(@NotNull RoleDeleteEvent event) {
+        if (event.getRole().hasPermission(Permission.ADMINISTRATOR) || event.getRole().hasPermission(Permission.MANAGE_SERVER)) {
+            // the role had permission to call /toggle_times, so we should refresh.
+            // (this is mainly in case this makes the server go below the 10 overrides limit.)
+            logger.info("Updating /toggle_times permissions after role was deleted on {} ({} with permissions {})", event.getGuild(),
+                    event.getRole(), event.getRole().getPermissions());
+            updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
+        }
+    }
+
+    // === END event handling for /toggle_times
 
     /**
      * Looks up timezone offset roles for a server by matching them by role name.
@@ -558,9 +610,6 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     memberCache.remove(0);
                 }
             }
-
-            // also ensure the /toggle_times permissions are appropriate (this is asynchronous).
-            updateToggleTimesPermsForGuilds(jda.getGuilds());
         }
     }
 
@@ -696,33 +745,30 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         .map(r -> new CommandPrivilege(CommandPrivilege.Type.ROLE, true, r.getIdLong()))
                         .collect(Collectors.toCollection(ArrayList::new));
 
-                g.retrieveOwner().queue(owner -> {
-                    boolean ownerOverrideRequired = owner.getRoles().stream().noneMatch(rolesWithPerms::contains);
-                    if (ownerOverrideRequired) {
-                        // the owner has no admin role! but under Discord rules they're still an admin, so they need a privilege
-                        privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
-                    }
+                // add the guild's owner to the list, because under Discord rules they're still an admin even if they
+                // don't have any role giving them the admin permission.
+                privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
 
-                    List<CommandPrivilege> allowEveryone = Collections.singletonList(new CommandPrivilege(CommandPrivilege.Type.ROLE, true, g.getPublicRole().getIdLong()));
-                    if (privileges.size() > 10) {
-                        logger.debug("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
-                        g.updateCommandPrivileges(ImmutableMap.of(
-                                        timezone.getId(), allowEveryone,
-                                        detectTimezone.getId(), allowEveryone,
-                                        removeTimezone.getId(), allowEveryone,
-                                        toggleTimes.getId(), allowEveryone))
-                                .queue();
-                    } else {
-                        logger.debug("The following entities have access to /toggle_times in {}: roles {}{}", g, rolesWithPerms,
-                                (ownerOverrideRequired ? ", owner " + owner : ""));
-                        g.updateCommandPrivileges(ImmutableMap.of(
-                                        timezone.getId(), allowEveryone,
-                                        detectTimezone.getId(), allowEveryone,
-                                        removeTimezone.getId(), allowEveryone,
-                                        toggleTimes.getId(), privileges))
-                                .queue();
-                    }
-                });
+                List<CommandPrivilege> allowEveryone = Collections.singletonList(new CommandPrivilege(CommandPrivilege.Type.ROLE, true, g.getPublicRole().getIdLong()));
+                if (privileges.size() > 10) {
+                    // this is more overrides than Discord allows! so just allow everyone to use the command,
+                    // non-admins will get an error message if they try anyway.
+                    logger.debug("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
+                    g.updateCommandPrivileges(ImmutableMap.of(
+                                    timezone.getId(), allowEveryone,
+                                    detectTimezone.getId(), allowEveryone,
+                                    removeTimezone.getId(), allowEveryone,
+                                    toggleTimes.getId(), allowEveryone))
+                            .queue();
+                } else {
+                    logger.debug("The following entities have access to /toggle_times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
+                    g.updateCommandPrivileges(ImmutableMap.of(
+                                    timezone.getId(), allowEveryone,
+                                    detectTimezone.getId(), allowEveryone,
+                                    removeTimezone.getId(), allowEveryone,
+                                    toggleTimes.getId(), privileges))
+                            .queue();
+                }
             }
         });
     }
