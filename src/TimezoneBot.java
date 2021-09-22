@@ -301,6 +301,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 // save the link, both in userTimezones and on disk.
                 userTimezones.add(new UserTimezone(member.getGuild().getIdLong(), member.getIdLong(), timezoneParam));
                 logger.info("User {} now has timezone {}", member.getIdLong(), timezoneParam);
+                memberCache.remove(getMemberWithCache(member.getGuild(), member.getIdLong()));
                 saveUsersTimezonesToFile(respond, ":white_check_mark: Your timezone was saved as **" + timezoneParam + "**.\n" +
                         "It may take some time for the timezone role to show up, as they are updated every 15 minutes.");
             } catch (DateTimeException ex) {
