@@ -323,6 +323,13 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     .findFirst().orElse(null);
 
             if (userTimezone != null) {
+                String error = getRoleUpdateMessage(member.getGuild(), member, null, "You will be able to remove your timezone role once this is done.");
+                if (error != null) {
+                    // since the command involves removing the roles **now**, we can't do it at all if there are permission issues!
+                    respond.accept(error.replace(":warning:", ":x:"));
+                    return;
+                }
+
                 // remove all timezone roles from the user.
                 Guild server = member.getGuild();
                 for (Role userRole : member.getRoles()) {
@@ -396,7 +403,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             // bot can't manage roles
             return "\n:warning: Please " + (caller.hasPermission(Permission.ADMINISTRATOR) ? "" : "tell an admin to ")
                     + "grant the **Manage Roles** permission to the bot, so that it can "
-                    + "assign create and assign timezone roles. " + failure;
+                    + "create and assign timezone roles. " + failure;
         } else if (getTimezoneOffsetRolesForGuild(server).values().stream()
                 .anyMatch(roleId -> !server.getSelfMember().canInteract(server.getRoleById(roleId)))) {
 
