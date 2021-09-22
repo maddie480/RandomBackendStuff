@@ -99,6 +99,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     private static Set<Long> serversWithTime; // servers that want times in timezone roles
     private static ArrayList<CachedMember> memberCache = new ArrayList<>(); // cache of users retrieved in the past
 
+    private static ZonedDateTime lastRoleUpdateDate = null;
+
     private static JDA jda;
 
     // names of files on disk
@@ -303,7 +305,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 logger.info("User {} now has timezone {}", member.getIdLong(), timezoneParam);
                 memberCache.remove(getMemberWithCache(member.getGuild(), member.getIdLong()));
                 saveUsersTimezonesToFile(respond, ":white_check_mark: Your timezone was saved as **" + timezoneParam + "**.\n" +
-                        "It may take some time for the timezone role to show up, as they are updated every 15 minutes.");
+                        getRoleUpdateMessage(member.getGuild(), member,
+                                "It may take some time for the timezone role to show up, as they are updated every 15 minutes.",
+                                "Your role will be assigned within 15 minutes once this is done."));
             } catch (DateTimeException ex) {
                 // ZoneId.of blew up so the timezone is probably invalid.
                 logger.info("Could not parse timezone " + timezoneParam, ex);
@@ -358,7 +362,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 respond.accept(":white_check_mark: " + (newValue ?
                         "The timezone roles will now show the time it is in the timezone." :
                         "The timezone roles won't show the time it is in the timezone anymore.") + "\n" +
-                        "It may take some time for the roles to update, as they are updated every 15 minutes.");
+                        getRoleUpdateMessage(member.getGuild(), member,
+                                "It may take some time for the roles to update, as they are updated every 15 minutes.",
+                                "The roles will be updated within 15 minutes once this is done."));
             } catch (IOException e) {
                 // I/O error while saving to disk??
                 logger.error("Error while writing file", e);
@@ -375,6 +381,33 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         }
     }
 
+    /**
+     * Checks that everything is fine with the server before answering to /timezone and /toggle_times.
+     *
+     * @param server  The server the slash command was sent in
+     * @param caller  The member that sent the command
+     * @param success The message to return in case of success
+     * @param failure The message to append in case of failure
+     * @return The message to send to the user, either the "success" parameter or an explanation of how to solve
+     * the issue with the server settings, with "failure" appended
+     */
+    private static String getRoleUpdateMessage(Guild server, Member caller, String success, String failure) {
+        if (!server.getSelfMember().hasPermission(Permission.MANAGE_ROLES)) {
+            // bot can't manage roles
+            return "\n:warning: Please " + (caller.hasPermission(Permission.ADMINISTRATOR) ? "" : "tell an admin to ")
+                    + "grant the **Manage Roles** permission to the bot, so that it can "
+                    + "assign create and assign timezone roles. " + failure;
+        } else if (getTimezoneOffsetRolesForGuild(server).values().stream()
+                .anyMatch(roleId -> !server.getSelfMember().canInteract(server.getRoleById(roleId)))) {
+
+            // bot has a lower top role than one of the timezone roles
+            return "\n:warning: Please " + (caller.hasPermission(Permission.ADMINISTRATOR) ? "" : "tell an admin to ")
+                    + "ensure that the Timezone Bot is higher in the role list than all timezone roles, so that it has "
+                    + "the permission to manage and assign them. " + failure;
+        }
+        return success;
+    }
+
     public void run() {
         while (true) {
             try {
@@ -384,6 +417,12 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     logger.info("=== Refreshing timezones for server {}", server);
                     if (!server.getSelfMember().hasPermission(Permission.MANAGE_ROLES)) {
                         logger.warn("I can't manage roles here! Skipping.");
+                        continue;
+                    }
+                    if (getTimezoneOffsetRolesForGuild(server).values().stream()
+                            .anyMatch(roleId -> !server.getSelfMember().canInteract(server.getRoleById(roleId)))) {
+
+                        logger.warn("I can't manage all timezone roles here! Skipping.");
                         continue;
                     }
 
@@ -414,6 +453,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     // sleep to the start of the next minute
                     Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
                             + ZonedDateTime.now().getNano() / 1_000_000) + 50);
+
+                    if (ZonedDateTime.now().getMinute() % 15 == 14) {
+                        // diagnostics: check how long it took to update all roles
+                        logger.debug("Last role was updated on {}", lastRoleUpdateDate);
+                    }
                 } while (ZonedDateTime.now().getMinute() % 15 != 0);
             } catch (InterruptedException e) {
                 logger.error("Sleep interrupted(???)", e);
@@ -554,7 +598,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             String roleName = "Timezone " + timezoneOffsetFormatted +
                     (serversWithTime.contains(guildId) ? " (" + now.format(DateTimeFormatter.ofPattern("ha")).toLowerCase(Locale.ROOT) + ")" : "");
             if (!roleName.equals(role.getName())) {
-                role.getManager().setName(roleName).reason("Time passed").queue();
+                role.getManager().setName(roleName).reason("Time passed").queue(success -> lastRoleUpdateDate = ZonedDateTime.now());
                 logger.debug("Timezone role renamed for offset {}: {} -> {}", zoneOffset, role, roleName);
             }
         }
