@@ -2,7 +2,6 @@ package com.max480.discord.randombots;
 
 import com.google.cloud.storage.*;
 import com.google.common.collect.ImmutableMap;
-import com.max480.quest.modmanagerbot.BotClient;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.Tailer;
@@ -81,8 +80,7 @@ public class UpdateCheckerTracker implements TailerListener {
                 lastLineIsNetworkError = false;
 
                 // and post it!
-                BotClient.getInstance().getTextChannelById(SecretConstants.UPDATE_CHECKER_CHANNEL)
-                        .sendMessage("`" + line + "`").queue();
+                executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`" + line + "`");
 
                 // flag Lua Cutscenes updates
                 if (line.contains("name='LuaCutscenes'")) {
@@ -97,25 +95,17 @@ public class UpdateCheckerTracker implements TailerListener {
                         || line.contains("to Banana Mirror")
                         || line.contains("from Banana Mirror")) {
 
-                    for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
-                        String truncatedLine = line;
-                        if (truncatedLine.contains(" - ")) {
-                            truncatedLine = truncatedLine.substring(truncatedLine.indexOf(" - ") + 3);
-                        }
-                        if (truncatedLine.startsWith("=> ")) {
-                            truncatedLine = truncatedLine.substring(3);
-                        }
-                        truncatedLine = findEmoji(truncatedLine) + " " + truncatedLine;
+                    String truncatedLine = line;
+                    if (truncatedLine.contains(" - ")) {
+                        truncatedLine = truncatedLine.substring(truncatedLine.indexOf(" - ") + 3);
+                    }
+                    if (truncatedLine.startsWith("=> ")) {
+                        truncatedLine = truncatedLine.substring(3);
+                    }
+                    truncatedLine = findEmoji(truncatedLine) + " " + truncatedLine;
 
-                        try {
-                            WebhookExecutor.executeWebhook(webhook,
-                                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
-                                    "Everest Update Checker",
-                                    truncatedLine,
-                                    ImmutableMap.of("X-Everest-Log", "true"));
-                        } catch (InterruptedException | IOException e) {
-                            log.error("Error while sending alert", e);
-                        }
+                    for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+                        executeWebhook(webhook, truncatedLine);
                     }
                 }
             }
@@ -170,9 +160,26 @@ public class UpdateCheckerTracker implements TailerListener {
                 }
             } catch (IOException e) {
                 log.error("Error during a call to frontend to refresh databases", e);
-                BotClient.getInstance().getTextChannelById(SecretConstants.UPDATE_CHECKER_CHANNEL)
-                        .sendMessage("Frontend call failed: " + e.toString()).queue();
+                executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`Frontend call failed: " + e.toString() + "`");
             }
+        }
+    }
+
+    /**
+     * Executes a webhook with the "Everest Update Checker" header, profile picture and name.
+     *
+     * @param url     The URL of the webhook
+     * @param message The message to send
+     */
+    private void executeWebhook(String url, String message) {
+        try {
+            WebhookExecutor.executeWebhook(url,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "Everest Update Checker",
+                    message,
+                    ImmutableMap.of("X-Everest-Log", "true"));
+        } catch (InterruptedException | IOException e) {
+            log.error("Error while sending log message", e);
         }
     }
 
@@ -203,10 +210,7 @@ public class UpdateCheckerTracker implements TailerListener {
     @Override
     public void handle(Exception ex) {
         log.error("Error while tracking /tmp/update_checker.log", ex);
-
-        BotClient.getInstance().getTextChannelById(SecretConstants.UPDATE_CHECKER_CHANNEL)
-                .sendMessage("Error while tracking /tmp/update_checker.log: " + ex.toString())
-                .queue();
+        executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`Error while tracking /tmp/update_checker.log: " + ex.toString() + "`");
     }
 
     public static void sendToCloudStorage(String file, String name, String contentType, boolean isPublic) throws IOException {

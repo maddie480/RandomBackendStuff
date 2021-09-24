@@ -13,6 +13,7 @@ public class SecretConstantsDummy {
     // bot credentials
     static final String TIMEZONE_BOT_TOKEN = "";
     static final String MOD_STRUCTURE_VERIFIER_TOKEN = "";
+    static final String STRAWBERRY_JAM_LOCATION = "";
 
     // API key allowing to download stuff from Google Drive
     static final String GOOGLE_DRIVE_API_KEY = "";
@@ -27,8 +28,13 @@ public class SecretConstantsDummy {
     static final String MOD_SEARCH_RELOAD_API = "";
     static final String LUA_CUTSCENES_DOC_UPLOAD_API = "";
 
-    // Discord webhooks to call about yield return orig(self) issues
+    // Discord webhooks to call about GameBanana check issues
     // the first entry is the "owner" one and will also be called for analysis errors
-    static final List<String> YIELD_RETURN_ALERT_HOOKS = Collections.emptyList();
+    static final List<String> GAMEBANANA_ISSUES_ALERT_HOOKS = Collections.emptyList();
+
+    // hooks to call when posting update checker notifications
     static final List<String> UPDATE_CHECKER_HOOKS = Collections.emptyList();
+
+    // hook to call for update checker technical logs
+    static final String UPDATE_CHECKER_LOGS_HOOK = "";
 }

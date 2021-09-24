@@ -238,7 +238,7 @@ public class GameBananaAutomatedChecks {
 
                         // send an angry ping to the owner to have the mod manually checked
                         try {
-                            WebhookExecutor.executeWebhook(SecretConstants.YIELD_RETURN_ALERT_HOOKS.get(0),
+                            WebhookExecutor.executeWebhook(SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS.get(0),
                                     "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
                                     "Banana Watch",
                                     "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
@@ -485,7 +485,7 @@ public class GameBananaAutomatedChecks {
     }
 
     private static void sendAlertToWebhook(String message) throws IOException {
-        for (String webhook : SecretConstants.YIELD_RETURN_ALERT_HOOKS) {
+        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
             try {
                 WebhookExecutor.executeWebhook(webhook,
                         "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
