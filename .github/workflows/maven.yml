@@ -1,0 +1,47 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+        cache: maven
+    - name: Build with Maven
+      run: |
+        # We first need to restructure the project for it to build
+        mkdir -p newsrc/main/java/com/max480/discord/randombots
+        find src -type f -exec mv -v {} newsrc/main/java/com/max480/discord/randombots \;
+        rm -rfv src/
+        mv -v newsrc src
+        
+        # Temporarily create a dummy StrawberryJamUpdate
+        echo "package com.max480.discord.randombots; public class StrawberryJamUpdate extends net.dv8tion.jda.api.hooks.ListenerAdapter {}" > src/main/java/com/max480/discord/randombots/StrawberryJamUpdate.java
+        
+        # Copy the ConstantsDummy to Constants
+        cp -v src/main/java/com/max480/discord/randombots/SecretConstantsDummy.java src/main/java/com/max480/discord/randombots/SecretConstants.java
+        sed -i s/SecretConstantsDummy/SecretConstants/ src/main/java/com/max480/discord/randombots/SecretConstants.java
+        
+        # Bring in the update checker and install it
+        git clone https://github.com/max4805/EverestUpdateCheckerServer.git
+        cd EverestUpdateCheckerServer
+        mvn install
+        cd ..
+        
+        # And finally compile the project
+        mvn -B package --file pom.xml
