@@ -267,8 +267,6 @@ public class CustomEntityCatalogGenerator {
                     case 53645: // Isa's Grab Bag: one file containing all entities
                         info.entityList.remove("isaentities.jl");
                         info.entityList.add("BadelineFriend.jl");
-                        info.entityList.add("DreamSpinner.jl");
-                        info.entityList.add("DreamSpinnerFake.jl");
                         info.entityList.add("ColorBlock.jl");
                         info.entityList.add("ColorSwitch.jl");
                         info.entityList.add("WaterBoost.jl");
@@ -299,6 +297,10 @@ public class CustomEntityCatalogGenerator {
 
                     case 53699: // Honly Helper: common prefix to remove
                         replacePrefix(info, "Honly");
+                        break;
+
+                    case 320381: // ParrotHelper: common prefix to remove
+                        replacePrefix(info, "ParrotHelper");
                         break;
 
                     case 53636: // Dialog Textbox Trigger: obsolete
