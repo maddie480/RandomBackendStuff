@@ -369,7 +369,7 @@ public class GameBananaAutomatedChecks {
     private static boolean modIsObsolete(String mod) {
         try {
             return runWithRetry(() -> {
-                try (InputStream is = new URL("https://gamebanana.com/apiv3/" + mod).openStream()) {
+                try (InputStream is = new URL("https://gamebanana.com/apiv6/" + mod + "?_csvProperties=_bIsObsolete").openStream()) {
                     JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                     return modInfo.getBoolean("_bIsObsolete");
                 }
