@@ -249,13 +249,6 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Sorted list API test in full mode failed");
         }
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories").openStream(), UTF_8)
-                .contains("- itemtype: Tool\n" +
-                        "  formatted: Tools\n" +
-                        "  count: ")) {
-
-            throw new IOException("Categories list API v1 failed");
-        }
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2").openStream(), UTF_8)
                 .contains("- categoryid: 6800\n" +
                         "  formatted: Maps\n" +
@@ -286,6 +279,28 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Banana Mirror Image API test failed");
         }
         connection.disconnect();
+    }
+
+    /**
+     * Checks other GameBanana-related APIs that are less critical, like deprecated versions.
+     * Run daily.
+     */
+    public static void checkSmallerGameBananaAPIs() throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/random-map").openConnection();
+        connection.setInstanceFollowRedirects(true);
+        connection.connect();
+        if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("Celeste")) {
+            throw new IOException("Didn't get redirected to a random Celeste map!");
+        }
+        connection.disconnect();
+
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories").openStream(), UTF_8)
+                .contains("- itemtype: Tool\n" +
+                        "  formatted: Tools\n" +
+                        "  count: ")) {
+
+            throw new IOException("Categories list API v1 failed");
+        }
     }
 
     /**
