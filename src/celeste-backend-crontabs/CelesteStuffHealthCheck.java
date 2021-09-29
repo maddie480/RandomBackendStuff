@@ -234,17 +234,34 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Extended Variant Mode search test failed");
         }
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE&full=true").openStream(), UTF_8)
+                .contains("\"Name\":\"Extended Variant Mode\"")) {
+
+            throw new IOException("Extended Variant Mode search in full mode test failed");
+        }
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1").openStream(), UTF_8)
                 .contains("{itemtype: Tool, itemid: 6449}")) { // Everest
 
             throw new IOException("Sorted list API test failed");
         }
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2").openStream(), UTF_8)
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&category=6800&page=1&full=true").openStream(), UTF_8)
+                .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
+
+            throw new IOException("Sorted list API test in full mode failed");
+        }
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories").openStream(), UTF_8)
                 .contains("- itemtype: Tool\n" +
                         "  formatted: Tools\n" +
                         "  count: ")) {
 
-            throw new IOException("Categories list API failed");
+            throw new IOException("Categories list API v1 failed");
+        }
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2").openStream(), UTF_8)
+                .contains("- categoryid: 6800\n" +
+                        "  formatted: Maps\n" +
+                        "  count: ")) {
+
+            throw new IOException("Categories list API v2 failed");
         }
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10").openStream(), UTF_8)
                 .contains("<title>Outcast Outback Helper</title>")) {
