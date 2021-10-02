@@ -156,7 +156,7 @@ public class CelesteStuffHealthCheck {
         HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.herokuapp.com/api/mods?q=spring").openConnection();
         connection.setRequestProperty("Accept", "application/json");
         connection.connect();
-        if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("\"SpringCollab2020Audio\":\"https://celestemodupdater.0x0a.de/banana-mirror/484937.zip\"")) {
+        if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("\"url\":\"https://celestemodupdater.0x0a.de/banana-mirror/484937.zip\"")) {
             throw new IOException("Banana Mirror Browser API test failed");
         }
         connection.disconnect();
