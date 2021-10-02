@@ -15,6 +15,11 @@ public class SecretConstantsDummy {
     static final String MOD_STRUCTURE_VERIFIER_TOKEN = "";
     static final String STRAWBERRY_JAM_LOCATION = "";
 
+    static final String SERVER_MANAGER_TOKEN = "";
+    static final Long SUPPORT_SERVER_ID = 0L;
+    static final Long SUPPORT_SERVER_PRIVATE_CATEGORY_ID = 0L;
+    static final Long MOD_STRUCTURE_VERIFIER_ROLE_ID = 0L;
+
     // API key allowing to download stuff from Google Drive
     static final String GOOGLE_DRIVE_API_KEY = "";
 

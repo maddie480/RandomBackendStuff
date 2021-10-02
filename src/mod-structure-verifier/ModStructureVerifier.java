@@ -1087,4 +1087,11 @@ public class ModStructureVerifier extends ListenerAdapter {
         return "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
                 "- all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies";
     }
+
+    static void registerChannelFromSupportServer(Long channelId) {
+        logger.info("Registering channel {} as free response and no-name response for support server", channelId);
+        freeResponseChannels.put(channelId, channelId);
+        noNameResponseChannels.put(channelId, channelId);
+        saveMap(null, null);
+    }
 }
