@@ -229,6 +229,7 @@ public class CelesteStuffHealthCheck {
      * Run hourly.
      */
     public static void checkOlympusAPIs() throws IOException {
+        // search
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE").openStream(), UTF_8)
                 .contains("{itemtype: Mod, itemid: 53650}")) {
 
@@ -239,6 +240,8 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Extended Variant Mode search in full mode test failed");
         }
+
+        // sorted list
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1").openStream(), UTF_8)
                 .contains("{itemtype: Tool, itemid: 6449}")) { // Everest
 
@@ -249,6 +252,8 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Sorted list API test in full mode failed");
         }
+
+        // categories list
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2").openStream(), UTF_8)
                 .contains("- categoryid: 6800\n" +
                         "  formatted: Maps\n" +
@@ -256,12 +261,8 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Categories list API v2 failed");
         }
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10").openStream(), UTF_8)
-                .contains("<title>Outcast Outback Helper</title>")) {
 
-            throw new IOException("RSS feed by category API failed");
-        }
-
+        // webp to png
         HttpURLConnection connection = (HttpURLConnection)
                 new URL("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
         connection.setInstanceFollowRedirects(true);
@@ -271,6 +272,7 @@ public class CelesteStuffHealthCheck {
         }
         connection.disconnect();
 
+        // Banana Mirror image redirect
         connection = (HttpURLConnection)
                 new URL("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
         connection.setInstanceFollowRedirects(true);
@@ -286,6 +288,7 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkSmallerGameBananaAPIs() throws IOException {
+        // "random Celeste map" button
         HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/random-map").openConnection();
         connection.setInstanceFollowRedirects(true);
         connection.connect();
@@ -294,12 +297,38 @@ public class CelesteStuffHealthCheck {
         }
         connection.disconnect();
 
+        // deprecated GameBanana categories API
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories").openStream(), UTF_8)
                 .contains("- itemtype: Tool\n" +
                         "  formatted: Tools\n" +
                         "  count: ")) {
 
             throw new IOException("Categories list API v1 failed");
+        }
+
+        // mod search database API
+        final String modSearchDatabase = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml"), UTF_8);
+        if (!modSearchDatabase.contains("Name: The 2020 Celeste Spring Community Collab")) {
+            throw new IOException("mod_search_database.yaml check failed");
+        }
+
+        // file IDs list API
+        final String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
+        if (!fileIds.contains("'484937'")) {
+            throw new IOException("file_ids.yaml check failed");
+        }
+
+        // Update Checker status, widget version
+        final String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
+        if (!updateCheckerStatus.contains("<span class=\"GreenColor\">Up</span>")) {
+            throw new IOException("Update checker is not OK according to status widget!");
+        }
+
+        // GameBanana "JSON to RSS feed" API
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10").openStream(), UTF_8)
+                .contains("<title>Outcast Outback Helper</title>")) {
+
+            throw new IOException("RSS feed by category API failed");
         }
     }
 
@@ -311,31 +340,25 @@ public class CelesteStuffHealthCheck {
     public static void updateCheckerHealthCheck() throws IOException {
         log.debug("Checking Update Checker");
 
+        // everest_update.yaml responds
         final String everestUpdate = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"), UTF_8);
         if (!everestUpdate.contains("SpringCollab2020Audio:") || !everestUpdate.contains("URL: https://gamebanana.com/mmdl/484937")) {
             throw new IOException("everest_update.yaml check failed");
         }
 
+        // it matches what we have on disk
         final String fileOnDisk = FileUtils.readFileToString(new File("uploads/everestupdate.yaml"), UTF_8);
         if (!fileOnDisk.equals(everestUpdate)) {
             throw new IOException("everest_update.yaml on disk and on Cloud Storage don't match!");
         }
 
-        final String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
-        if (!fileIds.contains("'484937'")) {
-            throw new IOException("file_ids.yaml check failed");
-        }
-
+        // the status page says everything is fine
         final String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status"), UTF_8);
         if (!updateCheckerStatus.contains("The update checker is up and running!")) {
             throw new IOException("Update checker is not OK according to status page!");
         }
 
-        final String updateCheckerStatus2 = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
-        if (!updateCheckerStatus2.contains("<span class=\"GreenColor\">Up</span>")) {
-            throw new IOException("Update checker is not OK according to status widget!");
-        }
-
+        // and the update checker server is not frozen
         if (UpdateCheckerTracker.lastLogLineDate.isBefore(ZonedDateTime.now().minusMinutes(20))) {
             throw new IOException("Update Checker did not emit any log line since " +
                     UpdateCheckerTracker.lastLogLineDate.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)));
