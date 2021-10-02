@@ -618,17 +618,21 @@ public class ModStructureVerifier extends ListenerAdapter {
             FileUtils.copyToFile(is, tempBin);
         }
 
-        // convert it to XML using BinToXML.exe (since the host is on Linux, we need to use mono for that).
+        // convert it to XML
+        boolean conversionSuccess;
         File tempXml = new File(tempBin.getAbsolutePath().replace(".bin", ".xml"));
         logger.debug("Converting {} to {}...", tempBin.getAbsolutePath(), tempXml.getAbsolutePath());
-        Process process = new ProcessBuilder("/usr/bin/mono", "BinToXML.exe", "-input", tempBin.getAbsolutePath()).start();
-        String output = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
-        logger.debug("BinToXML output: {}", output);
+        try {
+            BinToXML.convert(tempBin.getAbsolutePath(), tempXml.getAbsolutePath());
+            conversionSuccess = true;
+        } catch (IOException e) {
+            logger.error("Something bad happened while reading the XML!", e);
+            conversionSuccess = false;
+        }
         tempBin.delete();
 
-        if (!output.contains("Successful!")) {
+        if (!conversionSuccess) {
             // conversion failed
-            logger.error("Bin to XML failed: {}", output);
             problemList.add("Something wrong happened while trying to analyze your bin :thinking: check that it is not corrupt.");
         } else {
             // let's start listing everything that's wrong!
@@ -700,7 +704,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             // ... go through its children...
             Node entityBlock = entities.item(i);
             for (int j = 0; j < entityBlock.getChildNodes().getLength(); j++) {
-                // ... and check if this is an entity that exists, eventually replacing "." with "/" since BinToXML seems to turn "/" into "."
+                // ... and check if this is an entity that exists, eventually replacing "." with "/" since BinToXML turns "/" into "."
                 String entityName = entityBlock.getChildNodes().item(j).getNodeName();
                 if (!availableEntities.contains(entityName) && !availableEntities.contains(entityName.replace(".", "/"))) {
                     badEntities.add(entityName.replace(".", "/"));
@@ -895,9 +899,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     "`--rules`\n" +
                     "will print out the checks run by the bot in the current channel.\n\n" +
                     "`--reactions`\n" +
-                    "will give a message explaining what the different reactions from the bot mean.\n\n" +
-                    "This bot is brought to you by max480 (max480#4596 on <https://discord.gg/celeste>) - checks on map bins " +
-                    "use BinToXML by iSkLz (available at <https://github.com/iSkLz/celestial-compass>).").queue();
+                    "will give a message explaining what the different reactions from the bot mean.").queue();
         } else if (msg.startsWith("--setup-fixed-names ")) {
             // setting up a new channel!
             String[] settings = msg.split(" ");
