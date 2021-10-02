@@ -15,7 +15,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
+import java.util.zip.Deflater;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * A service that follows the Update Checker logs and re-posts them to a Discord channel.
@@ -145,6 +151,12 @@ public class UpdateCheckerTracker implements TailerListener {
                 if (!newFileIdsHash.equals(fileIdsSha256)) {
                     log.info("Reloading file_ids.yaml as hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
                     sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml", false);
+
+                    // if file_ids changed, it means the mod files database changed as well!
+                    pack("modfilesdatabase", "/tmp/mod_files_database.zip");
+                    sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip", false);
+                    FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
+
                     fileIdsSha256 = newFileIdsHash;
                 }
 
@@ -220,10 +232,42 @@ public class UpdateCheckerTracker implements TailerListener {
             // do not cache private stuff.
             blobInfoBuilder.setCacheControl("no-store");
         }
-        storage.create(blobInfoBuilder.build(), FileUtils.readFileToByteArray(new File(file)));
+        storage.createFrom(blobInfoBuilder.build(), Paths.get(file), 4096);
 
         if (isPublic) {
             storage.createAcl(blobId, Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER));
+        }
+    }
+
+    /**
+     * Zips an entire folder to a zip (thanks https://stackoverflow.com/a/32052016).
+     *
+     * @param sourceDirPath The path to the directory to compress
+     * @param zipFilePath   The path to the destination zip
+     * @throws IOException In case an error occurs while zipping the file
+     */
+    public static void pack(String sourceDirPath, String zipFilePath) throws IOException {
+        Path p = Files.createFile(Paths.get(zipFilePath));
+        try (ZipOutputStream zs = new ZipOutputStream(Files.newOutputStream(p))) {
+            zs.setLevel(Deflater.BEST_COMPRESSION);
+            Path pp = Paths.get(sourceDirPath);
+            if (!Files.walk(pp)
+                    .filter(path -> !Files.isDirectory(path))
+                    .allMatch(path -> {
+                        ZipEntry zipEntry = new ZipEntry(pp.relativize(path).toString());
+                        try {
+                            zs.putNextEntry(zipEntry);
+                            Files.copy(path, zs);
+                            zs.closeEntry();
+                            return true;
+                        } catch (IOException e) {
+                            log.error("Unable to zip a file", e);
+                            return false;
+                        }
+                    })) {
+
+                throw new IOException("Some files failed to zip!");
+            }
         }
     }
 }
