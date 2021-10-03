@@ -2,15 +2,12 @@ package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.interaction.ButtonClickEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.Button;
-import net.dv8tion.jda.api.interactions.components.ButtonStyle;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -54,6 +51,9 @@ public class ServerManagerBot extends ListenerAdapter {
                 }
 
                 try {
+                    int channelCount = getChannelAssociations().size();
+                    jda.getPresence().setActivity(Activity.watching(channelCount == 1 ? "1 channel" : channelCount + " channels"));
+
                     log.debug("Waiting 1 hour before next check...");
                     Thread.sleep(3600000);
                 } catch (InterruptedException e) {

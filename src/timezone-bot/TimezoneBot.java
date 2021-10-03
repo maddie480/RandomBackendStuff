@@ -32,9 +32,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.time.DateTimeException;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -259,9 +261,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             // wtf??? slash commands are disabled in DMs
             event.reply("This bot is not usable in DMs!").setEphemeral(true).queue();
         } else {
-            OptionMapping option = event.getOption("tz_name");
+            OptionMapping optionTimezone = event.getOption("tz_name");
+            OptionMapping optionDateTime = event.getOption("date_time");
             processMessage(event.getMember(), event.getName(),
-                    option == null ? null : option.getAsString(),
+                    optionTimezone == null ? null : optionTimezone.getAsString(),
+                    optionDateTime == null ? null : optionDateTime.getAsString(),
                     response -> event.reply(response).setEphemeral(true).queue(), true);
         }
     }
@@ -271,11 +275,12 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      *
      * @param member         The member that sent the command
      * @param command        The command that was sent, without the ! or /
-     * @param timezoneParam  The parameter passed (only /timezone takes a parameter so...)
+     * @param timezoneParam  The tz_name parameter passed
+     * @param dateTimeParam  The date_time parameter passed
      * @param respond        The method to call to respond to the message (either posting to the channel, or responding to the slash command)
      * @param isSlashCommand Indicates if we are using a slash command (so we should always answer)
      */
-    private void processMessage(Member member, String command, String timezoneParam, Consumer<String> respond, boolean isSlashCommand) {
+    private void processMessage(Member member, String command, String timezoneParam, String dateTimeParam, Consumer<String> respond, boolean isSlashCommand) {
         if (command.equals("timezone") && timezoneParam == null) {
             // print help
             respond.accept("Usage: `!timezone [tzdata timezone name]` (example: `!timezone Europe/Paris`)\n" +
@@ -379,6 +384,39 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
+        if (command.equals("discord_timestamp") && dateTimeParam != null) {
+            // find the user's timezone.
+            String timezoneName = userTimezones.stream()
+                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
+                    .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+
+            // if the user has no timezone role, we want to use UTC instead!
+            String timezoneToUse = timezoneName == null ? "UTC" : timezoneName;
+
+            try {
+                // take the given date time with the user's timezone (or UTC), then turn it into a timestamp.
+                long timestamp = LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
+
+                StringBuilder b = new StringBuilder();
+                if (timezoneName == null) {
+                    // warn the user that we used UTC.
+                    b.append(":warning: You did not grab a timezone role, so **UTC** was used instead.\n\n");
+                }
+
+                // print `<t:timestamp:format>` => <t:timestamp:format> for all available formats.
+                b.append("Copy-paste one of those tags in your message, and others will see **" + dateTimeParam + "** in their timezone:\n");
+                for (char format : new char[]{'t', 'T', 'd', 'D', 'f', 'F', 'R'}) {
+                    b.append("`<t:").append(timestamp).append(':').append(format)
+                            .append(">` :arrow_right: <t:").append(timestamp).append(':').append(format).append(">\n");
+                }
+                respond.accept(b.toString().trim());
+            } catch (DateTimeParseException e) {
+                logger.warn("Could not parse date time {}", dateTimeParam, e);
+                respond.accept(":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
+                        "For example: `2020-10-01 15:42:00`");
+            }
+        }
 
         if (command.equals("toggle_times") && isSlashCommand && !member.hasPermission(Permission.ADMINISTRATOR)
                 && !member.hasPermission(Permission.MANAGE_SERVER)) {
@@ -760,6 +798,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         .setDefaultEnabled(false))
                 .addCommands(new CommandData("remove_timezone", "Removes your timezone role")
                         .setDefaultEnabled(false))
+                .addCommands(new CommandData("discord_timestamp", "Gives a Discord timestamp, to tell a date/time to other people regardless of their timezone")
+                        .addOption(OptionType.STRING, "date_time", "Date and time to convert (format: YYYY-MM-DD hh:mm:ss)", true)
+                        .setDefaultEnabled(false))
                 .addCommands(new CommandData("toggle_times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
                         .setDefaultEnabled(false))
                 .queue(success -> updateToggleTimesPermsForGuilds(jda.getGuilds()));
@@ -781,6 +822,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             Command timezone = commands.stream().filter(c -> c.getName().equals("timezone")).findFirst().orElse(null);
             Command detectTimezone = commands.stream().filter(c -> c.getName().equals("detect_timezone")).findFirst().orElse(null);
             Command removeTimezone = commands.stream().filter(c -> c.getName().equals("remove_timezone")).findFirst().orElse(null);
+            Command discordTimestamp = commands.stream().filter(c -> c.getName().equals("discord_timestamp")).findFirst().orElse(null);
             Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle_times")).findFirst().orElse(null);
 
             for (Guild g : guilds) {
@@ -810,6 +852,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                     timezone.getId(), allowEveryone,
                                     detectTimezone.getId(), allowEveryone,
                                     removeTimezone.getId(), allowEveryone,
+                                    discordTimestamp.getId(), allowEveryone,
                                     toggleTimes.getId(), allowEveryone))
                             .queue();
                 } else {
@@ -818,6 +861,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                     timezone.getId(), allowEveryone,
                                     detectTimezone.getId(), allowEveryone,
                                     removeTimezone.getId(), allowEveryone,
+                                    discordTimestamp.getId(), allowEveryone,
                                     toggleTimes.getId(), privileges))
                             .queue();
                 }
