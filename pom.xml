@@ -30,6 +30,10 @@
             <name>m2-dv8tion</name>
             <url>https://m2.dv8tion.net/releases</url>
         </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
     </repositories>
 
     <dependencyManagement>
@@ -139,6 +143,12 @@
             <groupId>io.github.furstenheim</groupId>
             <artifactId>copy_down</artifactId>
             <version>1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.discordbots</groupId>
+            <artifactId>DBL-Java-Library</artifactId>
+            <version>2.0.1</version>
         </dependency>
     </dependencies>
 

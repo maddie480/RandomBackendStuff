@@ -459,7 +459,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 boolean usersDeleted = false;
 
                 for (Guild server : jda.getGuilds()) {
-                    logger.info("=== Refreshing timezones for server {}", server);
+                    logger.debug("=== Refreshing timezones for server {}", server);
                     if (!server.getSelfMember().hasPermission(Permission.MANAGE_ROLES)) {
                         logger.warn("I can't manage roles here! Skipping.");
                         continue;
@@ -480,6 +480,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         jda.getGuilds().stream().mapToInt(g -> getTimezoneOffsetRolesForGuild(g).size()).sum() + " roles | " +
                         userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " +
                         jda.getGuilds().size() + " servers"));
+
+                TopGGCommunicator.refresh(jda);
             } catch (Exception e) {
                 logger.error("Refresh roles failed", e);
 

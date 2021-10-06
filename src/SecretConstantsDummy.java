@@ -8,13 +8,15 @@ public class SecretConstantsDummy {
     static final Long OWNER_ID = 0L;
     static final Long REPORT_SERVER_ID = 0L;
     static final Long REPORT_SERVER_CHANNEL = 0L;
-    static final Long UPDATE_CHECKER_CHANNEL = 0L;
 
     // bot credentials
+    static final Long TIMEZONE_BOT_ID = 0L;
     static final String TIMEZONE_BOT_TOKEN = "";
+    static final String TIMEZONE_BOT_TOP_GG_TOKEN = "";
     static final String MOD_STRUCTURE_VERIFIER_TOKEN = "";
     static final String STRAWBERRY_JAM_LOCATION = "";
 
+    // Server Manager bot credentials
     static final String SERVER_MANAGER_TOKEN = "";
     static final Long SUPPORT_SERVER_ID = 0L;
     static final Long SUPPORT_SERVER_PRIVATE_CATEGORY_ID = 0L;
