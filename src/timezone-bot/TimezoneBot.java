@@ -1,6 +1,5 @@
 package com.max480.discord.randombots;
 
-import com.google.common.collect.ImmutableMap;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
@@ -263,9 +262,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         } else {
             OptionMapping optionTimezone = event.getOption("tz_name");
             OptionMapping optionDateTime = event.getOption("date_time");
+            OptionMapping optionMember = event.getOption("member");
             processMessage(event.getMember(), event.getName(),
                     optionTimezone == null ? null : optionTimezone.getAsString(),
                     optionDateTime == null ? null : optionDateTime.getAsString(),
+                    optionMember == null ? null : optionMember.getAsLong(),
                     response -> event.reply(response).setEphemeral(true).queue(), true);
         }
     }
@@ -277,10 +278,12 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      * @param command        The command that was sent, without the ! or /
      * @param timezoneParam  The tz_name parameter passed
      * @param dateTimeParam  The date_time parameter passed
+     * @param memberParam    The member parameter passed
      * @param respond        The method to call to respond to the message (either posting to the channel, or responding to the slash command)
      * @param isSlashCommand Indicates if we are using a slash command (so we should always answer)
      */
-    private void processMessage(Member member, String command, String timezoneParam, String dateTimeParam, Consumer<String> respond, boolean isSlashCommand) {
+    private void processMessage(Member member, String command, String timezoneParam, String dateTimeParam, Long memberParam,
+                                Consumer<String> respond, boolean isSlashCommand) {
         if (command.equals("timezone") && timezoneParam == null) {
             // print help
             respond.accept("Usage: `!timezone [tzdata timezone name]` (example: `!timezone Europe/Paris`)\n" +
@@ -415,6 +418,23 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 logger.warn("Could not parse date time {}", dateTimeParam, e);
                 respond.accept(":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
                         "For example: `2020-10-01 15:42:00`");
+            }
+        }
+
+        if (command.equals("time_for") && memberParam != null) {
+            // find the target user's timezone.
+            String timezoneName = userTimezones.stream()
+                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == memberParam)
+                    .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+
+            if (timezoneName == null) {
+                // the user is not in the database.
+                respond.accept(":x: <@" + memberParam + "> does not have a timezone role.");
+            } else {
+                // format the time and display it!
+                ZonedDateTime nowForUser = ZonedDateTime.now(ZoneId.of(timezoneName));
+                DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
+                respond.accept("The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "**.");
             }
         }
 
@@ -803,6 +823,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 .addCommands(new CommandData("discord_timestamp", "Gives a Discord timestamp, to tell a date/time to other people regardless of their timezone")
                         .addOption(OptionType.STRING, "date_time", "Date and time to convert (format: YYYY-MM-DD hh:mm:ss)", true)
                         .setDefaultEnabled(false))
+                .addCommands(new CommandData("time_for", "Gives the time it is now for another member of the server")
+                        .addOption(OptionType.USER, "member", "The member you want to get the time of", true)
+                        .setDefaultEnabled(false))
                 .addCommands(new CommandData("toggle_times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
                         .setDefaultEnabled(false))
                 .queue(success -> updateToggleTimesPermsForGuilds(jda.getGuilds()));
@@ -825,6 +848,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             Command detectTimezone = commands.stream().filter(c -> c.getName().equals("detect_timezone")).findFirst().orElse(null);
             Command removeTimezone = commands.stream().filter(c -> c.getName().equals("remove_timezone")).findFirst().orElse(null);
             Command discordTimestamp = commands.stream().filter(c -> c.getName().equals("discord_timestamp")).findFirst().orElse(null);
+            Command timeFor = commands.stream().filter(c -> c.getName().equals("time_for")).findFirst().orElse(null);
             Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle_times")).findFirst().orElse(null);
 
             for (Guild g : guilds) {
@@ -846,26 +870,24 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
 
                 List<CommandPrivilege> allowEveryone = Collections.singletonList(new CommandPrivilege(CommandPrivilege.Type.ROLE, true, g.getPublicRole().getIdLong()));
+
+                Map<String, Collection<? extends CommandPrivilege>> listPrivileges = new HashMap<>();
+                listPrivileges.put(timezone.getId(), allowEveryone);
+                listPrivileges.put(detectTimezone.getId(), allowEveryone);
+                listPrivileges.put(removeTimezone.getId(), allowEveryone);
+                listPrivileges.put(discordTimestamp.getId(), allowEveryone);
+                listPrivileges.put(timeFor.getId(), allowEveryone);
+
                 if (privileges.size() > 10) {
                     // this is more overrides than Discord allows! so just allow everyone to use the command,
                     // non-admins will get an error message if they try anyway.
                     logger.debug("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
-                    g.updateCommandPrivileges(ImmutableMap.of(
-                                    timezone.getId(), allowEveryone,
-                                    detectTimezone.getId(), allowEveryone,
-                                    removeTimezone.getId(), allowEveryone,
-                                    discordTimestamp.getId(), allowEveryone,
-                                    toggleTimes.getId(), allowEveryone))
-                            .queue();
+                    listPrivileges.put(toggleTimes.getId(), allowEveryone);
+                    g.updateCommandPrivileges(listPrivileges).queue();
                 } else {
                     logger.debug("The following entities have access to /toggle_times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
-                    g.updateCommandPrivileges(ImmutableMap.of(
-                                    timezone.getId(), allowEveryone,
-                                    detectTimezone.getId(), allowEveryone,
-                                    removeTimezone.getId(), allowEveryone,
-                                    discordTimestamp.getId(), allowEveryone,
-                                    toggleTimes.getId(), privileges))
-                            .queue();
+                    listPrivileges.put(toggleTimes.getId(), privileges);
+                    g.updateCommandPrivileges(listPrivileges).queue();
                 }
             }
         });
