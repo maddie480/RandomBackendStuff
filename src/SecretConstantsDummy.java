@@ -44,4 +44,7 @@ public class SecretConstantsDummy {
 
     // hook to call for update checker technical logs
     static final String UPDATE_CHECKER_LOGS_HOOK = "";
+
+    // hook to call for speedrun.com update notifications
+    static final String SRC_UPDATE_CHECKER_HOOK = "";
 }
