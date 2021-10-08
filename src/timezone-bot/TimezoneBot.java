@@ -284,6 +284,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      */
     private void processMessage(Member member, String command, String timezoneParam, String dateTimeParam, Long memberParam,
                                 Consumer<String> respond, boolean isSlashCommand) {
+
+        logger.info("New command: /{} by member {}, params=[tz_name='{}', date_time='{}', member='{}']", command, member, timezoneParam, dateTimeParam, memberParam);
+
         if (command.equals("timezone") && timezoneParam == null) {
             // print help
             respond.accept("Usage: `!timezone [tzdata timezone name]` (example: `!timezone Europe/Paris`)\n" +
@@ -318,7 +321,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                                 "Your role will be assigned within 15 minutes once this is done."));
             } catch (DateTimeException ex) {
                 // ZoneId.of blew up so the timezone is probably invalid.
-                logger.info("Could not parse timezone " + timezoneParam, ex);
+                logger.warn("Could not parse timezone " + timezoneParam, ex);
                 respond.accept(":x: The given timezone was not recognized.\n" +
                         "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html");
             }
@@ -481,13 +484,13 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 for (Guild server : jda.getGuilds()) {
                     logger.debug("=== Refreshing timezones for server {}", server);
                     if (!server.getSelfMember().hasPermission(Permission.MANAGE_ROLES)) {
-                        logger.warn("I can't manage roles here! Skipping.");
+                        logger.debug("I can't manage roles here! Skipping.");
                         continue;
                     }
                     if (getTimezoneOffsetRolesForGuild(server).values().stream()
                             .anyMatch(roleId -> !server.getSelfMember().canInteract(server.getRoleById(roleId)))) {
 
-                        logger.warn("I can't manage all timezone roles here! Skipping.");
+                        logger.debug("I can't manage all timezone roles here! Skipping.");
                         continue;
                     }
 
@@ -514,7 +517,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
 
             try {
-                logger.info("Done! Sleeping.");
+                logger.debug("Done! Sleeping.");
                 // wait until the clock hits a time divisible by 15
                 do {
                     // sleep to the start of the next minute
@@ -686,7 +689,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         List<UserTimezone> toDelete = new ArrayList<>();
         for (UserTimezone userTimezone : userTimezones) {
             if (jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == userTimezone.serverId)) {
-                logger.info("Removing user {} belonging to non-existing server", userTimezone);
+                logger.warn("Removing user {} belonging to non-existing server", userTimezone);
                 toDelete.add(userTimezone);
                 usersDeleted = true;
             }
@@ -696,10 +699,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         // remove users that left or don't have settings from the cache
         for (CachedMember memberCache : new ArrayList<>(memberCache)) {
             if (jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == memberCache.serverId)) {
-                logger.info("Removing user {} from cache belonging to non-existing server", memberCache);
+                logger.warn("Removing user {} from cache belonging to non-existing server", memberCache);
                 TimezoneBot.memberCache.remove(memberCache);
             } else if (userTimezones.stream().noneMatch(u -> u.serverId == memberCache.serverId && u.userId == memberCache.memberId)) {
-                logger.info("Removing user {} from cache because they are not a bot user", memberCache);
+                logger.warn("Removing user {} from cache because they are not a bot user", memberCache);
                 TimezoneBot.memberCache.remove(memberCache);
             }
         }
@@ -716,7 +719,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
         if (ZonedDateTime.now().getHour() == 0 && ZonedDateTime.now().getMinute() == 0) {
             // midnight housekeeping: remove a chunk of users from the cache, in order to check they're still alive.
-            logger.info("Housekeeping is kicking off!");
+            logger.debug("Housekeeping is kicking off!");
             for (int i = 0; i < 1000; i++) {
                 if (!memberCache.isEmpty()) {
                     memberCache.remove(0);
@@ -881,11 +884,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 if (privileges.size() > 10) {
                     // this is more overrides than Discord allows! so just allow everyone to use the command,
                     // non-admins will get an error message if they try anyway.
-                    logger.debug("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
+                    logger.info("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
                     listPrivileges.put(toggleTimes.getId(), allowEveryone);
                     g.updateCommandPrivileges(listPrivileges).queue();
                 } else {
-                    logger.debug("The following entities have access to /toggle_times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
+                    logger.info("The following entities have access to /toggle_times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
                     listPrivileges.put(toggleTimes.getId(), privileges);
                     g.updateCommandPrivileges(listPrivileges).queue();
                 }
