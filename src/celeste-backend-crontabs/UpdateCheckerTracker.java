@@ -18,9 +18,14 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,7 +55,7 @@ public class UpdateCheckerTracker implements TailerListener {
     private static final Set<String> SRC_MOD_IDS = new HashSet<>(Arrays.asList("QuickieMountain2", "Glyph", "Monika's D-Sides", "SpringCollab2020",
             "Into The Jungle", "PathofHopeChapter", "Shade World", "Anubi", "Insanelynicemap", "Veryepicmap", "DashPrologue", "Mario-1-1", "playablecredits",
             "24x33", "GateToTheStars"));
-    private static final Pattern SAVED_MOD_PATTERN = Pattern.compile(".*=> Saved new information to database: Mod\\{name='([A-Za-z0-9 '-]+)', version='([0-9.]+)'.*");
+    private static final Pattern SAVED_MOD_PATTERN = Pattern.compile(".*=> Saved new information to database: Mod\\{name='([A-Za-z0-9 '-]+)', version='([0-9.]+)', url='.*', lastUpdate=([0-9]+),.*");
 
     /**
      * Method to call to start the watcher thread.
@@ -131,9 +136,11 @@ public class UpdateCheckerTracker implements TailerListener {
                 if (savedNewModMatch.matches()) {
                     String modName = savedNewModMatch.group(1);
                     String modVersion = savedNewModMatch.group(2);
+                    String modUpdatedTime = Instant.ofEpochSecond(Long.parseLong(savedNewModMatch.group(3))).atZone(ZoneId.of("UTC"))
+                            .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG).withLocale(Locale.ENGLISH));
 
                     if (SRC_MOD_IDS.contains(modName)) {
-                        executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK, "**" + modName + "** was just updated to version **" + modVersion + "**!");
+                        executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK, "**" + modName + "** was updated to version **" + modVersion + "** on " + modUpdatedTime + ".");
                     }
                 }
             }
