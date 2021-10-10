@@ -113,6 +113,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     private static final Map<String, String> TIMEZONE_MAP = new HashMap<>();
     private static Map<String, List<String>> TIMEZONE_CONFLICTS = new HashMap<>();
 
+    private static boolean forceUpdate = false;
+
     public static void main(String[] args) throws Exception {
         // populate the timezones!
         for (Element elt : Jsoup.connect("https://www.timeanddate.com/time/zones/").get().select("#tz-abb tbody tr")) {
@@ -204,7 +206,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         updateToggleTimesPermsForGuilds(jda.getGuilds());
 
         // start the background process to update users' roles.
-        // new Thread(new TimezoneBot()).start();
+        new Thread(new TimezoneBot()).start();
     }
 
     // === BEGIN event handling for /toggle_times
@@ -395,8 +397,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         "The current time in this timezone is **" + localNow.format(format) + "**. " +
                         "If this does not match your local time, type `/detect_timezone` to find the right one.\n\n" +
                         getRoleUpdateMessage(member.getGuild(), member,
-                                "It may take some time for the timezone role to show up, as they are updated every 15 minutes.",
                                 "Your role will be assigned within 15 minutes once this is done."));
+
+                forceUpdate = true;
             } catch (DateTimeException ex) {
                 // ZoneId.of blew up so the timezone is probably invalid.
                 logger.warn("Could not parse timezone " + timezoneParam, ex);
@@ -420,8 +423,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     .findFirst().orElse(null);
 
             if (userTimezone != null) {
-                String error = getRoleUpdateMessage(member.getGuild(), member, null, "You will be able to remove your timezone role once this is done.");
-                if (error != null) {
+                String error = getRoleUpdateMessage(member.getGuild(), member, "You will be able to remove your timezone role once this is done.");
+                if (!error.isEmpty()) {
                     // since the command involves removing the roles **now**, we can't do it at all if there are permission issues!
                     respond.accept(error.replace(":warning:", ":x:"));
                     return;
@@ -467,8 +470,9 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         "The timezone roles will now show the time it is in the timezone." :
                         "The timezone roles won't show the time it is in the timezone anymore.") + "\n" +
                         getRoleUpdateMessage(member.getGuild(), member,
-                                "It may take some time for the roles to update, as they are updated every 15 minutes.",
                                 "The roles will be updated within 15 minutes once this is done."));
+
+                forceUpdate = true;
             } catch (IOException e) {
                 // I/O error while saving to disk??
                 logger.error("Error while writing file", e);
@@ -593,12 +597,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      *
      * @param server  The server the slash command was sent in
      * @param caller  The member that sent the command
-     * @param success The message to return in case of success
      * @param failure The message to append in case of failure
-     * @return The message to send to the user, either the "success" parameter or an explanation of how to solve
+     * @return The message to send to the user, either an empty string or an explanation of how to solve
      * the issue with the server settings, with "failure" appended
      */
-    private static String getRoleUpdateMessage(Guild server, Member caller, String success, String failure) {
+    private static String getRoleUpdateMessage(Guild server, Member caller, String failure) {
         if (!server.getSelfMember().hasPermission(Permission.MANAGE_ROLES)) {
             // bot can't manage roles
             return "\n:warning: Please " + (caller.hasPermission(Permission.ADMINISTRATOR) ? "" : "tell an admin to ")
@@ -612,7 +615,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     + "ensure that the Timezone Bot is higher in the role list than all timezone roles, so that it has "
                     + "the permission to manage and assign them. " + failure;
         }
-        return success;
+        return "";
     }
 
     public void run() {
@@ -659,15 +662,14 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 logger.debug("Done! Sleeping.");
                 // wait until the clock hits a time divisible by 15
                 do {
-                    // sleep to the start of the next minute
-                    Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
-                            + ZonedDateTime.now().getNano() / 1_000_000) + 50);
+                    Thread.sleep(1050 - (ZonedDateTime.now().getNano() / 1_000_000));
 
-                    if (ZonedDateTime.now().getMinute() % 15 == 14) {
+                    if (ZonedDateTime.now().getMinute() % 15 == 14 && ZonedDateTime.now().getSecond() == 59) {
                         // diagnostics: check how long it took to update all roles
                         logger.debug("Last role was updated on {}", lastRoleUpdateDate);
                     }
-                } while (ZonedDateTime.now().getMinute() % 15 != 0);
+                } while (!forceUpdate && (ZonedDateTime.now().getMinute() % 15 != 0 || ZonedDateTime.now().getSecond() != 0));
+                forceUpdate = false;
             } catch (InterruptedException e) {
                 logger.error("Sleep interrupted(???)", e);
             }
