@@ -6,8 +6,17 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListener;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.FSDirectory;
+import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,10 +32,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.Deflater;
@@ -168,6 +174,42 @@ public class UpdateCheckerTracker implements TailerListener {
 
                 if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
                     log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
+
+                    // purge old indices
+                    List<BlobId> toDelete = new ArrayList<>();
+                    for (Blob b : storage.list("max480-random-stuff.appspot.com").iterateAll()) {
+                        if (b.getName().startsWith("mod_search_index/")) {
+                            toDelete.add(b.getBlobId());
+                        }
+                    }
+                    if (!toDelete.isEmpty()) {
+                        storage.delete(toDelete);
+                    }
+
+                    // build the new ones
+                    buildIndex();
+
+                    // and send them to Cloud Storage
+                    if (!Files.walk(Paths.get("/tmp/mod_index"))
+                            .filter(Files::isRegularFile)
+                            .allMatch(f -> {
+                                try {
+                                    sendToCloudStorage(f.toAbsolutePath().toString(),
+                                            "mod_search_index/" + f.toAbsolutePath().toString().substring(15),
+                                            "application/octet-stream", false);
+                                    return true;
+                                } catch (IOException e) {
+                                    log.error("Could not send {} to Cloud Storage", f, e);
+                                    return false;
+                                }
+                            })) {
+
+                        throw new IOException("Some index files could not be sent to Cloud Storage!");
+                    }
+
+                    // remove the directory now.
+                    FileUtils.deleteDirectory(new File("/tmp/mod_index"));
+
                     sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
 
                     HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.MOD_SEARCH_RELOAD_API).openConnection();
@@ -276,7 +318,7 @@ public class UpdateCheckerTracker implements TailerListener {
      * @param zipFilePath   The path to the destination zip
      * @throws IOException In case an error occurs while zipping the file
      */
-    public static void pack(String sourceDirPath, String zipFilePath) throws IOException {
+    private static void pack(String sourceDirPath, String zipFilePath) throws IOException {
         Path p = Files.createFile(Paths.get(zipFilePath));
         try (ZipOutputStream zs = new ZipOutputStream(Files.newOutputStream(p))) {
             zs.setLevel(Deflater.BEST_COMPRESSION);
@@ -298,6 +340,39 @@ public class UpdateCheckerTracker implements TailerListener {
 
                 throw new IOException("Some files failed to zip!");
             }
+        }
+    }
+
+    private static void buildIndex() throws IOException {
+        try (InputStream connectionToDatabase = new FileInputStream("uploads/modsearchdatabase.yaml")) {
+            // download the mods
+            List<HashMap<String, Object>> mods = new Yaml().load(connectionToDatabase);
+            log.debug("There are " + mods.size() + " mods in the search database.");
+
+            new File("/tmp/mod_index").mkdir();
+
+            FSDirectory newDirectory = FSDirectory.open(Paths.get("/tmp/mod_index")); // I know it's deprecated but creating a directory on App Engine is weird
+
+            // feed the mods to Lucene so that it indexes them
+            try (IndexWriter index = new IndexWriter(newDirectory, new IndexWriterConfig(new StandardAnalyzer()))) {
+                for (HashMap<String, Object> mod : mods) {
+                    Document modDocument = new Document();
+                    modDocument.add(new TextField("type", mod.get("GameBananaType").toString(), Field.Store.YES));
+                    modDocument.add(new TextField("id", mod.get("GameBananaId").toString(), Field.Store.YES));
+                    modDocument.add(new TextField("name", mod.get("Name").toString(), Field.Store.YES));
+                    modDocument.add(new TextField("author", mod.get("Author").toString(), Field.Store.NO));
+                    modDocument.add(new TextField("summary", mod.get("Description").toString(), Field.Store.NO));
+                    modDocument.add(new TextField("description", Jsoup.parseBodyFragment(mod.get("Text").toString()).text(), Field.Store.NO));
+                    if (mod.get("CategoryName") != null) {
+                        modDocument.add(new TextField("category", mod.get("CategoryName").toString(), Field.Store.NO));
+                    }
+                    index.addDocument(modDocument);
+                }
+            }
+
+            log.debug("Index directory contains " + newDirectory.listAll().length + " files.");
+
+            newDirectory.close();
         }
     }
 }
