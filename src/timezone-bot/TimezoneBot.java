@@ -2,14 +2,13 @@ package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.guild.update.GuildUpdateOwnerEvent;
+import net.dv8tion.jda.api.events.interaction.SelectionMenuEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.events.role.RoleCreateEvent;
 import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
@@ -21,6 +20,8 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -30,12 +31,10 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
-import java.time.DateTimeException;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -267,7 +266,26 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     optionTimezone == null ? null : optionTimezone.getAsString(),
                     optionDateTime == null ? null : optionDateTime.getAsString(),
                     optionMember == null ? null : optionMember.getAsLong(),
-                    response -> event.reply(response).setEphemeral(true).queue(), true);
+                    response -> {
+                        if (response instanceof Message) {
+                            event.reply((Message) response).setEphemeral(true).queue();
+                        } else {
+                            event.reply(response.toString()).setEphemeral(true).queue();
+                        }
+                    }, true);
+        }
+    }
+
+    @Override
+    public void onSelectionMenu(@NotNull SelectionMenuEvent event) {
+        if ("discord_timestamp".equals(event.getComponent().getId())) {
+            // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
+            // we also want the menu to stay the same, so that they can switch.
+            event.editMessage(new MessageBuilder(event.getValues().get(0))
+                    .setActionRows(ActionRow.of(event.getSelectionMenu().createCopy()
+                            .setDefaultValues(event.getValues())
+                            .build()))
+                    .build()).queue();
         }
     }
 
@@ -283,7 +301,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      * @param isSlashCommand Indicates if we are using a slash command (so we should always answer)
      */
     private void processMessage(Member member, String command, String timezoneParam, String dateTimeParam, Long memberParam,
-                                Consumer<String> respond, boolean isSlashCommand) {
+                                Consumer<Object> respond, boolean isSlashCommand) {
 
         logger.info("New command: /{} by member {}, params=[tz_name='{}', date_time='{}', member='{}']", command, member, timezoneParam, dateTimeParam, memberParam);
 
@@ -302,8 +320,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
         if (command.equals("timezone") && timezoneParam != null) {
             try {
-                // check that the timezone is valid by passing it to ZoneId.of and discarding the result.
-                ZoneId.of(timezoneParam);
+                // check that the timezone is valid by passing it to ZoneId.of.
+                ZonedDateTime localNow = ZonedDateTime.now(ZoneId.of(timezoneParam));
 
                 // remove old link if there is any.
                 userTimezones.stream()
@@ -315,7 +333,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 userTimezones.add(new UserTimezone(member.getGuild().getIdLong(), member.getIdLong(), timezoneParam));
                 logger.info("User {} now has timezone {}", member.getIdLong(), timezoneParam);
                 memberCache.remove(getMemberWithCache(member.getGuild(), member.getIdLong()));
+
+                DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
                 saveUsersTimezonesToFile(respond, ":white_check_mark: Your timezone was saved as **" + timezoneParam + "**.\n" +
+                        "The current time in this timezone is **" + localNow.format(format) + "**. " +
+                        "If this does not match your local time, type `/detect_timezone` to find the right one.\n\n" +
                         getRoleUpdateMessage(member.getGuild(), member,
                                 "It may take some time for the timezone role to show up, as they are updated every 15 minutes.",
                                 "Your role will be assigned within 15 minutes once this is done."));
@@ -399,11 +421,42 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             // if the user has no timezone role, we want to use UTC instead!
             String timezoneToUse = timezoneName == null ? "UTC" : timezoneName;
 
+            // take the given date time with the user's timezone (or UTC), then turn it into a timestamp.
+            // we are going to attempt 4 different formats.
+            Long timestamp = null;
             try {
-                // take the given date time with the user's timezone (or UTC), then turn it into a timestamp.
-                long timestamp = LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                // format 1: date time with seconds
+                timestamp = LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss"))
                         .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
+            } catch (DateTimeParseException e1) {
+                try {
+                    // format 2: date time without seconds
+                    timestamp = LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0)
+                            .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
+                } catch (DateTimeException e2) {
 
+                    try {
+                        // format 3: time only with seconds
+                        timestamp = LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm:ss"))
+                                .atDate(LocalDate.now(ZoneId.of(timezoneToUse)))
+                                .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
+                    } catch (DateTimeException e3) {
+                        try {
+                            // format 4: time only without seconds
+                            timestamp = LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm")).withSecond(0)
+                                    .atDate(LocalDate.now(ZoneId.of(timezoneToUse)))
+                                    .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
+                        } catch (DateTimeException e4) {
+                            // none of the 4 formats matched!
+                            logger.warn("Could not parse date time {}", dateTimeParam);
+                            respond.accept(":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
+                                    "For example: `2020-10-01 15:42:00`\nYou can omit the date if you want today, and the seconds if you don't need that.");
+                        }
+                    }
+                }
+            }
+
+            if (timestamp != null) {
                 StringBuilder b = new StringBuilder();
                 if (timezoneName == null) {
                     // warn the user that we used UTC.
@@ -416,11 +469,25 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     b.append("`<t:").append(timestamp).append(':').append(format)
                             .append(">` :arrow_right: <t:").append(timestamp).append(':').append(format).append(">\n");
                 }
-                respond.accept(b.toString().trim());
-            } catch (DateTimeParseException e) {
-                logger.warn("Could not parse date time {}", dateTimeParam, e);
-                respond.accept(":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
-                        "For example: `2020-10-01 15:42:00`");
+                b.append("\n\nIf you are on mobile, pick a format for easier copy-pasting:");
+
+                // we want to show a selection menu for the user to pick a format.
+                // the idea is that they can get a message with only the tag to copy in it and can copy it on mobile,
+                // which is way more handy than selecting part of the full message on mobile.
+                ZonedDateTime time = Instant.ofEpochSecond(timestamp).atZone(ZoneId.of(timezoneToUse));
+                respond.accept(new MessageBuilder(b.toString().trim())
+                        .setActionRows(ActionRow.of(
+                                SelectionMenu.create("discord_timestamp")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":t>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "`<t:" + timestamp + ":T>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":d>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":D>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy H:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":f>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy H:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":F>`")
+                                        .addOption("Relative to now", "`<t:" + timestamp + ":R>`")
+                                        .build()
+                        ))
+                        .build());
             }
         }
 
@@ -794,7 +861,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      * @param respond The method that should be called to respond to the user
      * @param success The message to send in case of success
      */
-    private void saveUsersTimezonesToFile(Consumer<String> respond, String success) {
+    private void saveUsersTimezonesToFile(Consumer<Object> respond, String success) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(SAVE_FILE_NAME))) {
             for (UserTimezone entry : userTimezones) {
                 writer.write(entry.serverId + ";" + entry.userId + ";" + entry.timezoneName + "\n");
