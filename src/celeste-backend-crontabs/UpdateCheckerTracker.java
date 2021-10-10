@@ -18,10 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
@@ -44,6 +41,30 @@ import java.util.zip.ZipOutputStream;
  * It also calls frontend APIs to make it aware of database changes, and reload it as necessary.
  */
 public class UpdateCheckerTracker implements TailerListener {
+    private static class ModInfo implements Serializable {
+        private static final long serialVersionUID = -2184804878021343630L;
+
+        public final String type;
+        public final int id;
+        public final int likes;
+        public final int views;
+        public final int downloads;
+        public final int categoryId;
+        public final int createdDate;
+        public final Map<String, Object> fullInfo;
+
+        private ModInfo(String type, int id, int likes, int views, int downloads, int categoryId, int createdDate, Map<String, Object> fullInfo) {
+            this.type = type;
+            this.id = id;
+            this.likes = likes;
+            this.views = views;
+            this.downloads = downloads;
+            this.categoryId = categoryId;
+            this.createdDate = createdDate;
+            this.fullInfo = fullInfo;
+        }
+    }
+
     private static final Logger log = LoggerFactory.getLogger(UpdateCheckerTracker.class);
 
     private static boolean lastLineIsNetworkError = false;
@@ -355,7 +376,12 @@ public class UpdateCheckerTracker implements TailerListener {
 
             // feed the mods to Lucene so that it indexes them
             try (IndexWriter index = new IndexWriter(newDirectory, new IndexWriterConfig(new StandardAnalyzer()))) {
+                List<ModInfo> newModDatabaseForSorting = new LinkedList<>();
+                Map<Integer, String> newModCategories = new HashMap<>();
+
                 for (HashMap<String, Object> mod : mods) {
+                    int categoryId = -1;
+
                     Document modDocument = new Document();
                     modDocument.add(new TextField("type", mod.get("GameBananaType").toString(), Field.Store.YES));
                     modDocument.add(new TextField("id", mod.get("GameBananaId").toString(), Field.Store.YES));
@@ -365,9 +391,22 @@ public class UpdateCheckerTracker implements TailerListener {
                     modDocument.add(new TextField("description", Jsoup.parseBodyFragment(mod.get("Text").toString()).text(), Field.Store.NO));
                     if (mod.get("CategoryName") != null) {
                         modDocument.add(new TextField("category", mod.get("CategoryName").toString(), Field.Store.NO));
+
+                        categoryId = (int) mod.get("CategoryId");
+                        newModCategories.put(categoryId, mod.get("CategoryName").toString());
                     }
                     index.addDocument(modDocument);
+
+                    newModDatabaseForSorting.add(new ModInfo(mod.get("GameBananaType").toString(), (int) mod.get("GameBananaId"),
+                            (int) mod.get("Likes"), (int) mod.get("Views"), (int) mod.get("Downloads"), categoryId, (int) mod.get("CreatedDate"), mod));
                 }
+
+                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("/tmp/mod_search_database.ser"))) {
+                    oos.writeObject(newModDatabaseForSorting);
+                    oos.writeObject(newModCategories);
+                }
+                sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream", false);
+                new File("/tmp/mod_search_database.ser").delete();
             }
 
             log.debug("Index directory contains " + newDirectory.listAll().length + " files.");
