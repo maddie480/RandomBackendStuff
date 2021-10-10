@@ -11,6 +11,7 @@ public class SecretConstantsDummy {
 
     // bot credentials
     static final Long TIMEZONE_BOT_ID = 0L;
+    static final Long GAMES_BOT_ID = 0L;
     static final String TIMEZONE_BOT_TOKEN = "";
     static final String TIMEZONE_BOT_TOP_GG_TOKEN = "";
     static final String MOD_STRUCTURE_VERIFIER_TOKEN = "";
