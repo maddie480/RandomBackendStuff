@@ -24,6 +24,8 @@ import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +36,6 @@ import java.text.DecimalFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -108,7 +109,56 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     private static final String SERVERS_WITH_TIME_FILE_NAME = "servers_with_time.txt";
     private static final String MEMBER_CACHE_NAME = "timezone_bot_member_cache.ser";
 
+    // offset timezone database
+    private static final Map<String, String> TIMEZONE_MAP = new HashMap<>();
+    private static Map<String, List<String>> TIMEZONE_CONFLICTS = new HashMap<>();
+
     public static void main(String[] args) throws Exception {
+        // populate the timezones!
+        for (Element elt : Jsoup.connect("https://www.timeanddate.com/time/zones/").get().select("#tz-abb tbody tr")) {
+            String name = elt.select("td:first-child").text().trim();
+            String fullName = elt.select("td:nth-child(2)").first().ownText().trim();
+            String offset = elt.select("td:last-child").text().trim().replace(" ", "");
+
+            // UTC+8:45 => UTC+08:45
+            if (offset.matches("UTC[+-][0-9]:[0-9]{2}")) {
+                offset = offset.replace("+", "+0").replace("-", "-0");
+            }
+
+            try {
+                ZoneId.of(offset);
+            } catch (DateTimeException e) {
+                // the timezone ended up invalid: skip it.
+                logger.info("Time zone offset {} is invalid", offset);
+                continue;
+            }
+
+            TIMEZONE_MAP.put(fullName, offset);
+            if (!TIMEZONE_CONFLICTS.containsKey(name)) {
+                // there is no conflict (yet): add to the valid timezone map.
+                TIMEZONE_MAP.put(name, offset);
+                TIMEZONE_CONFLICTS.put(name, new ArrayList<>(Collections.singletonList(fullName)));
+            } else {
+                TIMEZONE_CONFLICTS.get(name).add(fullName);
+
+                if (TIMEZONE_MAP.containsKey(name) && !TIMEZONE_MAP.get(name).equals(offset)) {
+                    // there is a conflict and the offsets are different! remove it.
+                    TIMEZONE_MAP.remove(name);
+                }
+            }
+        }
+
+        // filter out conflicts that aren't conflicts.
+        Map<String, List<String>> actualConflicts = new HashMap<>();
+        for (Map.Entry<String, List<String>> conflict : TIMEZONE_CONFLICTS.entrySet()) {
+            if (!TIMEZONE_MAP.containsKey(conflict.getKey())) {
+                actualConflicts.put(conflict.getKey(), conflict.getValue());
+            }
+        }
+        TIMEZONE_CONFLICTS = actualConflicts;
+
+        logger.info("Time zone offsets: {}, zone conflicts: {}", TIMEZONE_MAP, TIMEZONE_CONFLICTS);
+
         // load the saved files (user settings, server settings, member cache).
         userTimezones = new ArrayList<>();
         if (new File(SAVE_FILE_NAME).exists()) {
@@ -154,7 +204,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         updateToggleTimesPermsForGuilds(jda.getGuilds());
 
         // start the background process to update users' roles.
-        new Thread(new TimezoneBot()).start();
+        // new Thread(new TimezoneBot()).start();
     }
 
     // === BEGIN event handling for /toggle_times
@@ -320,6 +370,12 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
         if (command.equals("timezone") && timezoneParam != null) {
             try {
+                // if the user passed for example "EST", convert it to "UTC-5".
+                String timezoneOffsetFromName = getIgnoreCase(TIMEZONE_MAP, timezoneParam);
+                if (timezoneOffsetFromName != null) {
+                    timezoneParam = timezoneOffsetFromName;
+                }
+
                 // check that the timezone is valid by passing it to ZoneId.of.
                 ZonedDateTime localNow = ZonedDateTime.now(ZoneId.of(timezoneParam));
 
@@ -344,8 +400,16 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             } catch (DateTimeException ex) {
                 // ZoneId.of blew up so the timezone is probably invalid.
                 logger.warn("Could not parse timezone " + timezoneParam, ex);
-                respond.accept(":x: The given timezone was not recognized.\n" +
-                        "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html");
+
+                List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezoneParam);
+                if (conflictingTimezones != null) {
+                    respond.accept(":x: The timezone **" + timezoneParam + "** is ambiguous! It could mean one of those: _"
+                            + String.join("_, _", conflictingTimezones) + "_.\n" +
+                            "Repeat the command with the timezone full name!");
+                } else {
+                    respond.accept(":x: The given timezone was not recognized.\n" +
+                            "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html");
+                }
             }
         }
 
@@ -514,6 +578,14 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             // we should always respond to slash commands!
             respond.accept("You must have the Administrator or Manage Server permission to use this!");
         }
+    }
+
+    private static <T> T getIgnoreCase(Map<String, T> map, String key) {
+        return map.entrySet().stream()
+                .filter(entry -> entry.getKey().equalsIgnoreCase(key))
+                .findFirst()
+                .map(Map.Entry::getValue)
+                .orElse(null);
     }
 
     /**
