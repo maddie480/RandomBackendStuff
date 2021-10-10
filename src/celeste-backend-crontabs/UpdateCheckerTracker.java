@@ -196,42 +196,14 @@ public class UpdateCheckerTracker implements TailerListener {
                 if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
                     log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
 
-                    // purge old indices
-                    List<BlobId> toDelete = new ArrayList<>();
-                    for (Blob b : storage.list("max480-random-stuff.appspot.com").iterateAll()) {
-                        if (b.getName().startsWith("mod_search_index/")) {
-                            toDelete.add(b.getBlobId());
-                        }
-                    }
-                    if (!toDelete.isEmpty()) {
-                        storage.delete(toDelete);
-                    }
-
-                    // build the new ones
-                    buildIndex();
-
-                    // and send them to Cloud Storage
-                    if (!Files.walk(Paths.get("/tmp/mod_index"))
-                            .filter(Files::isRegularFile)
-                            .allMatch(f -> {
-                                try {
-                                    sendToCloudStorage(f.toAbsolutePath().toString(),
-                                            "mod_search_index/" + f.toAbsolutePath().toString().substring(15),
-                                            "application/octet-stream", false);
-                                    return true;
-                                } catch (IOException e) {
-                                    log.error("Could not send {} to Cloud Storage", f, e);
-                                    return false;
-                                }
-                            })) {
-
-                        throw new IOException("Some index files could not be sent to Cloud Storage!");
-                    }
-
-                    // remove the directory now.
-                    FileUtils.deleteDirectory(new File("/tmp/mod_index"));
-
                     sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
+
+                    // build the new indices and send them to Cloud Storage
+                    buildIndex();
+                    pack("/tmp/mod_index", "/tmp/mod_index.zip");
+                    sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip", false);
+                    Files.delete(Paths.get("/tmp/mod_index.zip"));
+                    FileUtils.deleteDirectory(new File("/tmp/mod_index"));
 
                     HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.MOD_SEARCH_RELOAD_API).openConnection();
                     if (conn.getResponseCode() != 200) {
