@@ -230,27 +230,17 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkOlympusAPIs() throws IOException {
         // search
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE").openStream(), UTF_8)
-                .contains("{itemtype: Mod, itemid: 53650}")) {
-
-            throw new IOException("Extended Variant Mode search test failed");
-        }
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE&full=true").openStream(), UTF_8)
                 .contains("\"Name\":\"Extended Variant Mode\"")) {
 
-            throw new IOException("Extended Variant Mode search in full mode test failed");
+            throw new IOException("Extended Variant Mode search test failed");
         }
 
         // sorted list
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1").openStream(), UTF_8)
-                .contains("{itemtype: Tool, itemid: 6449}")) { // Everest
-
-            throw new IOException("Sorted list API test failed");
-        }
         if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&category=6800&page=1&full=true").openStream(), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
-            throw new IOException("Sorted list API test in full mode failed");
+            throw new IOException("Sorted list API test failed");
         }
 
         // categories list
@@ -259,21 +249,18 @@ public class CelesteStuffHealthCheck {
                         "  formatted: Maps\n" +
                         "  count: ")) {
 
-            throw new IOException("Categories list API v2 failed");
+            throw new IOException("Categories list API failed");
         }
 
-        // webp to png
-        HttpURLConnection connection = (HttpURLConnection)
-                new URL("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
-        connection.setInstanceFollowRedirects(true);
-        connection.connect();
-        if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
-            throw new IOException("WebP to PNG API test failed");
+        // featured mods list
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-featured").openStream(), UTF_8)
+                .contains("\"Name\":\"Olympus - Everest Installer\"")) {
+
+            throw new IOException("Featured mods list API failed");
         }
-        connection.disconnect();
 
         // Banana Mirror image redirect
-        connection = (HttpURLConnection)
+        HttpURLConnection connection = (HttpURLConnection)
                 new URL("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
         connection.setInstanceFollowRedirects(true);
         connection.connect();
@@ -305,6 +292,30 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Categories list API v1 failed");
         }
+
+        // deprecated GameBanana search API
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE").openStream(), UTF_8)
+                .contains("{itemtype: Mod, itemid: 53650}")) {
+
+            throw new IOException("Extended Variant Mode search test failed");
+        }
+
+        // deprecated GameBanana sorted list API
+        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1").openStream(), UTF_8)
+                .contains("{itemtype: Tool, itemid: 6449}")) { // Everest
+
+            throw new IOException("Sorted list API test failed");
+        }
+
+        // deprecated webp to png API
+        connection = (HttpURLConnection)
+                new URL("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
+        connection.setInstanceFollowRedirects(true);
+        connection.connect();
+        if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
+            throw new IOException("WebP to PNG API test failed");
+        }
+        connection.disconnect();
 
         // mod search database API
         final String modSearchDatabase = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml"), UTF_8);
