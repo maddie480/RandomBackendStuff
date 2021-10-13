@@ -258,16 +258,6 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Featured mods list API failed");
         }
-
-        // Banana Mirror image redirect
-        HttpURLConnection connection = (HttpURLConnection)
-                new URL("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
-        connection.setInstanceFollowRedirects(true);
-        connection.connect();
-        if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
-            throw new IOException("Banana Mirror Image API test failed");
-        }
-        connection.disconnect();
     }
 
     /**
@@ -314,6 +304,16 @@ public class CelesteStuffHealthCheck {
         connection.connect();
         if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
             throw new IOException("WebP to PNG API test failed");
+        }
+        connection.disconnect();
+
+        // Banana Mirror image redirect
+        connection = (HttpURLConnection)
+                new URL("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
+        connection.setInstanceFollowRedirects(true);
+        connection.connect();
+        if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
+            throw new IOException("Banana Mirror Image API test failed");
         }
         connection.disconnect();
 
