@@ -22,6 +22,7 @@ import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
@@ -899,12 +900,14 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         memberCache.add(cached);
                         return cached;
                     } catch (ErrorResponseException error) {
-                        logger.warn("Got error when trying to get member {} in guild {}", memberId, g, error);
+                        if (error.getErrorResponse() == ErrorResponse.UNKNOWN_MEMBER) {
+                            // Unknown Member error: this is to be expected if a member left the server.
+                            logger.warn("Got Unknown Member error when trying to get member {} in guild {}!", memberId, g);
+                            return null;
+                        }
 
-                        if (error.isServerError()) throw error;
-
-                        // user is gone?
-                        return null;
+                        // unexpected error
+                        throw error;
                     }
                 });
     }
@@ -919,12 +922,14 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         try {
             return jda.getGuildById(member.serverId).retrieveMemberById(member.memberId).complete();
         } catch (ErrorResponseException error) {
-            logger.warn("Got error when trying to get member {}", memberCache, error);
+            if (error.getErrorResponse() == ErrorResponse.UNKNOWN_MEMBER) {
+                // Unknown Member error: this is to be expected if a member left the server.
+                logger.warn("Got Unknown Member error when trying to get cached member {}!", member);
+                return null;
+            }
 
-            if (error.isServerError()) throw error;
-
-            // user is gone?
-            return null;
+            // unexpected error
+            throw error;
         }
     }
 
