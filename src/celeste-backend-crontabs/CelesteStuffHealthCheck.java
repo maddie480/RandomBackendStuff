@@ -1,5 +1,6 @@
 package com.max480.discord.randombots;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
@@ -119,12 +120,13 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the list of files on Banana Mirror is the exact same as the files listed in everest_update.yaml
-     * (so there is no "desync" between both).
+     * and mod_search_database.yaml (so there is no "desync" between both, and all files referenced actually exist).
      * Ran daily at midnight.
      */
     public static void checkBananaMirrorDatabaseMatch() throws IOException {
         log.debug("Checking Banana Mirror contents...");
 
+        // === zips referenced in everest_update.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror/
         List<String> bananaMirror = Jsoup.connect("https://celestemodupdater.0x0a.de/banana-mirror/").get()
                 .select("td.indexcolname a")
                 .stream()
@@ -145,6 +147,29 @@ public class CelesteStuffHealthCheck {
 
         if (!bananaMirror.equals(everestUpdate)) {
             throw new IOException("Banana Mirror contents don't match the mod updater database");
+        }
+
+        // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror-images/
+        List<String> bananaMirrorImages = Jsoup.connect("https://celestemodupdater.0x0a.de/banana-mirror-images/").get()
+                .select("td.indexcolname a")
+                .stream()
+                .map(a -> "https://celestemodupdater.0x0a.de/banana-mirror-images/" + a.attr("href"))
+                .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/banana-mirror-images//"))
+                .sorted()
+                .collect(Collectors.toList());
+
+        List<String> modSearchDatabase;
+        try (InputStream is = new URL("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml").openStream()) {
+            List<Map<String, Object>> mapped = new Yaml().load(is);
+            modSearchDatabase = mapped.stream()
+                    .map(item -> (List<String>) item.get("MirroredScreenshots"))
+                    .flatMap(List::stream)
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+
+        if (!bananaMirrorImages.equals(modSearchDatabase)) {
+            throw new IOException("Banana Mirror Images contents don't match the mod updater database");
         }
     }
 
@@ -258,6 +283,13 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Featured mods list API failed");
         }
+
+        // check that the mirror is alive by downloading a GhostNet screenshot
+        if (!DigestUtils.sha256Hex(IOUtils.toByteArray(new URL("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png")))
+                .equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
+
+            throw new IOException("Download from mirror test failed");
+        }
     }
 
     /**
@@ -302,7 +334,7 @@ public class CelesteStuffHealthCheck {
                 new URL("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
         connection.setInstanceFollowRedirects(true);
         connection.connect();
-        if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
+        if (!DigestUtils.sha256Hex(IOUtils.toByteArray(connection.getInputStream())).equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
             throw new IOException("WebP to PNG API test failed");
         }
         connection.disconnect();
@@ -312,7 +344,7 @@ public class CelesteStuffHealthCheck {
                 new URL("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
         connection.setInstanceFollowRedirects(true);
         connection.connect();
-        if (IOUtils.toByteArray(connection.getInputStream()).length < 10_000) {
+        if (!DigestUtils.sha256Hex(IOUtils.toByteArray(connection.getInputStream())).equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
             throw new IOException("Banana Mirror Image API test failed");
         }
         connection.disconnect();
