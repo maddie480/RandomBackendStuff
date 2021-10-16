@@ -344,7 +344,7 @@ public class UpdateCheckerTracker implements TailerListener {
 
             new File("/tmp/mod_index").mkdir();
 
-            FSDirectory newDirectory = FSDirectory.open(Paths.get("/tmp/mod_index")); // I know it's deprecated but creating a directory on App Engine is weird
+            FSDirectory newDirectory = FSDirectory.open(Paths.get("/tmp/mod_index"));
 
             // feed the mods to Lucene so that it indexes them
             try (IndexWriter index = new IndexWriter(newDirectory, new IndexWriterConfig(new StandardAnalyzer()))) {
