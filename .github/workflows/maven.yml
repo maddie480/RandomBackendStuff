@@ -25,6 +25,8 @@ jobs:
     - name: Build with Maven
       run: |
         # We first need to restructure the project for it to build
+        mkdir -p newsrc/main/java/com/max480/quest/modmanagerbot
+        mv -v src/DummyBotClient.java newsrc/main/java/com/max480/quest/modmanagerbot/BotClient.java
         mkdir -p newsrc/main/java/com/max480/discord/randombots
         find src -type f -exec mv -v {} newsrc/main/java/com/max480/discord/randombots \;
         rm -rfv src/
