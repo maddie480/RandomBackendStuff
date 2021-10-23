@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>
-        <jda.version>4.3.0_335</jda.version>
+        <jda.version>4.3.0_336</jda.version>
         <jdk.version>8</jdk.version>
         <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
