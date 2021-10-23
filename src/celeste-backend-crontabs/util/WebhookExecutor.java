@@ -130,21 +130,31 @@ public class WebhookExecutor {
             connection = multipart.finish();
         }
 
-        // make sure the message came through
-        if (connection.getResponseCode() != 204 && connection.getResponseCode() != 200) {
+        if (connection.getResponseCode() == 204 || connection.getResponseCode() == 200) {
+            // the message came through
+            log.debug("Message sent!");
+
+        } else if (connection.getResponseCode() == 429) {
+            // we hit an unexpected rate limit => we should wait for the time indicated in Retry-After, then retry.
+            // (Discord docs claim those are seconds, but those actually seem to be milliseconds. /shrug)
+            retryAfter = ZonedDateTime.now().plus(Integer.parseInt(connection.getHeaderField("Retry-After")), ChronoUnit.MILLIS);
+            log.warn("We hit a rate limit we did not anticipate! We will wait until {} before next request.", retryAfter);
+            executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments);
+            return;
+
+        } else {
+            // we hit some other error => we should crash
             throw new IOException("Non-200/204 return code: " + connection.getResponseCode());
         }
-
-        log.debug("Message sent!");
 
         // make sure to remember if we hit rate limit.
         if ("0".equals(connection.getHeaderField("X-RateLimit-Remaining"))) {
             try {
                 retryAfter = ZonedDateTime.now().plusSeconds(Integer.parseInt(connection.getHeaderField("X-RateLimit-Reset-After")) + 1);
-                log.warn("We hit rate limit! We will wait until {} before next request.", retryAfter);
+                log.warn("We are going to hit rate limit! We will wait until {} before next request.", retryAfter);
             } catch (Exception e) {
                 retryAfter = ZonedDateTime.now().plusSeconds(15);
-                log.warn("We hit rate limit! We will wait until {} before next request. (parsing X-RateLimit-Reset-After failed)", retryAfter);
+                log.warn("We are going to hit rate limit! We will wait until {} before next request. (parsing X-RateLimit-Reset-After failed)", retryAfter);
             }
         }
     }
