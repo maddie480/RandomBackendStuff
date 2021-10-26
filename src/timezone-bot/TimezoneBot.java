@@ -962,10 +962,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         // register the slash commands, then assign per-guild permissions for /toggle_times.
         // all commands have defaultEnabled = false to disable them in DMs.
         jda.updateCommands()
-                .addCommands(new CommandData("timezone", "Configures your timezone role")
+                .addCommands(new CommandData("timezone", "Sets up or replaces your timezone role")
                         .addOption(OptionType.STRING, "tz_name", "Timezone name, use /detect_timezone to figure it out", true)
                         .setDefaultEnabled(false))
-                .addCommands(new CommandData("detect_timezone", "Sets up or replaces your timezone role")
+                .addCommands(new CommandData("detect_timezone", "Detects your current timezone")
                         .setDefaultEnabled(false))
                 .addCommands(new CommandData("remove_timezone", "Removes your timezone role")
                         .setDefaultEnabled(false))
