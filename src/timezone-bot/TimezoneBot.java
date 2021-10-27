@@ -202,15 +202,15 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
         logger.debug("Users by timezone = {}, servers with time = {}, member cache = {}", userTimezones.size(), serversWithTime.size(), memberCache.size());
 
-        // also ensure the /toggle_times permissions are appropriate (in case we missed an event while being down).
-        logger.info("Updating /toggle_times permissions on all known guilds...");
+        // also ensure the /toggle-times permissions are appropriate (in case we missed an event while being down).
+        logger.info("Updating /toggle-times permissions on all known guilds...");
         updateToggleTimesPermsForGuilds(jda.getGuilds());
 
         // start the background process to update users' roles.
         new Thread(new TimezoneBot()).start();
     }
 
-    // === BEGIN event handling for /toggle_times
+    // === BEGIN event handling for /toggle-times
 
     @Override
     public void onGuildJoin(@NotNull GuildJoinEvent event) {
@@ -218,7 +218,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 .sendMessage("I just joined a new server: " + event.getGuild().getName()).queue();
 
         // set up privileges for the new server!
-        logger.info("Updating /toggle_times permissions on newly joined guild {}", event.getGuild());
+        logger.info("Updating /toggle-times permissions on newly joined guild {}", event.getGuild());
         updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
     }
 
@@ -231,15 +231,15 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     @Override
     public void onGuildUpdateOwner(@NotNull GuildUpdateOwnerEvent event) {
         // this means the privileges should be given to the new owner!
-        logger.info("Updating /toggle_times permissions after ownership transfer on {} ({} -> {})", event.getGuild(), event.getOldOwner(), event.getNewOwner());
+        logger.info("Updating /toggle-times permissions after ownership transfer on {} ({} -> {})", event.getGuild(), event.getOldOwner(), event.getNewOwner());
         updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
     }
 
     @Override
     public void onRoleCreate(@NotNull RoleCreateEvent event) {
         if (event.getRole().hasPermission(Permission.ADMINISTRATOR) || event.getRole().hasPermission(Permission.MANAGE_SERVER)) {
-            // the new role has permission to call /toggle_times, so we should give it to it.
-            logger.info("Updating /toggle_times permissions after new role was created on {} ({} with permissions {})", event.getGuild(),
+            // the new role has permission to call /toggle-times, so we should give it to it.
+            logger.info("Updating /toggle-times permissions after new role was created on {} ({} with permissions {})", event.getGuild(),
                     event.getRole(), event.getRole().getPermissions());
             updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
         }
@@ -250,8 +250,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         if (event.getOldPermissions().contains(Permission.ADMINISTRATOR) != event.getNewPermissions().contains(Permission.ADMINISTRATOR)
                 || event.getOldPermissions().contains(Permission.MANAGE_SERVER) != event.getNewPermissions().contains(Permission.MANAGE_SERVER)) {
 
-            // the role was just added / removed a permission giving access to /toggle_times, so we need to update!
-            logger.info("Updating /toggle_times permissions after role {} was updated on {} ({} -> {})",
+            // the role was just added / removed a permission giving access to /toggle-times, so we need to update!
+            logger.info("Updating /toggle-times permissions after role {} was updated on {} ({} -> {})",
                     event.getRole(), event.getGuild(), event.getOldPermissions(), event.getNewPermissions());
             updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
         }
@@ -260,15 +260,15 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     @Override
     public void onRoleDelete(@NotNull RoleDeleteEvent event) {
         if (event.getRole().hasPermission(Permission.ADMINISTRATOR) || event.getRole().hasPermission(Permission.MANAGE_SERVER)) {
-            // the role had permission to call /toggle_times, so we should refresh.
+            // the role had permission to call /toggle-times, so we should refresh.
             // (this is mainly in case this makes the server go below the 10 overrides limit.)
-            logger.info("Updating /toggle_times permissions after role was deleted on {} ({} with permissions {})", event.getGuild(),
+            logger.info("Updating /toggle-times permissions after role was deleted on {} ({} with permissions {})", event.getGuild(),
                     event.getRole(), event.getRole().getPermissions());
             updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
         }
     }
 
-    // === END event handling for /toggle_times
+    // === END event handling for /toggle-times
 
     /**
      * Looks up timezone offset roles for a server by matching them by role name.
@@ -331,7 +331,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
 
     @Override
     public void onSelectionMenu(@NotNull SelectionMenuEvent event) {
-        if ("discord_timestamp".equals(event.getComponent().getId())) {
+        if ("discord-timestamp".equals(event.getComponent().getId())) {
             // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
             // we also want the menu to stay the same, so that they can switch.
             event.editMessage(new MessageBuilder(event.getValues().get(0))
@@ -364,10 +364,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html\n" +
                     "If you don't want to share your timezone name, you can use the slash command (it will only be visible by you)" +
                     " or use an offset like UTC+8 (it won't automatically adjust with daylight saving though).\n\n" +
-                    "If you want to get rid of your timezone role, use `!remove_timezone`.");
+                    "If you want to get rid of your timezone role, use `!remove-timezone`.");
         }
 
-        if (command.equals("detect_timezone")) {
+        if (command.equals("detect-timezone")) {
             respond.accept("To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.");
         }
 
@@ -396,7 +396,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
                 saveUsersTimezonesToFile(respond, ":white_check_mark: Your timezone was saved as **" + timezoneParam + "**.\n" +
                         "The current time in this timezone is **" + localNow.format(format) + "**. " +
-                        "If this does not match your local time, type `/detect_timezone` to find the right one.\n\n" +
+                        "If this does not match your local time, type `/detect-timezone` to find the right one.\n\n" +
                         getRoleUpdateMessage(member.getGuild(), member,
                                 "Your role will be assigned within 15 minutes once this is done."));
 
@@ -417,7 +417,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
-        if (command.equals("remove_timezone")) {
+        if (command.equals("remove-timezone")) {
             // find the user's timezone.
             UserTimezone userTimezone = userTimezones.stream()
                     .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
@@ -437,7 +437,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     if (getTimezoneOffsetRolesForGuild(server).containsValue(userRole.getIdLong())) {
                         logger.info("Removing timezone role {} from {}", userRole, member);
                         memberCache.remove(getMemberWithCache(server, member.getIdLong()));
-                        server.removeRoleFromMember(member, userRole).reason("User used /remove_timezone").complete();
+                        server.removeRoleFromMember(member, userRole).reason("User used /remove-timezone").complete();
                     }
                 }
 
@@ -450,7 +450,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
-        if (command.equals("toggle_times") && (member.hasPermission(Permission.ADMINISTRATOR)
+        if (command.equals("toggle-times") && (member.hasPermission(Permission.ADMINISTRATOR)
                 || member.hasPermission(Permission.MANAGE_SERVER))) {
 
             // add or remove the server in the list, depending on the previous status.
@@ -481,7 +481,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
-        if (command.equals("discord_timestamp") && dateTimeParam != null) {
+        if (command.equals("discord-timestamp") && dateTimeParam != null) {
             // find the user's timezone.
             String timezoneName = userTimezones.stream()
                     .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
@@ -546,7 +546,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 ZonedDateTime time = Instant.ofEpochSecond(timestamp).atZone(ZoneId.of(timezoneToUse));
                 respond.accept(new MessageBuilder(b.toString().trim())
                         .setActionRows(ActionRow.of(
-                                SelectionMenu.create("discord_timestamp")
+                                SelectionMenu.create("discord-timestamp")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":t>`")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "`<t:" + timestamp + ":T>`")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":d>`")
@@ -560,7 +560,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
-        if (command.equals("time_for") && memberParam != null) {
+        if (command.equals("time-for") && memberParam != null) {
             // find the target user's timezone.
             String timezoneName = userTimezones.stream()
                     .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == memberParam)
@@ -577,7 +577,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             }
         }
 
-        if (command.equals("toggle_times") && isSlashCommand && !member.hasPermission(Permission.ADMINISTRATOR)
+        if (command.equals("toggle-times") && isSlashCommand && !member.hasPermission(Permission.ADMINISTRATOR)
                 && !member.hasPermission(Permission.MANAGE_SERVER)) {
 
             // we should always respond to slash commands!
@@ -594,7 +594,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     }
 
     /**
-     * Checks that everything is fine with the server before answering to /timezone and /toggle_times.
+     * Checks that everything is fine with the server before answering to /timezone and /toggle-times.
      *
      * @param server  The server the slash command was sent in
      * @param caller  The member that sent the command
@@ -959,30 +959,30 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      * to add, update or delete commands.
      */
     private static void registerSlashCommands() {
-        // register the slash commands, then assign per-guild permissions for /toggle_times.
+        // register the slash commands, then assign per-guild permissions for /toggle-times.
         // all commands have defaultEnabled = false to disable them in DMs.
         jda.updateCommands()
                 .addCommands(new CommandData("timezone", "Sets up or replaces your timezone role")
-                        .addOption(OptionType.STRING, "tz_name", "Timezone name, use /detect_timezone to figure it out", true)
+                        .addOption(OptionType.STRING, "tz_name", "Timezone name, use /detect-timezone to figure it out", true)
                         .setDefaultEnabled(false))
-                .addCommands(new CommandData("detect_timezone", "Detects your current timezone")
+                .addCommands(new CommandData("detect-timezone", "Detects your current timezone")
                         .setDefaultEnabled(false))
-                .addCommands(new CommandData("remove_timezone", "Removes your timezone role")
+                .addCommands(new CommandData("remove-timezone", "Removes your timezone role")
                         .setDefaultEnabled(false))
-                .addCommands(new CommandData("discord_timestamp", "Gives a Discord timestamp, to tell a date/time to other people regardless of their timezone")
+                .addCommands(new CommandData("discord-timestamp", "Gives a Discord timestamp, to tell a date/time to other people regardless of their timezone")
                         .addOption(OptionType.STRING, "date_time", "Date and time to convert (format: YYYY-MM-DD hh:mm:ss)", true)
                         .setDefaultEnabled(false))
-                .addCommands(new CommandData("time_for", "Gives the time it is now for another member of the server")
+                .addCommands(new CommandData("time-for", "Gives the time it is now for another member of the server")
                         .addOption(OptionType.USER, "member", "The member you want to get the time of", true)
                         .setDefaultEnabled(false))
-                .addCommands(new CommandData("toggle_times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
+                .addCommands(new CommandData("toggle-times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
                         .setDefaultEnabled(false))
                 .queue(success -> updateToggleTimesPermsForGuilds(jda.getGuilds()));
     }
 
 
     /**
-     * Makes sure the permissions for /toggle_times are properly set for the given servers:
+     * Makes sure the permissions for /toggle-times are properly set for the given servers:
      * any role with the Admin or Manage Server permission + the owner if they don't have any of the roles should
      * be able to use the command.
      * <p>
@@ -994,11 +994,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     private static void updateToggleTimesPermsForGuilds(List<Guild> guilds) {
         jda.retrieveCommands().queue(commands -> {
             Command timezone = commands.stream().filter(c -> c.getName().equals("timezone")).findFirst().orElse(null);
-            Command detectTimezone = commands.stream().filter(c -> c.getName().equals("detect_timezone")).findFirst().orElse(null);
-            Command removeTimezone = commands.stream().filter(c -> c.getName().equals("remove_timezone")).findFirst().orElse(null);
-            Command discordTimestamp = commands.stream().filter(c -> c.getName().equals("discord_timestamp")).findFirst().orElse(null);
-            Command timeFor = commands.stream().filter(c -> c.getName().equals("time_for")).findFirst().orElse(null);
-            Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle_times")).findFirst().orElse(null);
+            Command detectTimezone = commands.stream().filter(c -> c.getName().equals("detect-timezone")).findFirst().orElse(null);
+            Command removeTimezone = commands.stream().filter(c -> c.getName().equals("remove-timezone")).findFirst().orElse(null);
+            Command discordTimestamp = commands.stream().filter(c -> c.getName().equals("discord-timestamp")).findFirst().orElse(null);
+            Command timeFor = commands.stream().filter(c -> c.getName().equals("time-for")).findFirst().orElse(null);
+            Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle-times")).findFirst().orElse(null);
 
             for (Guild g : guilds) {
                 // figure out which roles in the guild have Admin or Manage Server.
@@ -1030,11 +1030,11 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 if (privileges.size() > 10) {
                     // this is more overrides than Discord allows! so just allow everyone to use the command,
                     // non-admins will get an error message if they try anyway.
-                    logger.info("{} has too many privileges that qualify for /toggle_times ({} > 10 max), allowing everyone!", g, privileges.size());
+                    logger.info("{} has too many privileges that qualify for /toggle-times ({} > 10 max), allowing everyone!", g, privileges.size());
                     listPrivileges.put(toggleTimes.getId(), allowEveryone);
                     g.updateCommandPrivileges(listPrivileges).queue();
                 } else {
-                    logger.info("The following entities have access to /toggle_times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
+                    logger.info("The following entities have access to /toggle-times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
                     listPrivileges.put(toggleTimes.getId(), privileges);
                     g.updateCommandPrivileges(listPrivileges).queue();
                 }
