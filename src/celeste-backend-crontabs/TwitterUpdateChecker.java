@@ -155,7 +155,8 @@ public class TwitterUpdateChecker {
 
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
                         // post it to #celeste_news_network
-                        WebhookExecutor.executeWebhook(SecretConstants.CELESTE_NEWS_NETWORK_WEBHOOK, tweet.getJSONObject("user").getString("profile_image_url_https"),
+                        WebhookExecutor.executeWebhook(SecretConstants.CELESTE_NEWS_NETWORK_WEBHOOK,
+                                tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", ""),
                                 tweet.getJSONObject("user").getString("name"), link + "\n_Posted on <t:" + date + ":F>_");
                     }
 
