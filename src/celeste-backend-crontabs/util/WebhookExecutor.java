@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class WebhookExecutor {
+    public static class UnknownWebhookException extends RuntimeException {
+    }
+
     private static final Logger log = LoggerFactory.getLogger(WebhookExecutor.class);
 
     private static ZonedDateTime retryAfter = null;
@@ -141,6 +144,10 @@ public class WebhookExecutor {
             log.warn("We hit a rate limit we did not anticipate! We will wait until {} before next request.", retryAfter);
             executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments);
             return;
+
+        } else if (connection.getResponseCode() == 404) {
+            // webhook is gone!
+            throw new UnknownWebhookException();
 
         } else {
             // we hit some other error => we should crash

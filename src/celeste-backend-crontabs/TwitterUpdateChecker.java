@@ -1,6 +1,11 @@
 package com.max480.discord.randombots;
 
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.max480.everest.updatechecker.NetworkingOperation;
 import com.max480.quest.modmanagerbot.BotClient;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -11,14 +16,19 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
+import static com.max480.discord.randombots.UpdateCheckerTracker.sendToCloudStorage;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TwitterUpdateChecker {
     private static final Logger log = LoggerFactory.getLogger(TwitterUpdateChecker.class);
+    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
 
     // those will be sent to #celeste_news_network.
     private static final List<String> THREADS_TO_WEBHOOK = Arrays.asList("celeste_game", "EverestAPI");
@@ -154,10 +164,54 @@ public class TwitterUpdateChecker {
                             .queue();
 
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
-                        // post it to #celeste_news_network
-                        WebhookExecutor.executeWebhook(SecretConstants.CELESTE_NEWS_NETWORK_WEBHOOK,
-                                tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", ""),
-                                tweet.getJSONObject("user").getString("name"), link + "\n_Posted on <t:" + date + ":F>_");
+                        // load webhook URLs from Cloud Storage
+                        List<String> webhookUrls;
+                        try (InputStream is = getCloudStorageInputStream("celeste_news_network_subscribers.json")) {
+                            webhookUrls = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
+                                    .stream()
+                                    .map(Object::toString)
+                                    .collect(Collectors.toList());
+                        }
+
+                        // invoke webhooks
+                        List<String> goneWebhooks = new ArrayList<>();
+                        for (String webhook : webhookUrls) {
+                            try {
+                                // call the webhook with retries
+                                runWithRetry(() -> {
+                                    try {
+                                        WebhookExecutor.executeWebhook(webhook,
+                                                tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", ""),
+                                                tweet.getJSONObject("user").getString("name"), link + "\n_Posted on <t:" + date + ":F>_");
+
+                                        return null;
+                                    } catch (InterruptedException e) {
+                                        // this will probably never happen. ^^'
+                                        throw new IOException(e);
+                                    }
+                                });
+
+                            } catch (WebhookExecutor.UnknownWebhookException e) {
+                                // if this happens, this means the webhook was deleted.
+                                goneWebhooks.add(webhook);
+                            }
+                        }
+
+                        if (!goneWebhooks.isEmpty()) {
+                            // some webhooks were deleted! notify the owner about it.
+                            for (String goneWebhook : goneWebhooks) {
+                                BotClient.getInstance().getTextChannelById(SecretConstants.TWITTER_UPDATE_CHANNEL)
+                                        .sendMessage("Auto-unsubscribed webhook because it does not exist: " + goneWebhook)
+                                        .queue();
+
+                                webhookUrls.remove(goneWebhook);
+                            }
+
+                            // save the deletion to Cloud Storage.
+                            FileUtils.writeStringToFile(new File("/tmp/cnn_subscribers.json"), new JSONArray(webhookUrls).toString(), UTF_8);
+                            sendToCloudStorage("/tmp/cnn_subscribers.json", "celeste_news_network_subscribers.json", "application/json", false);
+                            Files.delete(Paths.get("/tmp/cnn_subscribers.json"));
+                        }
                     }
 
                     if (THREADS_TO_QUEST.contains(feed)) {
@@ -185,5 +239,31 @@ public class TwitterUpdateChecker {
         }
 
         log.debug("Done.");
+    }
+
+    private static InputStream getCloudStorageInputStream(String filename) {
+        BlobId blobId = BlobId.of("max480-random-stuff.appspot.com", filename);
+        return new ByteArrayInputStream(storage.readAllBytes(blobId));
+    }
+
+    private static <T> T runWithRetry(NetworkingOperation<T> task) throws IOException {
+        for (int i = 1; i < 3; i++) {
+            try {
+                return task.run();
+            } catch (IOException e) {
+                log.warn("I/O exception while doing networking operation (try {}/3).", i, e);
+
+                // wait a bit before retrying
+                try {
+                    log.debug("Waiting {} seconds before next try.", i * 5);
+                    Thread.sleep(i * 5000);
+                } catch (InterruptedException e2) {
+                    log.warn("Sleep interrupted", e2);
+                }
+            }
+        }
+
+        // 3rd try: this time, if it crashes, let it crash
+        return task.run();
     }
 }
