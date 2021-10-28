@@ -39,6 +39,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -491,38 +492,40 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             String timezoneToUse = timezoneName == null ? "UTC" : timezoneName;
 
             // take the given date time with the user's timezone (or UTC), then turn it into a timestamp.
-            // we are going to attempt 4 different formats.
-            Long timestamp = null;
-            try {
-                // format 1: date time with seconds
-                timestamp = LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss"))
-                        .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
-            } catch (DateTimeParseException e1) {
-                try {
-                    // format 2: date time without seconds
-                    timestamp = LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0)
-                            .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
-                } catch (DateTimeException e2) {
+            LocalDateTime parsedDateTime = tryParseSuccessively(dateTimeParam, Arrays.asList(
+                    // full date
+                    () -> LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss")),
+                    () -> LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0),
 
-                    try {
-                        // format 3: time only with seconds
-                        timestamp = LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm:ss"))
-                                .atDate(LocalDate.now(ZoneId.of(timezoneToUse)))
-                                .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
-                    } catch (DateTimeException e3) {
-                        try {
-                            // format 4: time only without seconds
-                            timestamp = LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm")).withSecond(0)
-                                    .atDate(LocalDate.now(ZoneId.of(timezoneToUse)))
-                                    .atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
-                        } catch (DateTimeException e4) {
-                            // none of the 4 formats matched!
-                            logger.warn("Could not parse date time {}", dateTimeParam);
-                            respond.accept(":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
-                                    "For example: `2020-10-01 15:42:00`\nYou can omit the date if you want today, and the seconds if you don't need that.");
-                        }
-                    }
-                }
+                    // year omitted
+                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear() + "-" + dateTimeParam,
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss")),
+                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear() + "-" + dateTimeParam,
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0),
+
+                    // month omitted
+                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear()
+                                    + "-" + LocalDate.now(ZoneId.of(timezoneToUse)).getMonthValue()
+                                    + "-" + dateTimeParam,
+                            DateTimeFormatter.ofPattern("yyyy-M-d H:mm:ss")),
+                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear()
+                                    + "-" + LocalDate.now(ZoneId.of(timezoneToUse)).getMonthValue()
+                                    + "-" + dateTimeParam,
+                            DateTimeFormatter.ofPattern("yyyy-M-d H:mm")).withSecond(0),
+
+                    // date omitted
+                    () -> LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm:ss"))
+                            .atDate(LocalDate.now(ZoneId.of(timezoneToUse))),
+                    () -> LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm")).withSecond(0)
+                            .atDate(LocalDate.now(ZoneId.of(timezoneToUse)))
+            ));
+
+            Long timestamp = null;
+            if (parsedDateTime == null) {
+                respond.accept(":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
+                        "For example: `2020-10-01 15:42:00`\nYou can omit part of the date (or omit it entirely if you want today), and the seconds if you don't need that.");
+            } else {
+                timestamp = parsedDateTime.atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
             }
 
             if (timestamp != null) {
@@ -583,6 +586,20 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             // we should always respond to slash commands!
             respond.accept("You must have the Administrator or Manage Server permission to use this!");
         }
+    }
+
+    private static LocalDateTime tryParseSuccessively(String input, List<Supplier<LocalDateTime>> formatsToAttempt) {
+        // try all the formats one to one.
+        for (Supplier<LocalDateTime> formatToAttempt : formatsToAttempt) {
+            try {
+                return formatToAttempt.get();
+            } catch (DateTimeParseException e) {
+                // continue!
+            }
+        }
+
+        // no format matched!
+        return null;
     }
 
     private static <T> T getIgnoreCase(Map<String, T> map, String key) {
