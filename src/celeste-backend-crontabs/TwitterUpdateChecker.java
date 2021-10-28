@@ -170,7 +170,7 @@ public class TwitterUpdateChecker {
                             webhookUrls = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
                                     .stream()
                                     .map(Object::toString)
-                                    .collect(Collectors.toList());
+                                    .collect(Collectors.toCollection(ArrayList::new));
                         }
 
                         // invoke webhooks
