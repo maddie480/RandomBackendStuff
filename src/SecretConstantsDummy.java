@@ -9,11 +9,16 @@ public class SecretConstantsDummy {
     static final Long REPORT_SERVER_ID = 0L;
     static final Long REPORT_SERVER_CHANNEL = 0L;
 
-    // bot credentials
+    // Timezone Bot credentials
     static final Long TIMEZONE_BOT_ID = 0L;
-    static final Long GAMES_BOT_ID = 0L;
     static final String TIMEZONE_BOT_TOKEN = "";
     static final String TIMEZONE_BOT_TOP_GG_TOKEN = "";
+
+    // Games Bot credentials
+    static final Long GAMES_BOT_ID = 0L;
+    static final String GAMES_BOT_TOP_GG_TOKEN = "";
+
+    // Mod Structure Verifier credentials
     static final String MOD_STRUCTURE_VERIFIER_TOKEN = "";
     static final String STRAWBERRY_JAM_LOCATION = "";
 
