@@ -159,6 +159,10 @@ public class ModStructureVerifier extends ListenerAdapter {
         logger.debug("Bot is currently in following guilds: {}", jda.getGuilds());
     }
 
+    public static int getServerCount() {
+        return jda.getGuilds().size();
+    }
+
     // let the owner know when the bot joins or leaves servers
     @Override
     public void onGuildJoin(@NotNull GuildJoinEvent event) {

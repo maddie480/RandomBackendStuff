@@ -211,6 +211,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         new Thread(new TimezoneBot()).start();
     }
 
+    public static int getServerCount() {
+        return jda.getGuilds().size();
+    }
+
     // === BEGIN event handling for /toggle-times
 
     @Override
