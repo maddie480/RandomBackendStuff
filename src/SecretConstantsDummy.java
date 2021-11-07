@@ -41,6 +41,8 @@ public class SecretConstantsDummy {
     static final String MOD_SEARCH_RELOAD_API = "";
     static final String LUA_CUTSCENES_DOC_UPLOAD_API = "";
 
+    static final String SRC_MOD_UPDATE_NOTIFICATIONS_PAGE = "";
+
     // Discord webhooks to call about GameBanana check issues
     // the first entry is the "owner" one and will also be called for analysis errors
     static final List<String> GAMEBANANA_ISSUES_ALERT_HOOKS = Collections.emptyList();

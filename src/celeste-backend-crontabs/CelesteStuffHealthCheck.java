@@ -555,4 +555,19 @@ public class CelesteStuffHealthCheck {
             }
         }
     }
+
+
+    /**
+     * Checks that the page for speedrun.com update notification setup still displays properly.
+     * Run daily at midnight.
+     */
+    public static void checkSrcModUpdateNotificationsPage() throws IOException {
+        String contents = IOUtils.toString(new URL(SecretConstants.SRC_MOD_UPDATE_NOTIFICATIONS_PAGE).openStream(), UTF_8);
+        if (!contents.contains("SpringCollab2020")
+                || !contents.contains("The 2020 Celeste Spring Community Collab")
+                || !contents.contains("https://gamebanana.com/mods/150813")) {
+
+            throw new IOException("speedrun.com mod update notifications page does not render properly or does not have Spring Collab on it");
+        }
+    }
 }
