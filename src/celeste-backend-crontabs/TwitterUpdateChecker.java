@@ -201,7 +201,7 @@ public class TwitterUpdateChecker {
                             // some webhooks were deleted! notify the owner about it.
                             for (String goneWebhook : goneWebhooks) {
                                 BotClient.getInstance().getTextChannelById(SecretConstants.TWITTER_UPDATE_CHANNEL)
-                                        .sendMessage("Auto-unsubscribed webhook because it does not exist: " + goneWebhook)
+                                        .sendMessage(":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook)
                                         .queue();
 
                                 webhookUrls.remove(goneWebhook);

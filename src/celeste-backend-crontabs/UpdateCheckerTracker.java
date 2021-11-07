@@ -4,6 +4,7 @@ import com.google.cloud.storage.*;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListener;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -13,6 +14,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.FSDirectory;
+import org.json.JSONArray;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,17 +26,16 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * A service that follows the Update Checker logs and re-posts them to a Discord channel.
@@ -78,11 +79,7 @@ public class UpdateCheckerTracker implements TailerListener {
     private static String modSearchDatabaseSha256 = "[first check]";
     private static String fileIdsSha256 = "[first check]";
 
-    // "src" as in "speedrun.com"
-    private static final Set<String> SRC_MOD_IDS = new HashSet<>(Arrays.asList("QuickieMountain2", "Glyph", "Monika's D-Sides", "SpringCollab2020",
-            "Into The Jungle", "PathofHopeChapter", "Shade World", "Anubi", "Insanelynicemap", "Veryepicmap", "DashPrologue", "Mario-1-1", "playablecredits",
-            "24x33", "GateToTheStars"));
-    private static final Pattern SAVED_MOD_PATTERN = Pattern.compile(".*=> Saved new information to database: Mod\\{name='([A-Za-z0-9 '-]+)', version='([0-9.]+)', url='.*', lastUpdate=([0-9]+),.*");
+    private static final Pattern SAVED_MOD_PATTERN = Pattern.compile(".*=> Saved new information to database: Mod\\{name='(.+)', version='([0-9.]+)', url='.+', lastUpdate=([0-9]+),.*");
 
     /**
      * Method to call to start the watcher thread.
@@ -163,12 +160,22 @@ public class UpdateCheckerTracker implements TailerListener {
                 if (savedNewModMatch.matches()) {
                     String modName = savedNewModMatch.group(1);
                     String modVersion = savedNewModMatch.group(2);
-                    String modUpdatedTime = Instant.ofEpochSecond(Long.parseLong(savedNewModMatch.group(3))).atZone(ZoneId.of("UTC"))
-                            .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG).withLocale(Locale.ENGLISH));
+                    String modUpdatedTime = savedNewModMatch.group(3);
 
-                    if (SRC_MOD_IDS.contains(modName)) {
-                        executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK, "**" + modName + "** was updated to version **" + modVersion + "** on " + modUpdatedTime + ".");
-                        executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: SRC staff was notified about this.");
+                    try (InputStream is = getCloudStorageInputStream("src_mod_update_notification_ids.json")) {
+                        List<String> srcModIds = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
+                                .stream()
+                                .map(Object::toString)
+                                .collect(Collectors.toCollection(ArrayList::new));
+
+                        if (srcModIds.contains(modName)) {
+                            executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK, "**" + modName + "** was updated to version **" + modVersion + "** on <t:" + modUpdatedTime + ":f>.");
+                            executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: SRC staff was notified about this.");
+                        }
+
+                    } catch (IOException e) {
+                        log.error("Error while fetching SRC mod update notification ID list", e);
+                        executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Error while fetching SRC mod update notification ID list: " + e);
                     }
                 }
             }
@@ -237,7 +244,7 @@ public class UpdateCheckerTracker implements TailerListener {
                 }
             } catch (IOException e) {
                 log.error("Error during a call to frontend to refresh databases", e);
-                executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`Frontend call failed: " + e.toString() + "`");
+                executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);
             }
         }
     }
@@ -288,6 +295,11 @@ public class UpdateCheckerTracker implements TailerListener {
     public void handle(Exception ex) {
         log.error("Error while tracking /tmp/update_checker.log", ex);
         executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`Error while tracking /tmp/update_checker.log: " + ex.toString() + "`");
+    }
+
+    private static InputStream getCloudStorageInputStream(String filename) {
+        BlobId blobId = BlobId.of("max480-random-stuff.appspot.com", filename);
+        return new ByteArrayInputStream(storage.readAllBytes(blobId));
     }
 
     public static void sendToCloudStorage(String file, String name, String contentType, boolean isPublic) throws IOException {
