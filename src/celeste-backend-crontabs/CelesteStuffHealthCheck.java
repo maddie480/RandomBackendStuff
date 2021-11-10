@@ -36,7 +36,7 @@ public class CelesteStuffHealthCheck {
      * Ran daily at midnight.
      */
     public static void checkEverestExists() throws IOException {
-        JSONObject object = new JSONObject(IOUtils.toString(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?api-version=5.0").openStream(), UTF_8));
+        JSONObject object = new JSONObject(IOUtils.toString(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&api-version=5.0").openStream(), UTF_8));
         JSONArray versionList = object.getJSONArray("value");
         int latestStable = -1;
         int latestBeta = -1;
