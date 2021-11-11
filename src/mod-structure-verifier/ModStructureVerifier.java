@@ -253,7 +253,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             event.getMessage().addReaction("\uD83E\uDD14").complete(); // :thinking:
 
-            try (InputStream is = new URL("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media").openStream()) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media"))) {
                 // download the file through the Google Drive API and analyze it.
                 File target = new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip");
                 FileUtils.copyToFile(is, target);
@@ -596,7 +596,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (dep.equals("StrawberryJam2021")) {
                 // download and analyze the SJ2021 helper.
-                try (InputStream databaseStrawberryJam = new URL(SecretConstants.STRAWBERRY_JAM_LOCATION).openStream()) {
+                try (InputStream databaseStrawberryJam = ConnectionUtils.openStreamWithTimeout(new URL(SecretConstants.STRAWBERRY_JAM_LOCATION))) {
                     String whereIsStrawberryJam = new Yaml().<Map<String, Map<String, Object>>>load(databaseStrawberryJam)
                             .get("StrawberryJam2021")
                             .get("URL").toString();
@@ -727,6 +727,8 @@ public class ModStructureVerifier extends ListenerAdapter {
         // download file (pretending we are Firefox since Discord hates Java and responds 403 to it for some reason)
         try (OutputStream os = new BufferedOutputStream(new FileOutputStream("mod-ahornscan-sj.zip"))) {
             HttpURLConnection connection = (HttpURLConnection) new URL(whereIsStrawberryJam).openConnection();
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
             connection.setDoInput(true);
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0");
             connection.connect();
@@ -803,6 +805,8 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     private InputStream authenticatedGitHubRequest(String url) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(30000);
         connection.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString(
                 (SecretConstants.GITHUB_USERNAME + ":" + SecretConstants.GITHUB_PERSONAL_ACCESS_TOKEN).getBytes(UTF_8)));
         return connection.getInputStream();

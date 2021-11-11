@@ -99,6 +99,9 @@ public class WebhookExecutor {
 
             connection = (HttpURLConnection) new URL(webhookUrl).openConnection();
 
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
+
             connection.setDoInput(true);
             connection.setDoOutput(true);
 

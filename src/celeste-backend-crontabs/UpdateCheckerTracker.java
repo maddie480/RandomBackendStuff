@@ -190,6 +190,8 @@ public class UpdateCheckerTracker implements TailerListener {
                     CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
 
                     HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.EVEREST_UPDATE_RELOAD_API).openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(30000);
                     if (conn.getResponseCode() != 200) {
                         throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
                     }
@@ -210,6 +212,8 @@ public class UpdateCheckerTracker implements TailerListener {
                     FileUtils.deleteDirectory(new File("/tmp/mod_index"));
 
                     HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.MOD_SEARCH_RELOAD_API).openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(30000);
                     if (conn.getResponseCode() != 200) {
                         throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
                     }
@@ -233,6 +237,8 @@ public class UpdateCheckerTracker implements TailerListener {
                     // also tell the frontend that Lua Cutscenes got updated, so that it can mirror the docs again.
                     log.info("Re-uploading Lua Cutscenes docs!");
                     HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.LUA_CUTSCENES_DOC_UPLOAD_API).openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(30000);
                     if (conn.getResponseCode() != 200) {
                         throw new IOException("Lua Cutscenes Documentation Upload API sent non 200 code: " + conn.getResponseCode());
                     } else {

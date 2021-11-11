@@ -137,7 +137,7 @@ public class GameBananaAutomatedChecks {
                     // file listing contains dll, so download!
                     logger.debug("Downloading mod {} (file id {})", modName, fileName);
 
-                    try (InputStream is = new URL(mod.get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString()).openStream()) {
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(mod.get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString()))) {
                         FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.zip"));
                     }
 
@@ -368,8 +368,8 @@ public class GameBananaAutomatedChecks {
      */
     private static boolean modIsObsolete(String mod) {
         try {
-            return runWithRetry(() -> {
-                try (InputStream is = new URL("https://gamebanana.com/apiv6/" + mod + "?_csvProperties=_bIsObsolete").openStream()) {
+            return ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv6/" + mod + "?_csvProperties=_bIsObsolete"))) {
                     JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                     return modInfo.getBoolean("_bIsObsolete");
                 }
@@ -382,7 +382,7 @@ public class GameBananaAutomatedChecks {
 
     private static Pair<String, String> whichModDoesFileBelongTo(String fileId) throws IOException {
         // load mod list
-        List<String> mods = runWithRetry(() -> {
+        List<String> mods = ConnectionUtils.runWithRetry(() -> {
             try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
                 return new Yaml().load(is);
             }
@@ -392,7 +392,7 @@ public class GameBananaAutomatedChecks {
             // load file list for the mod
             String modName;
             List<String> files;
-            Map<String, Object> info = runWithRetry(() -> {
+            Map<String, Object> info = ConnectionUtils.runWithRetry(() -> {
                 try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
                     return new Yaml().load(is);
                 }
@@ -426,7 +426,7 @@ public class GameBananaAutomatedChecks {
             String url = modMap.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString();
             if (!oldAlreadyChecked.contains(url)) {
                 logger.debug("Downloading {} ({}) for everest.yaml checking", url, modName);
-                try (InputStream is = new URL(url).openStream()) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
                     FileUtils.copyToFile(is, new File("/tmp/everest_yaml_police.zip"));
                 }
 
@@ -496,43 +496,5 @@ public class GameBananaAutomatedChecks {
                 logger.error("Sleep interrupted(???)", e);
             }
         }
-    }
-
-    /**
-     * Much like {@link java.util.function.Supplier} but throwing an IOException (which a network operation may do).
-     *
-     * @param <T> The return type for the operation
-     */
-    private interface NetworkingOperation<T> {
-        T run() throws IOException;
-    }
-
-    /**
-     * Runs a task (typically a network operation), retrying up to 3 times if it throws an IOException.
-     *
-     * @param task The task to run and retry
-     * @param <T>  The return type for the task
-     * @return What the task returned
-     * @throws IOException If the task failed 3 times
-     */
-    private static <T> T runWithRetry(NetworkingOperation<T> task) throws IOException {
-        for (int i = 1; i < 3; i++) {
-            try {
-                return task.run();
-            } catch (IOException e) {
-                logger.warn("I/O exception while doing networking operation (try {}/3).", i, e);
-
-                // wait a bit before retrying
-                try {
-                    logger.debug("Waiting {} seconds before next try.", i * 5);
-                    Thread.sleep(i * 5000);
-                } catch (InterruptedException e2) {
-                    logger.warn("Sleep interrupted", e2);
-                }
-            }
-        }
-
-        // 3rd try: this time, if it crashes, let it crash
-        return task.run();
     }
 }

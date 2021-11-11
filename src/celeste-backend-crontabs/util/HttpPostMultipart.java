@@ -30,6 +30,8 @@ public class HttpPostMultipart {
         boundary = UUID.randomUUID().toString();
         URL url = new URL(requestURL);
         httpConn = (HttpURLConnection) url.openConnection();
+        httpConn.setConnectTimeout(10000);
+        httpConn.setReadTimeout(30000);
         httpConn.setUseCaches(false);
         httpConn.setDoOutput(true);    // indicates POST method
         httpConn.setDoInput(true);

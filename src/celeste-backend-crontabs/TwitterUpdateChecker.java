@@ -1,6 +1,5 @@
 package com.max480.discord.randombots;
 
-import com.max480.everest.updatechecker.NetworkingOperation;
 import com.max480.quest.modmanagerbot.BotClient;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
@@ -97,6 +96,8 @@ public class TwitterUpdateChecker {
     private static String authenticateTwitter() throws IOException {
         HttpURLConnection connAuth = (HttpURLConnection) new URL("https://api.twitter.com/oauth2/token").openConnection();
 
+        connAuth.setConnectTimeout(10000);
+        connAuth.setReadTimeout(30000);
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.TWITTER_BASIC_AUTH);
         connAuth.setRequestMethod("POST");
         connAuth.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
@@ -133,6 +134,8 @@ public class TwitterUpdateChecker {
         HttpURLConnection connAuth = (HttpURLConnection) new URL("https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name="
                 + URLEncoder.encode(feed, "UTF-8") + "&count=50&include_rts=1&exclude_replies=1").openConnection();
 
+        connAuth.setConnectTimeout(10000);
+        connAuth.setReadTimeout(30000);
         connAuth.setRequestProperty("Authorization", "Bearer " + token);
         connAuth.setRequestMethod("GET");
         connAuth.setDoInput(true);
@@ -170,7 +173,7 @@ public class TwitterUpdateChecker {
                         for (String webhook : webhookUrls) {
                             try {
                                 // call the webhook with retries
-                                runWithRetry(() -> {
+                                ConnectionUtils.runWithRetry(() -> {
                                     try {
                                         WebhookExecutor.executeWebhook(webhook,
                                                 tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", ""),
@@ -229,26 +232,5 @@ public class TwitterUpdateChecker {
         }
 
         log.debug("Done.");
-    }
-
-    private static <T> T runWithRetry(NetworkingOperation<T> task) throws IOException {
-        for (int i = 1; i < 3; i++) {
-            try {
-                return task.run();
-            } catch (IOException e) {
-                log.warn("I/O exception while doing networking operation (try {}/3).", i, e);
-
-                // wait a bit before retrying
-                try {
-                    log.debug("Waiting {} seconds before next try.", i * 5);
-                    Thread.sleep(i * 5000);
-                } catch (InterruptedException e2) {
-                    log.warn("Sleep interrupted", e2);
-                }
-            }
-        }
-
-        // 3rd try: this time, if it crashes, let it crash
-        return task.run();
     }
 }

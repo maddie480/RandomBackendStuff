@@ -41,6 +41,8 @@ public class CustomEntityCatalogGenerator {
 
         // refresh the custom entity catalog on the frontend.
         HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.CUSTOM_ENTITY_CATALOG_RELOAD_API).openConnection();
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(30000);
         if (conn.getResponseCode() != 200) {
             throw new IOException("Custom Entity Catalog Reload API sent non 200 code: " + conn.getResponseCode());
         }
@@ -186,7 +188,7 @@ public class CustomEntityCatalogGenerator {
 
         // get the documentation links on the Everest wiki.
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                new URL("https://raw.githubusercontent.com/wiki/EverestAPI/Resources/Mapping/Helper-Manuals.md").openStream()))) {
+                ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/wiki/EverestAPI/Resources/Mapping/Helper-Manuals.md"))))) {
 
             // we're expecting - [label](link)
             Pattern linkPattern = Pattern.compile("^- \\[(.*)]\\((.*)\\)$");
