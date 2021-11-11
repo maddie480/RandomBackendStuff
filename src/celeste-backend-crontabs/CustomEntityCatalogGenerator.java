@@ -37,7 +37,7 @@ public class CustomEntityCatalogGenerator {
         output.put("lastUpdated", gen.lastUpdated);
         FileUtils.writeStringToFile(new File("uploads/customentitycatalog.json"), output.toString(4), UTF_8);
 
-        UpdateCheckerTracker.sendToCloudStorage("uploads/customentitycatalog.json", "custom_entity_catalog.json", "application/json", false);
+        CloudStorageUtils.sendToCloudStorage("uploads/customentitycatalog.json", "custom_entity_catalog.json", "application/json", false);
 
         // refresh the custom entity catalog on the frontend.
         HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.CUSTOM_ENTITY_CATALOG_RELOAD_API).openConnection();

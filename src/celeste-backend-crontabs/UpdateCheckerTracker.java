@@ -1,6 +1,5 @@
 package com.max480.discord.randombots;
 
-import com.google.cloud.storage.*;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -72,8 +71,6 @@ public class UpdateCheckerTracker implements TailerListener {
     protected static ZonedDateTime lastLogLineDate = ZonedDateTime.now();
 
     private static boolean luaCutscenesUpdated = false;
-
-    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
 
     private static String everestUpdateSha256 = "[first check]";
     private static String modSearchDatabaseSha256 = "[first check]";
@@ -162,7 +159,7 @@ public class UpdateCheckerTracker implements TailerListener {
                     String modVersion = savedNewModMatch.group(2);
                     String modUpdatedTime = savedNewModMatch.group(3);
 
-                    try (InputStream is = getCloudStorageInputStream("src_mod_update_notification_ids.json")) {
+                    try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("src_mod_update_notification_ids.json")) {
                         List<String> srcModIds = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
                                 .stream()
                                 .map(Object::toString)
@@ -190,7 +187,7 @@ public class UpdateCheckerTracker implements TailerListener {
 
                 if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
                     log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
-                    sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
+                    CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
 
                     HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.EVEREST_UPDATE_RELOAD_API).openConnection();
                     if (conn.getResponseCode() != 200) {
@@ -203,12 +200,12 @@ public class UpdateCheckerTracker implements TailerListener {
                 if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
                     log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
 
-                    sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
+                    CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
 
                     // build the new indices and send them to Cloud Storage
                     buildIndex();
                     pack("/tmp/mod_index", "/tmp/mod_index.zip");
-                    sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip", false);
+                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip", false);
                     Files.delete(Paths.get("/tmp/mod_index.zip"));
                     FileUtils.deleteDirectory(new File("/tmp/mod_index"));
 
@@ -222,11 +219,11 @@ public class UpdateCheckerTracker implements TailerListener {
 
                 if (!newFileIdsHash.equals(fileIdsSha256)) {
                     log.info("Reloading file_ids.yaml as hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
-                    sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml", false);
+                    CloudStorageUtils.sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml", false);
 
                     // if file_ids changed, it means the mod files database changed as well!
                     pack("modfilesdatabase", "/tmp/mod_files_database.zip");
-                    sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip", false);
+                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip", false);
                     FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
 
                     fileIdsSha256 = newFileIdsHash;
@@ -295,25 +292,6 @@ public class UpdateCheckerTracker implements TailerListener {
     public void handle(Exception ex) {
         log.error("Error while tracking /tmp/update_checker.log", ex);
         executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`Error while tracking /tmp/update_checker.log: " + ex.toString() + "`");
-    }
-
-    private static InputStream getCloudStorageInputStream(String filename) {
-        BlobId blobId = BlobId.of("max480-random-stuff.appspot.com", filename);
-        return new ByteArrayInputStream(storage.readAllBytes(blobId));
-    }
-
-    public static void sendToCloudStorage(String file, String name, String contentType, boolean isPublic) throws IOException {
-        BlobId blobId = BlobId.of("max480-random-stuff.appspot.com", name);
-        BlobInfo.Builder blobInfoBuilder = BlobInfo.newBuilder(blobId).setContentType(contentType);
-        if (!isPublic) {
-            // do not cache private stuff.
-            blobInfoBuilder.setCacheControl("no-store");
-        }
-        storage.createFrom(blobInfoBuilder.build(), Paths.get(file), 4096);
-
-        if (isPublic) {
-            storage.createAcl(blobId, Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER));
-        }
     }
 
     /**
@@ -389,7 +367,7 @@ public class UpdateCheckerTracker implements TailerListener {
                     oos.writeObject(newModDatabaseForSorting);
                     oos.writeObject(newModCategories);
                 }
-                sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream", false);
+                CloudStorageUtils.sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream", false);
                 new File("/tmp/mod_search_database.ser").delete();
             }
 

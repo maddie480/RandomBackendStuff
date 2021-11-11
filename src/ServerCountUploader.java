@@ -5,25 +5,18 @@ import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
 import com.google.cloud.logging.Payload;
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.io.FileUtils;
 import org.discordbots.api.client.DiscordBotListAPI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static com.max480.discord.randombots.UpdateCheckerTracker.sendToCloudStorage;
 
 /**
  * Uploads the server count for Timezone Bot, Mod Structure Verifier and Games Bot
@@ -74,9 +67,7 @@ public class ServerCountUploader {
                 "ModStructureVerifier", ModStructureVerifier.getServerCount(),
                 "GamesBot", guilds.size()
         ));
-        FileUtils.writeStringToFile(new File("/tmp/bot_server_counts.yaml"), yamlData, StandardCharsets.UTF_8);
-        sendToCloudStorage("/tmp/bot_server_counts.yaml", "bot_server_counts.yaml", "text/yaml", false);
-        Files.delete(Paths.get("/tmp/bot_server_counts.yaml"));
+        CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml", false);
 
         logger.info("Stats saved on Cloud Storage: {}", yamlData);
 

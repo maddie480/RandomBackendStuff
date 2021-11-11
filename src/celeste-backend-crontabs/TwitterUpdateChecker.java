@@ -1,11 +1,7 @@
 package com.max480.discord.randombots;
 
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.max480.everest.updatechecker.NetworkingOperation;
 import com.max480.quest.modmanagerbot.BotClient;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -16,19 +12,15 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.max480.discord.randombots.UpdateCheckerTracker.sendToCloudStorage;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TwitterUpdateChecker {
     private static final Logger log = LoggerFactory.getLogger(TwitterUpdateChecker.class);
-    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
 
     // those will be sent to #celeste_news_network.
     private static final List<String> THREADS_TO_WEBHOOK = Arrays.asList("celeste_game", "EverestAPI");
@@ -166,7 +158,7 @@ public class TwitterUpdateChecker {
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
                         // load webhook URLs from Cloud Storage
                         List<String> webhookUrls;
-                        try (InputStream is = getCloudStorageInputStream("celeste_news_network_subscribers.json")) {
+                        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("celeste_news_network_subscribers.json")) {
                             webhookUrls = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
                                     .stream()
                                     .map(Object::toString)
@@ -208,9 +200,7 @@ public class TwitterUpdateChecker {
                             }
 
                             // save the deletion to Cloud Storage.
-                            FileUtils.writeStringToFile(new File("/tmp/cnn_subscribers.json"), new JSONArray(webhookUrls).toString(), UTF_8);
-                            sendToCloudStorage("/tmp/cnn_subscribers.json", "celeste_news_network_subscribers.json", "application/json", false);
-                            Files.delete(Paths.get("/tmp/cnn_subscribers.json"));
+                            CloudStorageUtils.sendStringToCloudStorage(new JSONArray(webhookUrls).toString(), "celeste_news_network_subscribers.json", "application/json", false);
                         }
                     }
 
@@ -239,11 +229,6 @@ public class TwitterUpdateChecker {
         }
 
         log.debug("Done.");
-    }
-
-    private static InputStream getCloudStorageInputStream(String filename) {
-        BlobId blobId = BlobId.of("max480-random-stuff.appspot.com", filename);
-        return new ByteArrayInputStream(storage.readAllBytes(blobId));
     }
 
     private static <T> T runWithRetry(NetworkingOperation<T> task) throws IOException {
