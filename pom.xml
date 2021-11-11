@@ -136,6 +136,10 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-logging</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-monitoring</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.max480.everest.updatechecker</groupId>

@@ -39,7 +39,6 @@ public class SecretConstantsDummy {
     static final String CUSTOM_ENTITY_CATALOG_RELOAD_API = "";
     static final String EVEREST_UPDATE_RELOAD_API = "";
     static final String MOD_SEARCH_RELOAD_API = "";
-    static final String LUA_CUTSCENES_DOC_UPLOAD_API = "";
 
     static final String SRC_MOD_UPDATE_NOTIFICATIONS_PAGE = "";
 

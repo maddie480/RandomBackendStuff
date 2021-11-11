@@ -234,16 +234,10 @@ public class UpdateCheckerTracker implements TailerListener {
                 }
 
                 if (luaCutscenesUpdated) {
-                    // also tell the frontend that Lua Cutscenes got updated, so that it can mirror the docs again.
+                    // also update the Lua Cutscenes documentation mirror.
                     log.info("Re-uploading Lua Cutscenes docs!");
-                    HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.LUA_CUTSCENES_DOC_UPLOAD_API).openConnection();
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(30000);
-                    if (conn.getResponseCode() != 200) {
-                        throw new IOException("Lua Cutscenes Documentation Upload API sent non 200 code: " + conn.getResponseCode());
-                    } else {
-                        luaCutscenesUpdated = false;
-                    }
+                    LuaCutscenesDocumentationUploader.updateLuaCutscenesDocumentation();
+                    luaCutscenesUpdated = false;
                 }
             } catch (IOException e) {
                 log.error("Error during a call to frontend to refresh databases", e);
