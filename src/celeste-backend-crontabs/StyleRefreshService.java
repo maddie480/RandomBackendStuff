@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
- * A (pretty silly) service aiming to change my GB profile background on a daily basis (called every day at midnight).
+ * A (pretty silly) service aiming to change my GB profile background and Ripe supporter highlight on a daily basis (called every day at midnight).
  * The result is sent to https://storage.googleapis.com/max480-random-stuff.appspot.com/gamebanana-profile-background.css
  */
 public class StyleRefreshService {
@@ -52,7 +52,29 @@ public class StyleRefreshService {
         } else if (rng < 0.4) {
             css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #EC422A, #831121, #8A2E98, #DB49E3); }";
         } else if (rng < 0.5) {
+            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #F07357, #444, #5D9DBF); }";
+        } else if (rng < 0.6) {
+            css += "\n#IdentityModule .Avatar.IsRipeSupporter {\n" +
+                    "    background: linear-gradient(to bottom, #FF2457, #FF8524, #FFC824, #88FF24, #24BBFF, #B824FF);\n" +
+                    "    padding: 0.5em;\n" +
+                    "    border-radius: 1em;\n" +
+                    "}\n" +
+                    "#IdentityModule .Avatar.IsRipeSupporter::before { border-radius: 0.5em; }";
+        } else if (rng < 0.7) {
             css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #FF2457, #FF8524, #FFC824, #88FF24, #24BBFF, #B824FF); }";
+        } else if (rng < 0.8) {
+            css += "\n#IdentityModule .Avatar.IsRipeSupporter {\n" +
+                    "    padding: 0;\n" +
+                    "    border-radius: 1em;\n" +
+                    "    background: none;\n" +
+                    "    box-shadow: 0 0 15px 10px #F07357;\n" +
+                    "    margin: 1em;\n" +
+                    "}\n" +
+                    "#IdentityModule .Avatar.IsRipeSupporter::before { border-radius: 1em; }";
+        } else if (rng < 0.9) {
+            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #FF5F42, #8A0F36, #DE2A2A); }";
+        } else {
+            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: pink; }";
         }
 
         CloudStorageUtils.sendStringToCloudStorage(css, "gamebanana-profile-background.css", "text/css", true);
