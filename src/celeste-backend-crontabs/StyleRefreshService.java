@@ -68,7 +68,7 @@ public class StyleRefreshService {
                     "    border-radius: 1em;\n" +
                     "    background: none;\n" +
                     "    box-shadow: 0 0 15px 10px #F07357;\n" +
-                    "    margin: 1em;\n" +
+                    "    margin: 1em 0 1.5em 0;\n" +
                     "}\n" +
                     "#IdentityModule .Avatar.IsRipeSupporter::before { border-radius: 1em; }";
         } else if (rng < 0.9) {
