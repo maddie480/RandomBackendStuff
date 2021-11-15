@@ -108,9 +108,11 @@ public class ServiceMonitoringService {
         for (TimeSeries series : timeSeries.iterateAll()) {
             int index;
             if (series.getMetric().getLabelsOrThrow("check_id").equals("bot-healthcheck-F_-kI5b144Q")
-                    || series.getMetric().getLabelsOrThrow("check_id").equals("bot-healthcheck")) {
+                    || series.getMetric().getLabelsOrThrow("check_id").equals("bot-healthcheck")
+                    || series.getMetric().getLabelsOrThrow("check_id").equals("bot-healthcheck-ZG_z89RwZLc")) {
                 index = 0;
-            } else if (series.getMetric().getLabelsOrThrow("check_id").equals("website-healthcheck")) {
+            } else if (series.getMetric().getLabelsOrThrow("check_id").equals("website-healthcheck")
+                    || series.getMetric().getLabelsOrThrow("check_id").equals("website-healthcheck-pHdPnOpXsNs")) {
                 index = 1;
             } else if (series.getMetric().getLabelsOrThrow("check_id").equals("celestemodupdater-0x0a-de")) {
                 index = 2;
