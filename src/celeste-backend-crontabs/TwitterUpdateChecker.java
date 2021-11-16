@@ -142,8 +142,8 @@ public class TwitterUpdateChecker {
 
         JSONArray answer = new JSONArray(IOUtils.toString(connAuth.getInputStream(), UTF_8));
 
-        for (Object tweetObject : answer) {
-            JSONObject tweet = (JSONObject) tweetObject;
+        for (int i = answer.length() - 1; i >= 0; i--) {
+            JSONObject tweet = answer.getJSONObject(i);
             String id = tweet.getString("id_str");
             long date = OffsetDateTime.parse(tweet.getString("created_at"), DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH)).toEpochSecond();
 
