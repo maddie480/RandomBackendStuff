@@ -35,12 +35,11 @@ public class SecretConstantsDummy {
     static final String GITHUB_USERNAME = "";
     static final String GITHUB_PERSONAL_ACCESS_TOKEN = "";
 
-    // API to call to reload the custom entity catalog, mod search and everest_update.yaml on the frontend
-    static final String CUSTOM_ENTITY_CATALOG_RELOAD_API = "";
-    static final String EVEREST_UPDATE_RELOAD_API = "";
-    static final String MOD_SEARCH_RELOAD_API = "";
+    // secret used to call "reload" APIs on the frontend, when everest_update.yaml / mod_search_database.yaml is updated
+    static final String RELOAD_SHARED_SECRET = "";
 
-    static final String SRC_MOD_UPDATE_NOTIFICATIONS_PAGE = "";
+    // key that has to be used to access the speedrun.com update notifications setup
+    static final String SRC_MOD_UPDATE_NOTIFICATIONS_KEY = "";
 
     // Discord webhooks to call about GameBanana check issues
     // the first entry is the "owner" one and will also be called for analysis errors

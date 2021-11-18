@@ -189,7 +189,8 @@ public class UpdateCheckerTracker implements TailerListener {
                     log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
                     CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
 
-                    HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.EVEREST_UPDATE_RELOAD_API).openConnection();
+                    HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
+                            + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
                     conn.setConnectTimeout(10000);
                     conn.setReadTimeout(30000);
                     if (conn.getResponseCode() != 200) {
@@ -211,7 +212,8 @@ public class UpdateCheckerTracker implements TailerListener {
                     Files.delete(Paths.get("/tmp/mod_index.zip"));
                     FileUtils.deleteDirectory(new File("/tmp/mod_index"));
 
-                    HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.MOD_SEARCH_RELOAD_API).openConnection();
+                    HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search-reload?key="
+                            + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
                     conn.setConnectTimeout(10000);
                     conn.setReadTimeout(30000);
                     if (conn.getResponseCode() != 200) {

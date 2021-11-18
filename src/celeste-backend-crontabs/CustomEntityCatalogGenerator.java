@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -38,19 +37,8 @@ public class CustomEntityCatalogGenerator {
         FileUtils.writeStringToFile(new File("uploads/customentitycatalog.json"), output.toString(4), UTF_8);
 
         CloudStorageUtils.sendToCloudStorage("uploads/customentitycatalog.json", "custom_entity_catalog.json", "application/json", false);
-
-        // refresh the custom entity catalog on the frontend.
-        HttpURLConnection conn = (HttpURLConnection) new URL(SecretConstants.CUSTOM_ENTITY_CATALOG_RELOAD_API).openConnection();
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(30000);
-        if (conn.getResponseCode() != 200) {
-            throw new IOException("Custom Entity Catalog Reload API sent non 200 code: " + conn.getResponseCode());
-        }
     }
 
-    /**
-     * A small object to hold an itemtype/itemid pair (this identifies a mod uniquely on GameBanana).
-     */
     public static class QueriedModInfo {
         private String itemtype;
         private int itemid;

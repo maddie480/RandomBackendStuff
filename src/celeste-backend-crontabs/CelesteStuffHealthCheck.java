@@ -6,6 +6,7 @@ import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -572,12 +573,31 @@ public class CelesteStuffHealthCheck {
      * Run daily at midnight.
      */
     public static void checkSrcModUpdateNotificationsPage() throws IOException {
-        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL(SecretConstants.SRC_MOD_UPDATE_NOTIFICATIONS_PAGE)), UTF_8);
+        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/src-mod-update-notifications?key="
+                + SecretConstants.SRC_MOD_UPDATE_NOTIFICATIONS_KEY)), UTF_8);
         if (!contents.contains("SpringCollab2020")
                 || !contents.contains("The 2020 Celeste Spring Community Collab")
                 || !contents.contains("https://gamebanana.com/mods/150813")) {
 
             throw new IOException("speedrun.com mod update notifications page does not render properly or does not have Spring Collab on it");
+        }
+    }
+
+    /**
+     * Checks that the Discord Bots page shows the Mod Structure Verifier server count.
+     * Run daily at midnight.
+     */
+    public static void checkDiscordBotsPage() throws IOException {
+        Document soup = Jsoup.connect("https://max480-random-stuff.appspot.com/discord-bots").get();
+
+        String expected;
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("bot_server_counts.yaml")) {
+            int count = new Yaml().<Map<String, Integer>>load(is).get("ModStructureVerifier");
+            expected = count + " " + (count == 1 ? "server" : "servers");
+        }
+
+        if (!soup.select("#mod-structure-verifier .badge").text().equals(expected)) {
+            throw new IOException("Discord Bots page does not display Mod Structure Verifier server count properly");
         }
     }
 }
