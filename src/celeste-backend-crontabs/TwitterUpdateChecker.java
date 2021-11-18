@@ -203,7 +203,7 @@ public class TwitterUpdateChecker {
                             }
 
                             // save the deletion to Cloud Storage.
-                            CloudStorageUtils.sendStringToCloudStorage(new JSONArray(webhookUrls).toString(), "celeste_news_network_subscribers.json", "application/json", false);
+                            CloudStorageUtils.sendStringToCloudStorage(new JSONArray(webhookUrls).toString(), "celeste_news_network_subscribers.json", "application/json");
                         }
                     }
 

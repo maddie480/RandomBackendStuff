@@ -77,7 +77,7 @@ public class StyleRefreshService {
             css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: pink; }";
         }
 
-        CloudStorageUtils.sendStringToCloudStorage(css, "gamebanana-profile-background.css", "text/css", true);
+        CloudStorageUtils.sendStringToCloudStorage(css, "gamebanana-profile-background.css", "text/css");
 
         String report = "RNG value is " + rng + ", day of year is " + dayOfYear + " (% " + backgrounds.length + " = " + (dayOfYear % backgrounds.length)
                 + ") => New CSS pushed:\n" + css;

@@ -187,7 +187,7 @@ public class UpdateCheckerTracker implements TailerListener {
 
                 if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
                     log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
-                    CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml", false);
+                    CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml");
 
                     HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
                             + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
@@ -203,12 +203,12 @@ public class UpdateCheckerTracker implements TailerListener {
                 if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
                     log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
 
-                    CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml", false);
+                    CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml");
 
                     // build the new indices and send them to Cloud Storage
                     buildIndex();
                     pack("/tmp/mod_index", "/tmp/mod_index.zip");
-                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip", false);
+                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip");
                     Files.delete(Paths.get("/tmp/mod_index.zip"));
                     FileUtils.deleteDirectory(new File("/tmp/mod_index"));
 
@@ -225,11 +225,11 @@ public class UpdateCheckerTracker implements TailerListener {
 
                 if (!newFileIdsHash.equals(fileIdsSha256)) {
                     log.info("Reloading file_ids.yaml as hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
-                    CloudStorageUtils.sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml", false);
+                    CloudStorageUtils.sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml");
 
                     // if file_ids changed, it means the mod files database changed as well!
                     pack("modfilesdatabase", "/tmp/mod_files_database.zip");
-                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip", false);
+                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip");
                     FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
 
                     fileIdsSha256 = newFileIdsHash;
@@ -369,7 +369,7 @@ public class UpdateCheckerTracker implements TailerListener {
                     oos.writeObject(newModDatabaseForSorting);
                     oos.writeObject(newModCategories);
                 }
-                CloudStorageUtils.sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream", false);
+                CloudStorageUtils.sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream");
                 new File("/tmp/mod_search_database.ser").delete();
             }
 

@@ -36,7 +36,7 @@ public class CustomEntityCatalogGenerator {
         output.put("lastUpdated", gen.lastUpdated);
         FileUtils.writeStringToFile(new File("uploads/customentitycatalog.json"), output.toString(4), UTF_8);
 
-        CloudStorageUtils.sendToCloudStorage("uploads/customentitycatalog.json", "custom_entity_catalog.json", "application/json", false);
+        CloudStorageUtils.sendToCloudStorage("uploads/customentitycatalog.json", "custom_entity_catalog.json", "application/json");
     }
 
     public static class QueriedModInfo {

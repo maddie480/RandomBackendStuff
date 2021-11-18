@@ -67,7 +67,7 @@ public class ServerCountUploader {
                 "ModStructureVerifier", ModStructureVerifier.getServerCount(),
                 "GamesBot", guilds.size()
         ));
-        CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml", false);
+        CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml");
 
         logger.info("Stats saved on Cloud Storage: {}", yamlData);
 
