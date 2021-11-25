@@ -293,6 +293,10 @@ public class CustomEntityCatalogGenerator {
                         replacePrefix(info, "ParrotHelper");
                         break;
 
+                    case 338413: // Nerd Helper: common prefix to remove
+                        replacePrefix(info, "NerdHelper");
+                        break;
+
                     case 53636: // Dialog Textbox Trigger: obsolete
                     case 53659: // Simple Cutscenes: obsolete
                         modInfo.remove(info);
