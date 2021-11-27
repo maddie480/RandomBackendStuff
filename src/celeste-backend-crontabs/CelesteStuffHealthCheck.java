@@ -600,4 +600,22 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Discord Bots page does not display Mod Structure Verifier server count properly");
         }
     }
+
+    /**
+     * Checks that the #celeste_news_network subscription service page shows the webhook / subscriber count.
+     * Run daily at midnight.
+     */
+    public static void checkCelesteNewsNetworkSubscriptionService() throws IOException {
+        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/news-network-subscription")), UTF_8);
+
+        String expected;
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("celeste_news_network_subscribers.json")) {
+            int count = new JSONArray(IOUtils.toString(is, UTF_8)).length();
+            expected = "<b>" + count + " " + (count == 1 ? "webhook" : "webhooks") + "</b>";
+        }
+
+        if (!contents.contains(expected)) {
+            throw new IOException("#celeste_news_network subscription service page does not show subscriber count anywhere!");
+        }
+    }
 }
