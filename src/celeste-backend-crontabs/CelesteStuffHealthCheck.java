@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -370,6 +371,22 @@ public class CelesteStuffHealthCheck {
         final String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
         if (!fileIds.contains("'484937'")) {
             throw new IOException("file_ids.yaml check failed");
+        }
+
+        // mod files database zip
+        try (ZipInputStream zis = new ZipInputStream(new URL("https://max480-random-stuff.appspot.com/celeste/mod_files_database.zip").openStream())) {
+            Set<String> expectedFiles = new HashSet<>(Arrays.asList(
+                    "ahorn_vanilla.yaml", "list.yaml", "Mod/150813/info.yaml", "Mod/150813/484937.yaml", "Mod/53641/ahorn_506448.yaml"
+            ));
+
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                expectedFiles.remove(entry.getName());
+            }
+
+            if (!expectedFiles.isEmpty()) {
+                throw new IOException("The following files are missing from mod files database: " + String.join(", ", expectedFiles));
+            }
         }
 
         // Update Checker status, widget version
