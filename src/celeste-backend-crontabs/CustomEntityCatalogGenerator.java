@@ -45,6 +45,7 @@ public class CustomEntityCatalogGenerator {
         private int categoryId;
         private String categoryName;
         private String modName;
+        private int dependentCount;
         private Set<String> entityList = new TreeSet<>();
         private Set<String> triggerList = new TreeSet<>();
         private Set<String> effectList = new TreeSet<>();
@@ -75,6 +76,10 @@ public class CustomEntityCatalogGenerator {
 
         public String getModName() {
             return modName;
+        }
+
+        public int getDependentCount() {
+            return dependentCount;
         }
 
         public Set<String> getEntityList() {
@@ -211,6 +216,12 @@ public class CustomEntityCatalogGenerator {
             everestUpdateYaml = new Yaml().load(is);
         }
 
+        // get the dependency graph.
+        Map<String, Map<String, Object>> dependencyGraphYaml;
+        try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
+            dependencyGraphYaml = new Yaml().load(is);
+        }
+
         for (QueriedModInfo info : new HashSet<>(modInfo)) {
             // find the mod name based on GameBanana itemtype/itemid.
             Map.Entry<String, Map<String, Object>> updateCheckerDatabaseEntry = everestUpdateYaml.entrySet()
@@ -335,6 +346,17 @@ public class CustomEntityCatalogGenerator {
             info.entityList = info.entityList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
             info.triggerList = info.triggerList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
             info.effectList = info.effectList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
+
+            // count dependents using the dependency graph.
+            int dependents = 0;
+            if (updateCheckerDatabaseEntry != null) {
+                for (Map<String, Object> dependencyGraphEntry : dependencyGraphYaml.values()) {
+                    if (((Map<String, Object>) dependencyGraphEntry.get("Dependencies")).containsKey(updateCheckerDatabaseEntry.getKey())) {
+                        dependents++;
+                    }
+                }
+            }
+            info.dependentCount = dependents;
         }
 
         // sort the list by ascending name.

@@ -188,6 +188,7 @@ public class UpdateCheckerTracker implements TailerListener {
                 if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
                     log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
                     CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml");
+                    CloudStorageUtils.sendToCloudStorage("uploads/moddependencygraph.yaml", "mod_dependency_graph.yaml", "text/yaml");
 
                     HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
                             + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
