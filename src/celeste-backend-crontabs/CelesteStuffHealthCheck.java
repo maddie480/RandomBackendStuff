@@ -389,6 +389,15 @@ public class CelesteStuffHealthCheck {
             }
         }
 
+        // mod_dependency_graph.yaml
+        final String modDependencyGraph = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml"), UTF_8);
+        if (!modDependencyGraph.contains("SpringCollab2020Audio:")
+                || !modDependencyGraph.contains("URL: https://gamebanana.com/mmdl/484937")
+                || !modDependencyGraph.contains("SpringCollab2020Audio: 1.0.0")) {
+
+            throw new IOException("mod_dependency_graph.yaml check failed");
+        }
+
         // Update Checker status, widget version
         final String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
         if (!updateCheckerStatus.contains("<span class=\"GreenColor\">Up</span>")) {
