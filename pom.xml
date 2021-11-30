@@ -145,6 +145,13 @@
             <groupId>com.max480.everest.updatechecker</groupId>
             <artifactId>update-checker</artifactId>
             <version>0.0.40</version>
+            <!-- The bot is not using max480-random-stuff.appspot.com instead of the integrated HTTP server -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.nanohttpd</groupId>
+                    <artifactId>nanohttpd</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
