@@ -45,6 +45,7 @@ public class CustomEntityCatalogGenerator {
         private int categoryId;
         private String categoryName;
         private String modName;
+        private String modEverestYamlId;
         private String latestVersion;
         private int dependentCount;
         private Set<String> entityList = new TreeSet<>();
@@ -77,6 +78,10 @@ public class CustomEntityCatalogGenerator {
 
         public String getModName() {
             return modName;
+        }
+
+        public String getModEverestYamlId() {
+            return modEverestYamlId;
         }
 
         public String getLatestVersion() {
@@ -353,6 +358,7 @@ public class CustomEntityCatalogGenerator {
             info.effectList = info.effectList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
 
             if (updateCheckerDatabaseEntry != null) {
+                info.modEverestYamlId = updateCheckerDatabaseEntry.getKey();
                 info.latestVersion = updateCheckerDatabaseEntry.getValue().get("Version").toString();
             }
 
