@@ -45,6 +45,7 @@ public class CustomEntityCatalogGenerator {
         private int categoryId;
         private String categoryName;
         private String modName;
+        private String latestVersion;
         private int dependentCount;
         private Set<String> entityList = new TreeSet<>();
         private Set<String> triggerList = new TreeSet<>();
@@ -76,6 +77,10 @@ public class CustomEntityCatalogGenerator {
 
         public String getModName() {
             return modName;
+        }
+
+        public String getLatestVersion() {
+            return latestVersion;
         }
 
         public int getDependentCount() {
@@ -346,6 +351,10 @@ public class CustomEntityCatalogGenerator {
             info.entityList = info.entityList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
             info.triggerList = info.triggerList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
             info.effectList = info.effectList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
+
+            if (updateCheckerDatabaseEntry != null) {
+                info.latestVersion = updateCheckerDatabaseEntry.getValue().get("Version").toString();
+            }
 
             // count dependents using the dependency graph.
             int dependents = 0;
