@@ -78,6 +78,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      * This allows to avoid having to retrieve all members at each time.
      */
     private static class CachedMember implements Serializable {
+        public static final long serialVersionUID = -2324191448907830721L;
+
         private final long serverId;
         private final long memberId;
         private final ArrayList<Long> roleIds;
