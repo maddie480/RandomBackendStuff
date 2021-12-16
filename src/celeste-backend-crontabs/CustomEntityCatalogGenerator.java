@@ -48,9 +48,9 @@ public class CustomEntityCatalogGenerator {
         private String modEverestYamlId;
         private String latestVersion;
         private int dependentCount;
-        private Set<String> entityList = new TreeSet<>();
-        private Set<String> triggerList = new TreeSet<>();
-        private Set<String> effectList = new TreeSet<>();
+        private Map<String, List<String>> entityList = new HashMap<>();
+        private Map<String, List<String>> triggerList = new HashMap<>();
+        private Map<String, List<String>> effectList = new HashMap<>();
         private List<AbstractKeyValue<String, String>> documentationLinks = new ArrayList<>();
 
         private QueriedModInfo(String itemtype, int itemid) {
@@ -92,38 +92,38 @@ public class CustomEntityCatalogGenerator {
             return dependentCount;
         }
 
-        public Set<String> getEntityList() {
+        public Map<String, List<String>> getEntityList() {
             return entityList;
         }
 
-        public Set<String> getTriggerList() {
+        public Map<String, List<String>> getTriggerList() {
             return triggerList;
         }
 
-        public Set<String> getEffectList() {
+        public Map<String, List<String>> getEffectList() {
             return effectList;
         }
 
         public List<AbstractKeyValue<String, String>> getDocumentationLinks() {
             return documentationLinks;
         }
-
-
     }
 
     private List<QueriedModInfo> modInfo = null;
     private ZonedDateTime lastUpdated = null;
 
     /**
-     * Formats the name of a Ahorn plugin: dummyAhornName.jl => Dummy Ahorn Name
+     * Formats an entity ID: FrostHelper/KeyIce => Key Ice
      *
-     * @param input      The Ahorn file name
+     * @param input      The entity ID
      * @param dictionary A list of all name overrides
      * @return The name from dictionary if present, or an automatically formatted name
      */
     private static String formatName(String input, Map<String, String> dictionary) {
-        // trim the .jl
-        input = input.substring(0, input.length() - 3);
+        // trim the helper prefix
+        if (input.contains("/")) {
+            input = input.substring(input.lastIndexOf("/") + 1);
+        }
 
         if (dictionary.containsKey(input.toLowerCase())) {
             // the plugin name is in the dictionary
@@ -184,7 +184,7 @@ public class CustomEntityCatalogGenerator {
 
         modInfo = new ArrayList<>();
 
-        refreshList();
+        refreshList(dictionary);
 
         // mod name -> (link name, link)
         Map<String, Map<String, String>> documentationLinks = new HashMap<>();
@@ -245,117 +245,6 @@ public class CustomEntityCatalogGenerator {
                     info.documentationLinks.add(new DefaultKeyValue<>(link.getKey(), link.getValue()));
                 }
             }
-
-            // deal with some mods that need special display treatment by hand
-            if (info.itemtype.equals("Mod")) {
-                switch (info.itemid) {
-                    case 53664: // Canyon Helper: one file containing all entities
-                        info.entityList.remove("canyon.jl");
-                        info.entityList.add("SpinOrb.jl");
-                        info.entityList.add("PushBlock.jl");
-                        info.entityList.add("ToggleBlock.jl");
-                        info.entityList.add("GrannyTemple.jl");
-                        info.entityList.add("GrannyMonster.jl");
-                        info.entityList.add("GrannyStart.jl");
-                        info.entityList.add("UnbreakableStone.jl");
-
-                        info.triggerList.remove("canyon.jl");
-                        info.triggerList.add("MonsterTrigger.jl");
-                        info.triggerList.add("TempleFallTrigger.jl");
-
-                        break;
-
-                    case 53641: // Cavern Helper: one file containing all entities
-                        info.entityList.remove("cavern.jl");
-                        info.entityList.add("CrystalBomb.jl");
-                        info.entityList.add("IcyFloor.jl");
-                        info.entityList.add("FakeCavernHeart.jl");
-
-                        info.triggerList.remove("dialogcutscene.jl");
-
-                        break;
-
-                    case 53645: // Isa's Grab Bag: one file containing all entities
-                        info.entityList.remove("isaentities.jl");
-                        info.entityList.add("BadelineFriend.jl");
-                        info.entityList.add("ColorBlock.jl");
-                        info.entityList.add("ColorSwitch.jl");
-                        info.entityList.add("WaterBoost.jl");
-                        info.entityList.add("Zipline.jl");
-
-                        info.triggerList.remove("isatriggers.jl");
-                        info.triggerList.add("CoreWindTrigger.jl");
-                        info.triggerList.add("VariantTrigger.jl");
-                        info.triggerList.add("ColorSwitchTrigger.jl");
-
-                        break;
-
-                    case 53632: // Outback Helper: one file containing all entities
-                        info.entityList.remove("outback.jl");
-                        info.entityList.add("MovingTouchSwitch.jl");
-                        info.entityList.add("Portal.jl");
-                        info.entityList.add("TimedTouchSwitch.jl");
-
-                        break;
-
-                    case 53687: // max480's Helping Hand: common prefix to remove
-                        replacePrefix(info, "maxHelpingHand");
-                        break;
-
-                    case 53650: // Extended Variant Mode: common prefix to remove
-                        replacePrefix(info, "extendedVariants");
-                        break;
-
-                    case 53699: // Honly Helper: common prefix to remove
-                        replacePrefix(info, "Honly");
-                        break;
-
-                    case 320381: // ParrotHelper: common prefix to remove
-                        replacePrefix(info, "ParrotHelper");
-                        break;
-
-                    case 338413: // Nerd Helper: common prefix to remove
-                        replacePrefix(info, "NerdHelper");
-                        break;
-
-                    case 53636: // Dialog Textbox Trigger: obsolete
-                    case 53659: // Simple Cutscenes: obsolete
-                        modInfo.remove(info);
-                        break;
-
-                    case 150413: // Early Core: obsolete Dialog Cutscene Trigger
-                        info.triggerList.remove("dialogcutscene.jl");
-                        if (info.entityList.isEmpty() && info.triggerList.isEmpty() && info.effectList.isEmpty()) {
-                            modInfo.remove(info);
-                        }
-                        break;
-
-                    case 150396: // Crystalized: one file containing all entities
-                        info.entityList.remove("featherBarrier.jl");
-                        info.entityList.add("CutsceneHelper.jl");
-                        info.entityList.add("CraneLift.jl");
-
-                        info.triggerList.remove("trigger.jl");
-                        info.triggerList.add("CrystalDialog.jl");
-                        info.triggerList.add("RevertCore.jl");
-                        info.triggerList.add("SaveCore.jl");
-                        info.triggerList.add("HideTheo.jl");
-                        break;
-                }
-            }
-
-            if (info.itemtype.equals("Tool")) {
-                switch (info.itemid) {
-                    case 6970: // Ahorn Additives: blacklisted on request
-                        modInfo.remove(info);
-                        break;
-                }
-            }
-
-            // sort the lists by ascending name.
-            info.entityList = info.entityList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
-            info.triggerList = info.triggerList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
-            info.effectList = info.effectList.stream().map(a -> formatName(a, dictionary)).collect(Collectors.toCollection(TreeSet::new));
 
             if (updateCheckerDatabaseEntry != null) {
                 info.modEverestYamlId = updateCheckerDatabaseEntry.getKey();
@@ -437,41 +326,12 @@ public class CustomEntityCatalogGenerator {
     }
 
     /**
-     * Removes a prefix in all the entities/triggers/effects in a given mod.
-     *
-     * @param info   The mod to remove the prefix from
-     * @param prefix The prefix to remove
-     */
-    private void replacePrefix(QueriedModInfo info, String prefix) {
-        for (String s : new HashSet<>(info.entityList)) {
-            if (s.startsWith(prefix)) {
-                info.entityList.remove(s);
-                s = s.substring(prefix.length());
-                info.entityList.add(s);
-            }
-        }
-        for (String s : new HashSet<>(info.triggerList)) {
-            if (s.startsWith(prefix)) {
-                info.triggerList.remove(s);
-                s = s.substring(prefix.length());
-                info.triggerList.add(s);
-            }
-        }
-        for (String s : new HashSet<>(info.effectList)) {
-            if (s.startsWith(prefix)) {
-                info.effectList.remove(s);
-                s = s.substring(prefix.length());
-                info.effectList.add(s);
-            }
-        }
-    }
-
-    /**
      * Loads the Ahorn plugin list and puts it in modInfo.
      *
+     * @param dictionary A list of all name overrides
      * @throws IOException If an error occurs while reading the database
      */
-    private void refreshList() throws IOException {
+    private void refreshList(Map<String, String> dictionary) throws IOException {
         // load the entire mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
@@ -491,39 +351,66 @@ public class CustomEntityCatalogGenerator {
             List<String> files = (List<String>) fileInfo.get("Files");
 
             // only show files from the first version listed.
-            boolean filesWereAlreadyFound = false;
+            boolean filesWereFound = false;
 
             for (String file : files) {
-                // load the file list for this zip
-                List<String> fileList;
-                try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
-                    fileList = new Yaml().load(is);
-                }
-
-                // search for Ahorn plugins if we didn't already find them
-                if (!filesWereAlreadyFound) {
-                    for (String fileName : fileList) {
-                        if (fileName.startsWith("Ahorn/entities/") && fileName.endsWith(".jl")) {
-                            thisModInfo.entityList.add(fileName.substring(fileName.lastIndexOf("/") + 1));
-                        }
-                        if (fileName.startsWith("Ahorn/triggers/") && fileName.endsWith(".jl")) {
-                            thisModInfo.triggerList.add(fileName.substring(fileName.lastIndexOf("/") + 1));
-                        }
-                        if (fileName.startsWith("Ahorn/effects/") && fileName.endsWith(".jl")) {
-                            thisModInfo.effectList.add(fileName.substring(fileName.lastIndexOf("/") + 1));
-                        }
-                    }
-                }
+                checkMapEditor("ahorn", dictionary, mod, file, thisModInfo);
+                checkMapEditor("loenn", dictionary, mod, file, thisModInfo);
 
                 // check if we found plugins!
                 if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
-                    filesWereAlreadyFound = true;
+                    filesWereFound = true;
+                    break;
                 }
             }
 
             // add the mod to the custom entity catalog if it has any entity.
-            if (filesWereAlreadyFound) {
+            if (filesWereFound) {
                 modInfo.add(thisModInfo);
+            }
+        }
+    }
+
+    /**
+     * Checks whethr the given mod has any map editor entities registered for it.
+     *
+     * @param editor     The map editor to check
+     * @param dictionary A list of all name overrides
+     * @param mod        The itemtype/itemid of the mod
+     * @param file       The ID of the file to check
+     * @param modInfo    The mod info to fill out with any map editor info we found
+     * @throws IOException If an error occurs while reading the database
+     */
+    private void checkMapEditor(String editor, Map<String, String> dictionary, String mod, String file, QueriedModInfo modInfo) throws IOException {
+        if (new File("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml").exists()) {
+            Map<String, List<String>> entityList;
+            try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml")) {
+                entityList = new Yaml().load(is);
+            }
+
+            for (String entity : entityList.get("Entities")) {
+                String formatted = formatName(entity, dictionary);
+                if (!modInfo.entityList.containsKey(formatted)) {
+                    modInfo.entityList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
+                } else {
+                    modInfo.entityList.get(formatted).add(editor);
+                }
+            }
+            for (String trigger : entityList.get("Triggers")) {
+                String formatted = formatName(trigger, dictionary);
+                if (!modInfo.triggerList.containsKey(formatted)) {
+                    modInfo.triggerList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
+                } else {
+                    modInfo.triggerList.get(formatted).add(editor);
+                }
+            }
+            for (String effect : entityList.get("Effects")) {
+                String formatted = formatName(effect, dictionary);
+                if (!modInfo.effectList.containsKey(formatted)) {
+                    modInfo.effectList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
+                } else {
+                    modInfo.effectList.get(formatted).add(editor);
+                }
             }
         }
     }
