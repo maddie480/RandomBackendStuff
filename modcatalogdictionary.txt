@@ -29,7 +29,7 @@ EmHelper/MonumentspikesUp=Monument Spikes Up
 EmHelper/Monumentswapblock=Monument Swap Block
 EmHelper/Monumentswitchblock=Monument Switch Block
 EmHelper/Switchtrigger=Switch Trigger
-FancyTileEntities/FancyConditionBlock=LoadConditionBlock=FancyConditionBlock
+FancyTileEntities/FancyConditionBlock=LoadConditionBlock=Fancy Condition Block
 FrostHelper/WASDMovementTrigger=WASD Movement Trigger
 JackalHelper/BlizzardRemovalTrigger.cs=Blizzard Removal Trigger
 JackalHelper/BlizzardTrigger.cs=Blizzard Trigger
