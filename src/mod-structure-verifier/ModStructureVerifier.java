@@ -575,22 +575,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                                 .forEach(availableStylegrounds::add);
                     }
 
-                    // is there a file for Ahorn entities as well?
-                    File modFilesDatabaseAhornFile = new File("modfilesdatabase/" +
-                            databaseContents.get(dep).get("GameBananaType") + "/" +
-                            databaseContents.get(dep).get("GameBananaId") + "/ahorn_" +
-                            depUrl.substring("https://gamebanana.com/mmdl/".length()) + ".yaml");
-
-                    if (modFilesDatabaseAhornFile.isFile()) {
-                        // there is! load the entities, triggers and effects from it.
-                        logger.debug("Loading entities, triggers and effects from dependency {} (file {})...", dep, modFilesDatabaseAhornFile.getAbsolutePath());
-                        try (InputStream databaseFile = new FileInputStream(modFilesDatabaseAhornFile)) {
-                            Map<String, List<String>> entitiesList = new Yaml().load(databaseFile);
-                            availableEntities.addAll(entitiesList.get("Entities"));
-                            availableTriggers.addAll(entitiesList.get("Triggers"));
-                            availableEffects.addAll(entitiesList.get("Effects"));
-                        }
-                    }
+                    // is there a file for Ahorn and Lönn entities as well?
+                    checkMapEditorEntities("ahorn", availableEntities, availableTriggers, availableEffects, databaseContents, dep, depUrl);
+                    checkMapEditorEntities("loenn", availableEntities, availableTriggers, availableEffects, databaseContents, dep, depUrl);
                 }
             }
 
@@ -697,6 +684,25 @@ public class ModStructureVerifier extends ListenerAdapter {
                 // something went wrong, so just delete the XML and rethrow the exception to trigger an alert.
                 tempXml.delete();
                 throw new IOException(e);
+            }
+        }
+    }
+
+    private void checkMapEditorEntities(String mapEditor, Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
+                                        Map<String, Map<String, Object>> databaseContents, String dep, String depUrl) throws IOException {
+        File modFilesDatabaseEditorFile = new File("modfilesdatabase/" +
+                databaseContents.get(dep).get("GameBananaType") + "/" +
+                databaseContents.get(dep).get("GameBananaId") + "/" + mapEditor + "_" +
+                depUrl.substring("https://gamebanana.com/mmdl/".length()) + ".yaml");
+
+        if (modFilesDatabaseEditorFile.isFile()) {
+            // there is! load the entities, triggers and effects from it.
+            logger.debug("Loading {} entities, triggers and effects from dependency {} (file {})...", mapEditor, dep, modFilesDatabaseEditorFile.getAbsolutePath());
+            try (InputStream databaseFile = new FileInputStream(modFilesDatabaseEditorFile)) {
+                Map<String, List<String>> entitiesList = new Yaml().load(databaseFile);
+                availableEntities.addAll(entitiesList.get("Entities"));
+                availableTriggers.addAll(entitiesList.get("Triggers"));
+                availableEffects.addAll(entitiesList.get("Effects"));
             }
         }
     }
