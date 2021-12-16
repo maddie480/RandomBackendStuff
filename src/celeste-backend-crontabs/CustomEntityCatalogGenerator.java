@@ -120,14 +120,14 @@ public class CustomEntityCatalogGenerator {
      * @return The name from dictionary if present, or an automatically formatted name
      */
     private static String formatName(String input, Map<String, String> dictionary) {
+        if (dictionary.containsKey(input)) {
+            // the plugin name is in the dictionary
+            return dictionary.get(input);
+        }
+
         // trim the helper prefix
         if (input.contains("/")) {
             input = input.substring(input.lastIndexOf("/") + 1);
-        }
-
-        if (dictionary.containsKey(input.toLowerCase())) {
-            // the plugin name is in the dictionary
-            return dictionary.get(input.toLowerCase());
         }
 
         // replace - and _ with spaces
@@ -175,7 +175,7 @@ public class CustomEntityCatalogGenerator {
             Map<String, String> tempdic = new HashMap<>();
             try {
                 tempdic = Arrays.stream(IOUtils.toString(new URL("https://raw.githubusercontent.com/max4805/RandomDiscordBots/main/modcatalogdictionary.txt"), UTF_8).split("\n"))
-                        .collect(Collectors.toMap(a -> a.split("=")[0], a -> a.split("=")[1]));
+                        .collect(Collectors.toMap(a -> a.substring(0, a.lastIndexOf("=")), a -> a.substring(a.lastIndexOf("=") + 1)));
             } catch (Exception e) {
                 logger.warn("Could not fetch dictionary for entity names: " + e.toString());
             }
