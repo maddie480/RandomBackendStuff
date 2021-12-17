@@ -111,17 +111,20 @@ public class CustomEntityCatalogGenerator {
 
     private List<QueriedModInfo> modInfo = null;
     private ZonedDateTime lastUpdated = null;
+    
+    private Map<String, String> dictionary;
+    private Set<String> unusedDictionaryKeys;
 
     /**
      * Formats an entity ID: FrostHelper/KeyIce => Key Ice
      *
-     * @param input      The entity ID
-     * @param dictionary A list of all name overrides
+     * @param input The entity ID
      * @return The name from dictionary if present, or an automatically formatted name
      */
-    private static String formatName(String input, Map<String, String> dictionary) {
+    private String formatName(String input) {
         if (dictionary.containsKey(input)) {
             // the plugin name is in the dictionary
+            unusedDictionaryKeys.remove(input);
             return dictionary.get(input);
         }
 
@@ -170,7 +173,6 @@ public class CustomEntityCatalogGenerator {
      */
     private void reloadList() throws IOException {
         // download the custom entity catalog dictionary.
-        final Map<String, String> dictionary;
         {
             Map<String, String> tempdic = new HashMap<>();
             try {
@@ -180,11 +182,12 @@ public class CustomEntityCatalogGenerator {
                 logger.warn("Could not fetch dictionary for entity names: " + e.toString());
             }
             dictionary = tempdic;
+            unusedDictionaryKeys = new HashSet<>(dictionary.keySet());
         }
 
         modInfo = new ArrayList<>();
 
-        refreshList(dictionary);
+        refreshList();
 
         // mod name -> (link name, link)
         Map<String, Map<String, String>> documentationLinks = new HashMap<>();
@@ -289,6 +292,14 @@ public class CustomEntityCatalogGenerator {
 
         logger.info("Found " + modInfo.size() + " mods.");
         lastUpdated = ZonedDateTime.now();
+        
+        if (!unusedDictionaryKeys.isEmpty()) {
+            WebhookExecutor.executeWebhook(
+                SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
+                "Custom Entity Catalog Generator",
+                ":warning: The following keys are unused in the mod catalog dictionary: `" + String.join("`, `", unusedDictionaryKeys) + "`");
+        }
     }
 
     /**
@@ -328,10 +339,9 @@ public class CustomEntityCatalogGenerator {
     /**
      * Loads the Ahorn plugin list and puts it in modInfo.
      *
-     * @param dictionary A list of all name overrides
      * @throws IOException If an error occurs while reading the database
      */
-    private void refreshList(Map<String, String> dictionary) throws IOException {
+    private void refreshList() throws IOException {
         // load the entire mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
@@ -354,8 +364,8 @@ public class CustomEntityCatalogGenerator {
             boolean filesWereFound = false;
 
             for (String file : files) {
-                checkMapEditor("ahorn", dictionary, mod, file, thisModInfo);
-                checkMapEditor("loenn", dictionary, mod, file, thisModInfo);
+                checkMapEditor("ahorn", mod, file, thisModInfo);
+                checkMapEditor("loenn", mod, file, thisModInfo);
 
                 // check if we found plugins!
                 if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
@@ -374,14 +384,13 @@ public class CustomEntityCatalogGenerator {
     /**
      * Checks whethr the given mod has any map editor entities registered for it.
      *
-     * @param editor     The map editor to check
-     * @param dictionary A list of all name overrides
-     * @param mod        The itemtype/itemid of the mod
-     * @param file       The ID of the file to check
-     * @param modInfo    The mod info to fill out with any map editor info we found
+     * @param editor  The map editor to check
+     * @param mod     The itemtype/itemid of the mod
+     * @param file    The ID of the file to check
+     * @param modInfo The mod info to fill out with any map editor info we found
      * @throws IOException If an error occurs while reading the database
      */
-    private void checkMapEditor(String editor, Map<String, String> dictionary, String mod, String file, QueriedModInfo modInfo) throws IOException {
+    private void checkMapEditor(String editor, String mod, String file, QueriedModInfo modInfo) throws IOException {
         if (new File("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml").exists()) {
             Map<String, List<String>> entityList;
             try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml")) {
@@ -389,7 +398,7 @@ public class CustomEntityCatalogGenerator {
             }
 
             for (String entity : entityList.get("Entities")) {
-                String formatted = formatName(entity, dictionary);
+                String formatted = formatName(entity);
                 if (!modInfo.entityList.containsKey(formatted)) {
                     modInfo.entityList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
@@ -397,7 +406,7 @@ public class CustomEntityCatalogGenerator {
                 }
             }
             for (String trigger : entityList.get("Triggers")) {
-                String formatted = formatName(trigger, dictionary);
+                String formatted = formatName(trigger);
                 if (!modInfo.triggerList.containsKey(formatted)) {
                     modInfo.triggerList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
@@ -405,7 +414,7 @@ public class CustomEntityCatalogGenerator {
                 }
             }
             for (String effect : entityList.get("Effects")) {
-                String formatted = formatName(effect, dictionary);
+                String formatted = formatName(effect);
                 if (!modInfo.effectList.containsKey(formatted)) {
                     modInfo.effectList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
