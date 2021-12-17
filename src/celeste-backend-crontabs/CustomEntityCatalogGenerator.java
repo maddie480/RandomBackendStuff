@@ -27,7 +27,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class CustomEntityCatalogGenerator {
     private static final Logger logger = LoggerFactory.getLogger(CustomEntityCatalogGenerator.class);
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         CustomEntityCatalogGenerator gen = new CustomEntityCatalogGenerator();
         gen.reloadList();
 
@@ -171,7 +171,7 @@ public class CustomEntityCatalogGenerator {
      *
      * @throws IOException If an error occurs while reading the database
      */
-    private void reloadList() throws IOException {
+    private void reloadList() throws IOException, InterruptedException {
         // download the custom entity catalog dictionary.
         {
             Map<String, String> tempdic = new HashMap<>();
