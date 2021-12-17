@@ -4,6 +4,7 @@ import com.max480.quest.modmanagerbot.BotClient;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,10 +153,23 @@ public class TwitterUpdateChecker {
                     log.info("New tweet with id " + id);
                     String link = "https://twitter.com/" + feed + "/status/" + id;
 
+                    List<String> urls = new ArrayList<>();
+                    try {
+                        urls = tweet.getJSONObject("entities").getJSONArray("urls").toList()
+                                .stream()
+                                .filter(s -> hasEmbed(((Map<String, String>) s).get("expanded_url")))
+                                .map(s -> ((Map<String, String>) s).get("url"))
+                                .collect(Collectors.toList());
+                    } catch (Exception e) {
+                        log.error("Error while trying to get urls from tweet", e);
+                        // it isn't a big deal though. we should still post the tweet.
+                    }
+                    final List<String> urlsFinalList = urls;
+
                     // post it to the Twitter update channel
                     BotClient.getInstance().getTextChannelById(SecretConstants.TWITTER_UPDATE_CHANNEL)
                             .sendMessage("Nouveau tweet de @" + feed + "\n" +
-                                    ":arrow_right: " + link)
+                                    ":arrow_right: " + link + (urls.isEmpty() ? "" : "\nLiens : " + String.join(", ", urls)))
                             .queue();
 
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
@@ -177,7 +191,8 @@ public class TwitterUpdateChecker {
                                     try {
                                         WebhookExecutor.executeWebhook(webhook,
                                                 tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", ""),
-                                                tweet.getJSONObject("user").getString("name"), link + "\n_Posted on <t:" + date + ":F>_");
+                                                tweet.getJSONObject("user").getString("name"), link + "\n_Posted on <t:" + date + ":F>_"
+                                                        + (urlsFinalList.isEmpty() ? "" : "\nLinks: " + String.join(", ", urlsFinalList)));
 
                                         return null;
                                     } catch (InterruptedException e) {
@@ -212,7 +227,7 @@ public class TwitterUpdateChecker {
                         BotClient.getInstance().getTextChannelById(SecretConstants.QUEST_UPDATE_CHANNEL)
                                 .sendMessage("<@" + String.join("> <@", patchNoteSubscribers) + ">\n" +
                                         "Nouveau tweet de @" + feed + "\n" +
-                                        ":arrow_right: " + link)
+                                        ":arrow_right: " + link + (urls.isEmpty() ? "" : "\nLiens : " + String.join(", ", urls)))
                                 .queue();
                     }
                 } else {
@@ -232,5 +247,23 @@ public class TwitterUpdateChecker {
         }
 
         log.debug("Done.");
+    }
+
+    private static boolean hasEmbed(String url) {
+        try {
+            log.debug("Sending request to {} to check if it has an embed...", url);
+
+            return Jsoup
+                    .connect(url)
+                    .followRedirects(true)
+                    .timeout(10000)
+                    .get()
+                    .select("meta")
+                    .stream()
+                    .anyMatch(meta -> meta.attr("property").startsWith("og:"));
+        } catch (IOException e) {
+            log.warn("Cannot access {} to check for embeds", url, e);
+            return false;
+        }
     }
 }
