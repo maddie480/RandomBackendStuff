@@ -150,6 +150,24 @@ public class UpdateCheckerTracker implements TailerListener {
                     for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
                         executeWebhook(webhook, truncatedLine);
                     }
+
+                    // send warning messages (error parsing yaml file & no yaml file) to alert hooks
+                    if (truncatedLine.startsWith(":warning:")) {
+                        HashSet<String> webhooks = new HashSet<>(SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS);
+                        SecretConstants.UPDATE_CHECKER_HOOKS.forEach(webhooks::remove); // we just sent the message to those :p
+                        webhooks.remove(SecretConstants.UPDATE_CHECKER_LOGS_HOOK); // and this one got the raw log line
+
+                        for (String webhook : webhooks) {
+                            // send the message to the Banana Watch list, removing the "adding to list" that only makes sense for the Update Checker.
+                            executeWebhook(webhook,
+                                    truncatedLine
+                                            .replace("Adding to the excluded files list.", "")
+                                            .replace("Adding to the no yaml files list.", "")
+                                            .trim(),
+                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "Banana Watch");
+                        }
+                    }
                 }
 
                 // check whether we should send it to the speedrun.com webhook as well.
@@ -256,12 +274,23 @@ public class UpdateCheckerTracker implements TailerListener {
      * @param message The message to send
      */
     private void executeWebhook(String url, String message) {
+        executeWebhook(url,
+                message,
+                "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                "Everest Update Checker");
+    }
+
+    /**
+     * Executes a webhook, logging but continuing if the call is failing.
+     *
+     * @param url      The URL of the webhook
+     * @param message  The message to send
+     * @param avatar   The URL to the avatar to use for the message
+     * @param nickname The nickname that will be used for the message
+     */
+    private void executeWebhook(String url, String message, String avatar, String nickname) {
         try {
-            WebhookExecutor.executeWebhook(url,
-                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
-                    "Everest Update Checker",
-                    message,
-                    ImmutableMap.of("X-Everest-Log", "true"));
+            WebhookExecutor.executeWebhook(url, avatar, nickname, message, ImmutableMap.of("X-Everest-Log", "true"));
         } catch (InterruptedException | IOException e) {
             log.error("Error while sending log message", e);
         }
