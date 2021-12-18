@@ -73,10 +73,9 @@ public class TwitterUpdateChecker {
      * Checks for new tweets and notifies about any updates.
      * Ran every 15 minutes.
      *
-     * @throws IOException          In case of issues when fetching tweets or notifying about them
-     * @throws InterruptedException If sleep is interrupted while waiting for webhook rate limit
+     * @throws IOException In case of issues when fetching tweets or notifying about them
      */
-    private static void checkForUpdates() throws IOException, InterruptedException {
+    private static void checkForUpdates() throws IOException {
         String token = authenticateTwitter();
 
         // all subscribed feeds are listed in a text file.
@@ -123,10 +122,9 @@ public class TwitterUpdateChecker {
      *
      * @param token The access token
      * @param feed  The feed to check
-     * @throws IOException          In case of issues when fetching tweets or notifying about them
-     * @throws InterruptedException If sleep is interrupted while waiting for webhook rate limit
+     * @throws IOException In case of issues when fetching tweets or notifying about them
      */
-    private static void checkForUpdates(String token, String feed) throws IOException, InterruptedException {
+    private static void checkForUpdates(String token, String feed) throws IOException {
         log.debug("Checking for updates on feed " + feed);
 
         boolean firstRun = !previousTweets.containsKey(feed);
@@ -157,6 +155,7 @@ public class TwitterUpdateChecker {
                     try {
                         urls = tweet.getJSONObject("entities").getJSONArray("urls").toList()
                                 .stream()
+                                .filter(s -> !((Map<String, String>) s).get("expanded_url").contains(id))
                                 .filter(s -> hasEmbed(((Map<String, String>) s).get("expanded_url")))
                                 .map(s -> ((Map<String, String>) s).get("url"))
                                 .collect(Collectors.toList());
