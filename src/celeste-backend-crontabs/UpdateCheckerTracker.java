@@ -73,7 +73,6 @@ public class UpdateCheckerTracker implements TailerListener {
     private static boolean luaCutscenesUpdated = false;
 
     private static String everestUpdateSha256 = "[first check]";
-    private static String modSearchDatabaseSha256 = "[first check]";
     private static String fileIdsSha256 = "[first check]";
 
     private static final Pattern SAVED_MOD_PATTERN = Pattern.compile(".*=> Saved new information to database: Mod\\{name='(.+)', version='([0-9.]+)', url='.+', lastUpdate=([0-9]+),.*");
@@ -167,6 +166,8 @@ public class UpdateCheckerTracker implements TailerListener {
                                     "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
                                     "Banana Watch");
                         }
+
+                        executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: GameBanana managers were notified about this.");
                     }
                 }
 
@@ -200,7 +201,6 @@ public class UpdateCheckerTracker implements TailerListener {
             // refresh is done! we should tell the frontend about it.
             try {
                 String newEverestUpdateHash = hash("uploads/everestupdate.yaml");
-                String newModSearchDatabaseHash = hash("uploads/modsearchdatabase.yaml");
                 String newFileIdsHash = hash("modfilesdatabase/file_ids.yaml");
 
                 if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
@@ -217,10 +217,13 @@ public class UpdateCheckerTracker implements TailerListener {
                     }
 
                     everestUpdateSha256 = newEverestUpdateHash;
+
+                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: everest_update.yaml and mod_dependency_graph.yaml were updated.");
                 }
 
-                if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
-                    log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
+                {
+                    // mod_search_database.yaml always changes, as it contains download and view counts.
+                    log.info("Reloading mod_search_database.yaml");
 
                     CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml");
 
@@ -238,8 +241,6 @@ public class UpdateCheckerTracker implements TailerListener {
                     if (conn.getResponseCode() != 200) {
                         throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
                     }
-
-                    modSearchDatabaseSha256 = newModSearchDatabaseHash;
                 }
 
                 if (!newFileIdsHash.equals(fileIdsSha256)) {
@@ -252,6 +253,8 @@ public class UpdateCheckerTracker implements TailerListener {
                     FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
 
                     fileIdsSha256 = newFileIdsHash;
+
+                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: file_ids.yaml and mod_files_database.zip were updated.");
                 }
 
                 if (luaCutscenesUpdated) {
@@ -259,6 +262,8 @@ public class UpdateCheckerTracker implements TailerListener {
                     log.info("Re-uploading Lua Cutscenes docs!");
                     LuaCutscenesDocumentationUploader.updateLuaCutscenesDocumentation();
                     luaCutscenesUpdated = false;
+
+                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: Lua Cutscenes documentation was updated.");
                 }
             } catch (IOException e) {
                 log.error("Error during a call to frontend to refresh databases", e);
