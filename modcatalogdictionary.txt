@@ -33,7 +33,15 @@ FancyTileEntities/FancyConditionBlock=LoadConditionBlock=Fancy Condition Block
 FrostHelper/WASDMovementTrigger=WASD Movement Trigger
 JackalHelper/BlizzardRemovalTrigger.cs=Blizzard Removal Trigger
 JackalHelper/BlizzardTrigger.cs=Blizzard Trigger
-JackalHelper/RoundKevin2=Round Kevin (New)
+JackalHelper/BraveBird=Custom Fling Bird
+JackalHelper/BraveBirdAlt=Custom Extra Fling Bird
+JackalHelper/MovingLava=Moving Fire Barrier
+JackalHelper/OWJellyBarrier=One Way Jelly Barrier
+JackalHelper/RoundKevin=Core Booster
+JackalHelper/RoundKevin2=Core Booster (Mirror)
+JackalHelper/RevLava=Reverse Lava
+JackalHelper/StarRefill=Timed Flag Refill
+JackalHelper/TracerRefill=Stopwatch Refill
 JungleHelper/RemoteKevin=Slide Block
 JungleHelper/RemoteKevinRefill=Slide Block Refill
 JungleHelper/UIImageTrigger=UI Image Trigger
