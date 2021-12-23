@@ -121,9 +121,6 @@ public class UpdateCheckerTracker implements TailerListener {
 
                 lastLineIsNetworkError = false;
 
-                // and post it!
-                executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`" + line + "`");
-
                 // flag Lua Cutscenes updates
                 if (line.contains("name='LuaCutscenes'")) {
                     luaCutscenesUpdated = true;
@@ -150,11 +147,10 @@ public class UpdateCheckerTracker implements TailerListener {
                         executeWebhook(webhook, truncatedLine);
                     }
 
-                    // send warning messages (error parsing yaml file & no yaml file) to alert hooks
+                    // send warning messages (error parsing yaml file & no yaml file) to GameBanana alert hooks
                     if (truncatedLine.startsWith(":warning:")) {
                         HashSet<String> webhooks = new HashSet<>(SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS);
                         SecretConstants.UPDATE_CHECKER_HOOKS.forEach(webhooks::remove); // we just sent the message to those :p
-                        webhooks.remove(SecretConstants.UPDATE_CHECKER_LOGS_HOOK); // and this one got the raw log line
 
                         for (String webhook : webhooks) {
                             // send the message to the Banana Watch list, removing the "adding to list" that only makes sense for the Update Checker.
@@ -169,6 +165,9 @@ public class UpdateCheckerTracker implements TailerListener {
 
                         executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: GameBanana managers were notified about this.");
                     }
+                } else {
+                    // post the raw message to our internal webhook.
+                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`" + line + "`");
                 }
 
                 // check whether we should send it to the speedrun.com webhook as well.
