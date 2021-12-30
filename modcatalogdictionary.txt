@@ -1,5 +1,6 @@
 BHLBadeline=BHL Badeline
 BHLFeather=BHL Feather
+CherryHelper/SaveFlagTrigger=Save Data Flag Trigger
 CherryHelper/UI_NRCB=Uninterrupted Non Return Kevin
 ContortHelper/DreamTeleportationTriggerLevel1=Dream Teleportation Trigger Level 1
 ContortHelper/DreamTeleportationTriggerLevel2=Dream Teleportation Trigger Level 2
