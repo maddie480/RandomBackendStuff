@@ -54,6 +54,7 @@ public class GameBananaAutomatedChecks {
         checkForForbiddenFiles();
         checkForDuplicateModIds();
         checkAllModsWithEverestYamlValidator();
+        checkForFilesBelongingToMultipleMods();
     }
 
     private static class GameBananaCheckResults {
@@ -481,6 +482,43 @@ public class GameBananaAutomatedChecks {
 
         try (FileWriter writer = new FileWriter("already_validated_yaml_files.yaml")) {
             new Yaml().dump(newAlreadyChecked, writer);
+        }
+    }
+
+    public static void checkForFilesBelongingToMultipleMods() throws IOException {
+        Map<String, Map<String, Object>> updaterDatabase;
+        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+            updaterDatabase = new Yaml().load(is);
+        }
+
+        Set<String> filesWeAlreadyWarnedAbout = new HashSet<>();
+
+        for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
+            String url = modMap.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL").toString();
+
+            // if a URL is present twice, we are going to encounter it twice, but we still want to warn about it only once.
+            if (filesWeAlreadyWarnedAbout.contains(url)) {
+                continue;
+            }
+
+            // go through the database again to find all mods that have the same URL (including the mod we are checking itself)
+            List<String> modNames = new ArrayList<>();
+            for (Map.Entry<String, Map<String, Object>> otherModMap : updaterDatabase.entrySet()) {
+                String otherUrl = otherModMap.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL").toString();
+
+                if (otherUrl.equals(url)) {
+                    modNames.add(otherModMap.getKey());
+                }
+            }
+
+            if (modNames.size() > 1) {
+                // we found a URL associated with 2 or more mods!
+                sendAlertToWebhook(":warning: Mods **" + String.join("**, **", modNames) + "** are all associated to file " + url + ".\n" +
+                        "This means this file contains multiple mods, which can cause weirdness when it gets updated (multiple entries for the same file appearing in the updater).\n" +
+                        "If having multiple mods cannot be avoided, one of them should be updater-blacklisted by max480.");
+
+                filesWeAlreadyWarnedAbout.add(url);
+            }
         }
     }
 
