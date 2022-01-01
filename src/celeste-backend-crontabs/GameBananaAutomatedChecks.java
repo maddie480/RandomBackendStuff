@@ -29,7 +29,7 @@ import java.util.zip.ZipFile;
 
 /**
  * This class is intended to be run periodically to check mods on GameBanana for issues.
- * In max480's bot setup, it is run everyday at midnight French time (10pm or 11pm UTC depending on daylight saving).
+ * In max480's bot setup, all public methods are run everyday at midnight French time (10pm or 11pm UTC depending on daylight saving).
  */
 public class GameBananaAutomatedChecks {
     private static final Logger logger = LoggerFactory.getLogger(GameBananaAutomatedChecks.class);
@@ -48,14 +48,6 @@ public class GameBananaAutomatedChecks {
             "Microsoft.Xna.Framework.Game.dll", "Microsoft.Xna.Framework.Graphics.dll");
 
     private static final Pattern gamebananaLinkRegex = Pattern.compile(".*(https://gamebanana.com/mmdl/[0-9]+).*");
-
-    public static void main(String[] args) throws IOException {
-        checkYieldReturnOrigAndIntPtrTrick();
-        checkForForbiddenFiles();
-        checkForDuplicateModIds();
-        checkAllModsWithEverestYamlValidator();
-        checkForFilesBelongingToMultipleMods();
-    }
 
     private static class GameBananaCheckResults {
         // files checked that have no issues
@@ -92,7 +84,7 @@ public class GameBananaAutomatedChecks {
      * If a mod is okay, its file ID will be saved to a yaml file and it won't be downloaded again.
      * Otherwise, webhooks will be called to warn some people about the mod.
      */
-    private static void checkYieldReturnOrigAndIntPtrTrick() throws IOException {
+    public static void checkYieldReturnOrigAndIntPtrTrick() throws IOException {
         // the new file list is built from scratch (only files that still exist are copied over from the previous list).
         GameBananaCheckResults newResults = new GameBananaCheckResults();
 
@@ -266,7 +258,7 @@ public class GameBananaAutomatedChecks {
      * and reports all mods that ship with a file that also ships with Celeste or Everest.
      * (That arbitrary limit is here because that rule is not retroactive.)
      */
-    private static void checkForForbiddenFiles() throws IOException {
+    public static void checkForForbiddenFiles() throws IOException {
         // load mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
@@ -317,7 +309,7 @@ public class GameBananaAutomatedChecks {
      * <p>
      * Mods that are marked as Obsolete are excluded from the alerts.
      */
-    private static void checkForDuplicateModIds() throws IOException {
+    public static void checkForDuplicateModIds() throws IOException {
         Map<String, String> excludedFilesList;
         try (InputStream is = new FileInputStream("uploads/everestupdateexcluded.yaml")) {
             excludedFilesList = new Yaml().load(is);
