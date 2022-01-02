@@ -3,6 +3,7 @@ package com.max480.discord.randombots;
 import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.Event;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
@@ -10,6 +11,7 @@ import net.dv8tion.jda.api.events.message.guild.GuildMessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
@@ -24,6 +26,7 @@ import org.xml.sax.SAXException;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.annotation.Nonnull;
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -437,6 +440,20 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
+            TextChannel channel = Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId)).orElse(event.getChannel());
+
+            logger.debug("Checking for missing fonts...");
+            Map<String, String> missingFonts = checkForMissingFonts(zipFile);
+            if (!missingFonts.isEmpty()) {
+                String attachmentMessage = channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES) ?
+                        "You will find the missing characters in the attached text files." :
+                        "_Grant the Attach Files permission to the bot in order to get text files with all missing characters._";
+
+                problemList.add("You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
+                        " If you want to be able to use them, you can use <https://max480-random-stuff.appspot.com/celeste/font-generator> to add them to the game.");
+                websiteProblemList.add("missingfonts");
+            }
+
             if (problemList.isEmpty()) {
                 event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
                 event.getMessage().addReaction("\uD83D\uDC4C").queue(); // :ok_hand:
@@ -473,14 +490,20 @@ public class ModStructureVerifier extends ListenerAdapter {
                     } else {
                         url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?" + String.join("&", websiteProblemList);
                     }
-                    discordMessage.setEmbed(new EmbedBuilder()
+                    discordMessage.setEmbeds(new EmbedBuilder()
                             .setTitle("Click here for more help", url)
                             .build());
                 }
 
-                Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId))
-                        .orElse(event.getChannel())
-                        .sendMessage(discordMessage.build()).queue();
+                MessageAction sendingMessage = channel.sendMessage(discordMessage.build());
+
+                if (channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES)) {
+                    for (Map.Entry<String, String> missingFont : missingFonts.entrySet()) {
+                        sendingMessage = sendingMessage.addFile(missingFont.getValue().getBytes(UTF_8), missingFont.getKey() + "_missing_chars.txt");
+                    }
+                }
+
+                sendingMessage.queue();
 
                 event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
                 event.getMessage().addReaction("❌").queue(); // :x:
@@ -723,6 +746,109 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
+    /**
+     * Checks for missing fonts for all vanilla languages.
+     *
+     * @param modZip The mod zip
+     * @return A map containing [language name] => [all missing characters in a string]
+     * @throws IOException If an error occured while reading files from a zip
+     */
+    private Map<String, String> checkForMissingFonts(ZipFile modZip) throws IOException {
+        Map<String, String> issues = new HashMap<>();
+
+        checkForMissingFonts(modZip, "renogare64", "Brazilian Portuguese", issues);
+        checkForMissingFonts(modZip, "renogare64", "English", issues);
+        checkForMissingFonts(modZip, "renogare64", "French", issues);
+        checkForMissingFonts(modZip, "renogare64", "German", issues);
+        checkForMissingFonts(modZip, "renogare64", "Italian", issues);
+        checkForMissingFonts(modZip, "japanese", "Japanese", issues);
+        checkForMissingFonts(modZip, "korean", "Korean", issues);
+        checkForMissingFonts(modZip, "russian", "Russian", issues);
+        checkForMissingFonts(modZip, "chinese", "Simplified Chinese", issues);
+        checkForMissingFonts(modZip, "renogare64", "Spanish", issues);
+
+        return issues;
+    }
+
+    /**
+     * Checks for missing fonts in the specified language, and adds an entry to issues if characters are missing.
+     *
+     * @param modZip       The mod zip
+     * @param languageName The name for the fnt file in Dialog/Fonts
+     * @param txtName      The name for the language file in Dialog
+     * @param issues       The map collecting missing characters in all languages
+     * @throws IOException If an error occured while reading files from a zip
+     */
+    private void checkForMissingFonts(ZipFile modZip, String languageName, String txtName, Map<String, String> issues) throws IOException {
+        ZipEntry dialogFile = modZip.getEntry("Dialog/" + txtName + ".txt");
+        if (dialogFile != null) {
+            logger.debug("Scanning {}.txt for missing fonts", txtName);
+            String dialog = IOUtils.toString(modZip.getInputStream(dialogFile), UTF_8);
+
+            Set<Integer> existingCodePoints;
+
+            // get which characters exist in vanilla.
+            // vanilla-fonts has the same contents as https://github.com/max4805/RandomStuffWebsite/tree/main/src/main/webapp/WEB-INF/classes/font-generator/vanilla
+            try (InputStream is = ModStructureVerifier.class.getResourceAsStream("/vanilla-fonts/" + languageName + ".fnt")) {
+                existingCodePoints = readFontFile(is);
+                logger.debug("Read {} code points from vanilla-fonts/{}.fnt", existingCodePoints.size(), languageName);
+            }
+
+            // add characters that are added by the mod to that (if it has any of course!).
+            ZipEntry fontFile = modZip.getEntry("Dialog/Fonts/" + languageName + ".fnt");
+            if (fontFile != null) {
+                try (InputStream is = modZip.getInputStream(fontFile)) {
+                    existingCodePoints.addAll(readFontFile(is));
+                    logger.debug("Added code points from Dialog/Fonts/{}.fnt, we now have {}", languageName, existingCodePoints.size());
+                } catch (IOException e) {
+                    logger.warn("Could not parse font file from Dialog/Fonts/{}.fnt!", languageName, e);
+                }
+            }
+
+            final String missingCharacters = dialog.codePoints()
+                    .filter(c -> !existingCodePoints.contains(c))
+                    .mapToObj(c -> new String(new int[]{c}, 0, 1))
+                    .distinct()
+                    .filter(s -> s.matches("\\P{C}")) // not control characters!
+                    .collect(Collectors.joining());
+
+            logger.debug("Found {} missing character(s) for {}.", missingCharacters.length(), txtName);
+
+            if (!missingCharacters.isEmpty()) {
+                // there ARE missing characters!
+                issues.put(languageName, missingCharacters);
+            }
+        }
+    }
+
+    /**
+     * Reads a font file from an input stream, and extracts all character code points defined in it.
+     *
+     * @param fontFile The stream allowing to read the font file
+     * @return All code points defined in the font file
+     * @throws IOException If an error occurs while reading the file, or if the file is invalid
+     */
+    private Set<Integer> readFontFile(InputStream fontFile) throws IOException {
+        try {
+            // parse the XML
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document document = db.parse(fontFile);
+
+            // get the list of existing codes
+            Set<Integer> existingCodes = new HashSet<>();
+            NodeList chars = document.getElementsByTagName("char");
+            for (int i = 0; i < chars.getLength(); i++) {
+                Node charItem = chars.item(i);
+                existingCodes.add(Integer.parseInt(charItem.getAttributes().getNamedItem("id").getNodeValue()));
+            }
+            return existingCodes;
+        } catch (SAXException | ParserConfigurationException | NumberFormatException e) {
+            throw new IOException(e);
+        }
+    }
+
     private void addStuffFromSJ2021(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
                                     String whereIsStrawberryJam) throws IOException {
 
@@ -818,7 +944,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         return connection.getInputStream();
     }
 
-    // litteral copy-paste from update checker code
+    // literal copy-paste from update checker code
     private void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
                                       String file, InputStream inputStream) throws IOException {
 
@@ -1099,7 +1225,8 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     private static String getRulesForNoFolderName() {
         return "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
-                "- all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies";
+                "- all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies\n" +
+                "- the dialog files for vanilla languages should not contain characters that are missing from the game's font, or those extra characters should be included in the zip";
     }
 
     static void registerChannelFromSupportServer(Long channelId) {
