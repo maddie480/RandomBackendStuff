@@ -7,6 +7,7 @@ import io.github.furstenheim.OptionsBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
@@ -26,6 +27,8 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * This class is intended to be run periodically to check mods on GameBanana for issues.
@@ -511,6 +514,78 @@ public class GameBananaAutomatedChecks {
 
                 filesWeAlreadyWarnedAbout.add(url);
             }
+        }
+    }
+
+    public static void checkUnapprovedCategories() throws IOException {
+        checkUnapprovedCategoriesFor("Mod");
+        checkUnapprovedCategoriesFor("Tool");
+        checkUnapprovedCategoriesFor("Request");
+        checkUnapprovedCategoriesFor("Wip");
+    }
+
+    private static void checkUnapprovedCategoriesFor(String name) throws IOException {
+        // "unapproved categories" are categories that definitely exist, where people can add mods...
+        // but that don't appear in the list when you just browse the Mods section because that requires admin approval.
+        // so they're categories that exist... but don't exist. This makes no sense and that's why it needs fixing.
+
+        JSONArray listOfCategories = ConnectionUtils.runWithRetry(() -> {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv7/" + name + "Category/ByGame?_aGameRowIds[]=6460&" +
+                    "_csvProperties=_idRow,_idParentCategoryRow&_sOrderBy=_idRow,ASC&_nPage=1&_nPerpage=50"))) {
+
+                return new JSONArray(IOUtils.toString(is, UTF_8));
+            }
+        });
+
+        // first, let's get the categories that exist in the list.
+        Set<Integer> categoriesThatExist = new HashSet<>();
+        Set<Integer> parentCategoriesThatExist = new HashSet<>();
+
+        for (int i = 0; i < listOfCategories.length(); i++) {
+            categoriesThatExist.add(listOfCategories.getJSONObject(i).getInt("_idRow"));
+            parentCategoriesThatExist.add(listOfCategories.getJSONObject(i).getInt("_idParentCategoryRow"));
+        }
+        parentCategoriesThatExist.remove(0); // this means "no parent category"
+
+        // take the existing parent categories, remove the existing categories from it...
+        // and what you have left is parent categories that exist, but don't exist.
+        Set<Integer> categoriesThatExistButDont = new HashSet<>(parentCategoriesThatExist);
+        categoriesThatExistButDont.removeAll(categoriesThatExist);
+
+        // now we want to go through all mods on GameBanana to check their categories.
+        int page = 1;
+        while (true) {
+            // load a page of mods.
+            final int thisPage = page;
+            JSONArray pageContents = ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = new URL("https://gamebanana.com/apiv7/" + name + "/ByGame?_aGameRowIds[]=6460&" +
+                        "_csvProperties=_aCategory&_sOrderBy=_idRow,ASC&_nPage=" + thisPage + "&_nPerpage=50").openStream()) {
+
+                    return new JSONArray(IOUtils.toString(is, UTF_8));
+                }
+            });
+
+            // check their categories
+            for (int i = 0; i < pageContents.length(); i++) {
+                int category = pageContents.getJSONObject(i).getJSONObject("_aCategory").getInt("_idRow");
+                if (!categoriesThatExist.contains(category)) {
+                    // the category exists since the mod is in it, but doesn't since it doesn't appear in the list. :p
+                    categoriesThatExistButDont.add(category);
+                }
+            }
+
+            // if we just got an empty page, this means we reached the end of the list!
+            if (pageContents.isEmpty()) {
+                break;
+            }
+
+            // otherwise, go on.
+            page++;
+        }
+
+        for (int category : categoriesThatExistButDont) {
+            sendAlertToWebhook(":warning: The category at <https://gamebanana.com/" + name.toLowerCase(Locale.ROOT) + "s/cats/" + category + "> does not seem to be approved by site admins!\n" +
+                    "This means it will not appear in the categories list (neither in Olympus nor on GameBanana itself).");
         }
     }
 
