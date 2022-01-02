@@ -48,6 +48,7 @@ JungleHelper/RemoteKevinRefill=Slide Block Refill
 JungleHelper/UIImageTrigger=UI Image Trigger
 JungleHelper/UITextTrigger=UI Text Trigger
 MaxHelpingHand/CustomNPCSprite=Custom NPC Sprite
+MaxHelpingHand/RegularJumpThru=Sideways Jump Thru
 Needle Helper/IWBTGNeedle=IWBTG Needle
 ResortMirrorReskin/1=Reskinnable Resort Mirror
 Torchlight/Torchlight=Torch Follower
