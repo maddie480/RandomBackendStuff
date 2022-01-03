@@ -212,34 +212,25 @@ public class CelesteStuffHealthCheck {
         if (!result.equals("App - NO\n" +
                 "Article - NO\n" +
                 "Blog - NO\n" +
-                "Castaway - YES\n" +
                 "Club - NO\n" +
                 "Concept - NO\n" +
                 "Contest - NO\n" +
-                "Crafting - YES\n" +
-                "Effect - YES\n" +
                 "Event - NO\n" +
-                "Gamefile - YES\n" +
-                "Gui - YES\n" +
                 "Idea - NO\n" +
                 "Jam - NO\n" +
-                "Map - YES\n" +
                 "Mod - YES\n" +
                 "Model - YES\n" +
                 "News - NO\n" +
                 "Poll - NO\n" +
                 "PositionAvailable - NO\n" +
-                "Prefab - YES\n" +
                 "Project - NO\n" +
                 "Question - NO\n" +
                 "Request - NO\n" +
                 "Review - NO\n" +
                 "Script - NO\n" +
-                "Skin - YES\n" +
                 "Sound - YES\n" +
                 "Spray - YES\n" +
                 "Studio - NO\n" +
-                "Texture - YES\n" +
                 "Thread - NO\n" +
                 "Tool - YES\n" +
                 "Tutorial - NO\n" +
