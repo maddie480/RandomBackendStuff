@@ -43,7 +43,13 @@ public class StyleRefreshService {
         }
 
         double rng = Math.random();
-        if (rng < 0.1) {
+        if (rng < 0.01) {
+            css += "\n#IdentityModule .Avatar.IsRipeSupporter::before { background: url('https://media.discordapp.net/attachments/445236692136230943/927910115229696061/test5.png?width=128&height=128'); }\n" +
+                    "#IdentityModule .Avatar.IsRipeSupporter { background: #398066; }";
+        } else if (rng < 0.02) {
+            css += "\n#IdentityModule .Avatar.IsRipeSupporter::before { background: url('https://media.discordapp.net/attachments/445236692136230943/921794754071650314/test.png?width=128&height=128'); }\n" +
+                    "#IdentityModule .Avatar.IsRipeSupporter { background: #EED7A5; }";
+        } else if (rng < 0.1) {
             css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, fuchsia, white, blue); }";
         } else if (rng < 0.2) {
             css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA); }";
