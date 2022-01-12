@@ -6,6 +6,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListener;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -76,6 +77,9 @@ public class UpdateCheckerTracker implements TailerListener {
     private static String fileIdsSha256 = "[first check]";
 
     private static final Pattern SAVED_MOD_PATTERN = Pattern.compile(".*=> Saved new information to database: Mod\\{name='(.+)', version='([0-9.]+)', url='.+', lastUpdate=([0-9]+),.*");
+
+    private static Pattern gamebananaLinkRegex = Pattern.compile(".*https://gamebanana.com/mmdl/([0-9]+).*");
+    private static List<String> queuedGameBananaModMessages = new ArrayList<>();
 
     /**
      * Method to call to start the watcher thread.
@@ -149,21 +153,12 @@ public class UpdateCheckerTracker implements TailerListener {
 
                     // send warning messages (error parsing yaml file & no yaml file) to GameBanana alert hooks
                     if (truncatedLine.startsWith(":warning:")) {
-                        HashSet<String> webhooks = new HashSet<>(SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS);
-                        SecretConstants.UPDATE_CHECKER_HOOKS.forEach(webhooks::remove); // we just sent the message to those :p
-
-                        for (String webhook : webhooks) {
-                            // send the message to the Banana Watch list, removing the "adding to list" that only makes sense for the Update Checker.
-                            executeWebhook(webhook,
-                                    truncatedLine
-                                            .replace("Adding to the excluded files list.", "")
-                                            .replace("Adding to the no yaml files list.", "")
-                                            .trim(),
-                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
-                                    "Banana Watch");
-                        }
-
-                        executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: GameBanana managers were notified about this.");
+                        // delay the message, because we want the mod files database to be up-to-date, to trace back which mod this file belongs to.
+                        queuedGameBananaModMessages.add(
+                                truncatedLine
+                                        .replace("Adding to the excluded files list.", "")
+                                        .replace("Adding to the no yaml files list.", "")
+                                        .trim());
                     }
                 } else {
                     // post the raw message to our internal webhook.
@@ -264,6 +259,36 @@ public class UpdateCheckerTracker implements TailerListener {
 
                     executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: Lua Cutscenes documentation was updated.");
                 }
+
+                for (String message : queuedGameBananaModMessages) {
+                    // try to find out which mod this file belongs to.
+                    Matcher extract = gamebananaLinkRegex.matcher(message);
+                    if (extract.matches()) {
+                        String fileId = extract.group(1);
+                        Pair<String, String> mod = GameBananaAutomatedChecks.whichModDoesFileBelongTo(fileId);
+
+                        if (mod != null) {
+                            String itemtype = mod.getValue().split("/")[0];
+                            String itemid = mod.getValue().split("/")[1];
+
+                            message += " Mod link: https://gamebanana.com/" + itemtype.toLowerCase(Locale.ROOT) + "s/" + itemid;
+                        }
+                    }
+
+                    HashSet<String> webhooks = new HashSet<>(SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS);
+                    SecretConstants.UPDATE_CHECKER_HOOKS.forEach(webhooks::remove); // we just sent the message to those :p
+
+                    for (String webhook : webhooks) {
+                        // send the message to the Banana Watch list, removing the "adding to list" that only makes sense for the Update Checker.
+                        executeWebhook(webhook, message,
+                                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                "Banana Watch");
+                    }
+
+                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: Message sent to GameBanana managers:\n> " + message);
+                }
+
+                queuedGameBananaModMessages.clear();
             } catch (IOException e) {
                 log.error("Error during a call to frontend to refresh databases", e);
                 executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);

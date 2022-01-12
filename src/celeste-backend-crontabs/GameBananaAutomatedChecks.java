@@ -376,7 +376,7 @@ public class GameBananaAutomatedChecks {
         }
     }
 
-    private static Pair<String, String> whichModDoesFileBelongTo(String fileId) throws IOException {
+    static Pair<String, String> whichModDoesFileBelongTo(String fileId) throws IOException {
         // load mod list
         List<String> mods = ConnectionUtils.runWithRetry(() -> {
             try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
