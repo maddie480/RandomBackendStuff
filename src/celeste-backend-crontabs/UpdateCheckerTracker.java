@@ -1,5 +1,6 @@
 package com.max480.discord.randombots;
 
+import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -183,7 +184,7 @@ public class UpdateCheckerTracker implements TailerListener {
                             executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: SRC staff was notified about this.");
                         }
 
-                    } catch (IOException e) {
+                    } catch (IOException | StorageException e) {
                         log.error("Error while fetching SRC mod update notification ID list", e);
                         executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Error while fetching SRC mod update notification ID list: " + e);
                     }
@@ -289,7 +290,7 @@ public class UpdateCheckerTracker implements TailerListener {
                 }
 
                 queuedGameBananaModMessages.clear();
-            } catch (IOException e) {
+            } catch (IOException | StorageException e) {
                 log.error("Error during a call to frontend to refresh databases", e);
                 executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);
             }
