@@ -121,13 +121,10 @@
             <version>1.30</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/com.google.cloud/google-cloud-logging-logback -->
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-logging-logback</artifactId>
-            <version>0.123.0-alpha</version>
         </dependency>
-
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
