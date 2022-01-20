@@ -180,8 +180,9 @@ public class UpdateCheckerTracker implements TailerListener {
                                 .collect(Collectors.toCollection(ArrayList::new));
 
                         if (srcModIds.contains(modName)) {
-                            executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK, "**" + modName + "** was updated to version **" + modVersion + "** on <t:" + modUpdatedTime + ":f>.");
-                            executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: SRC staff was notified about this.");
+                            String message = "**" + modName + "** was updated to version **" + modVersion + "** on <t:" + modUpdatedTime + ":f>.";
+                            executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK, message);
+                            executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: Message sent to SRC staff:\n> " + message);
                         }
 
                     } catch (IOException | StorageException e) {
