@@ -7,7 +7,9 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -152,11 +154,24 @@ public class BinToXML {
                     short length = readShort(bin);
                     byte[] array = new byte[length];
                     if (bin.read(array) != length) throw new IOException("Missing characters in string!");
-                    StringBuilder stringBuilder = new StringBuilder(array.length);
+
+                    List<Byte> resultingArrayList = new ArrayList<>();
                     for (int i = 0; i < array.length; i += 2) {
-                        stringBuilder.append((char) array[i + 1]).append(array[i]);
+                        // byte 1 is how many times the byte is repeated (unsigned), byte 2 is the byte.
+                        int countTimes = array[i];
+                        if (countTimes < 0) countTimes += 256;
+
+                        for (int j = 0; j < countTimes; j++) {
+                            resultingArrayList.add(array[i + 1]);
+                        }
                     }
-                    obj = stringBuilder;
+
+                    byte[] resultingArray = new byte[resultingArrayList.size()];
+                    for (int i = 0; i < resultingArray.length; i++) {
+                        resultingArray[i] = resultingArrayList.get(i);
+                    }
+
+                    obj = new String(resultingArray, StandardCharsets.ISO_8859_1);
                     break;
                 }
                 case Short:
