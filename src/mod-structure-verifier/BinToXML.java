@@ -7,9 +7,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -155,23 +153,20 @@ public class BinToXML {
                     byte[] array = new byte[length];
                     if (bin.read(array) != length) throw new IOException("Missing characters in string!");
 
-                    List<Byte> resultingArrayList = new ArrayList<>();
+                    StringBuilder result = new StringBuilder();
                     for (int i = 0; i < array.length; i += 2) {
                         // byte 1 is how many times the byte is repeated (unsigned), byte 2 is the byte.
-                        int countTimes = array[i];
-                        if (countTimes < 0) countTimes += 256;
+                        // the result isn't an UTF-8 string, but a sequence of UTF-8 code points,
+                        // so we are converting them individually rather than calling new String(bytes, UTF_8).
+
+                        int countTimes = unsignedByteToInt(array[i]);
+                        int codePoint = unsignedByteToInt(array[i + 1]);
 
                         for (int j = 0; j < countTimes; j++) {
-                            resultingArrayList.add(array[i + 1]);
+                            result.append(Character.toChars(codePoint));
                         }
                     }
-
-                    byte[] resultingArray = new byte[resultingArrayList.size()];
-                    for (int i = 0; i < resultingArray.length; i++) {
-                        resultingArray[i] = resultingArrayList.get(i);
-                    }
-
-                    obj = new String(resultingArray, StandardCharsets.ISO_8859_1);
+                    obj = result;
                     break;
                 }
                 case Short:
@@ -186,5 +181,13 @@ public class BinToXML {
             }
             xml.writeAttribute(localName, obj.toString().toLowerCase(Locale.ROOT));
         }
+    }
+
+    private static int unsignedByteToInt(byte b) {
+        // for instance, "-92" is 0xA4, which for an unsigned byte is 164.
+        // -92 + 256 = 164
+        int i = b;
+        if (i < 0) i += 256;
+        return i;
     }
 }
