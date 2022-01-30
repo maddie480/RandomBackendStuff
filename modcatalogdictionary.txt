@@ -30,11 +30,12 @@ EmHelper/MonumentspikesUp=Monument Spikes Up
 EmHelper/Monumentswapblock=Monument Swap Block
 EmHelper/Monumentswitchblock=Monument Switch Block
 EmHelper/Switchtrigger=Switch Trigger
-ExtendedVariantMode/ExtendedVariantController=Integer Extended Variant Trigger
+ExtendedVariantMode/ExtendedVariantController=Recover Jump Refill
 ExtendedVariantMode/ExtendedVariantTrigger=Integer Extended Variant Trigger
 ExtendedVariantMode/FlagToggledExtendedVariantTrigger=Integer Extended Variant Trigger
 ExtendedVariantMode/FloatExtendedVariantFadeTrigger=Extended Variant Fade Trigger
 ExtendedVariantMode/JumpRefill=Recover Jump Refill
+ExtendedVariantMode/TheoCrystal=Extended Variant Theo Crystal
 FancyTileEntities/FancyConditionBlock=LoadConditionBlock=Fancy Condition Block
 FrostHelper/WASDMovementTrigger=WASD Movement Trigger
 JackalHelper/BlizzardRemovalTrigger.cs=Blizzard Removal Trigger
