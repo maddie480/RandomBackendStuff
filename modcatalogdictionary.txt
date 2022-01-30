@@ -38,16 +38,12 @@ ExtendedVariantMode/JumpRefill=Recover Jump Refill
 ExtendedVariantMode/TheoCrystal=Extended Variant Theo Crystal
 FancyTileEntities/FancyConditionBlock=LoadConditionBlock=Fancy Condition Block
 FrostHelper/WASDMovementTrigger=WASD Movement Trigger
-JackalHelper/BlizzardRemovalTrigger.cs=Blizzard Removal Trigger
-JackalHelper/BlizzardTrigger.cs=Blizzard Trigger
 JackalHelper/BraveBird=Custom Fling Bird
 JackalHelper/BraveBirdAlt=Custom Extra Fling Bird
-JackalHelper/MovingLava=Moving Fire Barrier
 JackalHelper/OWJellyBarrier=One Way Jelly Barrier
 JackalHelper/RevLava=Reverse Lava
 JackalHelper/RoundKevin2=Core Booster (Mirror)
 JackalHelper/RoundKevin=Core Booster
-JackalHelper/StarRefill=Timed Flag Refill
 JackalHelper/TracerRefill=Stopwatch Refill
 JungleHelper/RemoteKevin=Slide Block
 JungleHelper/RemoteKevinRefill=Slide Block Refill
