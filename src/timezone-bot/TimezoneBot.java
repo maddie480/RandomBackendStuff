@@ -8,6 +8,8 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.guild.update.GuildUpdateOwnerEvent;
+import net.dv8tion.jda.api.events.interaction.ButtonClickEvent;
+import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.SelectionMenuEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.events.role.RoleCreateEvent;
@@ -21,8 +23,11 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.Button;
+import net.dv8tion.jda.api.interactions.components.ButtonStyle;
 import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
 import net.dv8tion.jda.api.requests.ErrorResponse;
+import net.dv8tion.jda.api.requests.restaction.interactions.ReplyAction;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
@@ -30,7 +35,9 @@ import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
@@ -78,15 +85,17 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
      * This allows to avoid having to retrieve all members at each time.
      */
     private static class CachedMember implements Serializable {
-        public static final long serialVersionUID = -2324191448907830721L;
+        public static final long serialVersionUID = -2324191448907830722L;
 
         private final long serverId;
         private final long memberId;
+        private final String memberName;
         private final ArrayList<Long> roleIds;
 
-        public CachedMember(long serverId, long memberId, ArrayList<Long> roleIds) {
+        public CachedMember(long serverId, long memberId, String memberName, ArrayList<Long> roleIds) {
             this.serverId = serverId;
             this.memberId = memberId;
+            this.memberName = memberName;
             this.roleIds = roleIds;
         }
 
@@ -95,6 +104,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             return "MemberCache{" +
                     "serverId=" + serverId +
                     ", memberId=" + memberId +
+                    ", memberName=" + memberName +
                     ", roleIds=" + roleIds +
                     '}';
         }
@@ -318,6 +328,10 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         if (!event.isFromGuild()) {
             // wtf??? slash commands are disabled in DMs
             event.reply("This bot is not usable in DMs!").setEphemeral(true).queue();
+        } else if ("list-timezones".equals(event.getName())) {
+            // list-timezones needs the raw event in order to reply with attachments and/or action rows.
+            logger.info("New command: /list-timezones by member {}", event.getMember());
+            listTimezones(event, false);
         } else {
             OptionMapping optionTimezone = event.getOption("tz_name");
             OptionMapping optionDateTime = event.getOption("date_time");
@@ -339,6 +353,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
     @Override
     public void onSelectionMenu(@NotNull SelectionMenuEvent event) {
         if ("discord-timestamp".equals(event.getComponent().getId())) {
+            logger.info("New interaction with selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
+
             // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
             // we also want the menu to stay the same, so that they can switch.
             event.editMessage(new MessageBuilder(event.getValues().get(0))
@@ -346,6 +362,16 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                             .setDefaultValues(event.getValues())
                             .build()))
                     .build()).queue();
+        }
+    }
+
+    @Override
+    public void onButtonClick(@Nonnull ButtonClickEvent event) {
+        if ("list-timezones-to-file".equals(event.getComponent().getId())) {
+            logger.info("New interaction with button from member {}, chose to get timezone list as text file", event.getMember());
+
+            // list timezones again, but this time force it to go to a text file.
+            listTimezones(event, true);
         }
     }
 
@@ -642,6 +668,97 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         return "";
     }
 
+    private void listTimezones(GenericInteractionCreateEvent event, boolean asTextFile) {
+        // list all members from the server
+        Map<UserTimezone, CachedMember> members = userTimezones.stream()
+                .filter(user -> user.serverId == event.getGuild().getIdLong())
+                .collect(Collectors.toMap(user -> user, user -> getMemberWithCache(event.getGuild(), user.userId)));
+
+        // group them by UTC offset
+        Map<Integer, Set<String>> peopleByUtcOffset = new TreeMap<>();
+        for (Map.Entry<UserTimezone, CachedMember> member : members.entrySet()) {
+            ZoneId zone = ZoneId.of(member.getKey().timezoneName);
+            ZonedDateTime now = ZonedDateTime.now(zone);
+            int offset = now.getOffset().getTotalSeconds() / 60;
+
+            Set<String> peopleInUtcOffset = peopleByUtcOffset.get(offset);
+            if (peopleInUtcOffset == null) {
+                peopleInUtcOffset = new TreeSet<>(Comparator.comparing(s -> s.toLowerCase(Locale.ROOT)));
+                peopleByUtcOffset.put(offset, peopleInUtcOffset);
+            }
+            peopleInUtcOffset.add(member.getValue().memberName);
+        }
+
+        // turn it into text
+        String timezonesList = generateTimezonesList(peopleByUtcOffset, false);
+        if (asTextFile || timezonesList.length() > 2000) {
+            timezonesList = generateTimezonesList(peopleByUtcOffset, true);
+            asTextFile = true;
+        }
+
+        String message = asTextFile ? "Here is a list of people's timezones on the server:" : timezonesList;
+
+        // if that was a button click, we want to edit the message. Otherwise, that was a slash command, and we want to respond to it.
+        if (event instanceof ButtonClickEvent) {
+            ((ButtonClickEvent) event)
+                    .editMessage(message)
+                    .setActionRows() // I want NO action row
+                    .addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt")
+                    .queue();
+        } else {
+            ReplyAction reply = event.reply(message)
+                    .setEphemeral(true);
+            if (asTextFile) {
+                reply.addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt");
+            } else {
+                reply.addActionRow(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file", "Get as text file", Emoji.fromUnicode("\uD83D\uDCC4")));
+            }
+            reply.queue();
+        }
+    }
+
+    private String generateTimezonesList(Map<Integer, Set<String>> people, boolean forTextFile) {
+        StringBuilder list = new StringBuilder(forTextFile ? "" : "Here is a list of people's timezones on the server:\n\n");
+        for (Map.Entry<Integer, Set<String>> peopleInTimezone : people.entrySet()) {
+            int offsetMinutes = peopleInTimezone.getKey();
+
+            OffsetDateTime now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.ofTotalSeconds(offsetMinutes * 60));
+
+            if (forTextFile) {
+                list.append("== ");
+            } else {
+                // Discord has nice emoji for every 30 minutes, so let's use them :p
+                int hour = now.getHour();
+                if (hour == 0) hour = 12;
+                if (hour > 12) hour -= 12;
+
+                list.append("**:clock").append(hour);
+
+                if (now.getMinute() >= 30) {
+                    list.append("30");
+                }
+
+                list.append(": ");
+            }
+
+            list.append(formatTimezoneName(offsetMinutes))
+                    .append(" (").append(now.format(DateTimeFormatter.ofPattern("h:mma")).toLowerCase(Locale.ROOT)).append(")");
+
+            if (!forTextFile) {
+                list.append("**");
+            }
+            list.append("\n");
+
+            for (String member : peopleInTimezone.getValue()) {
+                list.append(member).append("\n");
+            }
+
+            list.append("\n");
+        }
+
+        return list.toString();
+    }
+
     public void run() {
         while (true) {
             try {
@@ -821,10 +938,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                     .findFirst().orElseThrow(() -> new RuntimeException("Managed role for " + zoneOffset + " somehow disappeared, send help"));
 
             // build an offset "timezone" (UTC-06:30 for example)
-            int hours = zoneOffset / 60;
-            int minutes = Math.abs(zoneOffset) % 60;
-            DecimalFormat twoDigits = new DecimalFormat("00");
-            String timezoneOffsetFormatted = "UTC" + (hours < 0 ? "-" : "+") + twoDigits.format(Math.abs(hours)) + ":" + twoDigits.format(minutes);
+            String timezoneOffsetFormatted = formatTimezoneName(zoneOffset);
 
             // get the date at this timezone
             ZonedDateTime now = ZonedDateTime.now(ZoneId.of(timezoneOffsetFormatted));
@@ -839,6 +953,14 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
         }
 
         return usersDeleted;
+    }
+
+    @NotNull
+    private String formatTimezoneName(int zoneOffset) {
+        int hours = zoneOffset / 60;
+        int minutes = Math.abs(zoneOffset) % 60;
+        DecimalFormat twoDigits = new DecimalFormat("00");
+        return "UTC" + (hours < 0 ? "-" : "+") + twoDigits.format(Math.abs(hours)) + ":" + twoDigits.format(minutes);
     }
 
     /**
@@ -913,7 +1035,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         Member m = g.retrieveMemberById(memberId).complete();
 
                         // build the cache entry, only keeping roles that correspond to timezones
-                        CachedMember cached = new CachedMember(g.getIdLong(), memberId,
+                        CachedMember cached = new CachedMember(g.getIdLong(), memberId, m.getUser().getName() + "#" + m.getUser().getDiscriminator(),
                                 m.getRoles().stream()
                                         .map(Role::getIdLong)
                                         .filter(timezoneRoles::containsValue)
@@ -1000,6 +1122,8 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                         .setDefaultEnabled(false))
                 .addCommands(new CommandData("toggle-times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
                         .setDefaultEnabled(false))
+                .addCommands(new CommandData("list-timezones", "Lists the timezones of all members in the server")
+                        .setDefaultEnabled(false))
                 .queue(success -> updateToggleTimesPermsForGuilds(jda.getGuilds()));
     }
 
@@ -1021,6 +1145,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
             Command removeTimezone = commands.stream().filter(c -> c.getName().equals("remove-timezone")).findFirst().orElse(null);
             Command discordTimestamp = commands.stream().filter(c -> c.getName().equals("discord-timestamp")).findFirst().orElse(null);
             Command timeFor = commands.stream().filter(c -> c.getName().equals("time-for")).findFirst().orElse(null);
+            Command listTimezones = commands.stream().filter(c -> c.getName().equals("list-timezones")).findFirst().orElse(null);
             Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle-times")).findFirst().orElse(null);
 
             for (Guild g : guilds) {
@@ -1049,6 +1174,7 @@ public class TimezoneBot extends ListenerAdapter implements Runnable {
                 listPrivileges.put(removeTimezone.getId(), allowEveryone);
                 listPrivileges.put(discordTimestamp.getId(), allowEveryone);
                 listPrivileges.put(timeFor.getId(), allowEveryone);
+                listPrivileges.put(listTimezones.getId(), allowEveryone);
 
                 if (privileges.size() > 10) {
                     // this is more overrides than Discord allows! so just allow everyone to use the command,
