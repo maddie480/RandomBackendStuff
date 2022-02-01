@@ -119,8 +119,9 @@ public class BotEventListener extends ListenerAdapter {
             event.reply("This bot is not usable in DMs!").setEphemeral(true).queue();
         } else if ("list-timezones".equals(event.getName())) {
             // list-timezones needs the raw event in order to reply with attachments and/or action rows.
-            logger.info("New command: /list-timezones by member {}", event.getMember());
-            listTimezones(event, false);
+            OptionMapping option = event.getOption("visibility");
+            logger.info("New command: /list-timezones by member {}, params=[visibility={}]", event.getMember(), option);
+            listTimezones(event, false, option != null && "public".equals(option.getAsString()));
         } else {
             OptionMapping optionTimezone = event.getOption("tz_name");
             OptionMapping optionDateTime = event.getOption("date_time");
@@ -160,7 +161,7 @@ public class BotEventListener extends ListenerAdapter {
             logger.info("New interaction with button from member {}, chose to get timezone list as text file", event.getMember());
 
             // list timezones again, but this time force it to go to a text file.
-            listTimezones(event, true);
+            listTimezones(event, true, false);
         }
     }
 
@@ -459,10 +460,12 @@ public class BotEventListener extends ListenerAdapter {
     /**
      * Handles the /list-timezones command and the "get as text file" button.
      *
-     * @param event      The event triggering the command (either a SlashCommandEvent or a ButtonClickEvent)
-     * @param asTextFile Whether we should generate a text file even if the list would have fitted in a message
+     * @param event                 The event triggering the command (either a SlashCommandEvent or a ButtonClickEvent)
+     * @param asTextFile            Whether we should generate a text file even if the list would have fitted in a message
+     * @param shouldRespondInPublic Whether the response should be public or private (aka "ephemeral").
+     *                              Only matters if the given event is a SlashCommandEvent.
      */
-    private void listTimezones(GenericInteractionCreateEvent event, boolean asTextFile) {
+    private void listTimezones(GenericInteractionCreateEvent event, boolean asTextFile, boolean shouldRespondInPublic) {
         // list all members from the server
         Map<TimezoneBot.UserTimezone, TimezoneBot.CachedMember> members = TimezoneBot.userTimezones.stream()
                 .filter(user -> user.serverId == event.getGuild().getIdLong())
@@ -500,8 +503,7 @@ public class BotEventListener extends ListenerAdapter {
                     .addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt")
                     .queue();
         } else {
-            ReplyAction reply = event.reply(message)
-                    .setEphemeral(true);
+            ReplyAction reply = event.reply(message).setEphemeral(!shouldRespondInPublic);
             if (asTextFile) {
                 reply.addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt");
             } else {

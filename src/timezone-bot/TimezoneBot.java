@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.apache.commons.lang3.tuple.Pair;
@@ -243,6 +244,7 @@ public class TimezoneBot {
 
     /**
      * Turns an offset into a formatted timezone name, used in roles and in the /list-timezones result.
+     *
      * @param zoneOffset An offset in minutes, like 120
      * @return An offset timezone name, like "UTC+02:00"
      */
@@ -404,7 +406,10 @@ public class TimezoneBot {
                 .addCommands(new CommandData("toggle-times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
                         .setDefaultEnabled(false))
                 .addCommands(new CommandData("list-timezones", "Lists the timezones of all members in the server")
+                        .addOptions(new OptionData(OptionType.STRING, "visibility", "Whether the response should be public or private (private by default)", false)
+                                .addChoice("public", "public")
+                                .addChoice("private", "private"))
                         .setDefaultEnabled(false))
-                .queue(success -> updateToggleTimesPermsForGuilds(jda.getGuilds()));
+                .complete();
     }
 }
