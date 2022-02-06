@@ -19,6 +19,7 @@ import org.json.JSONArray;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
@@ -203,6 +204,9 @@ public class UpdateCheckerTracker implements TailerListener {
                     log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
                     CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml");
                     CloudStorageUtils.sendToCloudStorage("uploads/moddependencygraph.yaml", "mod_dependency_graph.yaml", "text/yaml");
+
+                    CloudStorageUtils.sendStringToCloudStorage(convertModDependencyGraphToEverestYamlFormat(),
+                            "mod_dependency_graph_everest.yaml", "text/yaml");
 
                     HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
                             + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
@@ -438,5 +442,40 @@ public class UpdateCheckerTracker implements TailerListener {
 
             newDirectory.close();
         }
+    }
+
+    /**
+     * Converts mod_dependency_graph.yaml to an everest.yaml-like format (see {@link #keyValueToEverestYamlFormat(Map)}).
+     */
+    private String convertModDependencyGraphToEverestYamlFormat() throws IOException {
+        // read
+        Map<String, Map<String, Object>> dependencyGraph;
+        try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
+            dependencyGraph = new Yaml().load(is);
+        }
+
+        // convert
+        for (Map<String, Object> entry : dependencyGraph.values()) {
+            entry.put("Dependencies", keyValueToEverestYamlFormat((Map<String, Object>) entry.get("Dependencies")));
+            entry.put("OptionalDependencies", keyValueToEverestYamlFormat((Map<String, Object>) entry.get("OptionalDependencies")));
+        }
+
+        // write
+        return new Yaml().dumpAs(dependencyGraph, null, DumperOptions.FlowStyle.BLOCK);
+    }
+
+    /**
+     * Converts a dictionary of
+     * DependencyName: DependencyVersion
+     * to a list of
+     * - Name: DependencyName
+     *   Version: DependencyVersion
+     */
+    private List<Map<String, Object>> keyValueToEverestYamlFormat(Map<String, Object> keyValue) {
+        return keyValue.entrySet().stream()
+                .map(entry -> ImmutableMap.of(
+                        "Name", entry.getKey(),
+                        "Version", entry.getValue()))
+                .collect(Collectors.toList());
     }
 }

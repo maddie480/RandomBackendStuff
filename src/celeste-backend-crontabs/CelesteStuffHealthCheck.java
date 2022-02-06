@@ -389,6 +389,15 @@ public class CelesteStuffHealthCheck {
             throw new IOException("mod_dependency_graph.yaml check failed");
         }
 
+        final String modDependencyGraphEverest = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml?format=everestyaml"), UTF_8);
+        if (!modDependencyGraphEverest.contains("SpringCollab2020Audio:")
+                || !modDependencyGraphEverest.contains("URL: https://gamebanana.com/mmdl/484937")
+                || !modDependencyGraphEverest.contains("- Name: SpringCollab2020Audio")
+                || !modDependencyGraphEverest.contains("  Version: 1.0.0")) {
+
+            throw new IOException("mod_dependency_graph.yaml in everest.yaml format check failed");
+        }
+
         // Update Checker status, widget version
         final String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
         if (!updateCheckerStatus.contains("<span class=\"GreenColor\">Up</span>")) {
