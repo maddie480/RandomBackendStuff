@@ -455,14 +455,29 @@ public class GameBananaAutomatedChecks {
                     if (!resultBody.contains("Your everest.yaml file seems valid!")) {
                         // this doesn't sound good...
                         String resultHtml = Jsoup.parse(resultBody).select(".alert").html();
+
+                        // turn <pre> blocks into <code> blocks for proper formatting, and remove the extended explanations for everest.yaml structure
+                        // (because it is formatted wrong and that people we're sending that to already know how everest.yamls are formatted :p)
+                        resultHtml = resultHtml.replace("<pre>", "<code>").replace("</pre>", "</code>");
+                        if (resultHtml.contains("<p class=\"error-description\">")) {
+                            resultHtml = resultHtml.substring(0, resultHtml.indexOf("<p class=\"error-description\">"));
+                        }
+
                         String resultMd = new CopyDown(markdownOptions).convert(resultHtml);
+
+                        // clean up the output a bit to make it sound less weird
+                        resultMd = resultMd
+                                .replace("Your everest.yaml", "This mod's everest.yaml")
+                                .replace("your everest.yaml", "this mod's everest.yaml")
+                                .replace("-   ", "- ");
+
                         while (resultMd.contains("\n\n")) {
                             resultMd = resultMd.replace("\n\n", "\n");
                         }
                         if (resultMd.length() > 1000) {
                             resultMd = resultMd.substring(0, 1000) + "...";
                         }
-                        sendAlertToWebhook(":warning: The mod called **" + modName + "** doesn't pass the everest.yaml validator. It said:\n" +
+                        sendAlertToWebhook(":warning: The mod called **" + modName + "** doesn't pass the everest.yaml validator.\n" +
                                 resultMd + "\n:arrow_right: https://gamebanana.com/"
                                 + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
                     }
