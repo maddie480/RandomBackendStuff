@@ -148,8 +148,16 @@ public class TwitterUpdateChecker {
 
             if (!tweetsAlreadyNotified.contains(id)) {
                 if (!firstRun) {
+                    // TwitFix goes "if 'video_info' in tweet['extended_entities']['media'][0]:"
+                    // so we are going to check for exactly that.
+                    boolean shouldUseTwitFix = false;
+                    if (tweet.has("extended_entities")) {
+                        JSONObject media = (JSONObject) tweet.getJSONObject("extended_entities").getJSONArray("media").get(0);
+                        shouldUseTwitFix = media.has("video_info");
+                    }
+
                     log.info("New tweet with id " + id);
-                    String link = "https://twitter.com/" + feed + "/status/" + id;
+                    String link = (shouldUseTwitFix ? "https://fxtwitter.com/" : "https://twitter.com/") + feed + "/status/" + id;
 
                     List<String> urls = new ArrayList<>();
                     try {
