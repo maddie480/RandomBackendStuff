@@ -119,9 +119,13 @@ public class BotEventListener extends ListenerAdapter {
             event.reply("This bot is not usable in DMs!").setEphemeral(true).queue();
         } else if ("list-timezones".equals(event.getName())) {
             // list-timezones needs the raw event in order to reply with attachments and/or action rows.
-            OptionMapping option = event.getOption("visibility");
-            logger.info("New command: /list-timezones by member {}, params=[visibility={}]", event.getMember(), option);
-            listTimezones(event, false, option != null && "public".equals(option.getAsString()));
+            OptionMapping visibility = event.getOption("visibility");
+            OptionMapping names = event.getOption("names");
+            logger.info("New command: /list-timezones by member {}, params=[{}, {}]", event.getMember(), visibility, names);
+            listTimezones(event,
+                    names == null ? "discord_tags" : names.getAsString(),
+                    false,
+                    visibility != null && "public".equals(visibility.getAsString()));
         } else {
             OptionMapping optionTimezone = event.getOption("tz_name");
             OptionMapping optionDateTime = event.getOption("date_time");
@@ -157,11 +161,12 @@ public class BotEventListener extends ListenerAdapter {
 
     @Override
     public void onButtonClick(@Nonnull ButtonClickEvent event) {
-        if ("list-timezones-to-file".equals(event.getComponent().getId())) {
-            logger.info("New interaction with button from member {}, chose to get timezone list as text file", event.getMember());
+        if (event.getComponentId().startsWith("list-timezones-to-file")) {
+            String nameFormat = event.getComponentId().substring("list-timezones-to-file".length());
+            logger.info("New interaction with button from member {}, chose to get timezone list as text file with name format '{}'", event.getMember(), nameFormat);
 
             // list timezones again, but this time force it to go to a text file.
-            listTimezones(event, true, false);
+            listTimezones(event, nameFormat, true, false);
         }
     }
 
@@ -465,7 +470,7 @@ public class BotEventListener extends ListenerAdapter {
      * @param shouldRespondInPublic Whether the response should be public or private (aka "ephemeral").
      *                              Only matters if the given event is a SlashCommandEvent.
      */
-    private void listTimezones(GenericInteractionCreateEvent event, boolean asTextFile, boolean shouldRespondInPublic) {
+    private void listTimezones(GenericInteractionCreateEvent event, String namesToUse, boolean asTextFile, boolean shouldRespondInPublic) {
         // list all members from the server
         Map<TimezoneBot.UserTimezone, TimezoneBot.CachedMember> members = TimezoneBot.userTimezones.stream()
                 .filter(user -> user.serverId == event.getGuild().getIdLong())
@@ -483,7 +488,7 @@ public class BotEventListener extends ListenerAdapter {
                 peopleInUtcOffset = new TreeSet<>(Comparator.comparing(s -> s.toLowerCase(Locale.ROOT)));
                 peopleByUtcOffset.put(offset, peopleInUtcOffset);
             }
-            peopleInUtcOffset.add(member.getValue().memberName);
+            peopleInUtcOffset.add(getUserName(member.getValue(), namesToUse));
         }
 
         // turn it into text
@@ -507,9 +512,20 @@ public class BotEventListener extends ListenerAdapter {
             if (asTextFile) {
                 reply.addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt");
             } else {
-                reply.addActionRow(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file", "Get as text file", Emoji.fromUnicode("\uD83D\uDCC4")));
+                reply.addActionRow(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file" + namesToUse, "Get as text file", Emoji.fromUnicode("\uD83D\uDCC4")));
             }
             reply.queue();
+        }
+    }
+
+    private String getUserName(TimezoneBot.CachedMember member, String nameToUse) {
+        switch (nameToUse) {
+            case "nicknames":
+                return member.nickname;
+            case "both":
+                return member.nickname + " (" + member.discordTag + ")";
+            default:
+                return member.discordTag;
         }
     }
 

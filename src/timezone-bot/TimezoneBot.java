@@ -73,13 +73,15 @@ public class TimezoneBot {
 
         final long serverId;
         final long memberId;
-        final String memberName;
+        final String discordTag;
+        final String nickname;
         final ArrayList<Long> roleIds;
 
-        public CachedMember(long serverId, long memberId, String memberName, ArrayList<Long> roleIds) {
+        public CachedMember(long serverId, long memberId, String discordTag, String nickname, ArrayList<Long> roleIds) {
             this.serverId = serverId;
             this.memberId = memberId;
-            this.memberName = memberName;
+            this.discordTag = discordTag;
+            this.nickname = nickname;
             this.roleIds = roleIds;
         }
 
@@ -88,7 +90,8 @@ public class TimezoneBot {
             return "MemberCache{" +
                     "serverId=" + serverId +
                     ", memberId=" + memberId +
-                    ", memberName=" + memberName +
+                    ", discordTag=" + discordTag +
+                    ", nickname=" + nickname +
                     ", roleIds=" + roleIds +
                     '}';
         }
@@ -276,7 +279,11 @@ public class TimezoneBot {
                         Member m = g.retrieveMemberById(memberId).complete();
 
                         // build the cache entry, only keeping roles that correspond to timezones
-                        CachedMember cached = new CachedMember(g.getIdLong(), memberId, m.getUser().getName() + "#" + m.getUser().getDiscriminator(),
+                        CachedMember cached = new CachedMember(
+                                g.getIdLong(),
+                                memberId,
+                                m.getUser().getName() + "#" + m.getUser().getDiscriminator(),
+                                m.getEffectiveName(),
                                 m.getRoles().stream()
                                         .map(Role::getIdLong)
                                         .filter(timezoneRoles::containsValue)
@@ -406,9 +413,15 @@ public class TimezoneBot {
                 .addCommands(new CommandData("toggle-times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
                         .setDefaultEnabled(false))
                 .addCommands(new CommandData("list-timezones", "Lists the timezones of all members in the server")
-                        .addOptions(new OptionData(OptionType.STRING, "visibility", "Whether the response should be public or private (private by default)", false)
-                                .addChoice("public", "public")
-                                .addChoice("private", "private"))
+                        .addOptions(
+                                new OptionData(OptionType.STRING, "visibility", "Whether the response should be \"public\" or \"private\" (\"private\" by default)", false)
+                                        .addChoice("public", "public")
+                                        .addChoice("private", "private"),
+                                new OptionData(OptionType.STRING, "names", "The names to use for people: \"discord_tags\", \"nicknames\" or \"both\" (\"discord_tags\" by default)", false)
+                                        .addChoice("discord_tags", "discord_tags")
+                                        .addChoice("nicknames", "nicknames")
+                                        .addChoice("both", "both")
+                        )
                         .setDefaultEnabled(false))
                 .complete();
     }
