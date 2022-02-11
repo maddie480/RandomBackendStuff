@@ -148,13 +148,7 @@ public class TwitterUpdateChecker {
 
             if (!tweetsAlreadyNotified.contains(id)) {
                 if (!firstRun) {
-                    // TwitFix goes "if 'video_info' in tweet['extended_entities']['media'][0]:"
-                    // so we are going to check for exactly that.
-                    boolean shouldUseTwitFix = false;
-                    if (tweet.has("extended_entities")) {
-                        JSONObject media = (JSONObject) tweet.getJSONObject("extended_entities").getJSONArray("media").get(0);
-                        shouldUseTwitFix = media.has("video_info");
-                    }
+                    boolean shouldUseTwitFix = checkTwitFix("https://fxtwitter.com/" + feed + "/status/" + id);
 
                     log.info("New tweet with id " + id);
                     String link = (shouldUseTwitFix ? "https://fxtwitter.com/" : "https://twitter.com/") + feed + "/status/" + id;
@@ -254,6 +248,27 @@ public class TwitterUpdateChecker {
         }
 
         log.debug("Done.");
+    }
+
+    /**
+     * Checks whether the given TwitFix URL has a video or not. If not, using TwitFix to post the link has no value.
+     */
+    private static boolean checkTwitFix(String twitfixUrl) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL(twitfixUrl).openConnection();
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
+            connection.setRequestProperty("User-Agent", "test");
+            connection.setInstanceFollowRedirects(false);
+            connection.connect();
+            boolean hasVideoEmbed = IOUtils.toString(connection.getInputStream(), UTF_8).contains("<meta property=\"og:video\"");
+            connection.disconnect();
+
+            return hasVideoEmbed;
+        } catch (IOException e) {
+            log.error("TwitFix was unreachable!", e);
+            return false;
+        }
     }
 
     private static boolean hasEmbed(String url) {
