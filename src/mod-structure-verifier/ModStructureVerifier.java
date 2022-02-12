@@ -193,7 +193,14 @@ public class ModStructureVerifier extends ListenerAdapter {
             parseAdminCommand(event);
         }
 
-        if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
+        if (event.getMessage().getContentRaw().startsWith("--generate-font ")) {
+            if (event.getMessage().getAttachments().isEmpty()) {
+                event.getChannel().sendMessage(":x: Send a text file in order to generate a font for it!").queue();
+            } else {
+                event.getMessage().getAttachments().get(0).downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
+                        .thenAcceptAsync(file -> FontGenerator.generateFont(file, event.getMessage().getContentRaw().substring("--generate-font ".length()), event.getChannel(), event.getMessage()));
+            }
+        } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
             // a --verify command was sent in a channel where people are allowed to send --verify commands, hmm...
             // there should be 3 parts (so 2 parameters including --verify itself), with all 2 being alphanumeric.
             String[] settings = event.getMessage().getContentRaw().split(" ", 4);
@@ -450,7 +457,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         "_Grant the Attach Files permission to the bot in order to get text files with all missing characters._";
 
                 problemList.add("You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
-                        " If you want to be able to use them, you can use <https://max480-random-stuff.appspot.com/celeste/font-generator> to add them to the game.");
+                        " If you want to be able to use them, you can use <https://max480-random-stuff.appspot.com/celeste/font-generator> or use the `--generate-font [language]` command to add them to the game.");
                 websiteProblemList.add("missingfonts");
             }
 
@@ -1034,6 +1041,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                     "No checks will be done on folder names, and multiple maps are allowed.\n\n" +
                     "`--verify [assets folder name] [maps folder name]`\n" +
                     "will verify the given map (as an attachment, or as a Google Drive link) with the given parameters, with the same checks as collabs. Both names should be alphanumeric.\n\n" +
+                    "`--generate-font [language]`\n" +
+                    "will generate font files with all missing characters from the vanilla font. You should send your dialog file along with this command. `[language]` is one of `chinese`, `japanese`, `korean`, `renogare` or `russian`.\n\n" +
                     "`--remove-setup`\n" +
                     "will tell the bot to stop analyzing the .zip files in the current channel.\n\n" +
                     "`--rules`\n" +
