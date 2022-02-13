@@ -80,9 +80,9 @@ public class FontGenerator {
             // run BMFont to generate the font!
             message.addReaction("\uD83E\uDD14").queue(); // :thinking:
             new ProcessBuilder("/usr/bin/wine", "font_generator_data/bmfont.exe",
-                    "-c", "font_generator_data/configs/" + language + ".bmfc",
-                    "-t", textFile.toAbsolutePath().toString(),
-                    "-o", targetFile.toAbsolutePath().toString())
+                    "-c", toWindowsPath(Paths.get("font_generator_data/configs/" + language + ".bmfc")),
+                    "-t", toWindowsPath(textFile),
+                    "-o", toWindowsPath(targetFile))
                     .inheritIO()
                     .start().waitFor();
             message.removeReaction("\uD83E\uDD14").queue(); // :thinking:
@@ -141,6 +141,12 @@ public class FontGenerator {
         }
 
         cleanup(inputFile, tempDirectory);
+    }
+
+    private static String toWindowsPath(Path path) {
+        // within Wine, the entire Linux filesystem is mapped to drive Z:\, for example /tmp/foo is at Z:\tmp\foo
+        // => we need to add Z: in front of the absolute path and to replace / with \
+        return "Z:" + path.toAbsolutePath().toString().replace("/", "\\");
     }
 
     private static void cleanup(File inputFile, Path tempDirectory) {
