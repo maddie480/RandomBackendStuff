@@ -35,9 +35,10 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that every Everest branch has a version and that we can download it.
-     * Ran daily at midnight.
+     * Also sends out a notification to SRC staff if a new stable Everest hits.
+     * Ran hourly with daily = false, and daily at midnight with daily = true.
      */
-    public static void checkEverestExists() throws IOException {
+    public static void checkEverestExists(boolean daily) throws IOException {
         JSONObject object = new JSONObject(IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&api-version=5.0")), UTF_8));
         JSONArray versionList = object.getJSONArray("value");
         int latestStable = -1;
@@ -74,9 +75,33 @@ public class CelesteStuffHealthCheck {
         }
         log.debug("Latest dev version: " + latestDev);
 
-        checkExists(latestStable);
-        checkExists(latestBeta);
-        checkExists(latestDev);
+        // check the last version we sent an SRC notification for.
+        int savedLatestEverest = Integer.parseInt(FileUtils.readFileToString(new File("latest_everest.txt"), UTF_8));
+
+        if (savedLatestEverest < latestStable) {
+            // a new stable version of Everest hit! send a notification to SRC staff.
+            try {
+                WebhookExecutor.executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK,
+                        "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                        "Everest Update Checker",
+                        "**A new Everest stable was just released!**\nThe latest stable version is now **" + (latestStable + 700) + "**.");
+                WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                        "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                        "Everest Update Checker",
+                        ":information_source: Message sent to SRC staff:\n> **A new Everest stable was just released!**\n> The latest stable version is now **" + (latestStable + 700) + "**.");
+            } catch (InterruptedException e) {
+                throw new IOException(e);
+            }
+
+            // and save the fact that we notified about this version.
+            FileUtils.writeStringToFile(new File("latest_everest.txt"), Integer.toString(latestStable), UTF_8);
+        }
+
+        if (daily) {
+            checkExists(latestStable);
+            checkExists(latestBeta);
+            checkExists(latestDev);
+        }
     }
 
     /**
