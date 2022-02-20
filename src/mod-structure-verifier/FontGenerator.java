@@ -22,9 +22,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,8 +38,24 @@ import java.util.zip.ZipOutputStream;
 public class FontGenerator {
     private static final Logger logger = LoggerFactory.getLogger(FontGenerator.class);
 
-    public static void generateFont(File inputFile, String language, MessageChannel channel, Message message) {
-        logger.info("{} asked to generate a font in channel {} for language {}!", message.getMember(), channel, language);
+    public static void generateFontFromDiscord(File inputFile, String language, MessageChannel channel, Message message) {
+        generateFont(inputFile, language, channel, message, null);
+    }
+
+    public static void generateFontFromFrontend(File inputFile, String language, BiConsumer<String, List<File>> sendResultToFrontend) {
+        generateFont(inputFile, language, null, null, sendResultToFrontend);
+    }
+
+    private static void generateFont(File inputFile, String language, MessageChannel channel, Message message, BiConsumer<String, List<File>> sendResultToFrontend) {
+        logger.info("{} asked to generate a font in channel {} for language {}!", message == null ? "[FRONTEND]" : message.getMember(), channel, language);
+
+        Consumer<String> sendSimpleResponse = (messageToSend) -> {
+            if (channel == null) {
+                sendResultToFrontend.accept(messageToSend, Collections.emptyList());
+            } else {
+                channel.sendMessage(messageToSend).queue();
+            }
+        };
 
         Path tempDirectory = null;
 
@@ -48,7 +64,7 @@ public class FontGenerator {
             Files.delete(inputFile.toPath());
 
             if (!Arrays.asList("chinese", "japanese", "korean", "renogare", "russian").contains(language)) {
-                channel.sendMessage(":x: The language should be one of the following: `chinese`, `japanese`, `korean`, `renogare` or `russian`.").queue();
+                sendSimpleResponse.accept(":x: The language should be one of the following: `chinese`, `japanese`, `korean`, `renogare` or `russian`.");
                 cleanup(inputFile, tempDirectory);
                 return;
             }
@@ -66,7 +82,7 @@ public class FontGenerator {
 
             if (missingCharacters.isEmpty()) {
                 // we have nothing to generate
-                channel.sendMessage(":white_check_mark: **All the characters in your dialog file are already present in the vanilla font!** You have nothing to do.").queue();
+                sendSimpleResponse.accept(":white_check_mark: **All the characters in your dialog file are already present in the vanilla font!** You have nothing to do.");
                 cleanup(inputFile, tempDirectory);
                 return;
             }
@@ -78,14 +94,14 @@ public class FontGenerator {
             FileUtils.writeStringToFile(textFile.toFile(), "\ufeff" + missingCharacters, StandardCharsets.UTF_8);
 
             // run BMFont to generate the font!
-            message.addReaction("\uD83E\uDD14").queue(); // :thinking:
+            if (message != null) message.addReaction("\uD83E\uDD14").queue(); // :thinking:
             new ProcessBuilder("/usr/bin/wine", "font_generator_data/bmfont.exe",
                     "-c", toWindowsPath(Paths.get("font_generator_data/configs/" + language + ".bmfc")),
                     "-t", toWindowsPath(textFile),
                     "-o", toWindowsPath(targetFile))
                     .inheritIO()
                     .start().waitFor();
-            message.removeReaction("\uD83E\uDD14").queue(); // :thinking:
+            if (message != null) message.removeReaction("\uD83E\uDD14").queue(); // :thinking:
 
             if (!Files.exists(targetFile)) {
                 cleanup(inputFile, tempDirectory);
@@ -101,7 +117,7 @@ public class FontGenerator {
 
             if (generatedCodes.size() == 0) {
                 // heyyyy, BMFont generated no character at all, what's this?
-                channel.sendMessage(":x: **All characters are missing from the font!** Make sure you picked the right language.").queue();
+                sendSimpleResponse.accept(":x: **All characters are missing from the font!** Make sure you picked the right language.");
                 cleanup(inputFile, tempDirectory);
                 return;
             }
@@ -118,26 +134,40 @@ public class FontGenerator {
             }
 
             // send the whole thing!
-            if (tempDirectory.resolve("font.zip").toFile().length() > 8 * 1024 * 1024) {
+            if (channel != null && tempDirectory.resolve("font.zip").toFile().length() > 8 * 1024 * 1024) {
                 channel.sendMessage(":x: The resulting file is more than 8 MB in size. Did you try generating the entire font or what? :thinking: Anyway, this does not fit in a Discord attachment.").queue();
             } else if (stillMissingCharacters.isEmpty()) {
-                channel.sendMessage(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:")
-                        .addFile(tempDirectory.resolve("font.zip").toFile())
-                        .complete();
+                if (channel != null) {
+                    channel.sendMessage(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:")
+                            .addFile(tempDirectory.resolve("font.zip").toFile())
+                            .complete();
+                } else {
+                    sendResultToFrontend.accept(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:",
+                            Collections.singletonList(tempDirectory.resolve("font.zip").toFile()));
+                }
             } else {
                 FileUtils.writeStringToFile(tempDirectory.resolve("missing_characters.txt").toFile(), stillMissingCharacters, StandardCharsets.UTF_8);
-                channel.sendMessage(":warning: Some characters that are used in your file were not found in the font, you will find them in the attached text file.\n" +
-                                "Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder to fill in the remaining characters:")
-                        .addFile(tempDirectory.resolve("font.zip").toFile())
-                        .addFile(tempDirectory.resolve("missing_characters.txt").toFile())
-                        .complete();
+
+                if (channel != null) {
+                    channel.sendMessage(":warning: Some characters that are used in your file were not found in the font, you will find them in the attached text file.\n" +
+                                    "Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder to fill in the remaining characters:")
+                            .addFile(tempDirectory.resolve("font.zip").toFile())
+                            .addFile(tempDirectory.resolve("missing_characters.txt").toFile())
+                            .complete();
+                } else {
+                    sendResultToFrontend.accept(":warning: Some characters that are used in your file were not found in the font, you will find them in the file below.\n" +
+                                    "Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder to fill in the remaining characters:",
+                            Arrays.asList(tempDirectory.resolve("font.zip").toFile(), tempDirectory.resolve("missing_characters.txt").toFile()));
+                }
             }
         } catch (IOException | InterruptedException e) {
             logger.error("Failed generating the font!", e);
-            channel.sendMessage(":x: An error occurred while generating the font file!").queue();
+            sendSimpleResponse.accept(":x: An error occurred while generating the font file!");
 
-            channel.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                    .sendMessage("An error occurred while generating a font file: " + e.toString()).queue();
+            if (channel != null) {
+                channel.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
+                        .sendMessage("An error occurred while generating a font file: " + e.toString()).queue();
+            }
         }
 
         cleanup(inputFile, tempDirectory);

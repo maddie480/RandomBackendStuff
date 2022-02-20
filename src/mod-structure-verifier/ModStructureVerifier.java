@@ -40,6 +40,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -198,7 +199,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 event.getChannel().sendMessage(":x: Send a text file in order to generate a font for it!").queue();
             } else {
                 event.getMessage().getAttachments().get(0).downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
-                        .thenAcceptAsync(file -> FontGenerator.generateFont(file, event.getMessage().getContentRaw().substring("--generate-font ".length()), event.getChannel(), event.getMessage()));
+                        .thenAcceptAsync(file -> FontGenerator.generateFontFromDiscord(file, event.getMessage().getContentRaw().substring("--generate-font ".length()), event.getChannel(), event.getMessage()));
             }
         } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
             // a --verify command was sent in a channel where people are allowed to send --verify commands, hmm...
@@ -242,7 +243,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
                 logger.info("{} sent a file named {} in {} that we should analyze!", event.getMember(), attachment.getFileName(), event.getChannel());
                 attachment.downloadToFile(new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip"))
-                        .thenAcceptAsync(file -> analyzeZipFile(event, attachment, expectedCollabAssetPrefix, expectedCollabMapPrefix, file, responseChannelId));
+                        .thenAcceptAsync(file -> analyzeZipFileFromDiscord(event, attachment, expectedCollabAssetPrefix, expectedCollabMapPrefix, file, responseChannelId));
             }
         }
 
@@ -267,7 +268,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 // download the file through the Google Drive API and analyze it.
                 File target = new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip");
                 FileUtils.copyToFile(is, target);
-                analyzeZipFile(event, null, expectedCollabAssetPrefix, expectedCollabMapPrefix, target, responseChannelId);
+                analyzeZipFileFromDiscord(event, null, expectedCollabAssetPrefix, expectedCollabMapPrefix, target, responseChannelId);
             } catch (IOException e) {
                 // the file could not be downloaded (the file is probably private or non-existent).
                 logger.warn("Could not download file id {}", googleDriveId, e);
@@ -283,6 +284,18 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
+    public static void analyzeZipFileFromDiscord(GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
+                                                 String expectedCollabMapsPrefix, File file, Long responseChannelId) {
+
+        analyzeZipFile(event, attachment, expectedCollabAssetPrefix, expectedCollabMapsPrefix, file, responseChannelId, null);
+    }
+
+    public static void analyzeZipFileFromFrontend(File file, String expectedCollabAssetPrefix, String expectedCollabMapsPrefix,
+                                                  BiConsumer<String, List<File>> sendResultToFrontend) {
+
+        analyzeZipFile(null, null, expectedCollabAssetPrefix, expectedCollabMapsPrefix, file, null, sendResultToFrontend);
+    }
+
     /**
      * Scans a zip file.
      *
@@ -292,15 +305,18 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @param expectedCollabMapsPrefix  The expected collab maps prefix for that channel
      * @param file                      The file to scan
      * @param responseChannelId         The channel where all problems with the map will be sent
+     * @param sendResultToFrontend      The method to call to send the result of the verification to the frontend
      */
-    private void analyzeZipFile(@NotNull GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
-                                String expectedCollabMapsPrefix, File file, long responseChannelId) {
+    private static void analyzeZipFile(GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
+                                       String expectedCollabMapsPrefix, File file, Long responseChannelId, BiConsumer<String, List<File>> sendResultToFrontend) {
 
-        analyzedZipCount++;
-        int serverCount = event.getJDA().getGuilds().size();
-        jda.getPresence().setActivity(Activity.playing(
-                "--help | " + analyzedZipCount + " zip" + (analyzedZipCount == 1 ? "" : "s") + " analyzed since startup | "
-                        + serverCount + " server" + (serverCount == 1 ? "" : "s")));
+        if (event != null) {
+            analyzedZipCount++;
+            int serverCount = event.getJDA().getGuilds().size();
+            jda.getPresence().setActivity(Activity.playing(
+                    "--help | " + analyzedZipCount + " zip" + (analyzedZipCount == 1 ? "" : "s") + " analyzed since startup | "
+                            + serverCount + " server" + (serverCount == 1 ? "" : "s")));
+        }
 
         logger.debug("Collab assets folder = {}, Collab maps folder = {}", expectedCollabAssetPrefix, expectedCollabMapsPrefix);
 
@@ -447,12 +463,15 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
-            TextChannel channel = Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId)).orElse(event.getChannel());
+            TextChannel channel = null;
+            if (event != null) {
+                channel = Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId)).orElse(event.getChannel());
+            }
 
             logger.debug("Checking for missing fonts...");
             Map<String, String> missingFonts = checkForMissingFonts(zipFile);
             if (!missingFonts.isEmpty()) {
-                String attachmentMessage = channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES) ?
+                String attachmentMessage = channel == null || channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES) ?
                         "You will find the missing characters in the attached text files." :
                         "_Grant the Attach Files permission to the bot in order to get text files with all missing characters._";
 
@@ -462,10 +481,14 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
 
             if (problemList.isEmpty()) {
-                event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-                event.getMessage().addReaction("\uD83D\uDC4C").queue(); // :ok_hand:
+                if (event != null) {
+                    event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
+                    event.getMessage().addReaction("\uD83D\uDC4C").queue(); // :ok_hand:
+                } else {
+                    sendResultToFrontend.accept("**No issue was found with your zip!**", Collections.emptyList());
+                }
 
-                if (attachment != null) {
+                if (attachment != null && event != null) {
                     // post an embed to the 2-click installer.
                     EmbedBuilder embedBuilder = new EmbedBuilder()
                             .setTitle("Install " + yamlName, "https://0x0ade.ga/twoclick?" + attachment.getUrl())
@@ -479,17 +502,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                             });
                 }
             } else {
-                // ping the user with an issues list in the response channel, truncating the message if it is somehow too long.
-                String message = event.getAuthor().getAsMention() + " Oops, there are issues with the zip you just posted in " + event.getChannel().getAsMention() + ":\n- "
-                        + String.join("\n- ", problemList);
-                if (message.length() > 2000) {
-                    message = message.substring(0, 1997) + "...";
-                }
-
-                // if there is any "website problem", attach a link to the help website.
-                MessageBuilder discordMessage = new MessageBuilder(message);
+                String url = null;
                 if (!websiteProblemList.isEmpty()) {
-                    String url;
                     if (hasNameScan) {
                         url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?collabName=" + expectedCollabAssetPrefix
                                 + (!expectedCollabAssetPrefix.equals(expectedCollabMapsPrefix) ? "&collabMapName=" + expectedCollabMapsPrefix : "")
@@ -497,31 +511,81 @@ public class ModStructureVerifier extends ListenerAdapter {
                     } else {
                         url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?" + String.join("&", websiteProblemList);
                     }
-                    discordMessage.setEmbeds(new EmbedBuilder()
-                            .setTitle("Click here for more help", url)
-                            .build());
                 }
 
-                MessageAction sendingMessage = channel.sendMessage(discordMessage.build());
+                if (event != null) {
+                    // ping the user with an issues list in the response channel, truncating the message if it is somehow too long.
+                    String message = event.getAuthor().getAsMention() + " Oops, there are issues with the zip you just posted in " + event.getChannel().getAsMention() + ":\n- "
+                            + String.join("\n- ", problemList);
+                    if (message.length() > 2000) {
+                        message = message.substring(0, 1997) + "...";
+                    }
 
-                if (channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES)) {
-                    for (Map.Entry<String, String> missingFont : missingFonts.entrySet()) {
-                        sendingMessage = sendingMessage.addFile(missingFont.getValue().getBytes(UTF_8), missingFont.getKey() + "_missing_chars.txt");
+                    MessageBuilder discordMessage = new MessageBuilder(message);
+
+                    // if there is any "website problem", attach a link to the help website.
+                    if (url != null) {
+                        discordMessage.setEmbeds(new EmbedBuilder().setTitle("Click here for more help", url).build());
+                    }
+
+                    MessageAction sendingMessage = channel.sendMessage(discordMessage.build());
+
+                    if (channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES)) {
+                        for (Map.Entry<String, String> missingFont : missingFonts.entrySet()) {
+                            sendingMessage = sendingMessage.addFile(missingFont.getValue().getBytes(UTF_8), missingFont.getKey() + "_missing_chars.txt");
+                        }
+                    }
+
+                    sendingMessage.queue();
+
+                    event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
+                    event.getMessage().addReaction("❌").queue(); // :x:
+                } else {
+                    // compose the message in a very similar but not identical way
+                    String message = "**Oops, there are issues with the zip you just sent:**\n- " + String.join("\n- ", problemList);
+                    if (url != null) {
+                        message += "\n\nClick here for more help: " + url;
+                    }
+
+                    // write the files to the disk to prepare sending them out
+                    List<File> files = missingFonts.entrySet().stream()
+                            .map(entry -> {
+                                try {
+                                    File output = new File("/tmp/" + entry.getKey() + "_missing_chars_" + System.currentTimeMillis() + ".txt");
+                                    FileUtils.writeStringToFile(output, entry.getValue(), UTF_8);
+                                    return output;
+                                } catch (IOException e) {
+                                    logger.error("Cannot write missing chars file", e);
+                                    return null;
+                                }
+                            })
+                            .collect(Collectors.toList());
+
+                    if (files.contains(null)) {
+                        throw new IOException("Could not send missing font file!");
+                    }
+
+                    // send them out
+                    sendResultToFrontend.accept(message, files);
+
+                    // delete the files we just created.
+                    for (File f : files) {
+                        FileUtils.forceDelete(f);
                     }
                 }
-
-                sendingMessage.queue();
-
-                event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-                event.getMessage().addReaction("❌").queue(); // :x:
             }
         } catch (Exception e) {
             logger.warn("Could not read zip file! Ignoring.", e);
-            event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                    .sendMessage("An error occurred while scanning a zip: " + e.toString()).queue();
 
-            event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-            event.getMessage().addReaction("\uD83D\uDCA3").queue(); // :bomb:
+            if (event != null) {
+                event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
+                        .sendMessage("An error occurred while scanning a zip: " + e.toString()).queue();
+
+                event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
+                event.getMessage().addReaction("\uD83D\uDCA3").queue(); // :bomb:
+            } else {
+                sendResultToFrontend.accept(":bomb: An error occurred while scanning your zip.", Collections.emptyList());
+            }
         }
 
         // and delete the file when we're done analyzing it.
@@ -538,8 +602,8 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, List<String> fileListing, ZipFile zipFile,
-                                            String mapPath, List<String> dependencies) throws IOException {
+    private static void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, List<String> fileListing, ZipFile zipFile,
+                                                   String mapPath, List<String> dependencies) throws IOException {
 
         // first, let's collect what is available to us with vanilla, the map's assets, and the dependencies.
         Set<String> availableDecals = VanillaDatabase.allVanillaDecals.stream().map(a -> a.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
@@ -718,8 +782,8 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private void checkMapEditorEntities(String mapEditor, Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
-                                        Map<String, Map<String, Object>> databaseContents, String dep, String depUrl) throws IOException {
+    private static void checkMapEditorEntities(String mapEditor, Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
+                                               Map<String, Map<String, Object>> databaseContents, String dep, String depUrl) throws IOException {
         File modFilesDatabaseEditorFile = new File("modfilesdatabase/" +
                 databaseContents.get(dep).get("GameBananaType") + "/" +
                 databaseContents.get(dep).get("GameBananaId") + "/" + mapEditor + "_" +
@@ -737,7 +801,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private void checkForMissingEntities(Set<String> availableEntities, String tagName, Set<String> badEntities, Document document) {
+    private static void checkForMissingEntities(Set<String> availableEntities, String tagName, Set<String> badEntities, Document document) {
         // list all the <entities> tags.
         NodeList entities = document.getElementsByTagName(tagName);
         for (int i = 0; i < entities.getLength(); i++) {
@@ -760,7 +824,7 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @return A map containing [language name] => [all missing characters in a string]
      * @throws IOException If an error occured while reading files from a zip
      */
-    private Map<String, String> checkForMissingFonts(ZipFile modZip) throws IOException {
+    private static Map<String, String> checkForMissingFonts(ZipFile modZip) throws IOException {
         Map<String, String> issues = new HashMap<>();
 
         checkForMissingFonts(modZip, "renogare64", "Brazilian Portuguese", issues);
@@ -786,7 +850,7 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @param issues       The map collecting missing characters in all languages
      * @throws IOException If an error occured while reading files from a zip
      */
-    private void checkForMissingFonts(ZipFile modZip, String languageName, String txtName, Map<String, String> issues) throws IOException {
+    private static void checkForMissingFonts(ZipFile modZip, String languageName, String txtName, Map<String, String> issues) throws IOException {
         ZipEntry dialogFile = modZip.getEntry("Dialog/" + txtName + ".txt");
         if (dialogFile != null) {
             logger.debug("Scanning {}.txt for missing fonts", txtName);
@@ -835,7 +899,7 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @return All code points defined in the font file
      * @throws IOException If an error occurs while reading the file, or if the file is invalid
      */
-    private Set<Integer> readFontFile(InputStream fontFile) throws IOException {
+    private static Set<Integer> readFontFile(InputStream fontFile) throws IOException {
         try {
             // parse the XML
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -856,8 +920,8 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private void addStuffFromSJ2021(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
-                                    String whereIsStrawberryJam) throws IOException {
+    private static void addStuffFromSJ2021(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
+                                           String whereIsStrawberryJam) throws IOException {
 
         List<String> ahornEntities = new LinkedList<>();
         List<String> ahornTriggers = new LinkedList<>();
@@ -903,8 +967,8 @@ public class ModStructureVerifier extends ListenerAdapter {
         FileUtils.forceDelete(new File("mod-ahornscan-sj.zip"));
     }
 
-    private void addStuffFromGravityHelper(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
-                                           String whereIsGravityHelper) throws IOException {
+    private static void addStuffFromGravityHelper(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
+                                                  String whereIsGravityHelper) throws IOException {
 
         List<String> ahornEntities = new LinkedList<>();
         List<String> ahornTriggers = new LinkedList<>();
@@ -942,7 +1006,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         FileUtils.forceDelete(new File("mod-ahornscan-gh.zip"));
     }
 
-    private InputStream authenticatedGitHubRequest(String url) throws IOException {
+    private static InputStream authenticatedGitHubRequest(String url) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setConnectTimeout(10000);
         connection.setReadTimeout(30000);
@@ -952,8 +1016,8 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     // literal copy-paste from update checker code
-    private void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
-                                      String file, InputStream inputStream) throws IOException {
+    private static void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
+                                             String file, InputStream inputStream) throws IOException {
 
         Pattern mapdefMatcher = Pattern.compile(".*@mapdef [A-Za-z]+ \"([^\"]+)\".*");
         Pattern pardefMatcher = Pattern.compile(".*Entity\\(\"([^\"]+)\".*");
