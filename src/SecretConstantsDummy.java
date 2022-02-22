@@ -54,7 +54,7 @@ public class SecretConstantsDummy {
     static final String SRC_UPDATE_CHECKER_HOOK = "";
 
     // Twitter bot settings
-    static final Long TWITTER_UPDATE_CHANNEL = 0L;
+    static final String PERSONAL_TWITTER_WEBHOOK_URL = "";
     static final Long QUEST_UPDATE_CHANNEL = 0L;
     static final String TWITTER_BASIC_AUTH = "";
 }

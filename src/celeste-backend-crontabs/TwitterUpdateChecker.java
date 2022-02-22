@@ -1,10 +1,13 @@
 package com.max480.discord.randombots;
 
+import com.google.common.collect.ImmutableMap;
 import com.max480.quest.modmanagerbot.BotClient;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,7 +134,7 @@ public class TwitterUpdateChecker {
         Set<String> tweetsAlreadyNotified = previousTweets.getOrDefault(feed, new HashSet<>());
 
         HttpURLConnection connAuth = (HttpURLConnection) new URL("https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name="
-                + URLEncoder.encode(feed, "UTF-8") + "&count=50&include_rts=1&exclude_replies=1").openConnection();
+                + URLEncoder.encode(feed, UTF_8) + "&count=50&include_rts=1&exclude_replies=1&tweet_mode=extended").openConnection();
 
         connAuth.setConnectTimeout(10000);
         connAuth.setReadTimeout(30000);
@@ -148,10 +151,17 @@ public class TwitterUpdateChecker {
 
             if (!tweetsAlreadyNotified.contains(id)) {
                 if (!firstRun) {
-                    boolean shouldUseTwitFix = checkTwitFix("https://fxtwitter.com/" + feed + "/status/" + id);
-
                     log.info("New tweet with id " + id);
-                    String link = (shouldUseTwitFix ? "https://fxtwitter.com/" : "https://twitter.com/") + feed + "/status/" + id;
+                    String link = "https://twitter.com/" + feed + "/status/" + id;
+                    String profilePictureUrl = tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", "");
+                    String username = tweet.getJSONObject("user").getString("name");
+                    Map<String, Object> embed = generateEmbedFor(tweet);
+
+                    // Discord doesn't support embedding videos in their embeds... come on!
+                    String videoUrl = null;
+                    if (embed.containsKey("video")) {
+                        videoUrl = ((Map<String, String>) embed.get("video")).get("url");
+                    }
 
                     List<String> urls = new ArrayList<>();
                     try {
@@ -167,11 +177,14 @@ public class TwitterUpdateChecker {
                     }
                     final List<String> urlsFinalList = urls;
 
-                    // post it to the Twitter update channel
-                    BotClient.getInstance().getTextChannelById(SecretConstants.TWITTER_UPDATE_CHANNEL)
-                            .sendMessage("Nouveau tweet de @" + feed + "\n" +
-                                    ":arrow_right: " + link + (urls.isEmpty() ? "" : "\nLiens : " + String.join(", ", urls)))
-                            .queue();
+                    // post it to the personal Twitter channel
+                    executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, profilePictureUrl, username, "<" + link + ">", Collections.singletonList(embed));
+                    if (videoUrl != null) {
+                        executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, profilePictureUrl, username, ":arrow_up: " + videoUrl, null);
+                    }
+                    if (!urlsFinalList.isEmpty()) {
+                        executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, profilePictureUrl, username, ":arrow_up: Liens : " + String.join(", ", urlsFinalList), null);
+                    }
 
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
                         // load webhook URLs from Cloud Storage
@@ -188,20 +201,14 @@ public class TwitterUpdateChecker {
                         for (String webhook : webhookUrls) {
                             try {
                                 // call the webhook with retries
-                                ConnectionUtils.runWithRetry(() -> {
-                                    try {
-                                        WebhookExecutor.executeWebhook(webhook,
-                                                tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", ""),
-                                                tweet.getJSONObject("user").getString("name"), link + "\n_Posted on <t:" + date + ":F>_"
-                                                        + (urlsFinalList.isEmpty() ? "" : "\nLinks: " + String.join(", ", urlsFinalList)));
-
-                                        return null;
-                                    } catch (InterruptedException e) {
-                                        // this will probably never happen. ^^'
-                                        throw new IOException(e);
-                                    }
-                                });
-
+                                executeWebhook(webhook, profilePictureUrl, username, "<" + link + ">" + "\n_Posted on <t:" + date + ":F>_",
+                                        Collections.singletonList(embed));
+                                if (videoUrl != null) {
+                                    executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: " + videoUrl, null);
+                                }
+                                if (!urlsFinalList.isEmpty()) {
+                                    executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Links: " + String.join(", ", urlsFinalList), null);
+                                }
                             } catch (WebhookExecutor.UnknownWebhookException e) {
                                 // if this happens, this means the webhook was deleted.
                                 goneWebhooks.add(webhook);
@@ -211,9 +218,11 @@ public class TwitterUpdateChecker {
                         if (!goneWebhooks.isEmpty()) {
                             // some webhooks were deleted! notify the owner about it.
                             for (String goneWebhook : goneWebhooks) {
-                                BotClient.getInstance().getTextChannelById(SecretConstants.TWITTER_UPDATE_CHANNEL)
-                                        .sendMessage(":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook)
-                                        .queue();
+                                executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
+                                        "https://cdn.discordapp.com/attachments/445236692136230943/945779742462865478/2021_Twitter_logo_-_blue.png",
+                                        "Twitter Bot",
+                                        ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook,
+                                        null);
 
                                 webhookUrls.remove(goneWebhook);
                             }
@@ -225,6 +234,7 @@ public class TwitterUpdateChecker {
 
                     if (THREADS_TO_QUEST.contains(feed)) {
                         // post it to the Quest server, pinging every subscriber in the process
+                        // (there is a bot running there, BotClient.getInstance() gets the JDA client for it)
                         BotClient.getInstance().getTextChannelById(SecretConstants.QUEST_UPDATE_CHANNEL)
                                 .sendMessage("<@" + String.join("> <@", patchNoteSubscribers) + ">\n" +
                                         "Nouveau tweet de @" + feed + "\n" +
@@ -251,24 +261,116 @@ public class TwitterUpdateChecker {
     }
 
     /**
-     * Checks whether the given TwitFix URL has a video or not. If not, using TwitFix to post the link has no value.
+     * Wrapper around {@link WebhookExecutor#executeWebhook(String, String, String, String, List)}
+     * that turns InterruptedExceptions into IOExceptions.
      */
-    private static boolean checkTwitFix(String twitfixUrl) {
+    private static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, List<Map<String, Object>> embeds) throws IOException {
         try {
-            HttpURLConnection connection = (HttpURLConnection) new URL(twitfixUrl).openConnection();
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(30000);
-            connection.setRequestProperty("User-Agent", "test");
-            connection.setInstanceFollowRedirects(false);
-            connection.connect();
-            boolean hasVideoEmbed = IOUtils.toString(connection.getInputStream(), UTF_8).contains("<meta property=\"og:video\"");
-            connection.disconnect();
+            WebhookExecutor.executeWebhook(webhookUrl, avatar, nickname, body, embeds);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
+    }
 
-            return hasVideoEmbed;
+    /**
+     * This makes Discord-like looking embeds of tweets in the place of Discord,
+     * because Discord apparently suddenly stopped taking care of that.
+     *
+     * @param tweet The tweet to turn into an embed
+     * @return The embed data
+     */
+    private static Map<String, Object> generateEmbedFor(JSONObject tweet) {
+        Map<String, Object> embed = new HashMap<>();
+
+        // if that's an RT, we want to take the retweeted status instead.
+        if (tweet.has("retweeted_status")) {
+            tweet = tweet.getJSONObject("retweeted_status");
+        }
+
+        { // author
+            Map<String, String> authorInfo = new HashMap<>();
+            authorInfo.put("name", tweet.getJSONObject("user").getString("name") + " (@" + tweet.getJSONObject("user").getString("screen_name") + ")");
+            authorInfo.put("icon_url", tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", ""));
+            authorInfo.put("url", "https://twitter.com/" + tweet.getJSONObject("user").getString("screen_name"));
+            embed.put("author", authorInfo);
+        }
+
+        int videoCount = 0;
+        int photoCount = 0;
+        boolean embeddedMedia = false;
+
+        // media
+        if (tweet.has("extended_entities") && tweet.getJSONObject("extended_entities").has("media")) {
+            for (Object o : tweet.getJSONObject("extended_entities").getJSONArray("media")) {
+                JSONObject media = (JSONObject) o;
+                switch (media.getString("type")) {
+                    case "photo":
+                        photoCount++;
+
+                        if (!embeddedMedia) {
+                            embed.put("image", ImmutableMap.of("url", media.getString("media_url_https")));
+                            embeddedMedia = true;
+                        }
+                        break;
+
+                    case "video":
+                    case "animated_gif":
+                        videoCount++;
+
+                        if (!embeddedMedia) {
+                            String videoUrl = getVideoUrlWithTwitFix("https://twitter.com/"
+                                    + tweet.getJSONObject("user").getString("screen_name")
+                                    + "/status/"
+                                    + tweet.getString("id_str"));
+
+                            if (videoUrl != null) {
+                                embed.put("video", ImmutableMap.of("url", videoUrl));
+                                embeddedMedia = true;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        // contents
+        embed.put("description", tweet.getString("full_text"));
+        embed.put("color", 1940464);
+
+        { // footer
+            String footerText = "";
+            if (photoCount > 0) {
+                footerText += photoCount + " " + (photoCount == 1 ? "image" : "images");
+            }
+            if (videoCount > 0) {
+                if (photoCount > 0) {
+                    footerText += ", ";
+                }
+                footerText += videoCount + " " + (videoCount == 1 ? "video" : "videos");
+            }
+
+            Map<String, String> footerInfo = new HashMap<>();
+            footerInfo.put("text", "Twitter" + (footerText.isEmpty() ? "" : " • " + footerText));
+            footerInfo.put("icon_url", "https://cdn.discordapp.com/attachments/445236692136230943/945779742462865478/2021_Twitter_logo_-_blue.png");
+            embed.put("footer", footerInfo);
+            embed.put("timestamp", OffsetDateTime.parse(tweet.getString("created_at"), DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH)).format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+
+        return embed;
+    }
+
+    private static String getVideoUrlWithTwitFix(String tweetUrl) {
+        try {
+            Document page = Jsoup.connect(tweetUrl.replace("https://twitter.com/", "https://fxtwitter.com/")).userAgent("test").get();
+            final Elements select = page.select("meta[property=\"og:video\"]");
+            if (!select.isEmpty()) {
+                return select.get(0).attr("content");
+            }
         } catch (IOException e) {
             log.error("TwitFix was unreachable!", e);
-            return false;
         }
+
+        return null;
     }
 
     private static boolean hasEmbed(String url) {
@@ -277,6 +379,7 @@ public class TwitterUpdateChecker {
 
             return Jsoup
                     .connect(url)
+                    .userAgent("Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)")
                     .followRedirects(true)
                     .timeout(10000)
                     .get()

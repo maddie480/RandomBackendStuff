@@ -31,7 +31,14 @@ public class WebhookExecutor {
      * Calls a Discord webhook without enabling mentions.
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body) throws IOException, InterruptedException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList());
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), null);
+    }
+
+    /**
+     * Calls a Discord webhook without enabling mentions, with embeds.
+     */
+    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, List<Map<String, Object>> embeds) throws IOException, InterruptedException {
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), embeds);
     }
 
     /**
@@ -39,7 +46,7 @@ public class WebhookExecutor {
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, Map<String, String> httpHeaders)
             throws IOException, InterruptedException {
-        executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, false, null, Collections.emptyList());
+        executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, false, null, Collections.emptyList(), null);
     }
 
     /**
@@ -47,7 +54,7 @@ public class WebhookExecutor {
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, long allowedUserMentionId)
             throws IOException, InterruptedException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, allowedUserMentionId, Collections.emptyList());
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, allowedUserMentionId, Collections.emptyList(), null);
     }
 
     /**
@@ -55,12 +62,12 @@ public class WebhookExecutor {
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, boolean allowUserMentions, List<File> attachments)
             throws IOException, InterruptedException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), allowUserMentions, null, attachments);
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), allowUserMentions, null, attachments, null);
     }
 
     private static void executeWebhook(String webhookUrl, String avatar, String nickname, String body,
                                        Map<String, String> httpHeaders, boolean allowUserMentions, Long allowedUserMentionId,
-                                       List<File> attachments) throws IOException, InterruptedException {
+                                       List<File> attachments, List<Map<String, Object>> embeds) throws IOException, InterruptedException {
 
         // primitive handling for rate limits.
         if (retryAfter != null) {
@@ -91,6 +98,10 @@ public class WebhookExecutor {
             allowedMentions.put("users", users);
         }
         request.put("allowed_mentions", allowedMentions);
+
+        if (embeds != null) {
+            request.put("embeds", embeds);
+        }
 
         HttpURLConnection connection;
         if (attachments.isEmpty()) {
@@ -145,7 +156,7 @@ public class WebhookExecutor {
             // (Discord docs claim those are seconds, but those actually seem to be milliseconds. /shrug)
             retryAfter = ZonedDateTime.now().plus(Integer.parseInt(connection.getHeaderField("Retry-After")), ChronoUnit.MILLIS);
             log.warn("We hit a rate limit we did not anticipate! We will wait until {} before next request.", retryAfter);
-            executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments);
+            executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments, embeds);
             return;
 
         } else if (connection.getResponseCode() == 404) {
