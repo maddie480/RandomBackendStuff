@@ -179,7 +179,13 @@ public class TwitterUpdateChecker {
                     // Try to determine if the urls in the tweet have embeds.
                     List<String> urls = new ArrayList<>();
                     try {
-                        urls = tweet.getJSONObject("entities").getJSONArray("urls").toList()
+                        // if we're showing a retweet, show the urls of the retweet.
+                        JSONObject consideredTweet = tweet;
+                        if (consideredTweet.has("retweeted_status")) {
+                            consideredTweet = consideredTweet.getJSONObject("retweeted_status");
+                        }
+
+                        urls = consideredTweet.getJSONObject("entities").getJSONArray("urls").toList()
                                 .stream()
                                 .filter(s -> !((Map<String, String>) s).get("expanded_url").contains(id))
                                 .filter(s -> hasEmbed(((Map<String, String>) s).get("url")))
