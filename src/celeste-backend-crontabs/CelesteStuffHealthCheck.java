@@ -80,18 +80,14 @@ public class CelesteStuffHealthCheck {
 
         if (savedLatestEverest < latestStable) {
             // a new stable version of Everest hit! send a notification to SRC staff.
-            try {
-                WebhookExecutor.executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK,
-                        "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
-                        "Everest Update Checker",
-                        "**A new Everest stable was just released!**\nThe latest stable version is now **" + (latestStable + 700) + "**.");
-                WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                        "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
-                        "Everest Update Checker",
-                        ":information_source: Message sent to SRC staff:\n> **A new Everest stable was just released!**\n> The latest stable version is now **" + (latestStable + 700) + "**.");
-            } catch (InterruptedException e) {
-                throw new IOException(e);
-            }
+            WebhookExecutor.executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "Everest Update Checker",
+                    "**A new Everest stable was just released!**\nThe latest stable version is now **" + (latestStable + 700) + "**.");
+            WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "Everest Update Checker",
+                    ":information_source: Message sent to SRC staff:\n> **A new Everest stable was just released!**\n> The latest stable version is now **" + (latestStable + 700) + "**.");
 
             // and save the fact that we notified about this version.
             FileUtils.writeStringToFile(new File("latest_everest.txt"), Integer.toString(latestStable), UTF_8);

@@ -326,7 +326,7 @@ public class UpdateCheckerTracker implements TailerListener {
     private void executeWebhook(String url, String message, String avatar, String nickname) {
         try {
             WebhookExecutor.executeWebhook(url, avatar, nickname, message, ImmutableMap.of("X-Everest-Log", "true"));
-        } catch (InterruptedException | IOException e) {
+        } catch (IOException e) {
             log.error("Error while sending log message", e);
         }
     }

@@ -233,16 +233,12 @@ public class GameBananaAutomatedChecks {
                         newResults.goodFiles.add(fileName);
 
                         // send an angry ping to the owner to have the mod manually checked
-                        try {
-                            WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
-                                    "Banana Watch",
-                                    "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
-                                            ":arrow_right: https://gamebanana.com/" + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
-                                    SecretConstants.OWNER_ID);
-                        } catch (InterruptedException e2) {
-                            logger.error("Sleep interrupted(???)", e2);
-                        }
+                        WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                "Banana Watch",
+                                "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
+                                        ":arrow_right: https://gamebanana.com/" + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
+                                SecretConstants.OWNER_ID);
                     }
 
                     logger.debug("Deleting temporary ZIP");
@@ -606,15 +602,11 @@ public class GameBananaAutomatedChecks {
 
     private static void sendAlertToWebhook(String message) throws IOException {
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            try {
-                WebhookExecutor.executeWebhook(webhook,
-                        "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
-                        "Banana Watch",
-                        message,
-                        ImmutableMap.of("X-Everest-Log", "true"));
-            } catch (InterruptedException e) {
-                logger.error("Sleep interrupted(???)", e);
-            }
+            WebhookExecutor.executeWebhook(webhook,
+                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                    "Banana Watch",
+                    message,
+                    ImmutableMap.of("X-Everest-Log", "true"));
         }
     }
 }

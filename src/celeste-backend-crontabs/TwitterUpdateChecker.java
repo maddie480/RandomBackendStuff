@@ -2,6 +2,7 @@ package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
 import com.max480.quest.modmanagerbot.BotClient;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -152,6 +153,8 @@ public class TwitterUpdateChecker {
             if (!tweetsAlreadyNotified.contains(id)) {
                 if (!firstRun) {
                     log.info("New tweet with id " + id);
+
+                    // Get all the info we need about the tweet
                     String link = "https://twitter.com/" + feed + "/status/" + id;
                     String profilePictureUrl = tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", "");
                     String username = tweet.getJSONObject("user").getString("name");
@@ -159,16 +162,27 @@ public class TwitterUpdateChecker {
 
                     // Discord doesn't support embedding videos in their embeds... come on!
                     String videoUrl = null;
+                    File videoFile = null;
                     if (embed.containsKey("video")) {
                         videoUrl = ((Map<String, String>) embed.get("video")).get("url");
+                        videoFile = new File("/tmp/tweet_video" + getFileExtension(videoUrl));
+
+                        try (InputStream is = new URL(videoUrl).openStream()) {
+                            FileUtils.copyToFile(is, videoFile);
+                        } catch (IOException e) {
+                            // don't worry about it!
+                            log.warn("Could not download tweet video!", e);
+                            videoFile.delete();
+                        }
                     }
 
+                    // Try to determine if the urls in the tweet have embeds.
                     List<String> urls = new ArrayList<>();
                     try {
                         urls = tweet.getJSONObject("entities").getJSONArray("urls").toList()
                                 .stream()
                                 .filter(s -> !((Map<String, String>) s).get("expanded_url").contains(id))
-                                .filter(s -> hasEmbed(((Map<String, String>) s).get("expanded_url")))
+                                .filter(s -> hasEmbed(((Map<String, String>) s).get("url")))
                                 .map(s -> ((Map<String, String>) s).get("url"))
                                 .collect(Collectors.toList());
                     } catch (Exception e) {
@@ -178,13 +192,7 @@ public class TwitterUpdateChecker {
                     final List<String> urlsFinalList = urls;
 
                     // post it to the personal Twitter channel
-                    executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, profilePictureUrl, username, "<" + link + ">", Collections.singletonList(embed));
-                    if (videoUrl != null) {
-                        executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, profilePictureUrl, username, ":arrow_up: " + videoUrl, null);
-                    }
-                    if (!urlsFinalList.isEmpty()) {
-                        executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, profilePictureUrl, username, ":arrow_up: Liens : " + String.join(", ", urlsFinalList), null);
-                    }
+                    postTweetToWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, date, link, profilePictureUrl, username, embed, videoUrl, urlsFinalList);
 
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
                         // load webhook URLs from Cloud Storage
@@ -200,15 +208,7 @@ public class TwitterUpdateChecker {
                         List<String> goneWebhooks = new ArrayList<>();
                         for (String webhook : webhookUrls) {
                             try {
-                                // call the webhook with retries
-                                executeWebhook(webhook, profilePictureUrl, username, "<" + link + ">" + "\n_Posted on <t:" + date + ":F>_",
-                                        Collections.singletonList(embed));
-                                if (videoUrl != null) {
-                                    executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: " + videoUrl, null);
-                                }
-                                if (!urlsFinalList.isEmpty()) {
-                                    executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Links: " + String.join(", ", urlsFinalList), null);
-                                }
+                                postTweetToWebhook(webhook, date, link, profilePictureUrl, username, embed, videoUrl, urlsFinalList);
                             } catch (WebhookExecutor.UnknownWebhookException e) {
                                 // if this happens, this means the webhook was deleted.
                                 goneWebhooks.add(webhook);
@@ -218,11 +218,10 @@ public class TwitterUpdateChecker {
                         if (!goneWebhooks.isEmpty()) {
                             // some webhooks were deleted! notify the owner about it.
                             for (String goneWebhook : goneWebhooks) {
-                                executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
+                                WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
                                         "https://cdn.discordapp.com/attachments/445236692136230943/945779742462865478/2021_Twitter_logo_-_blue.png",
                                         "Twitter Bot",
-                                        ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook,
-                                        null);
+                                        ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook);
 
                                 webhookUrls.remove(goneWebhook);
                             }
@@ -240,6 +239,10 @@ public class TwitterUpdateChecker {
                                         "Nouveau tweet de @" + feed + "\n" +
                                         ":arrow_right: " + link + (urls.isEmpty() ? "" : "\nLiens : " + String.join(", ", urls)))
                                 .queue();
+                    }
+
+                    if (videoFile != null) {
+                        videoFile.delete();
                     }
                 } else {
                     log.info("New tweet with id " + id + ", but this is the first run.");
@@ -261,14 +264,49 @@ public class TwitterUpdateChecker {
     }
 
     /**
-     * Wrapper around {@link WebhookExecutor#executeWebhook(String, String, String, String, List)}
-     * that turns InterruptedExceptions into IOExceptions.
+     * Posts the tweet, the video and the links in 1 to 3 messages to the given webhook.
      */
-    private static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, List<Map<String, Object>> embeds) throws IOException {
-        try {
-            WebhookExecutor.executeWebhook(webhookUrl, avatar, nickname, body, embeds);
-        } catch (InterruptedException e) {
-            throw new IOException(e);
+    private static void postTweetToWebhook(String webhook, long date, String tweetLink, String profilePictureUrl, String username,
+                                           Map<String, Object> embed, String videoUrl, List<String> linksInTweet) throws IOException {
+
+        // post the tweet link and its embed
+        WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, "<" + tweetLink + ">" + "\n_Posted on <t:" + date + ":F>_",
+                Collections.singletonList(embed));
+
+        if (videoUrl != null) {
+            boolean videoSent = false;
+            File video = new File("/tmp/tweet_video" + getFileExtension(videoUrl));
+            if (video.exists() && video.length() < 8 * 1024 * 1024) {
+                // post the video as a file, to avoid having to post a long link
+                try {
+                    WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Video:", false, Collections.singletonList(video));
+                    videoSent = true;
+                } catch (IOException e) {
+                    log.error("Could not send Twitter video as an attachment to the webhook!", e);
+                }
+            }
+
+            if (!videoSent) {
+                // video is too big, does not exist or failed to send for some reason, so post the link instead
+                WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Video: " + videoUrl);
+            }
+        }
+
+        if (!linksInTweet.isEmpty()) {
+            // post all embeddable links after that
+            WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Links: " + String.join(", ", linksInTweet));
+        }
+    }
+
+    private static String getFileExtension(String link) {
+        if (link.contains("?")) {
+            link = link.substring(0, link.lastIndexOf("?"));
+        }
+
+        if (link.contains(".")) {
+            return link.substring(link.lastIndexOf("."));
+        } else {
+            return "";
         }
     }
 
