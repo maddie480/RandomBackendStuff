@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import com.max480.quest.modmanagerbot.BotClient;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -148,7 +149,6 @@ public class TwitterUpdateChecker {
         for (int i = answer.length() - 1; i >= 0; i--) {
             JSONObject tweet = answer.getJSONObject(i);
             String id = tweet.getString("id_str");
-            long date = OffsetDateTime.parse(tweet.getString("created_at"), DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH)).toEpochSecond();
 
             if (!tweetsAlreadyNotified.contains(id)) {
                 if (!firstRun) {
@@ -156,6 +156,7 @@ public class TwitterUpdateChecker {
 
                     // Get all the info we need about the tweet
                     String link = "https://twitter.com/" + feed + "/status/" + id;
+                    long date = OffsetDateTime.parse(tweet.getString("created_at"), DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH)).toEpochSecond();
                     String profilePictureUrl = tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", "");
                     String username = tweet.getJSONObject("user").getString("name");
                     Map<String, Object> embed = generateEmbedFor(tweet);
@@ -377,8 +378,11 @@ public class TwitterUpdateChecker {
             }
         }
 
-        // contents
-        embed.put("description", tweet.getString("full_text"));
+        // Tweet contents are encoded with HTML entities (&amp; &lt; and &gt; in particular it seems),
+        // apparently to protect people that stick tweet contents on their website without escaping HTML against XSS attacks.
+        // Since we are communicating with JSON APIs only we need to get rid of those HTML entities :a:
+        embed.put("description", StringEscapeUtils.unescapeHtml4(tweet.getString("full_text")));
+
         embed.put("color", 1940464);
 
         { // footer
