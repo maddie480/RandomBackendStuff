@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * or just renaming them every hour if /toggle-times is enabled.
  */
 public class TimezoneRoleUpdater implements Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(BotEventListener.class);
+    private static final Logger logger = LoggerFactory.getLogger(TimezoneRoleUpdater.class);
 
     private static ZonedDateTime lastRoleUpdateDate = null;
     private static boolean forceUpdate = false;
