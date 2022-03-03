@@ -476,7 +476,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         "_Grant the Attach Files permission to the bot in order to get text files with all missing characters._";
 
                 problemList.add("You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
-                        " If you want to be able to use them, you can use <https://max480-random-stuff.appspot.com/celeste/font-generator> or use the `--generate-font [language]` command to add them to the game.");
+                        " If you want to be able to use them, you can use <https://max480-random-stuff.appspot.com/celeste/font-generator> or use the bot's `--generate-font [language]` command to add them to the game.");
                 websiteProblemList.add("missingfonts");
             }
 
@@ -485,7 +485,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
                     event.getMessage().addReaction("\uD83D\uDC4C").queue(); // :ok_hand:
                 } else {
-                    sendResultToFrontend.accept("**No issue was found with your zip!**", Collections.emptyList());
+                    sendResultToFrontend.accept(":white_check_mark: **No issue was found with your zip!**", Collections.emptyList());
                 }
 
                 if (attachment != null && event != null) {
@@ -505,11 +505,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                 String url = null;
                 if (!websiteProblemList.isEmpty()) {
                     if (hasNameScan) {
-                        url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?collabName=" + expectedCollabAssetPrefix
+                        url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier-help?collabName=" + expectedCollabAssetPrefix
                                 + (!expectedCollabAssetPrefix.equals(expectedCollabMapsPrefix) ? "&collabMapName=" + expectedCollabMapsPrefix : "")
                                 + "&" + String.join("&", websiteProblemList);
                     } else {
-                        url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier?" + String.join("&", websiteProblemList);
+                        url = "https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier-help?" + String.join("&", websiteProblemList);
                     }
                 }
 
@@ -542,7 +542,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     event.getMessage().addReaction("❌").queue(); // :x:
                 } else {
                     // compose the message in a very similar but not identical way
-                    String message = "**Oops, there are issues with the zip you just sent:**\n- " + String.join("\n- ", problemList);
+                    String message = ":x: **Oops, there are issues with the zip you just sent:**\n- " + String.join("\n- ", problemList);
                     if (url != null) {
                         message += "\n\nClick here for more help: " + url;
                     }
@@ -716,9 +716,11 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
         tempBin.delete();
 
+        String mapPathEsc = mapPath.replace("`", "");
+
         if (!conversionSuccess) {
             // conversion failed
-            problemList.add("Something wrong happened while trying to analyze your bin :thinking: check that it is not corrupt.");
+            problemList.add("Something wrong happened while trying to analyze `" + mapPathEsc + "` :thinking: check that it is not corrupt.");
         } else {
             // let's start listing everything that's wrong!
             Set<String> badDecals = new HashSet<>();
@@ -769,11 +771,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                 checkForMissingEntities(availableEffects, "Backgrounds", badEffects, document);
 
                 // and list out every single problem!
-                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in your map, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing parallax stylegrounds in your map, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in your map, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in your map, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in your map, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing parallax stylegrounds in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
+                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
             } catch (ParserConfigurationException | SAXException e) {
                 // something went wrong, so just delete the XML and rethrow the exception to trigger an alert.
                 tempXml.delete();
