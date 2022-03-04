@@ -583,20 +583,25 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
-     * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation.
+     * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation, using libgdx.
      * Run daily at midnight.
      */
-    public static void checkFontGenerator() throws IOException {
+    public static void checkFontGeneratorLibGdx() throws IOException {
+        log.debug("Downloading sample dialog file...");
+
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt"));
              OutputStream os = new FileOutputStream("/tmp/Japanese.txt")) {
 
             IOUtils.copy(is, os);
         }
 
+        log.debug("Sending libgdx request to font generator...");
+
         // build a request to font generator
         HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/font-generator", "UTF-8", new HashMap<>());
         submit.addFormField("fontFileName", "collabutils2_japanese_healthcheck");
         submit.addFormField("font", "japanese");
+        submit.addFormField("method", "libgdx");
         submit.addFilePart("dialogFile", new File("/tmp/Japanese.txt"));
         HttpURLConnection result = submit.finish();
 
@@ -614,6 +619,112 @@ public class CelesteStuffHealthCheck {
         }
     }
 
+    /**
+     * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation, using BMFont.
+     * Run daily at midnight.
+     */
+    public static void checkFontGeneratorBMFont() throws IOException {
+        log.debug("Downloading sample dialog file...");
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt"));
+             OutputStream os = new FileOutputStream("/tmp/Japanese.txt")) {
+
+            IOUtils.copy(is, os);
+        }
+
+        log.debug("Sending request to BMFont font generator...");
+
+        // build a request to font generator
+        HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/font-generator", "UTF-8", new HashMap<>());
+        submit.addFormField("font", "japanese");
+        submit.addFormField("method", "bmfont");
+        submit.addFilePart("dialogFile", new File("/tmp/Japanese.txt"));
+        HttpURLConnection result = submit.finish();
+
+        // delete the temp file
+        new File("/tmp/Japanese.txt").delete();
+
+        if (result.getResponseCode() != 200) {
+            throw new IOException("Font generator responded with HTTP code " + result.getResponseCode());
+        }
+
+        String url = result.getURL().toString();
+        log.debug("Font generator task tracker URL: {}, checking result in 15 seconds", url);
+
+        try {
+            Thread.sleep(15000);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
+
+        log.debug("Loading result page: {}", url);
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
+            String response = IOUtils.toString(is, UTF_8);
+            if (!response.contains("Here is the font you need to place")) {
+                throw new IOException("Font generator result page does not indicate success!");
+            }
+        }
+
+        // read the response as a zip file
+        log.debug("Loading generated font file: {}/download/0", url);
+        try (ZipInputStream zip = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(new URL(url + "/download/0")))) {
+            for (int i = 0; i < 2; i++) {
+                ZipEntry entry = zip.getNextEntry();
+                if (entry == null || (!entry.getName().equals("japanese.fnt") && !entry.getName().startsWith("japanese_generated_"))) {
+                    throw new IOException("Font generator ZIP had unexpected contents!");
+                }
+            }
+
+            if (zip.getNextEntry() != null) {
+                throw new IOException("Font generator ZIP had unexpected contents!");
+            }
+        }
+    }
+
+    /**
+     * Checks that the mod structure verifier can scan Tornado Valley successfully.
+     * Run daily at midnight.
+     */
+    public static void checkModStructureVerifier() throws IOException {
+        log.debug("Downloading Tornado Valley...");
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip"));
+             OutputStream os = new FileOutputStream("/tmp/tornado.zip")) {
+
+            IOUtils.copy(is, os);
+        }
+
+        log.debug("Sending Tornado Valley to mod structure verifier...");
+
+        // build a request to mod structure verifier
+        HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/mod-structure-verifier", "UTF-8", new HashMap<>());
+        submit.addFilePart("zipFile", new File("/tmp/tornado.zip"));
+        HttpURLConnection result = submit.finish();
+
+        // delete the temp file
+        new File("/tmp/tornado.zip").delete();
+
+        String url;
+        try (InputStream is = result.getInputStream()) {
+            // the response is a URL relative to max480-random-stuff.appspot.com.
+            url = "https://max480-random-stuff.appspot.com" + IOUtils.toString(is, UTF_8);
+        }
+        log.debug("Mod structure verifier task tracker URL: {}, checking result in 15 seconds", url);
+
+        try {
+            Thread.sleep(15000);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
+
+        log.debug("Loading result page: {}", url);
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
+            String response = IOUtils.toString(is, UTF_8);
+            if (!response.contains("No issue was found with your zip!")) {
+                throw new IOException("Mod structure verifier result page does not indicate success!");
+            }
+        }
+    }
 
     /**
      * Checks that the page for speedrun.com update notification setup still displays properly.
