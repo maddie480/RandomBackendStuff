@@ -6,10 +6,9 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -363,7 +362,7 @@ public class TwitterUpdateChecker {
                         videoCount++;
 
                         if (!embeddedMedia) {
-                            String videoUrl = getVideoUrlWithTwitFix("https://twitter.com/"
+                            String videoUrl = getVideoUrlWithYoutubeDL("https://twitter.com/"
                                     + tweet.getJSONObject("user").getString("screen_name")
                                     + "/status/"
                                     + tweet.getString("id_str"));
@@ -407,18 +406,19 @@ public class TwitterUpdateChecker {
         return embed;
     }
 
-    private static String getVideoUrlWithTwitFix(String tweetUrl) {
+    private static String getVideoUrlWithYoutubeDL(String tweetUrl) {
         try {
-            Document page = Jsoup.connect(tweetUrl.replace("https://twitter.com/", "https://fxtwitter.com/")).userAgent("test").get();
-            final Elements select = page.select("meta[property=\"og:video\"]");
-            if (!select.isEmpty()) {
-                return select.get(0).attr("content");
+            // ./youtube-dl (actually yt-dlp) is downloaded daily from: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+            log.debug("Running ./youtube-dl --dump-single-json {} to get video URL for the tweet...", tweetUrl);
+            Process youtubeDl = new ProcessBuilder("./youtube-dl", "--dump-single-json", tweetUrl).start();
+            try (InputStream is = youtubeDl.getInputStream()) {
+                return new JSONObject(IOUtils.toString(is, UTF_8)).getString("url");
             }
-        } catch (IOException e) {
-            log.error("TwitFix was unreachable!", e);
+        } catch (IOException | JSONException e) {
+            // this is an error, but this should NOT prevent from posting the tweet.
+            log.error("youtube-dl gave an unexpected response!", e);
+            return null;
         }
-
-        return null;
     }
 
     private static boolean hasEmbed(String url) {
