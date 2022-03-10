@@ -569,8 +569,8 @@ public class GameBananaAutomatedChecks {
             // load a page of mods.
             final int thisPage = page;
             JSONArray pageContents = ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = new URL("https://gamebanana.com/apiv7/" + name + "/ByGame?_aGameRowIds[]=6460&" +
-                        "_csvProperties=_aCategory&_sOrderBy=_idRow,ASC&_nPage=" + thisPage + "&_nPerpage=50").openStream()) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv7/" + name + "/ByGame?_aGameRowIds[]=6460&" +
+                        "_csvProperties=_aCategory&_sOrderBy=_idRow,ASC&_nPage=" + thisPage + "&_nPerpage=50"))) {
 
                     return new JSONArray(IOUtils.toString(is, UTF_8));
                 }

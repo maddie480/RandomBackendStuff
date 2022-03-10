@@ -107,7 +107,7 @@ public class CelesteStuffHealthCheck {
      */
     private static void checkExists(int version) throws IOException {
         log.debug("Downloading version " + version + "...");
-        byte[] contents = IOUtils.toByteArray(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + version + "/artifacts?artifactName=main&api-version=5.0&%24format=zip"));
+        byte[] contents = ConnectionUtils.toByteArrayWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + version + "/artifacts?artifactName=main&api-version=5.0&%24format=zip"));
         log.debug("Size of version {}: {}", version, contents.length);
         if (contents.length < 1_000_000) {
             throw new IOException("Version " + version + " is too small (" + contents.length + "), that's suspicious");
@@ -124,7 +124,7 @@ public class CelesteStuffHealthCheck {
                 .format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH));
 
         log.debug("Loading custom entity catalog... (expecting date: {})", expectedRefreshDate);
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog"), UTF_8)
+        if (!ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog"), UTF_8)
                 .contains(expectedRefreshDate)) {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog is not \"" + expectedRefreshDate + "\" :a:");
@@ -134,7 +134,7 @@ public class CelesteStuffHealthCheck {
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH));
 
         log.debug("Loading custom entity catalog JSON... (expecting date: {})", expectedRefreshDate);
-        if (!IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog.json"), UTF_8)
+        if (!ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog.json"), UTF_8)
                 .contains(expectedRefreshDate)) {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog JSON is not \"" + expectedRefreshDate + "\" :a:");
@@ -303,7 +303,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // check that the mirror is alive by downloading a GhostNet screenshot
-        if (!DigestUtils.sha256Hex(IOUtils.toByteArray(new URL("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png")))
+        if (!DigestUtils.sha256Hex(ConnectionUtils.toByteArrayWithTimeout(new URL("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png")))
                 .equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
 
             throw new IOException("Download from mirror test failed");
@@ -374,19 +374,19 @@ public class CelesteStuffHealthCheck {
         connection.disconnect();
 
         // mod search database API
-        final String modSearchDatabase = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml"), UTF_8);
+        final String modSearchDatabase = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml"), UTF_8);
         if (!modSearchDatabase.contains("Name: The 2020 Celeste Spring Community Collab")) {
             throw new IOException("mod_search_database.yaml check failed");
         }
 
         // file IDs list API
-        final String fileIds = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
+        final String fileIds = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
         if (!fileIds.contains("'484937'")) {
             throw new IOException("file_ids.yaml check failed");
         }
 
         // mod files database zip
-        try (ZipInputStream zis = new ZipInputStream(new URL("https://max480-random-stuff.appspot.com/celeste/mod_files_database.zip").openStream())) {
+        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_files_database.zip")))) {
             Set<String> expectedFiles = new HashSet<>(Arrays.asList(
                     "ahorn_vanilla.yaml", "list.yaml", "Mod/150813/info.yaml", "Mod/150813/484937.yaml", "Mod/53641/ahorn_506448.yaml"
             ));
@@ -402,7 +402,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // mod_dependency_graph.yaml
-        final String modDependencyGraph = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml"), UTF_8);
+        final String modDependencyGraph = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml"), UTF_8);
         if (!modDependencyGraph.contains("SpringCollab2020Audio:")
                 || !modDependencyGraph.contains("URL: https://gamebanana.com/mmdl/484937")
                 || !modDependencyGraph.contains("SpringCollab2020Audio: 1.0.0")) {
@@ -410,7 +410,7 @@ public class CelesteStuffHealthCheck {
             throw new IOException("mod_dependency_graph.yaml check failed");
         }
 
-        final String modDependencyGraphEverest = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml?format=everestyaml"), UTF_8);
+        final String modDependencyGraphEverest = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml?format=everestyaml"), UTF_8);
         if (!modDependencyGraphEverest.contains("SpringCollab2020Audio:")
                 || !modDependencyGraphEverest.contains("URL: https://gamebanana.com/mmdl/484937")
                 || !modDependencyGraphEverest.contains("- Name: SpringCollab2020Audio")
@@ -420,7 +420,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // Update Checker status, widget version
-        final String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
+        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
         if (!updateCheckerStatus.contains("<span class=\"GreenColor\">Up</span>")) {
             throw new IOException("Update checker is not OK according to status widget!");
         }
@@ -442,7 +442,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Checking Update Checker");
 
         // everest_update.yaml responds
-        final String everestUpdate = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"), UTF_8);
+        final String everestUpdate = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"), UTF_8);
         if (!everestUpdate.contains("SpringCollab2020Audio:") || !everestUpdate.contains("URL: https://gamebanana.com/mmdl/484937")) {
             throw new IOException("everest_update.yaml check failed");
         }
@@ -454,7 +454,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // the status page says everything is fine
-        final String updateCheckerStatus = IOUtils.toString(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status"), UTF_8);
+        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status"), UTF_8);
         if (!updateCheckerStatus.contains("The update checker is up and running!")) {
             throw new IOException("Update checker is not OK according to status page!");
         }

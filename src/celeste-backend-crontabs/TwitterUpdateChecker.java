@@ -167,7 +167,7 @@ public class TwitterUpdateChecker {
                         videoUrl = ((Map<String, String>) embed.get("video")).get("url");
                         videoFile = new File("/tmp/tweet_video" + getFileExtension(videoUrl));
 
-                        try (InputStream is = new URL(videoUrl).openStream()) {
+                        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(videoUrl))) {
                             FileUtils.copyToFile(is, videoFile);
                         } catch (IOException e) {
                             // don't worry about it!

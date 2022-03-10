@@ -3,7 +3,6 @@ package com.max480.discord.randombots;
 import org.apache.commons.collections4.keyvalue.AbstractKeyValue;
 import org.apache.commons.collections4.keyvalue.DefaultKeyValue;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,7 +110,7 @@ public class CustomEntityCatalogGenerator {
 
     private List<QueriedModInfo> modInfo = null;
     private ZonedDateTime lastUpdated = null;
-    
+
     private Map<String, String> dictionary;
     private Set<String> unusedDictionaryKeys;
 
@@ -176,7 +175,7 @@ public class CustomEntityCatalogGenerator {
         {
             Map<String, String> tempdic = new HashMap<>();
             try {
-                tempdic = Arrays.stream(IOUtils.toString(new URL("https://raw.githubusercontent.com/max4805/RandomDiscordBots/main/modcatalogdictionary.txt"), UTF_8).split("\n"))
+                tempdic = Arrays.stream(ConnectionUtils.toStringWithTimeout(new URL("https://raw.githubusercontent.com/max4805/RandomDiscordBots/main/modcatalogdictionary.txt"), UTF_8).split("\n"))
                         .collect(Collectors.toMap(a -> a.substring(0, a.lastIndexOf("=")), a -> a.substring(a.lastIndexOf("=") + 1)));
             } catch (Exception e) {
                 logger.warn("Could not fetch dictionary for entity names: " + e.toString());
@@ -292,13 +291,13 @@ public class CustomEntityCatalogGenerator {
 
         logger.info("Found " + modInfo.size() + " mods.");
         lastUpdated = ZonedDateTime.now();
-        
+
         if (!unusedDictionaryKeys.isEmpty()) {
             WebhookExecutor.executeWebhook(
-                SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
-                "Custom Entity Catalog Generator",
-                ":warning: The following keys are unused in the mod catalog dictionary: `" + String.join("`, `", unusedDictionaryKeys) + "`");
+                    SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
+                    "Custom Entity Catalog Generator",
+                    ":warning: The following keys are unused in the mod catalog dictionary: `" + String.join("`, `", unusedDictionaryKeys) + "`");
         }
     }
 

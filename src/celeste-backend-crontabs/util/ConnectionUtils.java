@@ -1,5 +1,6 @@
 package com.max480.discord.randombots;
 
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
 
 public final class ConnectionUtils {
     private static final Logger logger = LoggerFactory.getLogger(ConnectionUtils.class);
@@ -26,13 +28,36 @@ public final class ConnectionUtils {
      *
      * @param url The URL to connect to
      * @return A stream to this URL
-     * @throws IOException If an exception occured while trying to connect
+     * @throws IOException If an exception occurred while trying to connect
      */
     public static InputStream openStreamWithTimeout(URL url) throws IOException {
         URLConnection con = url.openConnection();
         con.setConnectTimeout(10000);
         con.setReadTimeout(30000);
         return con.getInputStream();
+    }
+
+    /**
+     * Opens a connection to the given URL with a timeout, and returns all its contents as a string.
+     *
+     * @param url     The URL to read
+     * @param charset The charset to use to decode the contents
+     * @return The entire contents of the URL as a string
+     * @throws IOException If an exception occurred while reading the contents
+     */
+    public static String toStringWithTimeout(URL url, Charset charset) throws IOException {
+        return IOUtils.toString(openStreamWithTimeout(url), charset);
+    }
+
+    /**
+     * Opens a connection to the given URL with a timeout, and returns all its contents as a byte array.
+     *
+     * @param url The URL to read
+     * @return The entire contents of the URL as a byte array
+     * @throws IOException If an exception occurred while reading the contents
+     */
+    public static byte[] toByteArrayWithTimeout(URL url) throws IOException {
+        return IOUtils.toByteArray(openStreamWithTimeout(url));
     }
 
     /**

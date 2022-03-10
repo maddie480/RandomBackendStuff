@@ -824,7 +824,7 @@ public class ModStructureVerifier extends ListenerAdapter {
      *
      * @param modZip The mod zip
      * @return A map containing [language name] => [all missing characters in a string]
-     * @throws IOException If an error occured while reading files from a zip
+     * @throws IOException If an error occurred while reading files from a zip
      */
     private static Map<String, String> checkForMissingFonts(ZipFile modZip) throws IOException {
         Map<String, String> issues = new HashMap<>();
@@ -850,7 +850,7 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @param languageName The name for the fnt file in Dialog/Fonts
      * @param txtName      The name for the language file in Dialog
      * @param issues       The map collecting missing characters in all languages
-     * @throws IOException If an error occured while reading files from a zip
+     * @throws IOException If an error occurred while reading files from a zip
      */
     private static void checkForMissingFonts(ZipFile modZip, String languageName, String txtName, Map<String, String> issues) throws IOException {
         ZipEntry dialogFile = modZip.getEntry("Dialog/" + txtName + ".txt");
