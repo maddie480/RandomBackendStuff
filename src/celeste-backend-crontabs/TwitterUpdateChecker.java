@@ -150,7 +150,25 @@ public class TwitterUpdateChecker {
             String id = tweet.getString("id_str");
 
             if (!tweetsAlreadyNotified.contains(id)) {
-                if (!firstRun) {
+                boolean recentSelfRetweet = false;
+                if (tweet.has("retweeted_status") && tweet.getJSONObject("user").getLong("id") == tweet.getJSONObject("retweeted_status").getJSONObject("user").getLong("id")) {
+                    // account retweeted itself! do not repost the tweet if the original tweet was less than a week before.
+
+                    long retweetDate = OffsetDateTime.parse(
+                                    tweet.getString("created_at"),
+                                    DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH))
+                            .toEpochSecond();
+
+                    long originalTweetDate = OffsetDateTime.parse(
+                                    tweet.getJSONObject("retweeted_status").getString("created_at"),
+                                    DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH))
+                            .toEpochSecond();
+
+                    // 604800 seconds = 7 days
+                    recentSelfRetweet = (retweetDate - originalTweetDate) < 604800;
+                }
+
+                if (!firstRun && !recentSelfRetweet) {
                     log.info("New tweet with id " + id);
 
                     // Get all the info we need about the tweet
@@ -251,7 +269,7 @@ public class TwitterUpdateChecker {
                         videoFile.delete();
                     }
                 } else {
-                    log.info("New tweet with id " + id + ", but this is the first run.");
+                    log.info("New tweet with id " + id + ", but this is a self-retweet of a tweet from less than a week before, or this is the first run.");
                 }
             }
             tweetsAlreadyNotified.add(id);
