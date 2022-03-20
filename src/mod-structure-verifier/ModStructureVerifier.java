@@ -51,7 +51,7 @@ import java.util.zip.ZipFile;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ModStructureVerifier extends ListenerAdapter {
-    private static Logger logger = LoggerFactory.getLogger(ModStructureVerifier.class);
+    private static final Logger logger = LoggerFactory.getLogger(ModStructureVerifier.class);
 
     private static final String CHANNELS_SAVE_FILE_NAME = "mod_structure_police_save.csv";
     private static final String FREE_CHANNELS_SAVE_FILE_NAME = "mod_structure_police_save_free.csv";
@@ -323,6 +323,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         try (ZipFile zipFile = new ZipFile(file)) {
             List<String> problemList = new ArrayList<>();
             Set<String> websiteProblemList = new HashSet<>();
+            Set<String> missingDependencies = new HashSet<>();
 
             final List<String> fileListing = zipFile.stream()
                     .filter(entry -> !entry.isDirectory())
@@ -459,7 +460,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             if (shouldScanMapContents && dependencies != null) {
                 for (String mapPath : maps) {
                     // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
-                    searchForMissingComponents(problemList, websiteProblemList, fileListing, zipFile, mapPath, dependencies);
+                    searchForMissingComponents(problemList, websiteProblemList, missingDependencies, fileListing, zipFile, mapPath, dependencies);
                 }
             }
 
@@ -494,7 +495,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                             .setTitle("Install " + yamlName, "https://0x0ade.ga/twoclick?" + attachment.getUrl())
                             .setDescription("Posted by " + event.getAuthor().getAsMention())
                             .setTimestamp(Instant.now());
-                    event.getChannel().sendMessage(embedBuilder.build())
+                    event.getChannel().sendMessageEmbeds(embedBuilder.build())
                             .queue(postedMessage -> {
                                 // save the message ID and the embed ID.
                                 messagesToEmbeds.put(event.getMessageIdLong(), postedMessage.getIdLong());
@@ -513,10 +514,33 @@ public class ModStructureVerifier extends ListenerAdapter {
                     }
                 }
 
+                // format the missing dependency list (if any) in human-readable format.
+                String dependenciesList = "";
+                missingDependencies.remove(null); // "mod not found" = null
+                if (missingDependencies.size() == 1) {
+                    dependenciesList = "\n\nYou should probably add `" + missingDependencies.iterator().next().replace("`", "") + "` as a dependency for your map, or stop using things from it if it is a map.";
+                } else if (!missingDependencies.isEmpty()) {
+                    StringBuilder list = new StringBuilder("\n\nYou should probably add ");
+                    int index = 0;
+                    for (String dependency : missingDependencies) {
+                        if (index == missingDependencies.size() - 1) {
+                            list.append(" and ");
+                        } else if (index != 0) {
+                            list.append(", ");
+                        }
+
+                        list.append('`').append(dependency.replace("`", "")).append('`');
+                        index++;
+                    }
+                    list.append(" as dependencies for your map, or stop using things from them if they are maps.");
+
+                    dependenciesList = list.toString();
+                }
+
                 if (event != null) {
                     // ping the user with an issues list in the response channel, truncating the message if it is somehow too long.
                     String message = event.getAuthor().getAsMention() + " Oops, there are issues with the zip you just posted in " + event.getChannel().getAsMention() + ":\n- "
-                            + String.join("\n- ", problemList);
+                            + String.join("\n- ", problemList) + dependenciesList;
                     if (message.length() > 2000) {
                         message = message.substring(0, 1997) + "...";
                     }
@@ -542,7 +566,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     event.getMessage().addReaction("❌").queue(); // :x:
                 } else {
                     // compose the message in a very similar but not identical way
-                    String message = ":x: **Oops, there are issues with the zip you just sent:**\n- " + String.join("\n- ", problemList);
+                    String message = ":x: **Oops, there are issues with the zip you just sent:**\n- " + String.join("\n- ", problemList) + dependenciesList;
                     if (url != null) {
                         message += "\n\nClick here for more help: " + url;
                     }
@@ -602,8 +626,8 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private static void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, List<String> fileListing, ZipFile zipFile,
-                                                   String mapPath, List<String> dependencies) throws IOException {
+    private static void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, Set<String> missingDependencies,
+                                                   List<String> fileListing, ZipFile zipFile, String mapPath, List<String> dependencies) throws IOException {
 
         // first, let's collect what is available to us with vanilla, the map's assets, and the dependencies.
         Set<String> availableDecals = VanillaDatabase.allVanillaDecals.stream().map(a -> a.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
@@ -675,6 +699,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
+            // == delete when SJ is out -- start
+
             if (dep.equals("StrawberryJam2021")) {
                 // download and analyze the SJ2021 helper.
                 try (InputStream databaseStrawberryJam = ConnectionUtils.openStreamWithTimeout(new URL(SecretConstants.STRAWBERRY_JAM_LOCATION))) {
@@ -694,6 +720,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                             tagsObject.getJSONObject(0).getString("zipball_url"));
                 }
             }
+
+            // == delete when SJ is out -- end
         }
 
         // extract the map bin.
@@ -740,7 +768,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     NodeList decals = document.getElementsByTagName("decal");
                     for (int i = 0; i < decals.getLength(); i++) {
                         Node decal = decals.item(i);
-                        if (decal.getAttributes() != null && decal.getAttributes().getNamedItem("texture") != null) {
+                        if (decal.getAttributes().getNamedItem("texture") != null) {
                             String decalName = decal.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
                             if (decalName.endsWith(".png")) decalName = decalName.substring(0, decalName.length() - 4);
                             if (!availableDecals.contains("decals/" + decalName.toLowerCase(Locale.ROOT))) {
@@ -754,7 +782,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     NodeList stylegrounds = document.getElementsByTagName("parallax");
                     for (int i = 0; i < stylegrounds.getLength(); i++) {
                         Node styleground = stylegrounds.item(i);
-                        if (styleground.getAttributes() != null && styleground.getAttributes().getNamedItem("texture") != null) {
+                        if (styleground.getAttributes().getNamedItem("texture") != null) {
                             String sgName = styleground.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
                             if (sgName.endsWith(".png")) sgName = sgName.substring(0, sgName.length() - 4);
                             if (sgName.startsWith("bgs/") && !availableStylegrounds.contains(sgName.toLowerCase(Locale.ROOT))) {
@@ -776,6 +804,23 @@ public class ModStructureVerifier extends ListenerAdapter {
                 parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
                 parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
                 parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
+
+                // look up which mod each of these missing things could belong to, in order to have an exhaustive list at the end.
+                for (String entity : badEntities) {
+                    missingDependencies.add(traceDownWhichModThisEntityBelongsTo("Entities", entity));
+                }
+                for (String trigger : badTriggers) {
+                    missingDependencies.add(traceDownWhichModThisEntityBelongsTo("Triggers", trigger));
+                }
+                for (String effect : badEffects) {
+                    missingDependencies.add(traceDownWhichModThisEntityBelongsTo("Effects", effect));
+                }
+                for (String styleground : badSGs) {
+                    missingDependencies.add(traceDownWhichModThisAssetBelongsTo("Graphics/Atlases/Gameplay/" + styleground + ".png"));
+                }
+                for (String decal : badDecals) {
+                    missingDependencies.add(traceDownWhichModThisAssetBelongsTo("Graphics/Atlases/Gameplay/decals/" + decal + ".png"));
+                }
             } catch (ParserConfigurationException | SAXException e) {
                 // something went wrong, so just delete the XML and rethrow the exception to trigger an alert.
                 tempXml.delete();
@@ -817,6 +862,109 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
         }
+    }
+
+    // Function<File, List<String>> is no good when we can throw IOException.
+    private interface EntryReader {
+        List<String> readEntriesFromFile(File file) throws IOException;
+    }
+
+    /**
+     * Looks for a given file across all mods present in everest_update.yaml, and gives the mod ID if exactly 1 mod with this file was found.
+     *
+     * @param path The path to look for
+     * @return The mod ID if exactly 1 mod with this file was found, null if no mod or multiple mods were found
+     * @throws IOException If an error occurs while reading the database
+     */
+    private static String traceDownWhichModThisAssetBelongsTo(String path) throws IOException {
+        return goThroughModsSearchingForFile(path, "", file -> {
+            try (InputStream is = new FileInputStream(file)) {
+                return new Yaml().load(is);
+            }
+        });
+    }
+
+    /**
+     * Looks for a given entity with an Ahorn or Loenn plugin across all mods present in everest_update.yaml,
+     * and gives the mod ID if exactly 1 mod with this entity was found.
+     *
+     * @param type     "Triggers", "Effects" or "Entities"
+     * @param entityID The ID of the entity (for example MaxHelpingHand/UpsideDownJumpThru)
+     * @return The mod ID if exactly 1 mod with this entity was found, null if no mod or multiple mods were found
+     * @throws IOException If an error occurs while reading the database
+     */
+    private static String traceDownWhichModThisEntityBelongsTo(String type, String entityID) throws IOException {
+        String ahorn = goThroughModsSearchingForFile(entityID, "ahorn_", file -> {
+            try (InputStream is = new FileInputStream(file)) {
+                Map<String, List<String>> info = new Yaml().load(is);
+                return info.get(type);
+            }
+        });
+
+        String loenn = goThroughModsSearchingForFile(entityID, "loenn_", file -> {
+            try (InputStream is = new FileInputStream(file)) {
+                Map<String, List<String>> info = new Yaml().load(is);
+                return info.get(type);
+            }
+        });
+
+        if (ahorn != null && loenn != null && !ahorn.equals(loenn)) {
+            logger.debug("Found entity {} in two different mods for Ahorn ({}) and Loenn ({})! Aborting.", entityID, ahorn, loenn);
+            return null;
+        } else if (ahorn == null) {
+            return loenn;
+        } else {
+            return ahorn;
+        }
+    }
+
+    /**
+     * Looks for an element across all mods present in everest_update.yaml, and gives the mod ID if exactly 1 mod with this element was found.
+     *
+     * @param element        The element to look for
+     * @param databasePrefix The file to read out in the mod files database (for example "ahorn_" will make this method read "ahorn_34223.yaml").
+     *                       Either "ahorn_", "loenn_" or an empty string
+     * @param reader         A method reading out the given file and giving the list of elements in it
+     * @return The mod ID if exactly 1 mod with this element was found, null if no mod or multiple mods were found
+     * @throws IOException If an error occurs while reading the database
+     */
+    private static String goThroughModsSearchingForFile(String element, String databasePrefix, EntryReader reader) throws IOException {
+        // load the updater database.
+        Map<String, Map<String, Object>> updaterDatabase;
+        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+            updaterDatabase = new Yaml().load(is);
+        }
+
+        String foundMod = null;
+
+        // go through the contents of each mod in the database, trying to find the given asset.
+        for (Map.Entry<String, Map<String, Object>> entry : updaterDatabase.entrySet()) {
+            String depUrl = (String) entry.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
+
+            if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
+                // to do this, we are going to use the mod files database.
+                File modFilesDatabaseFile = new File("modfilesdatabase/" +
+                        entry.getValue().get("GameBananaType") + "/" +
+                        entry.getValue().get("GameBananaId") + "/" + databasePrefix +
+                        depUrl.substring("https://gamebanana.com/mmdl/".length()) + ".yaml");
+
+                if (modFilesDatabaseFile.exists()) {
+                    List<String> filesList = reader.readEntriesFromFile(modFilesDatabaseFile);
+
+                    if (filesList.stream().anyMatch(file -> element.toLowerCase(Locale.ROOT).equals(file.toLowerCase(Locale.ROOT)))) {
+                        if (foundMod == null) {
+                            foundMod = entry.getKey();
+                        } else {
+                            logger.debug("Found asset {} in more than one mod ({} and {})! Aborting.", element, foundMod, entry.getKey());
+                            return null;
+                        }
+                    }
+                }
+            }
+        }
+
+        logger.debug("Found asset {} in mod {}", element, foundMod);
+        return foundMod;
     }
 
     /**
@@ -921,6 +1069,8 @@ public class ModStructureVerifier extends ListenerAdapter {
             throw new IOException(e);
         }
     }
+
+    // == delete when SJ is out -- start
 
     private static void addStuffFromSJ2021(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
                                            String whereIsStrawberryJam) throws IOException {
@@ -1050,6 +1200,8 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
         }
     }
+
+    // == delete when SJ is out -- end (also clean up secrets that are left unused)
 
     private static void parseProblematicPaths(List<String> problemList, Set<String> websiteProblemList,
                                               String websiteProblem, String problemLabel, List<String> paths) {
