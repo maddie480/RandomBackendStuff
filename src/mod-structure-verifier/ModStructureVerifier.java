@@ -69,6 +69,11 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     private static final Map<Long, Long> messagesToEmbeds = new HashMap<>(); // message ID > embed message ID from the bot
 
+    private static Map<String, String> assetToMod = Collections.emptyMap();
+    private static Map<String, String> entityToMod = Collections.emptyMap();
+    private static Map<String, String> triggerToMod = Collections.emptyMap();
+    private static Map<String, String> effectToMod = Collections.emptyMap();
+
     private static JDA jda;
     private static int analyzedZipCount = 0;
 
@@ -161,6 +166,21 @@ public class ModStructureVerifier extends ListenerAdapter {
         savePostedMessagesMap(null);
 
         logger.debug("Bot is currently in following guilds: {}", jda.getGuilds());
+    }
+
+    /**
+     * This is called from {@link UpdateCheckerTracker} when the database changes (or on startup),
+     * in order to refresh the asset maps.
+     */
+    static void updateAssetToModDictionary(Map<String, String> assetToMod,
+                                           Map<String, String> entityToMod,
+                                           Map<String, String> triggerToMod,
+                                           Map<String, String> effectToMod) {
+
+        ModStructureVerifier.assetToMod = assetToMod;
+        ModStructureVerifier.entityToMod = entityToMod;
+        ModStructureVerifier.triggerToMod = triggerToMod;
+        ModStructureVerifier.effectToMod = effectToMod;
     }
 
     public static int getServerCount() {
@@ -807,19 +827,19 @@ public class ModStructureVerifier extends ListenerAdapter {
 
                 // look up which mod each of these missing things could belong to, in order to have an exhaustive list at the end.
                 for (String entity : badEntities) {
-                    missingDependencies.add(traceDownWhichModThisEntityBelongsTo("Entities", entity));
+                    missingDependencies.add(entityToMod.get(entity.toLowerCase(Locale.ROOT)));
                 }
                 for (String trigger : badTriggers) {
-                    missingDependencies.add(traceDownWhichModThisEntityBelongsTo("Triggers", trigger));
+                    missingDependencies.add(triggerToMod.get(trigger.toLowerCase(Locale.ROOT)));
                 }
                 for (String effect : badEffects) {
-                    missingDependencies.add(traceDownWhichModThisEntityBelongsTo("Effects", effect));
+                    missingDependencies.add(effectToMod.get(effect.toLowerCase(Locale.ROOT)));
                 }
                 for (String styleground : badSGs) {
-                    missingDependencies.add(traceDownWhichModThisAssetBelongsTo("Graphics/Atlases/Gameplay/" + styleground + ".png"));
+                    missingDependencies.add(assetToMod.get(("Graphics/Atlases/Gameplay/" + styleground + ".png").toLowerCase(Locale.ROOT)));
                 }
                 for (String decal : badDecals) {
-                    missingDependencies.add(traceDownWhichModThisAssetBelongsTo("Graphics/Atlases/Gameplay/decals/" + decal + ".png"));
+                    missingDependencies.add(assetToMod.get(("Graphics/Atlases/Gameplay/decals/" + decal + ".png").toLowerCase(Locale.ROOT)));
                 }
             } catch (ParserConfigurationException | SAXException e) {
                 // something went wrong, so just delete the XML and rethrow the exception to trigger an alert.
@@ -862,109 +882,6 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
         }
-    }
-
-    // Function<File, List<String>> is no good when we can throw IOException.
-    private interface EntryReader {
-        List<String> readEntriesFromFile(File file) throws IOException;
-    }
-
-    /**
-     * Looks for a given file across all mods present in everest_update.yaml, and gives the mod ID if exactly 1 mod with this file was found.
-     *
-     * @param path The path to look for
-     * @return The mod ID if exactly 1 mod with this file was found, null if no mod or multiple mods were found
-     * @throws IOException If an error occurs while reading the database
-     */
-    private static String traceDownWhichModThisAssetBelongsTo(String path) throws IOException {
-        return goThroughModsSearchingForFile(path, "", file -> {
-            try (InputStream is = new FileInputStream(file)) {
-                return new Yaml().load(is);
-            }
-        });
-    }
-
-    /**
-     * Looks for a given entity with an Ahorn or Loenn plugin across all mods present in everest_update.yaml,
-     * and gives the mod ID if exactly 1 mod with this entity was found.
-     *
-     * @param type     "Triggers", "Effects" or "Entities"
-     * @param entityID The ID of the entity (for example MaxHelpingHand/UpsideDownJumpThru)
-     * @return The mod ID if exactly 1 mod with this entity was found, null if no mod or multiple mods were found
-     * @throws IOException If an error occurs while reading the database
-     */
-    private static String traceDownWhichModThisEntityBelongsTo(String type, String entityID) throws IOException {
-        String ahorn = goThroughModsSearchingForFile(entityID, "ahorn_", file -> {
-            try (InputStream is = new FileInputStream(file)) {
-                Map<String, List<String>> info = new Yaml().load(is);
-                return info.get(type);
-            }
-        });
-
-        String loenn = goThroughModsSearchingForFile(entityID, "loenn_", file -> {
-            try (InputStream is = new FileInputStream(file)) {
-                Map<String, List<String>> info = new Yaml().load(is);
-                return info.get(type);
-            }
-        });
-
-        if (ahorn != null && loenn != null && !ahorn.equals(loenn)) {
-            logger.debug("Found entity {} in two different mods for Ahorn ({}) and Loenn ({})! Aborting.", entityID, ahorn, loenn);
-            return null;
-        } else if (ahorn == null) {
-            return loenn;
-        } else {
-            return ahorn;
-        }
-    }
-
-    /**
-     * Looks for an element across all mods present in everest_update.yaml, and gives the mod ID if exactly 1 mod with this element was found.
-     *
-     * @param element        The element to look for
-     * @param databasePrefix The file to read out in the mod files database (for example "ahorn_" will make this method read "ahorn_34223.yaml").
-     *                       Either "ahorn_", "loenn_" or an empty string
-     * @param reader         A method reading out the given file and giving the list of elements in it
-     * @return The mod ID if exactly 1 mod with this element was found, null if no mod or multiple mods were found
-     * @throws IOException If an error occurs while reading the database
-     */
-    private static String goThroughModsSearchingForFile(String element, String databasePrefix, EntryReader reader) throws IOException {
-        // load the updater database.
-        Map<String, Map<String, Object>> updaterDatabase;
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = new Yaml().load(is);
-        }
-
-        String foundMod = null;
-
-        // go through the contents of each mod in the database, trying to find the given asset.
-        for (Map.Entry<String, Map<String, Object>> entry : updaterDatabase.entrySet()) {
-            String depUrl = (String) entry.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
-
-            if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
-                // to do this, we are going to use the mod files database.
-                File modFilesDatabaseFile = new File("modfilesdatabase/" +
-                        entry.getValue().get("GameBananaType") + "/" +
-                        entry.getValue().get("GameBananaId") + "/" + databasePrefix +
-                        depUrl.substring("https://gamebanana.com/mmdl/".length()) + ".yaml");
-
-                if (modFilesDatabaseFile.exists()) {
-                    List<String> filesList = reader.readEntriesFromFile(modFilesDatabaseFile);
-
-                    if (filesList.stream().anyMatch(file -> element.toLowerCase(Locale.ROOT).equals(file.toLowerCase(Locale.ROOT)))) {
-                        if (foundMod == null) {
-                            foundMod = entry.getKey();
-                        } else {
-                            logger.debug("Found asset {} in more than one mod ({} and {})! Aborting.", element, foundMod, entry.getKey());
-                            return null;
-                        }
-                    }
-                }
-            }
-        }
-
-        logger.debug("Found asset {} in mod {}", element, foundMod);
-        return foundMod;
     }
 
     /**

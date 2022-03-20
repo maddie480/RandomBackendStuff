@@ -216,6 +216,8 @@ public class UpdateCheckerTracker implements TailerListener {
                         throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
                     }
 
+                    updateModStructureVerifierMaps();
+
                     everestUpdateSha256 = newEverestUpdateHash;
 
                     executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: everest_update.yaml and mod_dependency_graph.yaml were updated.");
@@ -477,5 +479,105 @@ public class UpdateCheckerTracker implements TailerListener {
                         "Name", entry.getKey(),
                         "Version", entry.getValue()))
                 .collect(Collectors.toList());
+    }
+
+    // Function<File, List<String>> is no good when we can throw IOException.
+    private interface EntryReader {
+        List<String> readEntriesFromFile(File file) throws IOException;
+    }
+
+    /**
+     * Updates the maps used by the Mod Structure Verifier to see in which mod each asset is.
+     * Called on startup and each time everest_update.yaml is modified.
+     */
+    private static void updateModStructureVerifierMaps() throws IOException {
+        log.info("Updating Mod Structure Verifier entity maps...");
+
+        Map<String, String> assets = getElementMap("", file -> {
+            try (InputStream is = new FileInputStream(file)) {
+                return new Yaml().<List<String>>load(is)
+                        .stream().filter(e -> e.toLowerCase(Locale.ROOT).startsWith("graphics/atlases/gameplay/bgs/")
+                                || e.toLowerCase(Locale.ROOT).startsWith("graphics/atlases/gameplay/decals/"))
+                        .collect(Collectors.toList());
+            }
+        });
+
+        Map<String, String> entities = getEntityMap("Entities");
+        Map<String, String> triggers = getEntityMap("Triggers");
+        Map<String, String> effects = getEntityMap("Effects");
+
+        ModStructureVerifier.updateAssetToModDictionary(assets, entities, triggers, effects);
+
+        log.info("Mod Structure Verifier entity maps now contain {} assets, {} entities, {} triggers and {} effects.",
+                assets.size(), entities.size(), triggers.size(), effects.size());
+    }
+
+    private static Map<String, String> getEntityMap(String type) throws IOException {
+        Map<String, String> ahornEntities = getElementMap("ahorn_", file -> {
+            try (InputStream is = new FileInputStream(file)) {
+                Map<String, List<String>> info = new Yaml().load(is);
+                return info.get(type);
+            }
+        });
+
+        Map<String, String> loennEntities = getElementMap("loenn_", file -> {
+            try (InputStream is = new FileInputStream(file)) {
+                Map<String, List<String>> info = new Yaml().load(is);
+                return info.get(type);
+            }
+        });
+
+        // merge ahornEntities into loennEntities
+        for (Map.Entry<String, String> ahornEntity : ahornEntities.entrySet()) {
+            if (loennEntities.containsKey(ahornEntity.getKey()) && !ahornEntity.getValue().equals(loennEntities.get(ahornEntity.getKey()))) {
+                // entity is present in both Ahorn and Loenn... but in different mods! so we don't want to retain it, this is ambiguous.
+                loennEntities.remove(ahornEntity.getKey());
+            } else {
+                loennEntities.put(ahornEntity.getKey(), ahornEntity.getValue());
+            }
+        }
+
+        return loennEntities;
+    }
+
+    private static Map<String, String> getElementMap(String databasePrefix, EntryReader reader) throws IOException {
+        // load the updater database.
+        Map<String, Map<String, Object>> updaterDatabase;
+        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+            updaterDatabase = new Yaml().load(is);
+        }
+
+        Map<String, String> elementMap = new HashMap<>();
+        Set<String> duplicateElements = new HashSet<>();
+
+        // go through the contents of each mod in the database, to list out its assets.
+        for (Map.Entry<String, Map<String, Object>> entry : updaterDatabase.entrySet()) {
+            String depUrl = (String) entry.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
+
+            if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
+                // to do this, we are going to use the mod files database.
+                File modFilesDatabaseFile = new File("modfilesdatabase/" +
+                        entry.getValue().get("GameBananaType") + "/" +
+                        entry.getValue().get("GameBananaId") + "/" + databasePrefix +
+                        depUrl.substring("https://gamebanana.com/mmdl/".length()) + ".yaml");
+
+                if (modFilesDatabaseFile.exists()) {
+                    for (String element : reader.readEntriesFromFile(modFilesDatabaseFile)) {
+                        element = element.toLowerCase(Locale.ROOT);
+                        if (!duplicateElements.contains(element)) {
+                            if (elementMap.containsKey(element)) {
+                                // we found an element in multiple mods! do not include it, since it is ambiguous.
+                                duplicateElements.add(element);
+                                elementMap.remove(element);
+                            } else {
+                                elementMap.put(element, entry.getKey());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return elementMap;
     }
 }
