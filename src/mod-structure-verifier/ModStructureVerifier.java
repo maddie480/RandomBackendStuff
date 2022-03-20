@@ -538,7 +538,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 String dependenciesList = "";
                 missingDependencies.remove(null); // "mod not found" = null
                 if (missingDependencies.size() == 1) {
-                    dependenciesList = "\n\nYou should probably add `" + missingDependencies.iterator().next().replace("`", "") + "` as a dependency for your map, or stop using things from it if it is a map.";
+                    dependenciesList = "\n\nYou should probably add `" + missingDependencies.iterator().next().replace("`", "") + "` as a dependency for your map, or stop using things from it if it is another map.";
                 } else if (!missingDependencies.isEmpty()) {
                     StringBuilder list = new StringBuilder("\n\nYou should probably add ");
                     int index = 0;
@@ -552,7 +552,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         list.append('`').append(dependency.replace("`", "")).append('`');
                         index++;
                     }
-                    list.append(" as dependencies for your map, or stop using things from them if they are maps.");
+                    list.append(" as dependencies for your map, or stop using things from them if they are other maps.");
 
                     dependenciesList = list.toString();
                 }
