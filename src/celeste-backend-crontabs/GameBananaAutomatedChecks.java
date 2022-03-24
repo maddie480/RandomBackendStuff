@@ -361,7 +361,7 @@ public class GameBananaAutomatedChecks {
     private static boolean modIsObsolete(String mod) {
         try {
             return ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv7/" + mod + "?_csvProperties=_bIsObsolete"))) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_bIsObsolete"))) {
                     JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                     return modInfo.getBoolean("_bIsObsolete");
                 }
@@ -541,7 +541,7 @@ public class GameBananaAutomatedChecks {
         // so they're categories that exist... but don't exist. This makes no sense and that's why it needs fixing.
 
         JSONArray listOfCategories = ConnectionUtils.runWithRetry(() -> {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv7/" + name + "Category/ByGame?_aGameRowIds[]=6460&" +
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + name + "Category/ByGame?_aGameRowIds[]=6460&" +
                     "_csvProperties=_idRow,_idParentCategoryRow&_sOrderBy=_idRow,ASC&_nPage=1&_nPerpage=50"))) {
 
                 return new JSONArray(IOUtils.toString(is, UTF_8));
@@ -569,7 +569,7 @@ public class GameBananaAutomatedChecks {
             // load a page of mods.
             final int thisPage = page;
             JSONArray pageContents = ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv7/" + name + "/ByGame?_aGameRowIds[]=6460&" +
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + name + "/ByGame?_aGameRowIds[]=6460&" +
                         "_csvProperties=_aCategory&_sOrderBy=_idRow,ASC&_nPage=" + thisPage + "&_nPerpage=50"))) {
 
                     return new JSONArray(IOUtils.toString(is, UTF_8));
