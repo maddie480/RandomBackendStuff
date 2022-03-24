@@ -22,8 +22,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * An internal service that gives the backend ("bot") and frontend ("website") uptimes, and the number of requests
- * by HTTP code for the last 24 hours, based on Google Cloud Monitoring.
+ * An internal service that gives the number of requests by HTTP code for the last 24 hours, based on Google Cloud Monitoring.
+ * This also prints out the amount of times the Timezone Bot and Games Bot were used, based on Google Cloud Logging.
  * This is called once a day and the result is posted as YAML in a private channel on Discord to monitor server activity.
  */
 public class ServiceMonitoringService {
@@ -36,7 +36,6 @@ public class ServiceMonitoringService {
 
         try (MetricServiceClient client = MetricServiceClient.create()) {
             return ImmutableMap.of(
-                    "uptimePercent", getUptimes(client),
                     "responseCountPerCode", getResponseCount(client),
                     "gamesBotUsage", gamesBotUsage.get(),
                     "timezoneBotUsage", timezoneBotUsage.get()
@@ -86,51 +85,5 @@ public class ServiceMonitoringService {
             countPerResponseCode.put(responseCode, count);
         }
         return countPerResponseCode;
-    }
-
-    private static Map<String, Double> getUptimes(MetricServiceClient client) {
-        final MetricServiceClient.ListTimeSeriesPagedResponse timeSeries = client.listTimeSeries(ListTimeSeriesRequest.newBuilder()
-                .setName("projects/max480-random-stuff")
-                .setFilter("metric.type = \"monitoring.googleapis.com/uptime_check/check_passed\"")
-                .setInterval(TimeInterval.newBuilder()
-                        .setStartTime(Timestamp.newBuilder()
-                                .setSeconds(System.currentTimeMillis() / 1000 - 86400)
-                                .build())
-                        .setEndTime(Timestamp.newBuilder()
-                                .setSeconds(System.currentTimeMillis() / 1000)
-                                .build())
-                        .build())
-                .build());
-
-        long[] up = new long[]{0, 0, 0};
-        long[] total = new long[]{0, 0, 0};
-
-        for (TimeSeries series : timeSeries.iterateAll()) {
-            int index;
-            if (series.getMetric().getLabelsOrThrow("check_id").equals("bot-healthcheck-F_-kI5b144Q")
-                    || series.getMetric().getLabelsOrThrow("check_id").equals("bot-healthcheck")
-                    || series.getMetric().getLabelsOrThrow("check_id").equals("bot-healthcheck-ZG_z89RwZLc")) {
-                index = 0;
-            } else if (series.getMetric().getLabelsOrThrow("check_id").equals("website-healthcheck")
-                    || series.getMetric().getLabelsOrThrow("check_id").equals("website-healthcheck-pHdPnOpXsNs")) {
-                index = 1;
-            } else if (series.getMetric().getLabelsOrThrow("check_id").equals("celestemodupdater-0x0a-de")) {
-                index = 2;
-            } else {
-                throw new RuntimeException("Encountered bad check_id!" + series.getMetric().getLabelsOrThrow("check_id"));
-            }
-
-            for (Point p : series.getPointsList()) {
-                total[index]++;
-                if (p.getValue().getBoolValue()) {
-                    up[index]++;
-                }
-            }
-        }
-        return ImmutableMap.of(
-                "bot", (double) up[0] / total[0] * 100.0,
-                "website", (double) up[1] / total[1] * 100.0,
-                "mirror", (double) up[2] / total[2] * 100.0
-        );
     }
 }
