@@ -133,7 +133,7 @@ public class ContinuousHealthChecks {
 
                 // if health is at zero and the service is officially up, declare it down.
                 if (currentHealth == 0 && currentStatus) {
-                    logger.info("Service {} is dead!", serviceName);
+                    logger.warn("Service {} is dead!", serviceName);
                     currentStatus = false;
                     for (String webhook : webhookUrls) {
                         executeWebhookSafe(webhook, avatar, name, ":x: **" + serviceName + "** is down!");
