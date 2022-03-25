@@ -84,7 +84,7 @@ public class ContinuousHealthChecks {
                 || (now.getDayOfWeek() == DayOfWeek.SUNDAY && now.getHour() == 8 && now.getMinute() < 15);
     }
 
-    private static void checkURL(String url, String content, String serviceName, List<String> webhookUrls, String avatar, String name) throws IOException {
+    private static void checkURL(String url, String content, String serviceName, List<String> webhookUrls, String avatar, String name) {
         checkHealth(() -> {
             URLConnection con = new URL(url).openConnection();
             con.setConnectTimeout(5000);
@@ -97,7 +97,7 @@ public class ContinuousHealthChecks {
     }
 
     private static void checkHealth(ConnectionUtils.NetworkingOperation<Boolean> healthCheck,
-                                    String serviceName, List<String> webhookUrls, String avatar, String name) throws IOException {
+                                    String serviceName, List<String> webhookUrls, String avatar, String name) {
         boolean result;
 
         try {
@@ -122,7 +122,7 @@ public class ContinuousHealthChecks {
                     logger.info("Service {} has full HP!", serviceName);
                     currentStatus = true;
                     for (String webhook : webhookUrls) {
-                        WebhookExecutor.executeWebhook(webhook, avatar, name, ":white_check_mark: **" + serviceName + "** is up again.", ImmutableMap.of("X-Everest-Log", "true"));
+                        executeWebhookSafe(webhook, avatar, name, ":white_check_mark: **" + serviceName + "** is up again.");
                     }
                 }
             }
@@ -136,7 +136,7 @@ public class ContinuousHealthChecks {
                     logger.info("Service {} is dead!", serviceName);
                     currentStatus = false;
                     for (String webhook : webhookUrls) {
-                        WebhookExecutor.executeWebhook(webhook, avatar, name, ":x: **" + serviceName + "** is down!", ImmutableMap.of("X-Everest-Log", "true"));
+                        executeWebhookSafe(webhook, avatar, name, ":x: **" + serviceName + "** is down!");
                     }
                 }
             }
@@ -144,5 +144,13 @@ public class ContinuousHealthChecks {
 
         servicesHealth.put(serviceName, currentHealth);
         servicesStatus.put(serviceName, currentStatus);
+    }
+
+    private static void executeWebhookSafe(String webhookUrl, String avatar, String name, String body) {
+        try {
+            WebhookExecutor.executeWebhook(webhookUrl, avatar, name, body, ImmutableMap.of("X-Everest-Log", "true"));
+        } catch (IOException e) {
+            logger.error("Could not send message {} to webhook {}!", body, webhookUrl, e);
+        }
     }
 }
