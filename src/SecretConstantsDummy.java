@@ -50,8 +50,11 @@ public class SecretConstantsDummy {
     // hook to call for update checker technical logs
     static final String UPDATE_CHECKER_LOGS_HOOK = "";
 
-    // a hook to call in case of issues with 0x0a.de
-    static final String JADE_PLATFORM_HEALTHCHECK_HOOK = "";
+    // hooks to call in case of issues with 0x0a.de
+    static final List<String> JADE_PLATFORM_HEALTHCHECK_HOOKS = Collections.emptyList();
+
+    // hooks to call if GameBanana is down
+    static final List<String> GAMEBANANA_HEALTHCHECK_HOOKS = Collections.emptyList();
 
     // hook to call for speedrun.com update notifications
     static final String SRC_UPDATE_CHECKER_HOOK = "";

@@ -13,7 +13,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class checks the health of multiple platforms (the website, the bot, the mirror and GameBanana)
@@ -36,29 +39,25 @@ public class ContinuousHealthChecks {
         new Thread(() -> {
             while (true) {
                 try {
-                    // max480 random stuff checks, that go to max480
+                    // max480 random stuff checks
                     checkURL("https://max480-random-stuff.appspot.com/healthcheck", "The service is up and running!",
-                            "Random Stuff Website", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK),
-                            "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png", "Platform Health Checks");
+                            "Random Stuff Website", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                     checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L : 120_000L),
-                            "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK),
-                            "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png", "Platform Health Checks");
+                            "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
 
-                    // 0x0a.de health checks, that go to max480 and jade
+                    // 0x0a.de health checks
                     checkURL("https://celestemodupdater.0x0a.de/banana-mirror", "484937.zip",
-                            "Banana Mirror", Arrays.asList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOK),
-                            "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png", "Platform Health Checks");
+                            "Banana Mirror", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                    checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
+                            "CelesteNet", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                    // GameBanana health checks, that go to the GameBanana managers
+                    // GameBanana health checks
                     checkURL("https://gamebanana.com/games/6460", "Celeste",
-                            "GameBanana Website", SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS,
-                            "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png", "Banana Watch");
+                            "GameBanana Website", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
                     checkURL("https://files.gamebanana.com/bitpit/check.txt", "The check passed!",
-                            "GameBanana File Server", SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS,
-                            "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png", "Banana Watch");
+                            "GameBanana File Server", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
                     checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
-                            "GameBanana API", SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS,
-                            "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png", "Banana Watch");
+                            "GameBanana API", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
                 } catch (Exception e) {
                     // this shouldn't happen, unless we cannot communicate with Discord.
                     logger.error("Uncaught exception happened during health check!", e);
@@ -84,7 +83,7 @@ public class ContinuousHealthChecks {
                 || (now.getDayOfWeek() == DayOfWeek.SUNDAY && now.getHour() == 8 && now.getMinute() < 15);
     }
 
-    private static void checkURL(String url, String content, String serviceName, List<String> webhookUrls, String avatar, String name) {
+    private static void checkURL(String url, String content, String serviceName, List<String> webhookUrls) {
         checkHealth(() -> {
             URLConnection con = new URL(url).openConnection();
             con.setConnectTimeout(5000);
@@ -93,11 +92,11 @@ public class ContinuousHealthChecks {
                 String s = IOUtils.toString(is, StandardCharsets.UTF_8);
                 return s.contains(content);
             }
-        }, serviceName, webhookUrls, avatar, name);
+        }, serviceName, webhookUrls);
     }
 
     private static void checkHealth(ConnectionUtils.NetworkingOperation<Boolean> healthCheck,
-                                    String serviceName, List<String> webhookUrls, String avatar, String name) {
+                                    String serviceName, List<String> webhookUrls) {
         boolean result;
 
         try {
@@ -122,7 +121,7 @@ public class ContinuousHealthChecks {
                     logger.info("Service {} has full HP!", serviceName);
                     currentStatus = true;
                     for (String webhook : webhookUrls) {
-                        executeWebhookSafe(webhook, avatar, name, ":white_check_mark: **" + serviceName + "** is up again.");
+                        executeWebhookSafe(webhook, ":white_check_mark: **" + serviceName + "** is up again.");
                     }
                 }
             }
@@ -136,7 +135,7 @@ public class ContinuousHealthChecks {
                     logger.warn("Service {} is dead!", serviceName);
                     currentStatus = false;
                     for (String webhook : webhookUrls) {
-                        executeWebhookSafe(webhook, avatar, name, ":x: **" + serviceName + "** is down!");
+                        executeWebhookSafe(webhook, ":x: **" + serviceName + "** is down!");
                     }
                 }
             }
@@ -146,9 +145,14 @@ public class ContinuousHealthChecks {
         servicesStatus.put(serviceName, currentStatus);
     }
 
-    private static void executeWebhookSafe(String webhookUrl, String avatar, String name, String body) {
+    private static void executeWebhookSafe(String webhookUrl, String body) {
         try {
-            WebhookExecutor.executeWebhook(webhookUrl, avatar, name, body, ImmutableMap.of("X-Everest-Log", "true"));
+            WebhookExecutor.executeWebhook(
+                    webhookUrl,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
+                    "Platform Health Checks",
+                    body,
+                    ImmutableMap.of("X-Everest-Log", "true"));
         } catch (IOException e) {
             logger.error("Could not send message {} to webhook {}!", body, webhookUrl, e);
         }
