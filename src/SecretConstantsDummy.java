@@ -53,8 +53,8 @@ public class SecretConstantsDummy {
     // hooks to call in case of issues with 0x0a.de
     static final List<String> JADE_PLATFORM_HEALTHCHECK_HOOKS = Collections.emptyList();
 
-    // hooks to call if GameBanana is down
-    static final List<String> GAMEBANANA_HEALTHCHECK_HOOKS = Collections.emptyList();
+    // hooks to call in case of issues with platforms other than 0x0a.de (namely GameBanana, Update Checker and max480-random-stuff)
+    static final List<String> NON_JADE_PLATFORM_HEALTHCHECK_HOOKS = Collections.emptyList();
 
     // hook to call for speedrun.com update notifications
     static final String SRC_UPDATE_CHECKER_HOOK = "";

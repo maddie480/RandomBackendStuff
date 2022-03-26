@@ -40,29 +40,31 @@ public class ContinuousHealthChecks {
         new Thread(() -> {
             while (true) {
                 try {
-                    // max480-random-stuff checks
-                    checkURL("https://max480-random-stuff.appspot.com/healthcheck", "The service is up and running!",
-                            "Random Stuff Website", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
-                    checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L /* 15m */ : 120_000L /* 2m */),
-                            "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
-
-                    // Update Checker health check (uses the same notification list as GameBanana so far)
-                    checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
-                            "Update Checker", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
-
                     // 0x0a.de health checks
                     checkURL("https://celestemodupdater.0x0a.de/banana-mirror", "484937.zip",
                             "Banana Mirror", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
                     checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
                             "CelesteNet", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
+                    // Update Checker health check
+                    checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
+                            "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+
+                    // max480-random-stuff health check
+                    checkURL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml", "SpringCollab2020:",
+                            "max480's Random Stuff Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+
                     // GameBanana health checks
                     checkURL("https://gamebanana.com/games/6460", "Celeste",
-                            "GameBanana Website", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
+                            "GameBanana Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
                     checkURL("https://files.gamebanana.com/bitpit/check.txt", "The check passed!",
-                            "GameBanana File Server", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
+                            "GameBanana File Server", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
                     checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
-                            "GameBanana API", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
+                            "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+
+                    // backend check: this one posts to a private hook, since 99% of the time no-one cares or notices when it goes down. :p
+                    checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L /* 15m */ : 120_000L /* 2m */),
+                            "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                 } catch (Exception e) {
                     // this shouldn't happen, unless we cannot communicate with Discord.
                     logger.error("Uncaught exception happened during health check!", e);
