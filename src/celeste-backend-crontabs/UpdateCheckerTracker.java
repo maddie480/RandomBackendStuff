@@ -72,6 +72,7 @@ public class UpdateCheckerTracker implements TailerListener {
 
     private static boolean lastLineIsNetworkError = false;
     protected static ZonedDateTime lastLogLineDate = ZonedDateTime.now();
+    protected static ZonedDateTime lastEndOfCheckForUpdates = ZonedDateTime.now();
 
     private static boolean luaCutscenesUpdated = false;
 
@@ -297,6 +298,8 @@ public class UpdateCheckerTracker implements TailerListener {
                 }
 
                 queuedGameBananaModMessages.clear();
+
+                lastEndOfCheckForUpdates = ZonedDateTime.now();
             } catch (IOException | StorageException e) {
                 log.error("Error during a call to frontend to refresh databases", e);
                 executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);

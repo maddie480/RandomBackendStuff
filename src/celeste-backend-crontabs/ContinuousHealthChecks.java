@@ -25,6 +25,7 @@ import java.util.Map;
  */
 public class ContinuousHealthChecks {
     private static final Logger logger = LoggerFactory.getLogger(ContinuousHealthChecks.class);
+
     private static final Map<String, Integer> servicesHealth = new HashMap<>();
     private static final Map<String, Boolean> servicesStatus = new HashMap<>();
 
@@ -39,11 +40,15 @@ public class ContinuousHealthChecks {
         new Thread(() -> {
             while (true) {
                 try {
-                    // max480 random stuff checks
+                    // max480-random-stuff checks
                     checkURL("https://max480-random-stuff.appspot.com/healthcheck", "The service is up and running!",
                             "Random Stuff Website", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
-                    checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L : 120_000L),
+                    checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L /* 15m */ : 120_000L /* 2m */),
                             "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
+
+                    // Update Checker health check (uses the same notification list as GameBanana so far)
+                    checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
+                            "Update Checker", SecretConstants.GAMEBANANA_HEALTHCHECK_HOOKS);
 
                     // 0x0a.de health checks
                     checkURL("https://celestemodupdater.0x0a.de/banana-mirror", "484937.zip",
