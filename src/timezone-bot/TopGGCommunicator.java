@@ -39,8 +39,8 @@ public class TopGGCommunicator {
         getAndUpdateBotScore(SecretConstants.GAMES_BOT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, jda, "Games Bot", () -> gamesBotScore, score -> gamesBotScore = score);
 
         // check if we got new ratings (through more... unconventional means)
-        new Thread(() -> updateBotRatingCount(jda, SecretConstants.TIMEZONE_BOT_ID, "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score)).start();
-        new Thread(() -> updateBotRatingCount(jda, SecretConstants.GAMES_BOT_ID, "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score)).start();
+        updateBotRatingCount(jda, SecretConstants.TIMEZONE_BOT_ID, "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score);
+        updateBotRatingCount(jda, SecretConstants.GAMES_BOT_ID, "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score);
     }
 
     public static void updateBotGuildCount(long botId, String botToken, String botName, int guildCount) {
