@@ -35,10 +35,6 @@ jobs:
         # Temporarily create a dummy StrawberryJamUpdate
         echo "package com.max480.discord.randombots; public class StrawberryJamUpdate extends net.dv8tion.jda.api.hooks.ListenerAdapter {}" > src/main/java/com/max480/discord/randombots/StrawberryJamUpdate.java
         
-        # Copy the ConstantsDummy to Constants
-        cp -v src/main/java/com/max480/discord/randombots/SecretConstantsDummy.java src/main/java/com/max480/discord/randombots/SecretConstants.java
-        sed -i s/SecretConstantsDummy/SecretConstants/ src/main/java/com/max480/discord/randombots/SecretConstants.java
-        
         # Bring in the update checker and install it
         git clone https://github.com/max4805/EverestUpdateCheckerServer.git
         cd EverestUpdateCheckerServer
