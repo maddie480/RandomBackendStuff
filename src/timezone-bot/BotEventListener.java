@@ -57,7 +57,7 @@ public class BotEventListener extends ListenerAdapter {
     @Override
     public void onGuildJoin(@NotNull GuildJoinEvent event) {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                .sendMessage("I just joined a new server: " + event.getGuild().getName()).queue();
+                .sendMessage("I just joined a new server! I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
 
         // set up privileges for the new server!
         logger.info("Updating /toggle-times permissions on newly joined guild {}", event.getGuild());
@@ -67,7 +67,11 @@ public class BotEventListener extends ListenerAdapter {
     @Override
     public void onGuildLeave(@NotNull GuildLeaveEvent event) {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                .sendMessage("I just left a server: " + event.getGuild().getName()).queue();
+                .sendMessage("I was just kicked from a server. I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
+
+        // refreshing roles allows us to clean up any user info we had on that server.
+        logger.info("Force-refreshing roles after leaving guild {}", event.getGuild());
+        TimezoneRoleUpdater.forceUpdate();
     }
 
     @Override
