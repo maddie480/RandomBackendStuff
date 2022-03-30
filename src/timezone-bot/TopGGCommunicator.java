@@ -1,14 +1,18 @@
 package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.JDA;
-import org.discordbots.api.client.DiscordBotListAPI;
-import org.discordbots.api.client.entity.Bot;
+import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -20,11 +24,6 @@ import java.util.function.Supplier;
 public class TopGGCommunicator {
     private static final Logger logger = LoggerFactory.getLogger(TopGGCommunicator.class);
 
-    private static final DiscordBotListAPI botListAPI = new DiscordBotListAPI.Builder()
-            .botId(SecretConstants.TIMEZONE_BOT_ID.toString())
-            .token(SecretConstants.TIMEZONE_BOT_TOP_GG_TOKEN)
-            .build();
-
     private static int timezoneBotScore = -1;
     private static int timezoneBotRatingCount = -1;
     private static int gamesBotScore = -1;
@@ -33,29 +32,70 @@ public class TopGGCommunicator {
     public static void refresh(final JDA jda) {
         // update the server count on top.gg through the API
         int guildCount = jda.getGuilds().size();
-        botListAPI.setStats(guildCount).thenRun(() -> logger.debug("Updated guild count for Timezone Bot on top.gg with {}.", guildCount));
+        updateBotGuildCount(SecretConstants.TIMEZONE_BOT_ID, SecretConstants.TIMEZONE_BOT_TOP_GG_TOKEN, "Timezone Bot", guildCount);
 
         // check if we got new upvotes through the API
-        botListAPI.getBot(SecretConstants.TIMEZONE_BOT_ID.toString())
-                .thenAcceptAsync(bot -> updateBotScore(jda, bot, "Timezone Bot", () -> timezoneBotScore, score -> timezoneBotScore = score));
-        botListAPI.getBot(SecretConstants.GAMES_BOT_ID.toString())
-                .thenAcceptAsync(bot -> updateBotScore(jda, bot, "Games Bot", () -> gamesBotScore, score -> gamesBotScore = score));
+        getAndUpdateBotScore(SecretConstants.TIMEZONE_BOT_ID, SecretConstants.TIMEZONE_BOT_TOP_GG_TOKEN, jda, "Timezone Bot", () -> timezoneBotScore, score -> timezoneBotScore = score);
+        getAndUpdateBotScore(SecretConstants.GAMES_BOT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, jda, "Games Bot", () -> gamesBotScore, score -> gamesBotScore = score);
 
         // check if we got new ratings (through more... unconventional means)
         new Thread(() -> updateBotRatingCount(jda, SecretConstants.TIMEZONE_BOT_ID, "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score)).start();
         new Thread(() -> updateBotRatingCount(jda, SecretConstants.GAMES_BOT_ID, "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score)).start();
     }
 
-    private static void updateBotScore(JDA jda, Bot bot, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
-        logger.debug("Got the top.gg score for {}: {}", botName, bot.getPoints());
-        if (oldCount.get() != -1 && bot.getPoints() != oldCount.get()) {
-            logger.info("Score changed for {}! {} => {}", botName, oldCount.get(), bot.getPoints());
+    public static void updateBotGuildCount(long botId, String botToken, String botName, int guildCount) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL("https://top.gg/api/bots/" + botId + "/stats").openConnection();
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Authorization", botToken);
+            connection.setRequestProperty("Content-Type", "application/json");
+
+            JSONObject body = new JSONObject();
+            body.put("server_count", guildCount);
+            try (OutputStream os = connection.getOutputStream()) {
+                IOUtils.write(body.toString(), os, StandardCharsets.UTF_8);
+            }
+
+            if (connection.getResponseCode() != 200) {
+                throw new IOException("Non-200 response code: " + connection.getResponseCode());
+            }
+
+            logger.debug("Updated guild count for {} on top.gg with {}.", botName, guildCount);
+
+        } catch (IOException e) {
+            logger.error("Could not update top.gg guild count for {}", botName, e);
+        }
+    }
+
+    private static void getAndUpdateBotScore(long botId, String botToken, JDA jda, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL("https://top.gg/api/bots/" + botId).openConnection();
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
+            connection.setRequestProperty("Authorization", botToken);
+
+            try (InputStream is = connection.getInputStream()) {
+                JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                updateBotScore(jda, response.getInt("points"), response.getInt("monthlyPoints"), botName, oldCount, newCount);
+            }
+        } catch (IOException e) {
+            logger.error("Could not get top.gg score for {}", botName, e);
+        }
+    }
+
+    private static void updateBotScore(JDA jda, int points, int monthlyPoints, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
+        logger.debug("Got the top.gg score for {}: {}", botName, points);
+        if (oldCount.get() != -1 && points != oldCount.get()) {
+            logger.info("Score changed for {}! {} => {}", botName, oldCount.get(), points);
             jda.getGuildById(SecretConstants.REPORT_SERVER_ID)
                     .getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                    .sendMessage("The score for **" + botName + "** evolved! We now have **" + bot.getPoints() + "** point" + (bot.getPoints() == 1 ? "" : "s")
-                            + " (**" + bot.getMonthlyPoints() + "** point" + (bot.getMonthlyPoints() == 1 ? "" : "s") + " this month).").queue();
+                    .sendMessage("The score for **" + botName + "** evolved! We now have **" + points + "** point" + (points == 1 ? "" : "s")
+                            + " (**" + monthlyPoints + "** point" + (monthlyPoints == 1 ? "" : "s") + " this month).").queue();
         }
-        newCount.accept(bot.getPoints());
+        newCount.accept(points);
     }
 
     private static void updateBotRatingCount(JDA jda, Long botId, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
@@ -85,7 +125,7 @@ public class TopGGCommunicator {
             }
             newCount.accept(newRatingCount);
         } catch (IOException e) {
-            logger.error("Could not check out comment count from top.gg", e);
+            logger.error("Could not get top.gg comment count for {}", botName, e);
         }
     }
 }

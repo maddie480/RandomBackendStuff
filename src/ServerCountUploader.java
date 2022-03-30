@@ -5,7 +5,6 @@ import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
 import com.google.cloud.logging.Payload;
 import com.google.common.collect.ImmutableMap;
-import org.discordbots.api.client.DiscordBotListAPI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -26,11 +25,6 @@ import java.util.regex.Pattern;
 public class ServerCountUploader {
     private static final Logger logger = LoggerFactory.getLogger(ServerCountUploader.class);
     private static final Logging logging = LoggingOptions.getDefaultInstance().toBuilder().setProjectId("max480-random-stuff").build().getService();
-
-    private static final DiscordBotListAPI botListAPI = new DiscordBotListAPI.Builder()
-            .botId(SecretConstants.GAMES_BOT_ID.toString())
-            .token(SecretConstants.GAMES_BOT_TOP_GG_TOKEN)
-            .build();
 
     private static final Pattern guildIdGrabber = Pattern.compile(".*\"guild_id\": \"([0-9]+)\".*", Pattern.DOTALL);
 
@@ -72,6 +66,6 @@ public class ServerCountUploader {
         logger.info("Stats saved on Cloud Storage: {}", yamlData);
 
         // upload the Games Bot server count to top.gg while we're at it!
-        botListAPI.setStats(guilds.size()).thenRun(() -> logger.debug("Updated guild count for Games Bot on top.gg with {}.", guilds.size()));
+        TopGGCommunicator.updateBotGuildCount(SecretConstants.GAMES_BOT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, "Games Bot", guilds.size());
     }
 }
