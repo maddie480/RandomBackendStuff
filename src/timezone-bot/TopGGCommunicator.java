@@ -115,7 +115,7 @@ public class TopGGCommunicator {
             int newRatingCount = ratings.getInt("ratingCount");
             double score = ratings.getDouble("ratingValue");
 
-            logger.debug("Got the top.gg rating count: {}", newRatingCount);
+            logger.debug("Got the top.gg rating count for {}: {}", botName, newRatingCount);
             if (oldCount.get() != -1 && newRatingCount != oldCount.get()) {
                 logger.info("Rating count for {} changed! {} => {}", botName, oldCount.get(), newRatingCount);
                 jda.getGuildById(SecretConstants.REPORT_SERVER_ID)
