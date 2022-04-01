@@ -21,14 +21,10 @@ public class SecretConstants {
     public static Long REPORT_SERVER_CHANNEL = 0L;
 
     // Timezone Bot credentials
-    public static Long TIMEZONE_BOT_ID = 0L;
     public static String TIMEZONE_BOT_TOKEN = "";
-    public static String TIMEZONE_BOT_TOP_GG_TOKEN = "";
 
     // Games Bot credentials
-    public static Long GAMES_BOT_ID = 0L;
     public static String GAMES_BOT_TOKEN = "";
-    public static String GAMES_BOT_TOP_GG_TOKEN = "";
 
     // Mod Structure Verifier credentials
     public static String MOD_STRUCTURE_VERIFIER_TOKEN = "";
@@ -95,13 +91,9 @@ public class SecretConstants {
             REPORT_SERVER_ID = secrets.getLong("REPORT_SERVER_ID");
             REPORT_SERVER_CHANNEL = secrets.getLong("REPORT_SERVER_CHANNEL");
 
-            TIMEZONE_BOT_ID = secrets.getLong("TIMEZONE_BOT_ID");
             TIMEZONE_BOT_TOKEN = secrets.getString("TIMEZONE_BOT_TOKEN");
-            TIMEZONE_BOT_TOP_GG_TOKEN = secrets.getString("TIMEZONE_BOT_TOP_GG_TOKEN");
 
-            GAMES_BOT_ID = secrets.getLong("GAMES_BOT_ID");
             GAMES_BOT_TOKEN = secrets.getString("GAMES_BOT_TOKEN");
-            GAMES_BOT_TOP_GG_TOKEN = secrets.getString("GAMES_BOT_TOP_GG_TOKEN");
 
             MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
             STRAWBERRY_JAM_LOCATION = secrets.getString("STRAWBERRY_JAM_LOCATION");
