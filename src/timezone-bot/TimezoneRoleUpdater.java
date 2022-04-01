@@ -68,8 +68,6 @@ public class TimezoneRoleUpdater implements Runnable {
                         TimezoneBot.jda.getGuilds().stream().mapToInt(g -> TimezoneBot.getTimezoneOffsetRolesForGuild(g).size()).sum() + " roles | " +
                         TimezoneBot.userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " +
                         TimezoneBot.jda.getGuilds().size() + " servers"));
-
-                TopGGCommunicator.refresh(TimezoneBot.jda);
             } catch (Exception e) {
                 logger.error("Refresh roles failed", e);
 

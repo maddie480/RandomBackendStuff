@@ -64,8 +64,5 @@ public class ServerCountUploader {
         CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml");
 
         logger.info("Stats saved on Cloud Storage: {}", yamlData);
-
-        // upload the Games Bot server count to top.gg while we're at it!
-        TopGGCommunicator.updateBotGuildCount(SecretConstants.GAMES_BOT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, "Games Bot", guilds.size());
     }
 }
