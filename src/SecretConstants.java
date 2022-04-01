@@ -81,6 +81,8 @@ public class SecretConstants {
     public static String QUEST_COMMUNITY_BOT_TOKEN = "";
     public static String GOOGLE_CUSTOM_SEARCH_API_KEY = "";
     public static String YOUTUBE_API_KEY = "";
+    public static String EXPLOIT_PLANNING_URL = "";
+    public static List<String> SECRET_WEBHOOKS = Collections.emptyList();
 
     static {
         try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
@@ -134,6 +136,8 @@ public class SecretConstants {
             QUEST_COMMUNITY_BOT_TOKEN = secrets.getString("QUEST_COMMUNITY_BOT_TOKEN");
             GOOGLE_CUSTOM_SEARCH_API_KEY = secrets.getString("GOOGLE_CUSTOM_SEARCH_API_KEY");
             YOUTUBE_API_KEY = secrets.getString("YOUTUBE_API_KEY");
+            EXPLOIT_PLANNING_URL = secrets.getString("EXPLOIT_PLANNING_URL");
+            SECRET_WEBHOOKS = getListOfStrings(secrets.getJSONArray("SECRET_WEBHOOKS"));
         } catch (IOException e) {
             logger.severe("Could not load application secrets! " + e.toString());
         }
