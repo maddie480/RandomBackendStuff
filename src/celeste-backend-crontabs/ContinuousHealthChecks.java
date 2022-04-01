@@ -37,49 +37,52 @@ public class ContinuousHealthChecks {
     }
 
     public static void startChecking() {
-        new Thread(() -> {
-            while (true) {
-                try {
-                    // 0x0a.de health checks
-                    checkURL("https://celestemodupdater.0x0a.de/banana-mirror", "484937.zip",
-                            "Banana Mirror", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
-                    checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
-                            "CelesteNet", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
+        new Thread("Continuous Health Checks") {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        // 0x0a.de health checks
+                        checkURL("https://celestemodupdater.0x0a.de/banana-mirror", "484937.zip",
+                                "Banana Mirror", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
+                                "CelesteNet", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                    // Update Checker health check
-                    checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
-                            "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        // Update Checker health check
+                        checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
+                                "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                    // max480-random-stuff health check
-                    checkURL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml", "SpringCollab2020:",
-                            "max480's Random Stuff Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        // max480-random-stuff health check
+                        checkURL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml", "SpringCollab2020:",
+                                "max480's Random Stuff Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                    // GameBanana health checks
-                    checkURL("https://gamebanana.com/games/6460", "Celeste",
-                            "GameBanana Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
-                    checkURL("https://files.gamebanana.com/bitpit/check.txt", "The check passed!",
-                            "GameBanana File Server", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
-                    checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
-                            "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        // GameBanana health checks
+                        checkURL("https://gamebanana.com/games/6460", "Celeste",
+                                "GameBanana Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        checkURL("https://files.gamebanana.com/bitpit/check.txt", "The check passed!",
+                                "GameBanana File Server", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
+                                "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                    // backend check: this one posts to a private hook, since 99% of the time no-one cares or notices when it goes down. :p
-                    checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L /* 15m */ : 120_000L /* 2m */),
-                            "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
-                } catch (Exception e) {
-                    // this shouldn't happen, unless we cannot communicate with Discord.
-                    logger.error("Uncaught exception happened during health check!", e);
-                }
+                        // backend check: this one posts to a private hook, since 99% of the time no-one cares or notices when it goes down. :p
+                        checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L /* 15m */ : 120_000L /* 2m */),
+                                "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
+                    } catch (Exception e) {
+                        // this shouldn't happen, unless we cannot communicate with Discord.
+                        logger.error("Uncaught exception happened during health check!", e);
+                    }
 
-                try {
-                    // wait until the start of the next minute.
-                    Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000L
-                            + ZonedDateTime.now().getNano() / 1_000_000) + 50);
-                } catch (InterruptedException e) {
-                    // this shouldn't happen AT ALL.
-                    logger.error("Sleep interrupted!", e);
+                    try {
+                        // wait until the start of the next minute.
+                        Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000L
+                                + ZonedDateTime.now().getNano() / 1_000_000) + 50);
+                    } catch (InterruptedException e) {
+                        // this shouldn't happen AT ALL.
+                        logger.error("Sleep interrupted!", e);
+                    }
                 }
             }
-        }).start();
+        }.start();
     }
 
     private static boolean isExtendedBotDelay() {

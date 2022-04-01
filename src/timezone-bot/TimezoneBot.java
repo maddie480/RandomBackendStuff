@@ -202,7 +202,9 @@ public class TimezoneBot {
         updateToggleTimesPermsForGuilds(jda.getGuilds());
 
         // start the background process to update users' roles.
-        new Thread(new TimezoneRoleUpdater()).start();
+        Thread updater = new Thread(new TimezoneRoleUpdater());
+        updater.setName("Timezone Role Updater");
+        updater.start();
     }
 
     public static int getServerCount() {
