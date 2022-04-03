@@ -10,9 +10,7 @@ import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +42,11 @@ public class TimezoneRoleUpdater implements Runnable {
     public void run() {
         while (true) {
             try {
+                if (TimezoneBot.memberCache.isEmpty()) {
+                    // if there is no cache, updating timezone roles is going to take a while... so, tell users about it.
+                    TimezoneBot.jda.getPresence().setActivity(Activity.playing("Updating timezone roles..."));
+                }
+
                 boolean usersDeleted = false;
 
                 for (Guild server : TimezoneBot.jda.getGuilds()) {
@@ -272,19 +275,10 @@ public class TimezoneRoleUpdater implements Runnable {
             TimezoneBot.saveUsersTimezonesToFile(null, null);
         }
 
-        // write the member cache to disk
-        try (ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(TimezoneBot.MEMBER_CACHE_NAME))) {
-            output.writeObject(TimezoneBot.memberCache);
-        }
-
         if (ZonedDateTime.now().getHour() == 0 && ZonedDateTime.now().getMinute() == 0) {
-            // midnight housekeeping: remove a chunk of users from the cache, in order to check they're still alive.
-            logger.debug("Housekeeping is kicking off!");
-            for (int i = 0; i < 1000; i++) {
-                if (!TimezoneBot.memberCache.isEmpty()) {
-                    TimezoneBot.memberCache.remove(0);
-                }
-            }
+            // midnight housekeeping: clear the cache, to make sure all users still exist.
+            logger.debug("Clearing member cache!");
+            TimezoneBot.memberCache.clear();
         }
     }
 

@@ -69,6 +69,10 @@ public class BotEventListener extends ListenerAdapter {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
                 .sendMessage("I was just kicked from a server. I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
 
+        // if it was a server with time, running the cleanup process will make us delete its ID.
+        logger.info("Cleaning servers with time list after leaving guild {}", event.getGuild());
+        TimezoneBot.removeNonExistingServersFromServersWithTime();
+
         // refreshing roles allows us to clean up any user info we had on that server.
         logger.info("Force-refreshing roles after leaving guild {}", event.getGuild());
         TimezoneRoleUpdater.forceUpdate();

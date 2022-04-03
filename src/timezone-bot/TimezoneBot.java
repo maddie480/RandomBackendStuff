@@ -105,7 +105,6 @@ public class TimezoneBot {
 
     // names of files on disk
     static final String SERVERS_WITH_TIME_FILE_NAME = "servers_with_time.txt";
-    static final String MEMBER_CACHE_NAME = "timezone_bot_member_cache.ser";
     private static final String SAVE_FILE_NAME = "user_timezones.csv";
 
     public static void main(String[] args) throws Exception {
@@ -171,31 +170,16 @@ public class TimezoneBot {
                 lines.forEach(line -> serversWithTime.add(Long.parseLong(line)));
             }
         }
-        if (new File(MEMBER_CACHE_NAME).exists()) {
-            try (ObjectInputStream input = new ObjectInputStream(new FileInputStream(MEMBER_CACHE_NAME))) {
-                memberCache = (ArrayList<CachedMember>) input.readObject();
-            }
-        }
 
         // start up the bot.
         jda = JDABuilder.createLight(SecretConstants.TIMEZONE_BOT_TOKEN, Collections.emptyList())
                 .addEventListeners(new BotEventListener(timezoneMap, timezoneConflicts))
                 .build().awaitReady();
 
-        // cleanup non-existing servers from servers with time, and save.
-        for (Long serverId : new HashSet<>(serversWithTime)) {
-            if (jda.getGuildById(serverId) == null) {
-                logger.warn("Removing non-existing server {} from servers with time list", serverId);
-                serversWithTime.remove(serverId);
-            }
-        }
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(SERVERS_WITH_TIME_FILE_NAME))) {
-            for (Long server : serversWithTime) {
-                writer.write(server + "\n");
-            }
-        }
+        // do some cleanup, in case we were kicked from a server while offline.
+        removeNonExistingServersFromServersWithTime();
 
-        logger.debug("Users by timezone = {}, servers with time = {}, member cache = {}", userTimezones.size(), serversWithTime.size(), memberCache.size());
+        logger.debug("Users by timezone = {}, servers with time = {}", userTimezones.size(), serversWithTime.size());
 
         // also ensure the /toggle-times permissions are appropriate (in case we missed an event while being down).
         logger.info("Updating /toggle-times permissions on all known guilds...");
@@ -205,6 +189,33 @@ public class TimezoneBot {
         Thread updater = new Thread(new TimezoneRoleUpdater());
         updater.setName("Timezone Role Updater");
         updater.start();
+    }
+
+    /**
+     * Removes any non-existing servers from the list of those which have /toggle-times enabled,
+     * then saves the list to disk if any change was made.
+     * This happens on startup, and each time the bot is kicked from a server.
+     */
+    static void removeNonExistingServersFromServersWithTime() {
+        boolean serverWasRemoved = false;
+
+        for (Long serverId : new HashSet<>(serversWithTime)) {
+            if (jda.getGuildById(serverId) == null) {
+                logger.warn("Removing non-existing server {} from servers with time list", serverId);
+                serversWithTime.remove(serverId);
+                serverWasRemoved = true;
+            }
+        }
+
+        if (serverWasRemoved) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(SERVERS_WITH_TIME_FILE_NAME))) {
+                for (Long server : serversWithTime) {
+                    writer.write(server + "\n");
+                }
+            } catch (IOException e) {
+                logger.error("Could not save the servers with time list to disk!", e);
+            }
+        }
     }
 
     public static int getServerCount() {
