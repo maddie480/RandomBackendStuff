@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -84,6 +85,8 @@ public class UpdateCheckerTracker implements TailerListener {
     private static Pattern gamebananaLinkRegex = Pattern.compile(".*https://gamebanana.com/mmdl/([0-9]+).*");
     private static List<String> queuedGameBananaModMessages = new ArrayList<>();
 
+    private static ConcurrentLinkedQueue<String> logLines = new ConcurrentLinkedQueue<>();
+
     /**
      * Method to call to start the watcher thread.
      */
@@ -114,6 +117,19 @@ public class UpdateCheckerTracker implements TailerListener {
     @Override
     public void handle(String line) {
         log.debug("New line in /tmp/update_checker.log: {}", line);
+        lastLogLineDate = ZonedDateTime.now();
+        logLines.add(line);
+    }
+
+    // called from a global "run loop" every minute
+    public static void update() {
+        while (!logLines.isEmpty()) {
+            updateLine(logLines.poll());
+        }
+    }
+
+    private static void updateLine(String line) {
+        log.debug("Handling line from /tmp/update_checker.log: {}", line);
         lastLogLineDate = ZonedDateTime.now();
 
         if (line != null &&
@@ -316,7 +332,7 @@ public class UpdateCheckerTracker implements TailerListener {
      * @param url     The URL of the webhook
      * @param message The message to send
      */
-    private void executeWebhook(String url, String message) {
+    private static void executeWebhook(String url, String message) {
         executeWebhook(url,
                 message,
                 "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
@@ -331,7 +347,7 @@ public class UpdateCheckerTracker implements TailerListener {
      * @param avatar   The URL to the avatar to use for the message
      * @param nickname The nickname that will be used for the message
      */
-    private void executeWebhook(String url, String message, String avatar, String nickname) {
+    private static void executeWebhook(String url, String message, String avatar, String nickname) {
         try {
             WebhookExecutor.executeWebhook(url, avatar, nickname, message, ImmutableMap.of("X-Everest-Log", "true"));
         } catch (IOException e) {
@@ -348,7 +364,7 @@ public class UpdateCheckerTracker implements TailerListener {
     /**
      * Gives the most appropriate emoji for an update checker log line.
      */
-    private String findEmoji(String line) {
+    private static String findEmoji(String line) {
         if (line.contains("Saved new information to database:")) {
             return ":white_check_mark:";
         } else if (line.contains("was deleted from the database")) {
@@ -455,7 +471,7 @@ public class UpdateCheckerTracker implements TailerListener {
     /**
      * Converts mod_dependency_graph.yaml to an everest.yaml-like format (see {@link #keyValueToEverestYamlFormat(Map)}).
      */
-    private String convertModDependencyGraphToEverestYamlFormat() throws IOException {
+    private static String convertModDependencyGraphToEverestYamlFormat() throws IOException {
         // read
         Map<String, Map<String, Object>> dependencyGraph;
         try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
@@ -479,7 +495,7 @@ public class UpdateCheckerTracker implements TailerListener {
      * - Name: DependencyName
      *   Version: DependencyVersion
      */
-    private List<Map<String, Object>> keyValueToEverestYamlFormat(Map<String, Object> keyValue) {
+    private static List<Map<String, Object>> keyValueToEverestYamlFormat(Map<String, Object> keyValue) {
         return keyValue.entrySet().stream()
                 .map(entry -> ImmutableMap.of(
                         "Name", entry.getKey(),
