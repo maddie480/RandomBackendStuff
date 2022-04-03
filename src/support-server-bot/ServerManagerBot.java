@@ -3,7 +3,6 @@ package com.max480.discord.randombots;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.interaction.ButtonClickEvent;
@@ -29,38 +28,29 @@ public class ServerManagerBot extends ListenerAdapter {
         jda = JDABuilder.create(SecretConstants.SERVER_MANAGER_TOKEN, GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new ServerManagerBot())
                 .build().awaitReady();
+    }
 
-        new Thread(() -> {
-            while (true) {
-                for (TextChannel channel : jda.getGuildById(SecretConstants.SUPPORT_SERVER_ID)
-                        .getCategoryById(SecretConstants.SUPPORT_SERVER_PRIVATE_CATEGORY_ID)
-                        .getTextChannels()) {
+    // called every hour from a "master loop" across multiple bots
+    public static void hourlyCleanup() {
+        for (TextChannel channel : jda.getGuildById(SecretConstants.SUPPORT_SERVER_ID)
+                .getCategoryById(SecretConstants.SUPPORT_SERVER_PRIVATE_CATEGORY_ID)
+                .getTextChannels()) {
 
-                    if (channel.getTimeCreated().isBefore(OffsetDateTime.now().minusDays(7))) {
-                        // channel is more than 7 days old
-                        channel.getIterableHistory()
-                                .takeAsync(1)
-                                .thenAccept(message -> {
-                                    if (message.isEmpty() || message.get(0).getTimeCreated().isBefore(OffsetDateTime.now().minusDays(7))) {
-                                        // latest message is more than 7 days old or there is no message => this is inactive, let's delete this
-                                        log.info("Deleting channel {}", channel);
-                                        channel.delete().queue();
-                                    }
-                                });
-                    }
-                }
+            log.debug("Checking if we should delete channel {}...", channel);
 
-                try {
-                    int channelCount = getChannelAssociations().size();
-                    jda.getPresence().setActivity(Activity.watching(channelCount == 1 ? "1 channel" : channelCount + " channels"));
-
-                    log.debug("Waiting 1 hour before next check...");
-                    Thread.sleep(3600000);
-                } catch (InterruptedException e) {
-                    log.error("Sleep interrupted!", e);
-                }
+            if (channel.getTimeCreated().isBefore(OffsetDateTime.now().minusDays(7))) {
+                // channel is more than 7 days old
+                channel.getIterableHistory()
+                        .takeAsync(1)
+                        .thenAccept(message -> {
+                            if (message.isEmpty() || message.get(0).getTimeCreated().isBefore(OffsetDateTime.now().minusDays(7))) {
+                                // latest message is more than 7 days old or there is no message => this is inactive, let's delete this
+                                log.info("Deleting channel {}", channel);
+                                channel.delete().queue();
+                            }
+                        });
             }
-        }).start();
+        }
     }
 
     @Override
