@@ -190,14 +190,16 @@ public class ModStructureVerifier extends ListenerAdapter {
     // let the owner know when the bot joins or leaves servers
     @Override
     public void onGuildJoin(@NotNull GuildJoinEvent event) {
+        logger.info("Just joined server {}", event.getGuild());
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                .sendMessage("I just joined a new server: " + event.getGuild().getName()).queue();
+                .sendMessage("I just joined a new server! I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
     }
 
     @Override
     public void onGuildLeave(@NotNull GuildLeaveEvent event) {
+        logger.info("Just left server {}", event.getGuild());
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                .sendMessage("I just left a server: " + event.getGuild().getName()).queue();
+                .sendMessage("I was just kicked from a server. I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
     }
 
     @Override
