@@ -90,7 +90,10 @@ public class UpdateCheckerTracker implements TailerListener {
     public static void startThread() {
         TailerListener listener = new UpdateCheckerTracker();
         Tailer tailer = new Tailer(new File("/tmp/update_checker.log"), listener, 59950, true);
-        new Thread(tailer).start();
+
+        Thread thread = new Thread(tailer);
+        thread.setName("Update Checker Tracker");
+        thread.start();
     }
 
     @Override
