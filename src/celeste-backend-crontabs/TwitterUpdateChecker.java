@@ -19,6 +19,8 @@ import java.net.URLEncoder;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -32,6 +34,8 @@ public class TwitterUpdateChecker {
     // those will be sent to the Quest server. the list of subscribers is managed externally by a bot.
     private static final List<String> THREADS_TO_QUEST = Collections.singletonList("JeuDeLaupok");
     public static Set<String> patchNoteSubscribers = new HashSet<>();
+
+    private static final Pattern twitterLinkAtEnd = Pattern.compile("^.*(https://t\\.co/[A-Za-z0-9]+)$", Pattern.DOTALL);
 
     private static final Map<String, Set<String>> previousTweets = new HashMap<>();
 
@@ -400,26 +404,28 @@ public class TwitterUpdateChecker {
         // Since we are communicating with JSON APIs only we need to get rid of those HTML entities :a:
         String textContent = StringEscapeUtils.unescapeHtml4(tweet.getString("full_text"));
 
-        // If the tweet object specifies a substring, apply it!
-        if (tweet.has("display_text_range")) {
-            int start = tweet.getJSONArray("display_text_range").getInt(0);
-            int end = tweet.getJSONArray("display_text_range").getInt(1);
+        // and we want to remove the link to the tweet itself at the end of the text if there is any.
+        Matcher linkAtEndMatch = twitterLinkAtEnd.matcher(textContent);
+        if (linkAtEndMatch.matches()) {
+            String link = linkAtEndMatch.group(1);
 
-            // this looks like an over-engineered substring, but that's because ~~it kinda is~~
-            // Java's substring counts some emoji as 2 characters, which makes it inaccurate.
-            // Emoji are 2 characters, but 1 code point, so we should use code points instead.
-            textContent = textContent.codePoints()
-                    .skip(start)
-                    .limit(end - start)
-                    .mapToObj(Character::toChars)
-                    .reduce((a, b) -> {
-                        char[] dst = new char[a.length + b.length];
-                        System.arraycopy(a, 0, dst, 0, a.length);
-                        System.arraycopy(b, 0, dst, a.length, b.length);
-                        return dst;
-                    })
-                    .map(String::new)
-                    .orElse("");
+            try {
+                HttpURLConnection connection = (HttpURLConnection) new URL(link).openConnection();
+                connection.setConnectTimeout(10000);
+                connection.setReadTimeout(30000);
+                connection.setInstanceFollowRedirects(false);
+
+                String tweetLink = "https://twitter.com/" + tweet.getJSONObject("user").getString("screen_name") + "/status/" + tweet.getString("id_str");
+
+                if (connection.getResponseCode() == 301
+                        && connection.getHeaderField("Location") != null
+                        && connection.getHeaderField("Location").startsWith(tweetLink)) {
+
+                    textContent = textContent.substring(0, textContent.length() - link.length()).trim();
+                }
+            } catch (IOException e) {
+                log.warn("Could not determine where {} leads to", link, e);
+            }
         }
 
         embed.put("description", textContent);
