@@ -139,7 +139,7 @@ public class UpdateCheckerTracker implements TailerListener {
 
             if (line.contains("I/O exception while doing networking operation (try ")) {
                 lastLineIsNetworkError = true;
-            } else if (!lastLineIsNetworkError || line.contains(" [Thread-1] ")) {
+            } else if (!lastLineIsNetworkError || line.contains(" [Everest Update Checker] ")) {
                 // this isn't a muted line! truncate it if it is too long for Discord
                 if (line.length() > 1998) {
                     line = line.substring(0, 1998);
