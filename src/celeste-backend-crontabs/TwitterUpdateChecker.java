@@ -402,10 +402,24 @@ public class TwitterUpdateChecker {
 
         // If the tweet object specifies a substring, apply it!
         if (tweet.has("display_text_range")) {
-            textContent = textContent.substring(
-                    tweet.getJSONArray("display_text_range").getInt(0),
-                    tweet.getJSONArray("display_text_range").getInt(1)
-            );
+            int start = tweet.getJSONArray("display_text_range").getInt(0);
+            int end = tweet.getJSONArray("display_text_range").getInt(1);
+
+            // this looks like an over-engineered substring, but that's because ~~it kinda is~~
+            // Java's substring counts some emoji as 2 characters, which makes it inaccurate.
+            // Emoji are 2 characters, but 1 code point, so we should use code points instead.
+            textContent = textContent.codePoints()
+                    .skip(start)
+                    .limit(end - start)
+                    .mapToObj(Character::toChars)
+                    .reduce((a, b) -> {
+                        char[] dst = new char[a.length + b.length];
+                        System.arraycopy(a, 0, dst, 0, a.length);
+                        System.arraycopy(b, 0, dst, a.length, b.length);
+                        return dst;
+                    })
+                    .map(String::new)
+                    .orElse("");
         }
 
         embed.put("description", textContent);
