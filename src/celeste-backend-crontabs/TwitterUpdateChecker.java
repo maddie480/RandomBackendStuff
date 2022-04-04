@@ -398,7 +398,17 @@ public class TwitterUpdateChecker {
         // Tweet contents are encoded with HTML entities (&amp; &lt; and &gt; in particular it seems),
         // apparently to protect people that stick tweet contents on their website without escaping HTML against XSS attacks.
         // Since we are communicating with JSON APIs only we need to get rid of those HTML entities :a:
-        embed.put("description", StringEscapeUtils.unescapeHtml4(tweet.getString("full_text")));
+        String textContent = StringEscapeUtils.unescapeHtml4(tweet.getString("full_text"));
+
+        // If the tweet object specifies a substring, apply it!
+        if (tweet.has("display_text_range")) {
+            textContent = textContent.substring(
+                    tweet.getJSONArray("display_text_range").getInt(0),
+                    tweet.getJSONArray("display_text_range").getInt(1)
+            );
+        }
+
+        embed.put("description", textContent);
 
         embed.put("color", 1940464);
 
