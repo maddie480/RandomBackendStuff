@@ -1,5 +1,10 @@
 package com.max480.discord.randombots;
 
+import com.google.api.gax.paging.Page;
+import com.google.cloud.logging.LogEntry;
+import com.google.cloud.logging.Logging;
+import com.google.cloud.logging.LoggingOptions;
+import com.google.cloud.logging.Payload;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -16,6 +21,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.FSDirectory;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +34,10 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
@@ -69,6 +78,31 @@ public class UpdateCheckerTracker implements TailerListener {
         }
     }
 
+    private static class LatestUpdatesEntry {
+        public boolean isAddition;
+        public String name;
+        public String version;
+        public String date;
+        public long timestamp;
+
+        public LatestUpdatesEntry(boolean isAddition, String name, String version, String date, long timestamp) {
+            this.isAddition = isAddition;
+            this.name = name;
+            this.version = version;
+            this.date = date;
+            this.timestamp = timestamp;
+        }
+
+        public Map<String, Object> toMap() {
+            return ImmutableMap.of(
+                    "isAddition", isAddition,
+                    "name", name,
+                    "version", version,
+                    "date", date,
+                    "timestamp", timestamp);
+        }
+    }
+
     private static final Logger log = LoggerFactory.getLogger(UpdateCheckerTracker.class);
 
     private static boolean lastLineIsNetworkError = false;
@@ -86,6 +120,9 @@ public class UpdateCheckerTracker implements TailerListener {
     private static List<String> queuedGameBananaModMessages = new ArrayList<>();
 
     private static ConcurrentLinkedQueue<String> logLines = new ConcurrentLinkedQueue<>();
+
+    private static final Logging logging = LoggingOptions.getDefaultInstance().toBuilder().setProjectId("max480-random-stuff").build().getService();
+    private static final Pattern INFORMATION_EXTRACTOR = Pattern.compile(".* Mod\\{name='(.+)', version='([0-9.]+)',.*");
 
     /**
      * Method to call to start the watcher thread.
@@ -317,6 +354,8 @@ public class UpdateCheckerTracker implements TailerListener {
                 }
 
                 queuedGameBananaModMessages.clear();
+
+                updateUpdateCheckerStatusInformation();
 
                 lastEndOfCheckForUpdates = ZonedDateTime.now();
             } catch (IOException | StorageException e) {
@@ -601,5 +640,74 @@ public class UpdateCheckerTracker implements TailerListener {
         }
 
         return elementMap;
+    }
+
+    private static void updateUpdateCheckerStatusInformation() throws IOException {
+        Pair<Long, Integer> latestUpdatedAt = getLatestUpdatedAt();
+        List<LatestUpdatesEntry> latestUpdatedMods = getLatestUpdatedMods();
+
+        JSONObject result = new JSONObject();
+        result.put("lastCheckTimestamp", latestUpdatedAt.getLeft());
+        result.put("lastCheckDuration", latestUpdatedAt.getRight());
+        result.put("latestUpdatesEntries", latestUpdatedMods.stream().map(LatestUpdatesEntry::toMap).collect(Collectors.toList()));
+
+        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+            Map<Object, Object> mods = new Yaml().load(is);
+            result.put("modCount", mods.size());
+        }
+
+        log.info("Uploading new Update Checker status: {}", result);
+        CloudStorageUtils.sendStringToCloudStorage(result.toString(), "update_checker_status.json", "application/json");
+    }
+
+    private static List<LatestUpdatesEntry> getLatestUpdatedMods() {
+        final Page<LogEntry> logEntries = logging.listLogEntries(
+                Logging.EntryListOption.sortOrder(Logging.SortingField.TIMESTAMP, Logging.SortingOrder.DESCENDING),
+                Logging.EntryListOption.filter("(" +
+                        "jsonPayload.message =~ \"^=> Saved new information to database:\" " +
+                        "OR jsonPayload.message =~ \"^Mod .* was deleted from the database$\")" +
+                        " AND timestamp >= \"" + ZonedDateTime.now().minusDays(7).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) + "\""),
+                Logging.EntryListOption.pageSize(5)
+        );
+
+        List<LatestUpdatesEntry> latestUpdatesEntries = new ArrayList<>();
+        for (LogEntry logEntry : logEntries.getValues()) {
+            String message = (String) logEntry.<Payload.JsonPayload>getPayload().getDataAsMap().get("message");
+
+            final Matcher matcher = INFORMATION_EXTRACTOR.matcher(message);
+            if (matcher.matches()) {
+                latestUpdatesEntries.add(new LatestUpdatesEntry(
+                        message.startsWith("=> Saved new information to database:"),
+                        matcher.group(1),
+                        matcher.group(2),
+                        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(logEntry.getInstantTimestamp().atZone(ZoneId.of("UTC"))),
+                        logEntry.getInstantTimestamp().toEpochMilli() / 1000L
+                ));
+            }
+        }
+
+        return latestUpdatesEntries;
+    }
+
+    private static Pair<Long, Integer> getLatestUpdatedAt() {
+        final Page<LogEntry> lastCheck = logging.listLogEntries(
+                Logging.EntryListOption.sortOrder(Logging.SortingField.TIMESTAMP, Logging.SortingOrder.DESCENDING),
+                Logging.EntryListOption.filter("jsonPayload.message =~ \"^=== Ended searching for updates.\""),
+                Logging.EntryListOption.pageSize(1)
+        );
+
+        for (LogEntry entry : lastCheck.getValues()) {
+            // extract the duration
+            String logContent = entry.<Payload.JsonPayload>getPayload().getDataAsMap().get("message").toString();
+            if (logContent.endsWith(" ms.")) {
+                logContent = logContent.substring(0, logContent.length() - 4);
+                logContent = logContent.substring(logContent.lastIndexOf(" ") + 1);
+                int timeMs = Integer.parseInt(logContent);
+
+                return Pair.of(entry.getInstantTimestamp().toEpochMilli(), timeMs);
+            }
+        }
+
+        return Pair.of(0L, 0);
     }
 }
