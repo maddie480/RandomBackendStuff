@@ -82,13 +82,15 @@ public class UpdateCheckerTracker implements TailerListener {
         public boolean isAddition;
         public String name;
         public String version;
+        public String url;
         public String date;
         public long timestamp;
 
-        public LatestUpdatesEntry(boolean isAddition, String name, String version, String date, long timestamp) {
+        public LatestUpdatesEntry(boolean isAddition, String name, String version, String url, String date, long timestamp) {
             this.isAddition = isAddition;
             this.name = name;
             this.version = version;
+            this.url = url;
             this.date = date;
             this.timestamp = timestamp;
         }
@@ -98,6 +100,7 @@ public class UpdateCheckerTracker implements TailerListener {
                     "isAddition", isAddition,
                     "name", name,
                     "version", version,
+                    "url", url,
                     "date", date,
                     "timestamp", timestamp);
         }
@@ -114,7 +117,9 @@ public class UpdateCheckerTracker implements TailerListener {
     private static String everestUpdateSha256 = "[first check]";
     private static String fileIdsSha256 = "[first check]";
 
-    private static final Pattern SAVED_MOD_PATTERN = Pattern.compile(".*=> Saved new information to database: Mod\\{name='(.+)', version='([0-9.]+)', url='.+', lastUpdate=([0-9]+),.*");
+    private static final String MOD_INFO_REGEX = "Mod\\{name='(.+)', version='(.+)', url='(.+)', lastUpdate=([0-9]+), xxHash=\\[(.+)], gameBananaType='(.+)', gameBananaId=([0-9]+), size=([0-9]+)}";
+    private static final Pattern MOD_INFO_EXTRACTOR = Pattern.compile(".*" + MOD_INFO_REGEX + ".*");
+    private static final Pattern SAVED_NEW_MOD_EXTRACTOR = Pattern.compile(".*=> Saved new information to database: " + MOD_INFO_REGEX + ".*");
 
     private static Pattern gamebananaLinkRegex = Pattern.compile(".*https://gamebanana.com/mmdl/([0-9]+).*");
     private static List<String> queuedGameBananaModMessages = new ArrayList<>();
@@ -122,7 +127,6 @@ public class UpdateCheckerTracker implements TailerListener {
     private static ConcurrentLinkedQueue<String> logLines = new ConcurrentLinkedQueue<>();
 
     private static final Logging logging = LoggingOptions.getDefaultInstance().toBuilder().setProjectId("max480-random-stuff").build().getService();
-    private static final Pattern INFORMATION_EXTRACTOR = Pattern.compile(".* Mod\\{name='(.+)', version='([0-9.]+)',.*");
 
     /**
      * Method to call to start the watcher thread.
@@ -204,7 +208,21 @@ public class UpdateCheckerTracker implements TailerListener {
                     if (truncatedLine.startsWith("=> ")) {
                         truncatedLine = truncatedLine.substring(3);
                     }
-                    truncatedLine = findEmoji(truncatedLine) + " " + truncatedLine;
+                    String emoji = findEmoji(truncatedLine);
+
+                    // if we manage to match all info, format the message differently!
+                    Matcher modInfo = MOD_INFO_EXTRACTOR.matcher(line);
+                    if (modInfo.matches()) {
+                        if (line.contains("Saved new information to database:")) {
+                            truncatedLine = "**" + modInfo.group(1) + "** was updated to version **" + modInfo.group(2) + "** on <t:" + modInfo.group(4) + ">.\n" +
+                                    ":arrow_right: <https://gamebanana.com/" + modInfo.group(6).toLowerCase(Locale.ROOT) + "s/" + modInfo.group(7) + ">\n" +
+                                    ":inbox_tray: <" + modInfo.group(3) + ">";
+                        } else if (line.contains("was deleted from the database")) {
+                            truncatedLine = "**" + modInfo.group(1) + "** was deleted from the database.";
+                        }
+                    }
+
+                    truncatedLine = emoji + " " + truncatedLine;
 
                     for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
                         executeWebhook(webhook, truncatedLine);
@@ -225,11 +243,13 @@ public class UpdateCheckerTracker implements TailerListener {
                 }
 
                 // check whether we should send it to the speedrun.com webhook as well.
-                Matcher savedNewModMatch = SAVED_MOD_PATTERN.matcher(line);
+                Matcher savedNewModMatch = SAVED_NEW_MOD_EXTRACTOR.matcher(line);
                 if (savedNewModMatch.matches()) {
                     String modName = savedNewModMatch.group(1);
                     String modVersion = savedNewModMatch.group(2);
-                    String modUpdatedTime = savedNewModMatch.group(3);
+                    String modUpdatedTime = savedNewModMatch.group(4);
+
+                    log.debug("{} was updated to version {} on {}", modName, modVersion, modUpdatedTime);
 
                     try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("src_mod_update_notification_ids.json")) {
                         List<String> srcModIds = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
@@ -674,12 +694,13 @@ public class UpdateCheckerTracker implements TailerListener {
         for (LogEntry logEntry : logEntries.getValues()) {
             String message = (String) logEntry.<Payload.JsonPayload>getPayload().getDataAsMap().get("message");
 
-            final Matcher matcher = INFORMATION_EXTRACTOR.matcher(message);
+            final Matcher matcher = MOD_INFO_EXTRACTOR.matcher(message);
             if (matcher.matches()) {
                 latestUpdatesEntries.add(new LatestUpdatesEntry(
                         message.startsWith("=> Saved new information to database:"),
                         matcher.group(1),
                         matcher.group(2),
+                        "https://gamebanana.com/" + matcher.group(6).toLowerCase(Locale.ROOT) + "s/" + matcher.group(7),
                         DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(logEntry.getInstantTimestamp().atZone(ZoneId.of("UTC"))),
                         logEntry.getInstantTimestamp().toEpochMilli() / 1000L
                 ));
