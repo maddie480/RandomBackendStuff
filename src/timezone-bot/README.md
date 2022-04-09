@@ -2,11 +2,17 @@
 
 This bot allows server members to grab _timezone roles_ on your server, using slash commands. Here is the list of commands:
 
--    `/detect_timezone` - gives a link to [a page](https://max480-random-stuff.appspot.com/detect-timezone.html) to figure out your timezone
+-    `/detect-timezone` - gives a link to [a page](https://max480-random-stuff.appspot.com/detect-timezone.html) to figure out your timezone
 -    `/timezone [tz_name]` (for example `/timezone Europe/London`) - sets your timezone role. This specific format allows to update the role according to daylight saving, but "UTC+1" also works.
--    `/remove_timezone` - removes your timezone role
--    `/discord_timestamp [date_time]` - gives a [Discord timestamp](https://discord.com/developers/docs/reference#message-formatting-timestamp-styles), to tell a date/time to other people regardless of their timezone
--    `/toggle_times` - sets whether timezone roles should show the time it is in the timezone (for example `Timezone UTC+01:00 (2pm)`) or not (for example `Timezone UTC+01:00`). Enabling this causes "role update" events to be logged hourly. This is disabled by default, and only members with the Manage Server or Admin permission can enable it.
+-    `/remove-timezone` - removes your timezone role
+-    `/discord-timestamp [date_time]` - gives a [Discord timestamp](https://discord.com/developers/docs/reference#message-formatting-timestamp-styles), to tell a date/time to other people regardless of their timezone
+-    `/time-for [member]` - gives the time it is now for another member of the server, if they have a timezone role
+-    `/list-timezones [visibility] [names]` - lists the timezones of all members in the server that have timezone roles. You can pass `visibility = public` in order to have the bot response be visible to everyone in the channel.
+
+Two more commands allow admins to set the bot up, and are only accessible to members with the "Administrator" or "Manage Server" permission:
+
+-    `/toggle-times` - sets whether timezone roles should show the time it is in the timezone (for example `Timezone UTC+01:00 (2pm)`) or not (for example `Timezone UTC+01:00`). Enabling this causes "role update" events to be logged hourly. This is disabled by default.
+-    `/timezone-dropdown` - creates a dropdown that lets users pick a timezone role. This is useful if most members in your server have the same timezone roles. An admin can set this up in a fixed `#roles` channel, similarly to reaction roles. [Check this page for help with the syntax and examples.](https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html)
 
 These slash commands issue private responses, so they can be used from anywhere without cluttering a channel with commands.
 
