@@ -18,6 +18,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.Button;
 import net.dv8tion.jda.api.interactions.components.ButtonStyle;
+import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
 import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyAction;
 import org.jetbrains.annotations.NotNull;
@@ -87,7 +88,7 @@ public class BotEventListener extends ListenerAdapter {
 
     @Override
     public void onRoleCreate(@NotNull RoleCreateEvent event) {
-        if (event.getRole().hasPermission(Permission.ADMINISTRATOR) || event.getRole().hasPermission(Permission.MANAGE_SERVER)) {
+        if (hasAccessToAdminCommands(event.getRole())) {
             // the new role has permission to call /toggle-times, so we should give it to it.
             logger.info("Updating /toggle-times permissions after new role was created on {} ({} with permissions {})", event.getGuild(),
                     event.getRole(), event.getRole().getPermissions());
@@ -109,7 +110,7 @@ public class BotEventListener extends ListenerAdapter {
 
     @Override
     public void onRoleDelete(@NotNull RoleDeleteEvent event) {
-        if (event.getRole().hasPermission(Permission.ADMINISTRATOR) || event.getRole().hasPermission(Permission.MANAGE_SERVER)) {
+        if (hasAccessToAdminCommands(event.getRole())) {
             // the role had permission to call /toggle-times, so we should refresh.
             // (this is mainly in case this makes the server go below the 10 overrides limit.)
             logger.info("Updating /toggle-times permissions after role was deleted on {} ({} with permissions {})", event.getGuild(),
@@ -134,6 +135,16 @@ public class BotEventListener extends ListenerAdapter {
                     names == null ? "discord_tags" : names.getAsString(),
                     false,
                     visibility != null && "public".equals(visibility.getAsString()));
+        } else if ("timezone-dropdown".equals(event.getName())) {
+            // timezone-dropdown needs the raw event in order to reply with action rows and toggle the ephemeral flag.
+            logger.info("New command: /timezone-dropdown by member {}, params=[{}]", event.getMember(), event.getOption("options"));
+
+            if (hasAccessToAdminCommands(event.getMember())) {
+                generateTimezoneDropdown(event);
+            } else {
+                event.reply("You must have the Administrator or Manage Server permission to use this!")
+                        .setEphemeral(true).queue();
+            }
         } else {
             OptionMapping optionTimezone = event.getOption("tz_name");
             OptionMapping optionDateTime = event.getOption("date_time");
@@ -148,14 +159,14 @@ public class BotEventListener extends ListenerAdapter {
                         } else {
                             event.reply(response.toString()).setEphemeral(true).queue();
                         }
-                    }, true);
+                    });
         }
     }
 
     @Override
     public void onSelectionMenu(@NotNull SelectionMenuEvent event) {
         if ("discord-timestamp".equals(event.getComponent().getId())) {
-            logger.info("New interaction with selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
+            logger.info("New interaction with discord-timestamp selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
 
             // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
             // we also want the menu to stay the same, so that they can switch.
@@ -164,6 +175,17 @@ public class BotEventListener extends ListenerAdapter {
                             .setDefaultValues(event.getValues())
                             .build()))
                     .build()).queue();
+        }
+
+        if ("timezone-dropdown".equals(event.getComponent().getId())) {
+            logger.info("New interaction with timezone-dropdown selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
+
+            // the user picked a timezone in the dropdown! we should act exactly like the /timezone command, actually.
+            processMessage(event.getMember(), "timezone",
+                    event.getValues().get(0),
+                    null,
+                    null,
+                    response -> event.reply(response.toString()).setEphemeral(true).queue());
         }
     }
 
@@ -181,27 +203,17 @@ public class BotEventListener extends ListenerAdapter {
     /**
      * Processes a command, received either by message or by slash command.
      *
-     * @param member         The member that sent the command
-     * @param command        The command that was sent, without the ! or /
-     * @param timezoneParam  The tz_name parameter passed
-     * @param dateTimeParam  The date_time parameter passed
-     * @param memberParam    The member parameter passed
-     * @param respond        The method to call to respond to the message (either posting to the channel, or responding to the slash command)
-     * @param isSlashCommand Indicates if we are using a slash command (so we should always answer)
+     * @param member        The member that sent the command
+     * @param command       The command that was sent, without the ! or /
+     * @param timezoneParam The tz_name parameter passed
+     * @param dateTimeParam The date_time parameter passed
+     * @param memberParam   The member parameter passed
+     * @param respond       The method to call to respond to the message (either posting to the channel, or responding to the slash command)
      */
     private void processMessage(Member member, String command, String timezoneParam, String dateTimeParam, Long memberParam,
-                                Consumer<Object> respond, boolean isSlashCommand) {
+                                Consumer<Object> respond) {
 
         logger.info("New command: /{} by member {}, params=[tz_name='{}', date_time='{}', member='{}']", command, member, timezoneParam, dateTimeParam, memberParam);
-
-        if (command.equals("timezone") && timezoneParam == null) {
-            // print help
-            respond.accept("Usage: `!timezone [tzdata timezone name]` (example: `!timezone Europe/Paris`)\n" +
-                    "To figure out your timezone, visit https://max480-random-stuff.appspot.com/detect-timezone.html\n" +
-                    "If you don't want to share your timezone name, you can use the slash command (it will only be visible by you)" +
-                    " or use an offset like UTC+8 (it won't automatically adjust with daylight saving though).\n\n" +
-                    "If you want to get rid of your timezone role, use `!remove-timezone`.");
-        }
 
         if (command.equals("detect-timezone")) {
             respond.accept("To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.");
@@ -286,9 +298,7 @@ public class BotEventListener extends ListenerAdapter {
             }
         }
 
-        if (command.equals("toggle-times") && (member.hasPermission(Permission.ADMINISTRATOR)
-                || member.hasPermission(Permission.MANAGE_SERVER))) {
-
+        if (command.equals("toggle-times") && hasAccessToAdminCommands(member)) {
             // add or remove the server in the list, depending on the previous status.
             long guildId = member.getGuild().getIdLong();
             boolean newValue = !TimezoneBot.serversWithTime.contains(guildId);
@@ -315,6 +325,10 @@ public class BotEventListener extends ListenerAdapter {
                 logger.error("Error while writing file", e);
                 respond.accept(":x: A technical error occurred.");
             }
+        }
+
+        if (command.equals("toggle-times") && !hasAccessToAdminCommands(member)) {
+            respond.accept("You must have the Administrator or Manage Server permission to use this!");
         }
 
         if (command.equals("discord-timestamp") && dateTimeParam != null) {
@@ -414,13 +428,10 @@ public class BotEventListener extends ListenerAdapter {
                 respond.accept("The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "**.");
             }
         }
+    }
 
-        if (command.equals("toggle-times") && isSlashCommand && !member.hasPermission(Permission.ADMINISTRATOR)
-                && !member.hasPermission(Permission.MANAGE_SERVER)) {
-
-            // we should always respond to slash commands!
-            respond.accept("You must have the Administrator or Manage Server permission to use this!");
-        }
+    private boolean hasAccessToAdminCommands(IPermissionHolder holder) {
+        return holder.hasPermission(Permission.ADMINISTRATOR) || holder.hasPermission(Permission.MANAGE_SERVER);
     }
 
     /**
@@ -593,5 +604,93 @@ public class BotEventListener extends ListenerAdapter {
                 .findFirst()
                 .map(Map.Entry::getValue)
                 .orElse(null);
+    }
+
+    private void generateTimezoneDropdown(SlashCommandEvent slashCommandEvent) {
+        OptionMapping optionsParam = slashCommandEvent.getOption("options");
+        OptionMapping messageParam = slashCommandEvent.getOption("message");
+
+        final String help = "\n\nIf you need help, check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>";
+
+        if (optionsParam != null) {
+            if (optionsParam.getAsString().toLowerCase(Locale.ROOT).equals("help")) {
+                slashCommandEvent.reply("Check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>")
+                        .setEphemeral(true)
+                        .queue();
+                return;
+            }
+
+            List<SelectOption> options = new ArrayList<>();
+            for (String choice : optionsParam.getAsString().split(",")) {
+                String label, timezone;
+
+                String[] split = choice.split("\\|", 2);
+                if (split.length == 2) {
+                    label = split[0];
+                    timezone = split[1];
+                } else {
+                    label = choice;
+                    timezone = choice;
+                }
+
+                if (label.isEmpty() || label.length() > 32) {
+                    logger.warn("Label {} was too long or too short!", label);
+
+                    slashCommandEvent.reply(":x: Labels should have between 1 and 32 characters!" + help)
+                            .setEphemeral(true)
+                            .queue();
+
+                    return;
+                }
+
+                try {
+                    // check for one of the recognized formats like "EST".
+                    String timezoneOffsetFromName = getIgnoreCase(TIMEZONE_MAP, timezone);
+                    if (timezoneOffsetFromName == null) {
+                        // check the timezone can be parsed by Java if this is not one of the known formats.
+                        ZoneId.of(timezone);
+                    }
+
+                    // generate the dropdown option for it.
+                    SelectOption option = SelectOption.of(label, timezone);
+                    if (!label.equals(timezone)) {
+                        option = option.withDescription(timezone);
+                    }
+                    options.add(option);
+
+                } catch (DateTimeException ex) {
+                    logger.warn("Could not parse timezone {}", timezone);
+
+                    List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezone);
+                    if (conflictingTimezones != null) {
+                        slashCommandEvent.reply(":x: The timezone **" + timezone + "** is ambiguous! It could mean one of those: _"
+                                        + String.join("_, _", conflictingTimezones) + "_.\n" +
+                                        "Repeat the command with the timezone full name!" + help)
+                                .setEphemeral(true)
+                                .queue();
+                    } else {
+                        slashCommandEvent.reply(":x: The timezone `" + timezone + "` was not recognized." + help)
+                                .setEphemeral(true)
+                                .queue();
+                    }
+
+                    return;
+                }
+            }
+
+            if (options.size() > 25) {
+                logger.warn("Too many options ({}): {}", options.size(), options);
+                slashCommandEvent.reply(":x: You cannot have more than 25 options! You gave " + options.size() + " of them." + help)
+                        .setEphemeral(true)
+                        .queue();
+            } else {
+                logger.debug("Posting options: {}", options);
+                slashCommandEvent.reply(messageParam != null ? messageParam.getAsString() : "**Pick a timezone role here!**\n" +
+                                "If your timezone does not match any of those, run the `/timezone [tz_name]` command.\n" +
+                                "To remove your timezone role, run the `/remove-timezone` command.")
+                        .addActionRow(SelectionMenu.create("timezone-dropdown").addOptions(options).build())
+                        .queue();
+            }
+        }
     }
 }

@@ -358,6 +358,7 @@ public class TimezoneBot {
             Command timeFor = commands.stream().filter(c -> c.getName().equals("time-for")).findFirst().orElse(null);
             Command listTimezones = commands.stream().filter(c -> c.getName().equals("list-timezones")).findFirst().orElse(null);
             Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle-times")).findFirst().orElse(null);
+            Command timezoneDropdown = commands.stream().filter(c -> c.getName().equals("timezone-dropdown")).findFirst().orElse(null);
 
             for (Guild g : guilds) {
                 // figure out which roles in the guild have Admin or Manage Server.
@@ -392,10 +393,12 @@ public class TimezoneBot {
                     // non-admins will get an error message if they try anyway.
                     logger.info("{} has too many privileges that qualify for /toggle-times ({} > 10 max), allowing everyone!", g, privileges.size());
                     listPrivileges.put(toggleTimes.getId(), allowEveryone);
+                    listPrivileges.put(timezoneDropdown.getId(), allowEveryone);
                     g.updateCommandPrivileges(listPrivileges).queue();
                 } else {
                     logger.info("The following entities have access to /toggle-times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
                     listPrivileges.put(toggleTimes.getId(), privileges);
+                    listPrivileges.put(timezoneDropdown.getId(), privileges);
                     g.updateCommandPrivileges(listPrivileges).queue();
                 }
             }
@@ -435,6 +438,10 @@ public class TimezoneBot {
                                         .addChoice("nicknames", "nicknames")
                                         .addChoice("both", "both")
                         )
+                        .setDefaultEnabled(false))
+                .addCommands(new CommandData("timezone-dropdown", "[Admin] Creates a dropdown that lets users pick a timezone role")
+                        .addOption(OptionType.STRING, "options", "The timezones that can be picked (pass \"help\" for syntax and examples)", true)
+                        .addOption(OptionType.STRING, "message", "The message to display above the dropdown", false)
                         .setDefaultEnabled(false))
                 .complete();
     }
