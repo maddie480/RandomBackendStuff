@@ -86,10 +86,10 @@ public class ContinuousHealthChecks {
     }
 
     private static boolean isExtendedBotDelay() {
-        // The bot stops reporting its status during the midnight checks,
+        // The bot stops reporting its status during the daily processes that run at 6pm every day,
         // and at 8am on Sundays due to a backup scheduled task.
         ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Europe/Paris"));
-        return (now.getHour() == 0 && now.getMinute() < 15)
+        return (now.getHour() == 18 && now.getMinute() < 15)
                 || (now.getDayOfWeek() == DayOfWeek.SUNDAY && now.getHour() == 8 && now.getMinute() < 15);
     }
 

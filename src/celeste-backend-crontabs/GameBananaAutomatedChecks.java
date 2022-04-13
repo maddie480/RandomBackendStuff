@@ -32,7 +32,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * This class is intended to be run periodically to check mods on GameBanana for issues.
- * In max480's bot setup, all public methods are run everyday at midnight French time (10pm or 11pm UTC depending on daylight saving).
+ * In max480's bot setup, all public methods are run every day.
  */
 public class GameBananaAutomatedChecks {
     private static final Logger logger = LoggerFactory.getLogger(GameBananaAutomatedChecks.class);

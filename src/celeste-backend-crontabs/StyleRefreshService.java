@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
- * A (pretty silly) service aiming to change my GB profile background and Ripe supporter highlight on a daily basis (called every day at midnight).
+ * A (pretty silly) service aiming to change my GB profile background and Ripe supporter highlight on a daily basis (called every day).
  * The result is sent to https://storage.googleapis.com/max480-random-stuff.appspot.com/gamebanana-profile-background.css
  */
 public class StyleRefreshService {

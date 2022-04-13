@@ -36,7 +36,7 @@ public class CelesteStuffHealthCheck {
     /**
      * Checks that every Everest branch has a version and that we can download it.
      * Also sends out a notification to SRC staff if a new stable Everest hits.
-     * Ran hourly with daily = false, and daily at midnight with daily = true.
+     * Ran hourly with daily = false, and daily with daily = true.
      */
     public static void checkEverestExists(boolean daily) throws IOException {
         JSONObject object = new JSONObject(IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&api-version=5.0")), UTF_8));
@@ -116,7 +116,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the custom entity catalog was updated just now.
-     * Ran daily at midnight, just after {@link CustomEntityCatalogGenerator}.
+     * Ran daily, just after {@link CustomEntityCatalogGenerator}.
      */
     public static void checkCustomEntityCatalog() throws IOException {
         // the catalog should have just be refreshed, and the date is UTC on the frontend
@@ -144,7 +144,7 @@ public class CelesteStuffHealthCheck {
     /**
      * Checks that the list of files on Banana Mirror is the exact same as the files listed in everest_update.yaml
      * and mod_search_database.yaml (so there is no "desync" between both, and all files referenced actually exist).
-     * Ran daily at midnight.
+     * Ran daily.
      */
     public static void checkBananaMirrorDatabaseMatch() throws IOException {
         log.debug("Checking Banana Mirror contents...");
@@ -198,7 +198,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that max480-random-stuff.herokuapp.com APIs work as expected.
-     * Ran daily at midnight.
+     * Ran daily.
      */
     public static void checkHerokuAppWorks() throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.herokuapp.com/api/mods?q=spring").openConnection();
@@ -225,7 +225,7 @@ public class CelesteStuffHealthCheck {
     /**
      * Checks that GameBanana categories didn't change overnight (because that requires changes in the updater).
      * YES means the category accepts files, NO means it doesn't.
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkGameBananaCategories() throws IOException {
         Process gamebananaChecker = new ProcessBuilder("/bin/bash", "-c", "./check_gb.sh").start();
@@ -558,7 +558,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the wipe converter works by sending it a wipe from the unit test dataset on GitHub (black wipe => 2 triangles).
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkWipeConverter() throws IOException {
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/max4805/RandomStuffWebsiteJS/main/api/tests/assets/testwipe_black.png"));
@@ -584,7 +584,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation, using libgdx.
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkFontGeneratorLibGdx() throws IOException {
         log.debug("Downloading sample dialog file...");
@@ -621,7 +621,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation, using BMFont.
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkFontGeneratorBMFont() throws IOException {
         log.debug("Downloading sample dialog file...");
@@ -683,7 +683,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the mod structure verifier can scan Tornado Valley successfully.
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkModStructureVerifier() throws IOException {
         log.debug("Downloading Tornado Valley...");
@@ -728,7 +728,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the page for speedrun.com update notification setup still displays properly.
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkSrcModUpdateNotificationsPage() throws IOException {
         String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/src-mod-update-notifications?key="
@@ -743,7 +743,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the Discord Bots page shows the Mod Structure Verifier server count.
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkDiscordBotsPage() throws IOException {
         Document soup = Jsoup.connect("https://max480-random-stuff.appspot.com/discord-bots").get();
@@ -761,7 +761,7 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the #celeste_news_network subscription service page shows the webhook / subscriber count.
-     * Run daily at midnight.
+     * Run daily.
      */
     public static void checkCelesteNewsNetworkSubscriptionService() throws IOException {
         String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/news-network-subscription")), UTF_8);

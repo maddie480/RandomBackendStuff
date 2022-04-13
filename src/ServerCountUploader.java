@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
 /**
  * Uploads the server count for Timezone Bot, Mod Structure Verifier and Games Bot
  * to Google Cloud Storage, for display on the website.
- * Run every day at midnight.
+ * Run every day.
  */
 public class ServerCountUploader {
     private static final Logger logger = LoggerFactory.getLogger(ServerCountUploader.class);
