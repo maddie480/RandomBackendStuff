@@ -275,8 +275,8 @@ public class TimezoneRoleUpdater implements Runnable {
             TimezoneBot.saveUsersTimezonesToFile(null, null);
         }
 
-        if (ZonedDateTime.now().getHour() == 0 && ZonedDateTime.now().getMinute() == 0) {
-            // midnight housekeeping: clear the cache, to make sure all users still exist.
+        if (ZonedDateTime.now().getHour() == 18 && ZonedDateTime.now().getMinute() == 0) {
+            // daily housekeeping: clear the cache, to make sure all users still exist.
             logger.debug("Clearing member cache!");
             TimezoneBot.memberCache.clear();
         }
