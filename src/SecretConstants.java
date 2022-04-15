@@ -5,15 +5,16 @@ import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.logging.Logger;
 
 public class SecretConstants {
-    private static final Logger logger = Logger.getLogger("SecretConstants");
+    private static Logger logger = LoggerFactory.getLogger(SecretConstants.class);
 
     // specifies where the bot should publish errors, and who it should ping about them
     public static Long OWNER_ID = 0L;
@@ -79,6 +80,8 @@ public class SecretConstants {
     public static String YOUTUBE_API_KEY = "";
     public static String EXPLOIT_PLANNING_URL = "";
     public static List<String> SECRET_WEBHOOKS = Collections.emptyList();
+    public static String DUCKDNS_TOKEN = null;
+    public static String QUEST_COMMUNITY_BOT_SHARED_SECRET = null;
 
     static {
         try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
@@ -130,8 +133,10 @@ public class SecretConstants {
             YOUTUBE_API_KEY = secrets.getString("YOUTUBE_API_KEY");
             EXPLOIT_PLANNING_URL = secrets.getString("EXPLOIT_PLANNING_URL");
             SECRET_WEBHOOKS = getListOfStrings(secrets.getJSONArray("SECRET_WEBHOOKS"));
+            DUCKDNS_TOKEN = secrets.getString("DUCKDNS_TOKEN");
+            QUEST_COMMUNITY_BOT_SHARED_SECRET = secrets.getString("QUEST_COMMUNITY_BOT_SHARED_SECRET");
         } catch (IOException e) {
-            logger.severe("Could not load application secrets! " + e.toString());
+            logger.error("Could not load application secrets!", e);
         }
     }
 
