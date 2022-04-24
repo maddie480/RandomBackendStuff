@@ -199,7 +199,8 @@ public class UpdateCheckerTracker implements TailerListener {
                         || (line.contains("Adding to the excluded files list.") && !line.contains("database already contains more recent file"))
                         || line.contains("Adding to the no yaml files list.")
                         || line.contains("to Banana Mirror")
-                        || line.contains("from Banana Mirror")) {
+                        || line.contains("from Banana Mirror")
+                        || line.contains("Uncaught error while updating the database.")) {
 
                     String truncatedLine = line;
                     if (truncatedLine.contains(" - ")) {
@@ -434,6 +435,8 @@ public class UpdateCheckerTracker implements TailerListener {
             return ":outbox_tray:";
         } else if (line.contains("from Banana Mirror")) {
             return ":wastebasket:";
+        } else if (line.contains("Uncaught error while updating the database.")) {
+            return ":boom:";
         }
         return ":arrow_right:";
     }
