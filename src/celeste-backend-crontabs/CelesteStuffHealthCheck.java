@@ -460,9 +460,9 @@ public class CelesteStuffHealthCheck {
         }
 
         // and the update checker server is not frozen
-        if (UpdateCheckerTracker.lastLogLineDate.isBefore(ZonedDateTime.now().minusMinutes(20))) {
-            throw new IOException("Update Checker did not emit any log line since " +
-                    UpdateCheckerTracker.lastLogLineDate.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)));
+        if (UpdateCheckerTracker.lastEndOfCheckForUpdates.isBefore(ZonedDateTime.now().minusMinutes(30))) {
+            throw new IOException("Update Checker did not end an update successfully since " +
+                    UpdateCheckerTracker.lastEndOfCheckForUpdates.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)));
         }
     }
 

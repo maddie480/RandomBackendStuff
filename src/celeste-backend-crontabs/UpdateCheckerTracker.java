@@ -7,11 +7,12 @@ import com.google.cloud.logging.LoggingOptions;
 import com.google.cloud.logging.Payload;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.EventListener;
+import com.max480.everest.updatechecker.Mod;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.input.Tailer;
-import org.apache.commons.io.input.TailerListener;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -39,7 +40,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -53,7 +53,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * A service that follows the Update Checker logs and re-posts them to a Discord channel.
  * It also calls frontend APIs to make it aware of database changes, and reload it as necessary.
  */
-public class UpdateCheckerTracker implements TailerListener {
+public class UpdateCheckerTracker extends EventListener {
     private static class ModInfo implements Serializable {
         private static final long serialVersionUID = -2184804878021343630L;
 
@@ -108,281 +108,300 @@ public class UpdateCheckerTracker implements TailerListener {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateCheckerTracker.class);
 
-    private static boolean lastLineIsNetworkError = false;
-    protected static ZonedDateTime lastLogLineDate = ZonedDateTime.now();
     protected static ZonedDateTime lastEndOfCheckForUpdates = ZonedDateTime.now();
 
-    private static boolean luaCutscenesUpdated = false;
+    private static final String MOD_INFO_REGEX = "Mod\\{name='(.+)', version='(.+)', url='(.+)', lastUpdate=([0-9]+), xxHash=\\[(.+)], gameBananaType='(.+)', gameBananaId=([0-9]+), size=([0-9]+)}";
+    private static final Pattern MOD_INFO_EXTRACTOR = Pattern.compile(".*" + MOD_INFO_REGEX + ".*");
 
     private static String everestUpdateSha256 = "[first check]";
     private static String fileIdsSha256 = "[first check]";
 
-    private static final String MOD_INFO_REGEX = "Mod\\{name='(.+)', version='(.+)', url='(.+)', lastUpdate=([0-9]+), xxHash=\\[(.+)], gameBananaType='(.+)', gameBananaId=([0-9]+), size=([0-9]+)}";
-    private static final Pattern MOD_INFO_EXTRACTOR = Pattern.compile(".*" + MOD_INFO_REGEX + ".*");
-    private static final Pattern SAVED_NEW_MOD_EXTRACTOR = Pattern.compile(".*=> Saved new information to database: " + MOD_INFO_REGEX + ".*");
-
-    private static Pattern gamebananaLinkRegex = Pattern.compile(".*https://gamebanana.com/mmdl/([0-9]+).*");
-    private static List<String> queuedGameBananaModMessages = new ArrayList<>();
-
-    private static ConcurrentLinkedQueue<String> logLines = new ConcurrentLinkedQueue<>();
+    private static boolean luaCutscenesUpdated = false;
 
     private static final Logging logging = LoggingOptions.getDefaultInstance().toBuilder().setProjectId("max480-random-stuff").build().getService();
 
-    /**
-     * Method to call to start the watcher thread.
-     */
-    public static void startThread() {
-        TailerListener listener = new UpdateCheckerTracker();
-        Tailer tailer = new Tailer(new File("/tmp/update_checker.log"), listener, 59950, true);
-
-        Thread thread = new Thread(tailer);
-        thread.setName("Update Checker Tracker");
-        thread.start();
+    @Override
+    public void startedSearchingForUpdates() {
+        // nothing!
     }
 
     @Override
-    public void init(Tailer tailer) {
-        log.info("Starting tracking /tmp/update_checker.log");
-    }
-
-    @Override
-    public void fileNotFound() {
-        log.warn("/tmp/update_checker.log was not found");
-    }
-
-    @Override
-    public void fileRotated() {
-        log.warn("/tmp/update_checker.log was rotated");
-    }
-
-    @Override
-    public void handle(String line) {
-        log.debug("New line in /tmp/update_checker.log: {}", line);
-        lastLogLineDate = ZonedDateTime.now();
-        logLines.add(line);
-    }
-
-    // called from a global "run loop" every minute
-    public static void update() {
-        while (!logLines.isEmpty()) {
-            updateLine(logLines.poll());
+    public void uploadedModToBananaMirror(String fileName) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":outbox_tray: Uploaded mod zip " + fileName + " to Banana Mirror");
         }
     }
 
-    private static void updateLine(String line) {
-        log.debug("Handling line from /tmp/update_checker.log: {}", line);
-        lastLogLineDate = ZonedDateTime.now();
+    @Override
+    public void deletedModFromBananaMirror(String fileName) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":wastebasket: Deleted mod zip " + fileName + " to Banana Mirror");
+        }
+    }
 
-        if (line != null &&
-                !line.contains("=== Started searching for updates") &&
-                !line.contains("=== Ended searching for updates.") &&
-                !line.contains("Waiting for 15 minute(s) before next update.")) {
+    @Override
+    public void uploadedImageToBananaMirror(String fileName) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":outbox_tray: Uploaded mod image " + fileName + " to Banana Mirror");
+        }
+    }
 
-            if (line.contains("I/O exception while doing networking operation (try ")) {
-                lastLineIsNetworkError = true;
-            } else if (!lastLineIsNetworkError || line.contains(" [Everest Update Checker] ")) {
-                // this isn't a muted line! truncate it if it is too long for Discord
-                if (line.length() > 1998) {
-                    line = line.substring(0, 1998);
-                }
+    @Override
+    public void deletedImageFromBananaMirror(String fileName) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":wastebasket: Deleted mod image " + fileName + " from Banana Mirror");
+        }
+    }
 
-                lastLineIsNetworkError = false;
-
-                // flag Lua Cutscenes updates
-                if (line.contains("name='LuaCutscenes'")) {
-                    luaCutscenesUpdated = true;
-                }
-
-                // when a mod change or anything Banana Mirror happens, call a webhook.
-                if (line.contains("Saved new information to database:")
-                        || line.contains("was deleted from the database")
-                        || (line.contains("Adding to the excluded files list.") && !line.contains("database already contains more recent file"))
-                        || line.contains("Adding to the no yaml files list.")
-                        || line.contains("to Banana Mirror")
-                        || line.contains("from Banana Mirror")
-                        || line.contains("Uncaught error while updating the database.")) {
-
-                    String truncatedLine = line;
-                    if (truncatedLine.contains(" - ")) {
-                        truncatedLine = truncatedLine.substring(truncatedLine.indexOf(" - ") + 3);
-                    }
-                    if (truncatedLine.startsWith("=> ")) {
-                        truncatedLine = truncatedLine.substring(3);
-                    }
-                    String emoji = findEmoji(truncatedLine);
-
-                    // if we manage to match all info, format the message differently!
-                    Matcher modInfo = MOD_INFO_EXTRACTOR.matcher(line);
-                    if (modInfo.matches()) {
-                        if (line.contains("Saved new information to database:")) {
-                            truncatedLine = "**" + modInfo.group(1) + "** was updated to version **" + modInfo.group(2) + "** on <t:" + modInfo.group(4) + ">.\n" +
-                                    ":arrow_right: <https://gamebanana.com/" + modInfo.group(6).toLowerCase(Locale.ROOT) + "s/" + modInfo.group(7) + ">\n" +
-                                    ":inbox_tray: <" + modInfo.group(3) + ">";
-                        } else if (line.contains("was deleted from the database")) {
-                            truncatedLine = "**" + modInfo.group(1) + "** was deleted from the database.";
-                        }
-                    }
-
-                    truncatedLine = emoji + " " + truncatedLine;
-
-                    for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
-                        executeWebhook(webhook, truncatedLine);
-                    }
-
-                    // send warning messages (error parsing yaml file & no yaml file) to GameBanana alert hooks
-                    if (truncatedLine.startsWith(":warning:")) {
-                        // delay the message, because we want the mod files database to be up-to-date, to trace back which mod this file belongs to.
-                        queuedGameBananaModMessages.add(
-                                truncatedLine
-                                        .replace("Adding to the excluded files list.", "")
-                                        .replace("Adding to the no yaml files list.", "")
-                                        .trim());
-                    }
-                } else {
-                    // post the raw message to our internal webhook.
-                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`" + line + "`");
-                }
-
-                // check whether we should send it to the speedrun.com webhook as well.
-                Matcher savedNewModMatch = SAVED_NEW_MOD_EXTRACTOR.matcher(line);
-                if (savedNewModMatch.matches()) {
-                    String modName = savedNewModMatch.group(1);
-                    String modVersion = savedNewModMatch.group(2);
-                    String modUpdatedTime = savedNewModMatch.group(4);
-
-                    log.debug("{} was updated to version {} on {}", modName, modVersion, modUpdatedTime);
-
-                    try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("src_mod_update_notification_ids.json")) {
-                        List<String> srcModIds = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
-                                .stream()
-                                .map(Object::toString)
-                                .collect(Collectors.toCollection(ArrayList::new));
-
-                        if (srcModIds.contains(modName)) {
-                            String message = "**" + modName + "** was updated to version **" + modVersion + "** on <t:" + modUpdatedTime + ":f>.";
-                            executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK, message);
-                            executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: Message sent to SRC staff:\n> " + message);
-                        }
-
-                    } catch (IOException | StorageException e) {
-                        log.error("Error while fetching SRC mod update notification ID list", e);
-                        executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Error while fetching SRC mod update notification ID list: " + e);
-                    }
-                }
-            }
+    @Override
+    public void savedNewInformationToDatabase(Mod mod) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":white_check_mark: **" + mod.getName() + "** was updated to version **" + mod.getVersion() + "** on <t:" + mod.getLastUpdate() + ">.\n" +
+                    ":arrow_right: <https://gamebanana.com/" + mod.getGameBananaType().toLowerCase(Locale.ROOT) + "s/" + mod.getGameBananaId() + ">\n" +
+                    ":inbox_tray: <" + mod.getUrl() + ">");
         }
 
-        if (line != null && line.contains("=== Ended searching for updates.")) {
-            // refresh is done! we should tell the frontend about it.
-            try {
-                String newEverestUpdateHash = hash("uploads/everestupdate.yaml");
-                String newFileIdsHash = hash("modfilesdatabase/file_ids.yaml");
+        if (mod.getName().equals("LuaCutscenes")) {
+            luaCutscenesUpdated = true;
+        }
 
-                if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
-                    log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
-                    CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml");
-                    CloudStorageUtils.sendToCloudStorage("uploads/moddependencygraph.yaml", "mod_dependency_graph.yaml", "text/yaml");
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("src_mod_update_notification_ids.json")) {
+            List<String> srcModIds = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
+                    .stream()
+                    .map(Object::toString)
+                    .collect(Collectors.toCollection(ArrayList::new));
 
-                    CloudStorageUtils.sendStringToCloudStorage(convertModDependencyGraphToEverestYamlFormat(),
-                            "mod_dependency_graph_everest.yaml", "text/yaml");
-
-                    HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
-                            + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(30000);
-                    if (conn.getResponseCode() != 200) {
-                        throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
-                    }
-
-                    updateModStructureVerifierMaps();
-
-                    everestUpdateSha256 = newEverestUpdateHash;
-
-                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: everest_update.yaml and mod_dependency_graph.yaml were updated.");
-                }
-
-                {
-                    // mod_search_database.yaml always changes, as it contains download and view counts.
-                    log.info("Reloading mod_search_database.yaml");
-
-                    CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml");
-
-                    // build the new indices and send them to Cloud Storage
-                    buildIndex();
-                    pack("/tmp/mod_index", "/tmp/mod_index.zip");
-                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip");
-                    Files.delete(Paths.get("/tmp/mod_index.zip"));
-                    FileUtils.deleteDirectory(new File("/tmp/mod_index"));
-
-                    HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search-reload?key="
-                            + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(30000);
-                    if (conn.getResponseCode() != 200) {
-                        throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
-                    }
-                }
-
-                if (!newFileIdsHash.equals(fileIdsSha256)) {
-                    log.info("Reloading file_ids.yaml as hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
-                    CloudStorageUtils.sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml");
-
-                    // if file_ids changed, it means the mod files database changed as well!
-                    pack("modfilesdatabase", "/tmp/mod_files_database.zip");
-                    CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip");
-                    FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
-
-                    fileIdsSha256 = newFileIdsHash;
-
-                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: file_ids.yaml and mod_files_database.zip were updated.");
-                }
-
-                if (luaCutscenesUpdated) {
-                    // also update the Lua Cutscenes documentation mirror.
-                    log.info("Re-uploading Lua Cutscenes docs!");
-                    LuaCutscenesDocumentationUploader.updateLuaCutscenesDocumentation();
-                    luaCutscenesUpdated = false;
-
-                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: Lua Cutscenes documentation was updated.");
-                }
-
-                for (String message : queuedGameBananaModMessages) {
-                    // try to find out which mod this file belongs to.
-                    Matcher extract = gamebananaLinkRegex.matcher(message);
-                    if (extract.matches()) {
-                        String fileId = extract.group(1);
-                        Pair<String, String> mod = GameBananaAutomatedChecks.whichModDoesFileBelongTo(fileId);
-
-                        if (mod != null) {
-                            String itemtype = mod.getValue().split("/")[0];
-                            String itemid = mod.getValue().split("/")[1];
-
-                            message += " Mod link: https://gamebanana.com/" + itemtype.toLowerCase(Locale.ROOT) + "s/" + itemid;
-                        }
-                    }
-
-                    HashSet<String> webhooks = new HashSet<>(SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS);
-                    SecretConstants.UPDATE_CHECKER_HOOKS.forEach(webhooks::remove); // we just sent the message to those :p
-
-                    for (String webhook : webhooks) {
-                        // send the message to the Banana Watch list, removing the "adding to list" that only makes sense for the Update Checker.
-                        executeWebhook(webhook, message,
-                                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
-                                "Banana Watch");
-                    }
-
-                    executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: Message sent to GameBanana managers:\n> " + message);
-                }
-
-                queuedGameBananaModMessages.clear();
-
-                updateUpdateCheckerStatusInformation();
-
-                lastEndOfCheckForUpdates = ZonedDateTime.now();
-            } catch (IOException | StorageException e) {
-                log.error("Error during a call to frontend to refresh databases", e);
-                executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);
+            if (srcModIds.contains(mod.getName())) {
+                String message = "**" + mod.getName() + "** was updated to version **" + mod.getVersion() + "** on <t:" + mod.getLastUpdate() + ":f>.";
+                executeWebhookAsUpdateChecker(SecretConstants.SRC_UPDATE_CHECKER_HOOK, message);
+                executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: Message sent to SRC staff:\n> " + message);
             }
+
+        } catch (IOException | StorageException e) {
+            log.error("Error while fetching SRC mod update notification ID list", e);
+            executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Error while fetching SRC mod update notification ID list: " + e);
+        }
+    }
+
+    @Override
+    public void scannedZipContents(String fileUrl, int fileCount) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Found **" + fileCount + "** files in " + fileUrl + ".");
+    }
+
+    @Override
+    public void scannedAhornEntities(String fileUrl, int entityCount, int triggerCount, int effectCount) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Ahorn plugins: " + fileUrl + " has **" + entityCount + "** entities, " +
+                "**" + triggerCount + "** triggers and **" + effectCount + "** effects.");
+    }
+
+    @Override
+    public void scannedLoennEntities(String fileUrl, int entityCount, int triggerCount, int effectCount) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Lönn plugins: " + fileUrl + " has **" + entityCount + "** entities, " +
+                "**" + triggerCount + "** triggers and **" + effectCount + "** effects.");
+    }
+
+    @Override
+    public void scannedModDependencies(String modId, int dependencyCount, int optionalDependencyCount) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: **" + modId + "** has " +
+                "**" + dependencyCount + "** dependencies and **" + optionalDependencyCount + "** optional dependencies.");
+    }
+
+    @Override
+    public void modHasNoYamlFile(String gameBananaType, int gameBananaId, String fileUrl) {
+        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+                    + " contains a file that has no `everest.yaml`: " + fileUrl);
+        }
+    }
+
+    @Override
+    public void zipFileIsUnreadable(String gameBananaType, int gameBananaId, String fileUrl, IOException e) {
+        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+                    + " contains a file that could not be read as a ZIP file: " + fileUrl);
+        }
+        postExceptionToWebhook(e);
+    }
+
+    @Override
+    public void zipFileIsUnreadableForFileListing(String gameBananaType, int gameBananaId, String fileUrl, Exception e) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: Mod https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+                + " contains a file that could not be read as a ZIP file for file listing: " + fileUrl);
+        postExceptionToWebhook(e);
+    }
+
+    @Override
+    public void moreRecentFileAlreadyExists(String gameBananaType, int gameBananaId, String fileUrl, Mod otherMod) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: File " + fileUrl + " was skipped because "
+                + otherMod.getUrl() + " is more recent. Both are part of <https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId + ">.");
+    }
+
+    @Override
+    public void currentVersionBelongsToAnotherMod(String gameBananaType, int gameBananaId, String fileUrl, Mod otherMod) {
+        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+                    + " contains a file that has the same ID **" + otherMod.getName() + "** as mod https://gamebanana.com/" + otherMod.getGameBananaType().toLowerCase(Locale.ROOT) + "s/" + otherMod.getGameBananaId() + ": "
+                    + fileUrl);
+        }
+    }
+
+    @Override
+    public void modIsExcludedByName(Mod mod) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: A file with mod ID **" + mod.getName() + "** was skipped because this mod ID is blacklisted.");
+    }
+
+    @Override
+    public void yamlFileIsUnreadable(String gameBananaType, int gameBananaId, String fileUrl, Exception e) {
+        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+                    + " contains an `everest.yaml` file that could not be parsed: " + fileUrl);
+        }
+        postExceptionToWebhook(e);
+    }
+
+    @Override
+    public void modWasDeletedFromDatabase(Mod mod) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":x: **" + mod.getName() + "** was deleted from the database.");
+        }
+    }
+
+    @Override
+    public void modWasDeletedFromExcludedFileList(String fileUrl) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: **" + fileUrl + "** was deleted from the blacklist.");
+    }
+
+    @Override
+    public void modWasDeletedFromNoYamlFileList(String fileUrl) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: **" + fileUrl + "** was deleted from the blacklist.");
+    }
+
+    @Override
+    public void retriedIOException(IOException e) {
+        // nothing!
+    }
+
+    @Override
+    public void dependencyTreeScanException(String modId, Exception e) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: The dependency tree scan of mod **" + modId + "** failed.");
+        postExceptionToWebhook(e);
+    }
+
+    @Override
+    public void zipFileWalkthroughError(String gameBananaType, int gameBananaId, String fileUrl, Exception e) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: An error occurred when going through file " + fileUrl + ", that is part of " +
+                "https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId + ".");
+        postExceptionToWebhook(e);
+    }
+
+    @Override
+    public void ahornPluginScanError(String fileUrl, Exception e) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: An error occurred when scanning Ahorn plugins for file " + fileUrl + ".");
+        postExceptionToWebhook(e);
+    }
+
+    @Override
+    public void loennPluginScanError(String fileUrl, Exception e) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: An error occurred when scanning Lönn plugins for file " + fileUrl + ".");
+        postExceptionToWebhook(e);
+    }
+
+    @Override
+    public void uncaughtError(Exception e) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":boom: Uncaught error while updating the database. Changes so far might be rolled back.");
+        }
+        postExceptionToWebhook(e);
+    }
+
+    private void postExceptionToWebhook(Exception e) {
+        String stackTrace = ExceptionUtils.getStackTrace(e);
+        if (stackTrace.length() > 1992) {
+            stackTrace = stackTrace.substring(0, 1992);
+        }
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "```\n" + stackTrace + "\n```");
+    }
+
+    @Override
+    public void endedSearchingForUpdates(int modDownloadedCount, long timeTakenMilliseconds) {
+        try {
+            String newEverestUpdateHash = hash("uploads/everestupdate.yaml");
+            String newFileIdsHash = hash("modfilesdatabase/file_ids.yaml");
+
+            if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
+                log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
+                CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml");
+                CloudStorageUtils.sendToCloudStorage("uploads/moddependencygraph.yaml", "mod_dependency_graph.yaml", "text/yaml");
+
+                CloudStorageUtils.sendStringToCloudStorage(convertModDependencyGraphToEverestYamlFormat(),
+                        "mod_dependency_graph_everest.yaml", "text/yaml");
+
+                HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
+                        + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(30000);
+                if (conn.getResponseCode() != 200) {
+                    throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
+                }
+
+                updateModStructureVerifierMaps();
+
+                everestUpdateSha256 = newEverestUpdateHash;
+
+                executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: everest_update.yaml and mod_dependency_graph.yaml were updated.");
+            }
+
+            {
+                // mod_search_database.yaml always changes, as it contains download and view counts.
+                log.info("Reloading mod_search_database.yaml");
+
+                CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml");
+
+                // build the new indices and send them to Cloud Storage
+                buildIndex();
+                pack("/tmp/mod_index", "/tmp/mod_index.zip");
+                CloudStorageUtils.sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip");
+                Files.delete(Paths.get("/tmp/mod_index.zip"));
+                FileUtils.deleteDirectory(new File("/tmp/mod_index"));
+
+                HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search-reload?key="
+                        + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(30000);
+                if (conn.getResponseCode() != 200) {
+                    throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
+                }
+            }
+
+            if (!newFileIdsHash.equals(fileIdsSha256)) {
+                log.info("Reloading file_ids.yaml as hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
+                CloudStorageUtils.sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml");
+
+                // if file_ids changed, it means the mod files database changed as well!
+                pack("modfilesdatabase", "/tmp/mod_files_database.zip");
+                CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip");
+                FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
+
+                fileIdsSha256 = newFileIdsHash;
+
+                executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: file_ids.yaml and mod_files_database.zip were updated.");
+            }
+
+            if (luaCutscenesUpdated) {
+                // also update the Lua Cutscenes documentation mirror.
+                log.info("Re-uploading Lua Cutscenes docs!");
+                LuaCutscenesDocumentationUploader.updateLuaCutscenesDocumentation();
+                luaCutscenesUpdated = false;
+
+                executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: Lua Cutscenes documentation was updated.");
+            }
+
+            updateUpdateCheckerStatusInformation();
+
+            lastEndOfCheckForUpdates = ZonedDateTime.now();
+        } catch (IOException | StorageException e) {
+            log.error("Error during a call to frontend to refresh databases", e);
+            executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);
         }
     }
 
@@ -392,11 +411,24 @@ public class UpdateCheckerTracker implements TailerListener {
      * @param url     The URL of the webhook
      * @param message The message to send
      */
-    private static void executeWebhook(String url, String message) {
+    private static void executeWebhookAsUpdateChecker(String url, String message) {
         executeWebhook(url,
                 message,
                 "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
                 "Everest Update Checker");
+    }
+
+    /**
+     * Executes a webhook with the "Banana Watch" header, profile picture and name.
+     *
+     * @param url     The URL of the webhook
+     * @param message The message to send
+     */
+    private static void executeWebhookAsBananaWatch(String url, String message) {
+        executeWebhook(url,
+                message,
+                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                "Banana Watch");
     }
 
     /**
@@ -419,32 +451,6 @@ public class UpdateCheckerTracker implements TailerListener {
         try (InputStream is = new FileInputStream(filePath)) {
             return DigestUtils.sha256Hex(is);
         }
-    }
-
-    /**
-     * Gives the most appropriate emoji for an update checker log line.
-     */
-    private static String findEmoji(String line) {
-        if (line.contains("Saved new information to database:")) {
-            return ":white_check_mark:";
-        } else if (line.contains("was deleted from the database")) {
-            return ":x:";
-        } else if (line.contains("Adding to the excluded files list.") || line.contains("Adding to the no yaml files list.")) {
-            return ":warning:";
-        } else if (line.contains("to Banana Mirror")) {
-            return ":outbox_tray:";
-        } else if (line.contains("from Banana Mirror")) {
-            return ":wastebasket:";
-        } else if (line.contains("Uncaught error while updating the database.")) {
-            return ":boom:";
-        }
-        return ":arrow_right:";
-    }
-
-    @Override
-    public void handle(Exception ex) {
-        log.error("Error while tracking /tmp/update_checker.log", ex);
-        executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "`Error while tracking /tmp/update_checker.log: " + ex.toString() + "`");
     }
 
     /**
