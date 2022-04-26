@@ -1,10 +1,5 @@
 package com.max480.discord.randombots;
 
-import com.google.api.gax.paging.Page;
-import com.google.cloud.logging.LogEntry;
-import com.google.cloud.logging.Logging;
-import com.google.cloud.logging.LoggingOptions;
-import com.google.cloud.logging.Payload;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import com.max480.everest.updatechecker.EventListener;
@@ -13,7 +8,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -35,13 +29,12 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -78,47 +71,30 @@ public class UpdateCheckerTracker extends EventListener {
         }
     }
 
-    private static class LatestUpdatesEntry {
-        public boolean isAddition;
-        public String name;
-        public String version;
-        public String url;
-        public String date;
-        public long timestamp;
-
-        public LatestUpdatesEntry(boolean isAddition, String name, String version, String url, String date, long timestamp) {
-            this.isAddition = isAddition;
-            this.name = name;
-            this.version = version;
-            this.url = url;
-            this.date = date;
-            this.timestamp = timestamp;
-        }
-
-        public Map<String, Object> toMap() {
-            return ImmutableMap.of(
-                    "isAddition", isAddition,
-                    "name", name,
-                    "version", version,
-                    "url", url,
-                    "date", date,
-                    "timestamp", timestamp);
-        }
-    }
-
     private static final Logger log = LoggerFactory.getLogger(UpdateCheckerTracker.class);
 
     protected static ZonedDateTime lastEndOfCheckForUpdates = ZonedDateTime.now();
 
-    private static final String MOD_INFO_REGEX = "Mod\\{name='(.+)', version='(.+)', url='(.+)', lastUpdate=([0-9]+), xxHash=\\[(.+)], gameBananaType='(.+)', gameBananaId=([0-9]+), size=([0-9]+)}";
-    private static final Pattern MOD_INFO_EXTRACTOR = Pattern.compile(".*" + MOD_INFO_REGEX + ".*");
+    private String everestUpdateSha256 = "[first check]";
+    private String fileIdsSha256 = "[first check]";
+    private boolean luaCutscenesUpdated = false;
+    private final List<Map<String, Object>> latestUpdates = new ArrayList<>();
 
-    private static String everestUpdateSha256 = "[first check]";
-    private static String fileIdsSha256 = "[first check]";
+    public UpdateCheckerTracker() {
+        // read back the latest updates that happened before the tracker was started up.
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("update_checker_status.json")) {
+            JSONObject updateCheckerStatusData = new JSONObject(IOUtils.toString(is, UTF_8));
 
-    private static boolean luaCutscenesUpdated = false;
+            for (Object o : updateCheckerStatusData.getJSONArray("latestUpdatesEntries")) {
+                JSONObject latestUpdatesEntry = (JSONObject) o;
+                latestUpdates.add(latestUpdatesEntry.toMap());
+            }
 
-    private static final Logging logging = LoggingOptions.getDefaultInstance().toBuilder().setProjectId("max480-random-stuff").build().getService();
+            log.debug("Read latest updates entries: {}", latestUpdates);
+        } catch (IOException e) {
+            log.error("Could not initialize Update Checker Tracker!", e);
+        }
+    }
 
     @Override
     public void startedSearchingForUpdates() {
@@ -135,7 +111,7 @@ public class UpdateCheckerTracker extends EventListener {
     @Override
     public void deletedModFromBananaMirror(String fileName) {
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
-            executeWebhookAsUpdateChecker(webhook, ":wastebasket: Deleted mod zip " + fileName + " to Banana Mirror");
+            executeWebhookAsUpdateChecker(webhook, ":wastebasket: Deleted mod zip " + fileName + " from Banana Mirror");
         }
     }
 
@@ -181,6 +157,8 @@ public class UpdateCheckerTracker extends EventListener {
             log.error("Error while fetching SRC mod update notification ID list", e);
             executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Error while fetching SRC mod update notification ID list: " + e);
         }
+
+        addModUpdateToLatestUpdatesList(mod, true);
     }
 
     @Override
@@ -190,20 +168,20 @@ public class UpdateCheckerTracker extends EventListener {
 
     @Override
     public void scannedAhornEntities(String fileUrl, int entityCount, int triggerCount, int effectCount) {
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Ahorn plugins: " + fileUrl + " has **" + entityCount + "** entities, " +
-                "**" + triggerCount + "** triggers and **" + effectCount + "** effects.");
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Ahorn plugins: " + fileUrl + " has " + pluralize(entityCount, "entity", "entities") + ", " +
+                pluralize(triggerCount, "trigger", "triggers") + " triggers and " + pluralize(effectCount, "effect", "effects") + ".");
     }
 
     @Override
     public void scannedLoennEntities(String fileUrl, int entityCount, int triggerCount, int effectCount) {
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Lönn plugins: " + fileUrl + " has **" + entityCount + "** entities, " +
-                "**" + triggerCount + "** triggers and **" + effectCount + "** effects.");
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Lönn plugins: " + fileUrl + " has " + pluralize(entityCount, "entity", "entities") + ", " +
+                pluralize(triggerCount, "trigger", "triggers") + " triggers and " + pluralize(effectCount, "effect", "effects") + ".");
     }
 
     @Override
     public void scannedModDependencies(String modId, int dependencyCount, int optionalDependencyCount) {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: **" + modId + "** has " +
-                "**" + dependencyCount + "** dependencies and **" + optionalDependencyCount + "** optional dependencies.");
+                pluralize(dependencyCount, "dependency", "dependencies") + " and " + pluralize(optionalDependencyCount, "optional dependency", "optional dependencies") + ".");
     }
 
     @Override
@@ -264,16 +242,18 @@ public class UpdateCheckerTracker extends EventListener {
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
             executeWebhookAsUpdateChecker(webhook, ":x: **" + mod.getName() + "** was deleted from the database.");
         }
+
+        addModUpdateToLatestUpdatesList(mod, false);
     }
 
     @Override
     public void modWasDeletedFromExcludedFileList(String fileUrl) {
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: **" + fileUrl + "** was deleted from the blacklist.");
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: " + fileUrl + " was deleted from the blacklist.");
     }
 
     @Override
     public void modWasDeletedFromNoYamlFileList(String fileUrl) {
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: **" + fileUrl + "** was deleted from the blacklist.");
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: " + fileUrl + " was deleted from the blacklist.");
     }
 
     @Override
@@ -322,9 +302,29 @@ public class UpdateCheckerTracker extends EventListener {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "```\n" + stackTrace + "\n```");
     }
 
+    private void addModUpdateToLatestUpdatesList(Mod mod, boolean isAddition) {
+        latestUpdates.add(0, ImmutableMap.of(
+                "isAddition", isAddition,
+                "name", mod.getName(),
+                "version", mod.getVersion(),
+                "url", "https://gamebanana.com/" + mod.getGameBananaType().toLowerCase(Locale.ROOT) + "s/" + mod.getGameBananaId(),
+                "date", DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(ZonedDateTime.now(ZoneId.of("UTC"))),
+                "timestamp", Instant.now().toEpochMilli() / 1000L));
+
+        while (latestUpdates.size() > 5) {
+            latestUpdates.remove(5);
+        }
+    }
+
+    private String pluralize(int number, String singular, String plural) {
+        return "**" + number + "** " + (number == 1 ? singular : plural);
+    }
+
     @Override
     public void endedSearchingForUpdates(int modDownloadedCount, long timeTakenMilliseconds) {
         try {
+            long postProcessingStart = System.currentTimeMillis();
+
             String newEverestUpdateHash = hash("uploads/everestupdate.yaml");
             String newFileIdsHash = hash("modfilesdatabase/file_ids.yaml");
 
@@ -396,7 +396,7 @@ public class UpdateCheckerTracker extends EventListener {
                 executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: Lua Cutscenes documentation was updated.");
             }
 
-            updateUpdateCheckerStatusInformation();
+            updateUpdateCheckerStatusInformation(System.currentTimeMillis() - postProcessingStart + timeTakenMilliseconds);
 
             lastEndOfCheckForUpdates = ZonedDateTime.now();
         } catch (IOException | StorageException e) {
@@ -671,14 +671,11 @@ public class UpdateCheckerTracker extends EventListener {
         return elementMap;
     }
 
-    private static void updateUpdateCheckerStatusInformation() throws IOException {
-        Pair<Long, Integer> latestUpdatedAt = getLatestUpdatedAt();
-        List<LatestUpdatesEntry> latestUpdatedMods = getLatestUpdatedMods();
-
+    private void updateUpdateCheckerStatusInformation(long lastCheckDuration) throws IOException {
         JSONObject result = new JSONObject();
-        result.put("lastCheckTimestamp", latestUpdatedAt.getLeft());
-        result.put("lastCheckDuration", latestUpdatedAt.getRight());
-        result.put("latestUpdatesEntries", latestUpdatedMods.stream().map(LatestUpdatesEntry::toMap).collect(Collectors.toList()));
+        result.put("lastCheckTimestamp", System.currentTimeMillis());
+        result.put("lastCheckDuration", lastCheckDuration);
+        result.put("latestUpdatesEntries", latestUpdates);
 
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
             Map<Object, Object> mods = new Yaml().load(is);
@@ -687,57 +684,5 @@ public class UpdateCheckerTracker extends EventListener {
 
         log.info("Uploading new Update Checker status: {}", result);
         CloudStorageUtils.sendStringToCloudStorage(result.toString(), "update_checker_status.json", "application/json");
-    }
-
-    private static List<LatestUpdatesEntry> getLatestUpdatedMods() {
-        final Page<LogEntry> logEntries = logging.listLogEntries(
-                Logging.EntryListOption.sortOrder(Logging.SortingField.TIMESTAMP, Logging.SortingOrder.DESCENDING),
-                Logging.EntryListOption.filter("(" +
-                        "jsonPayload.message =~ \"^=> Saved new information to database:\" " +
-                        "OR jsonPayload.message =~ \"^Mod .* was deleted from the database$\")" +
-                        " AND timestamp >= \"" + ZonedDateTime.now().minusDays(7).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) + "\""),
-                Logging.EntryListOption.pageSize(5)
-        );
-
-        List<LatestUpdatesEntry> latestUpdatesEntries = new ArrayList<>();
-        for (LogEntry logEntry : logEntries.getValues()) {
-            String message = (String) logEntry.<Payload.JsonPayload>getPayload().getDataAsMap().get("message");
-
-            final Matcher matcher = MOD_INFO_EXTRACTOR.matcher(message);
-            if (matcher.matches()) {
-                latestUpdatesEntries.add(new LatestUpdatesEntry(
-                        message.startsWith("=> Saved new information to database:"),
-                        matcher.group(1),
-                        matcher.group(2),
-                        "https://gamebanana.com/" + matcher.group(6).toLowerCase(Locale.ROOT) + "s/" + matcher.group(7),
-                        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(logEntry.getInstantTimestamp().atZone(ZoneId.of("UTC"))),
-                        logEntry.getInstantTimestamp().toEpochMilli() / 1000L
-                ));
-            }
-        }
-
-        return latestUpdatesEntries;
-    }
-
-    private static Pair<Long, Integer> getLatestUpdatedAt() {
-        final Page<LogEntry> lastCheck = logging.listLogEntries(
-                Logging.EntryListOption.sortOrder(Logging.SortingField.TIMESTAMP, Logging.SortingOrder.DESCENDING),
-                Logging.EntryListOption.filter("jsonPayload.message =~ \"^=== Ended searching for updates.\""),
-                Logging.EntryListOption.pageSize(1)
-        );
-
-        for (LogEntry entry : lastCheck.getValues()) {
-            // extract the duration
-            String logContent = entry.<Payload.JsonPayload>getPayload().getDataAsMap().get("message").toString();
-            if (logContent.endsWith(" ms.")) {
-                logContent = logContent.substring(0, logContent.length() - 4);
-                logContent = logContent.substring(logContent.lastIndexOf(" ") + 1);
-                int timeMs = Integer.parseInt(logContent);
-
-                return Pair.of(entry.getInstantTimestamp().toEpochMilli(), timeMs);
-            }
-        }
-
-        return Pair.of(0L, 0);
     }
 }
