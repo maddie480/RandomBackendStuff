@@ -163,7 +163,7 @@ public class UpdateCheckerTracker extends EventListener {
 
     @Override
     public void scannedZipContents(String fileUrl, int fileCount) {
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Found **" + fileCount + "** files in " + fileUrl + ".");
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Found " + pluralize(fileCount, "file", "files") + " in " + fileUrl + ".");
     }
 
     @Override
