@@ -10,8 +10,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.time.DayOfWeek;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -65,7 +63,7 @@ public class ContinuousHealthChecks {
                                 "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // backend check: this one posts to a private hook, since 99% of the time no-one cares or notices when it goes down. :p
-                        checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < (isExtendedBotDelay() ? 900_000L /* 15m */ : 120_000L /* 2m */),
+                        checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < 1_800_000L,
                                 "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                     } catch (Exception e) {
                         // this shouldn't happen, unless we cannot communicate with Discord.
@@ -83,14 +81,6 @@ public class ContinuousHealthChecks {
                 }
             }
         }.start();
-    }
-
-    private static boolean isExtendedBotDelay() {
-        // The bot stops reporting its status during the daily processes that run at 6pm every day,
-        // and at 8am on Sundays due to a backup scheduled task.
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Europe/Paris"));
-        return (now.getHour() == 18 && now.getMinute() < 15)
-                || (now.getDayOfWeek() == DayOfWeek.SUNDAY && now.getHour() == 8 && now.getMinute() < 15);
     }
 
     private static void checkURL(String url, String content, String serviceName, List<String> webhookUrls) {
