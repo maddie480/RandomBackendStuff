@@ -169,13 +169,13 @@ public class UpdateCheckerTracker extends EventListener {
     @Override
     public void scannedAhornEntities(String fileUrl, int entityCount, int triggerCount, int effectCount) {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Ahorn plugins: " + fileUrl + " has " + pluralize(entityCount, "entity", "entities") + ", " +
-                pluralize(triggerCount, "trigger", "triggers") + " triggers and " + pluralize(effectCount, "effect", "effects") + ".");
+                pluralize(triggerCount, "trigger", "triggers") + " and " + pluralize(effectCount, "effect", "effects") + ".");
     }
 
     @Override
     public void scannedLoennEntities(String fileUrl, int entityCount, int triggerCount, int effectCount) {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: Lönn plugins: " + fileUrl + " has " + pluralize(entityCount, "entity", "entities") + ", " +
-                pluralize(triggerCount, "trigger", "triggers") + " triggers and " + pluralize(effectCount, "effect", "effects") + ".");
+                pluralize(triggerCount, "trigger", "triggers") + " and " + pluralize(effectCount, "effect", "effects") + ".");
     }
 
     @Override
