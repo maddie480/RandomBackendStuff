@@ -983,8 +983,10 @@ public class ModStructureVerifier extends ListenerAdapter {
         List<String> ahornTriggers = new LinkedList<>();
         List<String> ahornEffects = new LinkedList<>();
 
+        File modZip = new File("mod-ahornscan-sj-" + System.currentTimeMillis() + ".zip");
+
         // download file (pretending we are Firefox since Discord hates Java and responds 403 to it for some reason)
-        try (OutputStream os = new BufferedOutputStream(new FileOutputStream("mod-ahornscan-sj.zip"))) {
+        try (OutputStream os = new BufferedOutputStream(new FileOutputStream(modZip))) {
             HttpURLConnection connection = (HttpURLConnection) new URL(whereIsStrawberryJam).openConnection();
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
@@ -998,7 +1000,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         // scan its contents, opening Ahorn plugin files
-        try (ZipFile zipFile = new ZipFile(new File("mod-ahornscan-sj.zip"))) {
+        try (ZipFile zipFile = new ZipFile(modZip)) {
             final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
@@ -1020,7 +1022,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         availableTriggers.addAll(ahornTriggers);
         availableEffects.addAll(ahornEffects);
 
-        FileUtils.forceDelete(new File("mod-ahornscan-sj.zip"));
+        FileUtils.forceDelete(modZip);
     }
 
     private static void addStuffFromGravityHelper(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
@@ -1030,12 +1032,14 @@ public class ModStructureVerifier extends ListenerAdapter {
         List<String> ahornTriggers = new LinkedList<>();
         List<String> ahornEffects = new LinkedList<>();
 
+        File modZip = new File("mod-ahornscan-gh-" + System.currentTimeMillis() + ".zip");
+
         try (InputStream is = authenticatedGitHubRequest(whereIsGravityHelper)) {
-            FileUtils.copyToFile(is, new File("mod-ahornscan-gh.zip"));
+            FileUtils.copyToFile(is, modZip);
         }
 
         // scan its contents, opening Ahorn plugin files
-        try (ZipFile zipFile = new ZipFile(new File("mod-ahornscan-gh.zip"))) {
+        try (ZipFile zipFile = new ZipFile(modZip)) {
             final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
@@ -1059,7 +1063,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         availableTriggers.addAll(ahornTriggers);
         availableEffects.addAll(ahornEffects);
 
-        FileUtils.forceDelete(new File("mod-ahornscan-gh.zip"));
+        FileUtils.forceDelete(modZip);
     }
 
     private static InputStream authenticatedGitHubRequest(String url) throws IOException {
