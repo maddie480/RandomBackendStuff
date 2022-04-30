@@ -52,13 +52,15 @@ public class TimezoneRoleUpdater implements Runnable {
                 for (Guild server : TimezoneBot.jda.getGuilds()) {
                     logger.debug("=== Refreshing timezones for server {}", server);
                     if (!server.getSelfMember().hasPermission(Permission.MANAGE_ROLES)) {
-                        logger.debug("I can't manage roles here! Skipping.");
+                        logger.debug("I can't manage roles here! I will only check for gone members.");
+                        usersDeleted = cleanUpUsersFromServer(server) || usersDeleted;
                         continue;
                     }
                     if (TimezoneBot.getTimezoneOffsetRolesForGuild(server).values().stream()
                             .anyMatch(roleId -> !server.getSelfMember().canInteract(server.getRoleById(roleId)))) {
 
-                        logger.debug("I can't manage all timezone roles here! Skipping.");
+                        logger.debug("I can't manage all timezone roles here! I will only check for gone members.");
+                        usersDeleted = cleanUpUsersFromServer(server) || usersDeleted;
                         continue;
                     }
 
@@ -232,6 +234,37 @@ public class TimezoneRoleUpdater implements Runnable {
             if (!roleName.equals(role.getName())) {
                 role.getManager().setName(roleName).reason("Time passed").queue(success -> lastRoleUpdateDate = ZonedDateTime.now());
                 logger.debug("Timezone role renamed for offset {}: {} -> {}", zoneOffset, role, roleName);
+            }
+        }
+
+        return usersDeleted;
+    }
+
+    /**
+     * Goes through all users that have a timezone configured in a server,
+     * and deletes those who do not exist anymore.
+     * <p>
+     * {@link #updateTimezoneRolesInServer(Guild)} already does this, this method is intended for
+     * servers where the bot has insufficient permissions and thus cannot update timezone roles.
+     *
+     * @param server The server to check
+     * @return whether users were deleted or not
+     */
+    private boolean cleanUpUsersFromServer(Guild server) {
+        List<Long> serverUsers = TimezoneBot.userTimezones.stream()
+                .filter(s -> s.serverId == server.getIdLong())
+                .map(s -> s.userId)
+                .collect(Collectors.toList());
+
+        boolean usersDeleted = false;
+
+        for (long user : serverUsers) {
+            if (TimezoneBot.getMemberWithCache(server, user) == null) {
+                logger.info("Removing user {}", user);
+                TimezoneBot.userTimezones.stream()
+                        .filter(u -> u.serverId == server.getIdLong() && u.userId == user)
+                        .findFirst().map(u -> TimezoneBot.userTimezones.remove(u));
+                usersDeleted = true;
             }
         }
 
