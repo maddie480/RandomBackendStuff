@@ -2,13 +2,24 @@ package com.max480.discord.randombots;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamWriter;
-import java.io.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Locale;
 
 /**
  * A port of iSkLz's BinToXML tool to Java, for use by the {@link ModStructureVerifier}.
@@ -40,38 +51,52 @@ public class BinToXML {
     }
 
     public static void convert(String inputPath, String outputPath) throws IOException {
+        Document converted = toXmlDocument(inputPath);
+
+        try {
+            // write the Document to an XML file
+            DOMSource source = new DOMSource(converted);
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            StreamResult file = new StreamResult(new File(outputPath));
+            transformer.transform(source, file);
+
+            log.info("Wrote converted XML to {}", outputPath);
+        } catch (TransformerException e) {
+            throw new IOException("Error while writing out XML to file!", e);
+        }
+    }
+
+    public static Document toXmlDocument(String inputPath) throws IOException {
         long startTime = System.currentTimeMillis();
 
         if (!new File(inputPath).isFile()) {
             throw new IOException("Input file does not exist!");
         }
 
-        XMLOutputFactory factory = XMLOutputFactory.newInstance();
+        try (DataInputStream bin = new DataInputStream(new FileInputStream(inputPath))) {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document document = db.newDocument();
 
-        try (DataInputStream bin = new DataInputStream(new FileInputStream(inputPath));
-             FileWriter xmlFile = new FileWriter(outputPath)) {
-
-            XMLStreamWriter xml = factory.createXMLStreamWriter(xmlFile);
-            xml.writeStartDocument();
-
-            xml.writeStartElement("CelesteMap");
+            Element root = document.createElement("CelesteMap");
+            document.appendChild(root);
             readString(bin); // skip "CELESTE MAP"
-            xml.writeAttribute("Package", readString(bin));
+            addAttribute(document, root, "Package", readString(bin));
 
             int lookupTableSize = readShort(bin);
             String[] stringLookupTable = new String[lookupTableSize];
             for (int i = 0; i < lookupTableSize; i++) {
                 stringLookupTable[i] = readString(bin);
             }
-            recursiveConvert(bin, xml, stringLookupTable, true);
+            recursiveConvert(bin, document, root, stringLookupTable, true);
 
-            xml.writeEndDocument();
+            log.info("Converted {} to XML in {} ms", inputPath, System.currentTimeMillis() - startTime);
+            return document;
         } catch (Exception e) {
             log.error("Could not convert BIN to XML!", e);
             throw new IOException("Error while reading BIN file!", e);
         }
-
-        log.info("Converted {} to {} in {} ms", inputPath, outputPath, System.currentTimeMillis() - startTime);
     }
 
     // strings are encoded by C# by writing the character count in LEB128 format, then the string itself.
@@ -116,21 +141,23 @@ public class BinToXML {
         return (byte4 << 24) + (byte3 << 16) + (byte2 << 8) + byte1;
     }
 
-    private static void recursiveConvert(DataInputStream bin, XMLStreamWriter xml, String[] stringLookupTable, boolean first) throws Exception {
+    private static void recursiveConvert(DataInputStream bin, Document document, Node parent, String[] stringLookupTable, boolean first) throws Exception {
+        Node element;
         if (!first) {
-            xml.writeStartElement(stringLookupTable[readShort(bin)].replace("/", "."));
+            element = document.createElement(escapeXmlName(stringLookupTable[readShort(bin)]));
+            parent.appendChild(element);
         } else {
+            element = parent;
             readShort(bin);
         }
-        recursiveConvertAttributes(bin, xml, stringLookupTable, bin.readUnsignedByte());
+        recursiveConvertAttributes(bin, document, element, stringLookupTable, bin.readUnsignedByte());
         short childrenCount = readShort(bin);
         for (int i = 0; i < childrenCount; i++) {
-            recursiveConvert(bin, xml, stringLookupTable, false);
+            recursiveConvert(bin, document, element, stringLookupTable, false);
         }
-        xml.writeEndElement();
     }
 
-    private static void recursiveConvertAttributes(DataInputStream bin, XMLStreamWriter xml, String[] stringLookupTable, int count) throws Exception {
+    private static void recursiveConvertAttributes(DataInputStream bin, Document document, Node element, String[] stringLookupTable, int count) throws Exception {
         for (byte b = 0; b < count; b = (byte) (b + 1)) {
             String localName = stringLookupTable[readShort(bin)];
             AttributeValueType attributeValueType = AttributeValueType.fromValue(bin.readUnsignedByte());
@@ -179,7 +206,7 @@ public class BinToXML {
                     obj = stringLookupTable[readShort(bin)];
                     break;
             }
-            xml.writeAttribute(localName, obj.toString().toLowerCase(Locale.ROOT));
+            addAttribute(document, element, localName, obj.toString());
         }
     }
 
@@ -189,5 +216,23 @@ public class BinToXML {
         int i = b;
         if (i < 0) i += 256;
         return i;
+    }
+
+    private static void addAttribute(Document document, Node node, String name, String value) {
+        Attr attribute = document.createAttribute(escapeXmlName(name));
+        attribute.setValue(value);
+        node.getAttributes().setNamedItem(attribute);
+    }
+
+    public static String escapeXmlName(String name) {
+        // replace any disallowed character with _
+        name = name.replaceAll("[^\\w\\d:_.-]", "_");
+
+        // the first character is more restricted, replace it with _ as well if necessary
+        if (name.matches("^[^\\w:_].*")) {
+            name = "_" + name.substring(1);
+        }
+
+        return name;
     }
 }

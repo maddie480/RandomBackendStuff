@@ -754,21 +754,18 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         // convert it to XML
-        boolean conversionSuccess;
-        File tempXml = new File(tempBin.getAbsolutePath().replace(".bin", ".xml"));
-        logger.debug("Converting {} to {}...", tempBin.getAbsolutePath(), tempXml.getAbsolutePath());
+        Document binAsXmlFile = null;
+        logger.debug("Reading {} as XML...", tempBin.getAbsolutePath());
         try {
-            BinToXML.convert(tempBin.getAbsolutePath(), tempXml.getAbsolutePath());
-            conversionSuccess = true;
+            binAsXmlFile = BinToXML.toXmlDocument(tempBin.getAbsolutePath());
         } catch (IOException e) {
             logger.error("Something bad happened while reading the XML!", e);
-            conversionSuccess = false;
         }
         tempBin.delete();
 
         String mapPathEsc = mapPath.replace("`", "");
 
-        if (!conversionSuccess) {
+        if (binAsXmlFile == null) {
             // conversion failed
             problemList.add("Something wrong happened while trying to analyze `" + mapPathEsc + "` :thinking: check that it is not corrupt.");
         } else {
@@ -779,74 +776,62 @@ public class ModStructureVerifier extends ListenerAdapter {
             Set<String> badTriggers = new HashSet<>();
             Set<String> badEffects = new HashSet<>();
 
-            try {
-                // parse the XML and delete it
-                DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-                DocumentBuilder db = dbf.newDocumentBuilder();
-                Document document = db.parse(tempXml);
-                tempXml.delete();
-
-                { // check all decals in a case insensitive way
-                    NodeList decals = document.getElementsByTagName("decal");
-                    for (int i = 0; i < decals.getLength(); i++) {
-                        Node decal = decals.item(i);
-                        if (decal.getAttributes().getNamedItem("texture") != null) {
-                            String decalName = decal.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
-                            if (decalName.endsWith(".png")) decalName = decalName.substring(0, decalName.length() - 4);
-                            if (!availableDecals.contains("decals/" + decalName.toLowerCase(Locale.ROOT))) {
-                                badDecals.add(decalName);
-                            }
+            { // check all decals in a case insensitive way
+                NodeList decals = binAsXmlFile.getElementsByTagName("decal");
+                for (int i = 0; i < decals.getLength(); i++) {
+                    Node decal = decals.item(i);
+                    if (decal.getAttributes().getNamedItem("texture") != null) {
+                        String decalName = decal.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
+                        if (decalName.endsWith(".png")) decalName = decalName.substring(0, decalName.length() - 4);
+                        if (!availableDecals.contains("decals/" + decalName.toLowerCase(Locale.ROOT))) {
+                            badDecals.add(decalName);
                         }
                     }
                 }
+            }
 
-                { // check all stylegrounds starting with bgs/ (to exclude stuff from the Misc atlas) in a case-insensitive way.
-                    NodeList stylegrounds = document.getElementsByTagName("parallax");
-                    for (int i = 0; i < stylegrounds.getLength(); i++) {
-                        Node styleground = stylegrounds.item(i);
-                        if (styleground.getAttributes().getNamedItem("texture") != null) {
-                            String sgName = styleground.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
-                            if (sgName.endsWith(".png")) sgName = sgName.substring(0, sgName.length() - 4);
-                            if (sgName.startsWith("bgs/") && !availableStylegrounds.contains(sgName.toLowerCase(Locale.ROOT))) {
-                                badSGs.add(sgName);
-                            }
+            { // check all stylegrounds starting with bgs/ (to exclude stuff from the Misc atlas) in a case-insensitive way.
+                NodeList stylegrounds = binAsXmlFile.getElementsByTagName("parallax");
+                for (int i = 0; i < stylegrounds.getLength(); i++) {
+                    Node styleground = stylegrounds.item(i);
+                    if (styleground.getAttributes().getNamedItem("texture") != null) {
+                        String sgName = styleground.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
+                        if (sgName.endsWith(".png")) sgName = sgName.substring(0, sgName.length() - 4);
+                        if (sgName.startsWith("bgs/") && !availableStylegrounds.contains(sgName.toLowerCase(Locale.ROOT))) {
+                            badSGs.add(sgName);
                         }
                     }
                 }
+            }
 
-                // check entities, triggers and effects.
-                checkForMissingEntities(availableEntities, "entities", badEntities, document);
-                checkForMissingEntities(availableTriggers, "triggers", badTriggers, document);
-                checkForMissingEntities(availableEffects, "Foregrounds", badEffects, document);
-                checkForMissingEntities(availableEffects, "Backgrounds", badEffects, document);
+            // check entities, triggers and effects.
+            checkForMissingEntities(availableEntities, "entities", badEntities, binAsXmlFile);
+            checkForMissingEntities(availableTriggers, "triggers", badTriggers, binAsXmlFile);
+            checkForMissingEntities(availableEffects, "Foregrounds", badEffects, binAsXmlFile);
+            checkForMissingEntities(availableEffects, "Backgrounds", badEffects, binAsXmlFile);
 
-                // and list out every single problem!
-                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing parallax stylegrounds in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
-                parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
+            // and list out every single problem!
+            parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals));
+            parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing parallax stylegrounds in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs));
+            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
+            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
+            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
 
-                // look up which mod each of these missing things could belong to, in order to have an exhaustive list at the end.
-                for (String entity : badEntities) {
-                    missingDependencies.add(entityToMod.get(entity.toLowerCase(Locale.ROOT)));
-                }
-                for (String trigger : badTriggers) {
-                    missingDependencies.add(triggerToMod.get(trigger.toLowerCase(Locale.ROOT)));
-                }
-                for (String effect : badEffects) {
-                    missingDependencies.add(effectToMod.get(effect.toLowerCase(Locale.ROOT)));
-                }
-                for (String styleground : badSGs) {
-                    missingDependencies.add(assetToMod.get(("Graphics/Atlases/Gameplay/" + styleground + ".png").toLowerCase(Locale.ROOT)));
-                }
-                for (String decal : badDecals) {
-                    missingDependencies.add(assetToMod.get(("Graphics/Atlases/Gameplay/decals/" + decal + ".png").toLowerCase(Locale.ROOT)));
-                }
-            } catch (ParserConfigurationException | SAXException e) {
-                // something went wrong, so just delete the XML and rethrow the exception to trigger an alert.
-                tempXml.delete();
-                throw new IOException(e);
+            // look up which mod each of these missing things could belong to, in order to have an exhaustive list at the end.
+            for (String entity : badEntities) {
+                missingDependencies.add(entityToMod.get(entity.toLowerCase(Locale.ROOT)));
+            }
+            for (String trigger : badTriggers) {
+                missingDependencies.add(triggerToMod.get(trigger.toLowerCase(Locale.ROOT)));
+            }
+            for (String effect : badEffects) {
+                missingDependencies.add(effectToMod.get(effect.toLowerCase(Locale.ROOT)));
+            }
+            for (String styleground : badSGs) {
+                missingDependencies.add(assetToMod.get(("Graphics/Atlases/Gameplay/" + styleground + ".png").toLowerCase(Locale.ROOT)));
+            }
+            for (String decal : badDecals) {
+                missingDependencies.add(assetToMod.get(("Graphics/Atlases/Gameplay/decals/" + decal + ".png").toLowerCase(Locale.ROOT)));
             }
         }
     }
@@ -877,10 +862,10 @@ public class ModStructureVerifier extends ListenerAdapter {
             // ... go through its children...
             Node entityBlock = entities.item(i);
             for (int j = 0; j < entityBlock.getChildNodes().getLength(); j++) {
-                // ... and check if this is an entity that exists, eventually replacing "." with "/" since BinToXML turns "/" into "."
+                // ... and check if this is an entity that exists, replacing "_" with "/" since BinToXML turns "/" into "_" for XML escaping purposes.
                 String entityName = entityBlock.getChildNodes().item(j).getNodeName();
-                if (!availableEntities.contains(entityName) && !availableEntities.contains(entityName.replace(".", "/"))) {
-                    badEntities.add(entityName.replace(".", "/"));
+                if (!availableEntities.contains(entityName) && !availableEntities.contains(entityName.replace("_", "/"))) {
+                    badEntities.add(entityName.replace("_", "/"));
                 }
             }
         }
