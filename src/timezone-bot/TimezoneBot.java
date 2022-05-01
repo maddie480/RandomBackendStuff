@@ -2,16 +2,13 @@ package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
-import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
-import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
@@ -181,10 +178,6 @@ public class TimezoneBot {
 
         logger.debug("Users by timezone = {}, servers with time = {}", userTimezones.size(), serversWithTime.size());
 
-        // also ensure the /toggle-times permissions are appropriate (in case we missed an event while being down).
-        logger.info("Updating /toggle-times permissions on all known guilds...");
-        updateToggleTimesPermsForGuilds(jda.getGuilds());
-
         // start the background process to update users' roles.
         Thread updater = new Thread(new TimezoneRoleUpdater());
         updater.setName("Timezone Role Updater");
@@ -337,72 +330,6 @@ public class TimezoneBot {
             logger.error("Error while writing file", e);
             if (respond != null) respond.accept(":x: A technical error occurred.");
         }
-    }
-
-    /**
-     * Makes sure the permissions for /toggle-times are properly set for the given servers:
-     * any role with the Admin or Manage Server permission + the owner if they don't have any of the roles should
-     * be able to use the command.
-     * <p>
-     * If more than 10 overrides are necessary for that, the command will be open to everyone since Discord doesn't allow
-     * more than 10 overrides, but non-admins will receive an error when calling it.
-     *
-     * @param guilds The servers to check
-     */
-    static void updateToggleTimesPermsForGuilds(List<Guild> guilds) {
-        jda.retrieveCommands().queue(commands -> {
-            Command timezone = commands.stream().filter(c -> c.getName().equals("timezone")).findFirst().orElse(null);
-            Command detectTimezone = commands.stream().filter(c -> c.getName().equals("detect-timezone")).findFirst().orElse(null);
-            Command removeTimezone = commands.stream().filter(c -> c.getName().equals("remove-timezone")).findFirst().orElse(null);
-            Command discordTimestamp = commands.stream().filter(c -> c.getName().equals("discord-timestamp")).findFirst().orElse(null);
-            Command timeFor = commands.stream().filter(c -> c.getName().equals("time-for")).findFirst().orElse(null);
-            Command listTimezones = commands.stream().filter(c -> c.getName().equals("list-timezones")).findFirst().orElse(null);
-            Command toggleTimes = commands.stream().filter(c -> c.getName().equals("toggle-times")).findFirst().orElse(null);
-            Command timezoneDropdown = commands.stream().filter(c -> c.getName().equals("timezone-dropdown")).findFirst().orElse(null);
-
-            for (Guild g : guilds) {
-                // figure out which roles in the guild have Admin or Manage Server.
-                List<Role> rolesWithPerms = new ArrayList<>();
-                for (Role r : g.getRoles()) {
-                    if (!r.isManaged() && (r.hasPermission(Permission.ADMINISTRATOR) || r.hasPermission(Permission.MANAGE_SERVER))) {
-                        rolesWithPerms.add(r);
-                    }
-                }
-
-                // turn them into privilege objects.
-                List<CommandPrivilege> privileges = rolesWithPerms.stream()
-                        .map(r -> new CommandPrivilege(CommandPrivilege.Type.ROLE, true, r.getIdLong()))
-                        .collect(Collectors.toCollection(ArrayList::new));
-
-                // add the guild's owner to the list, because under Discord rules they're still an admin even if they
-                // don't have any role giving them the admin permission.
-                privileges.add(new CommandPrivilege(CommandPrivilege.Type.USER, true, g.getOwnerIdLong()));
-
-                List<CommandPrivilege> allowEveryone = Collections.singletonList(new CommandPrivilege(CommandPrivilege.Type.ROLE, true, g.getPublicRole().getIdLong()));
-
-                Map<String, Collection<? extends CommandPrivilege>> listPrivileges = new HashMap<>();
-                listPrivileges.put(timezone.getId(), allowEveryone);
-                listPrivileges.put(detectTimezone.getId(), allowEveryone);
-                listPrivileges.put(removeTimezone.getId(), allowEveryone);
-                listPrivileges.put(discordTimestamp.getId(), allowEveryone);
-                listPrivileges.put(timeFor.getId(), allowEveryone);
-                listPrivileges.put(listTimezones.getId(), allowEveryone);
-
-                if (privileges.size() > 10) {
-                    // this is more overrides than Discord allows! so just allow everyone to use the command,
-                    // non-admins will get an error message if they try anyway.
-                    logger.info("{} has too many privileges that qualify for /toggle-times ({} > 10 max), allowing everyone!", g, privileges.size());
-                    listPrivileges.put(toggleTimes.getId(), allowEveryone);
-                    listPrivileges.put(timezoneDropdown.getId(), allowEveryone);
-                    g.updateCommandPrivileges(listPrivileges).queue();
-                } else {
-                    logger.info("The following entities have access to /toggle-times in {}: roles {}, owner with id {}", g, rolesWithPerms, g.getOwnerIdLong());
-                    listPrivileges.put(toggleTimes.getId(), privileges);
-                    listPrivileges.put(timezoneDropdown.getId(), privileges);
-                    g.updateCommandPrivileges(listPrivileges).queue();
-                }
-            }
-        });
     }
 
     /**

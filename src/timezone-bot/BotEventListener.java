@@ -5,14 +5,10 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
-import net.dv8tion.jda.api.events.guild.update.GuildUpdateOwnerEvent;
 import net.dv8tion.jda.api.events.interaction.ButtonClickEvent;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.SelectionMenuEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
-import net.dv8tion.jda.api.events.role.RoleCreateEvent;
-import net.dv8tion.jda.api.events.role.RoleDeleteEvent;
-import net.dv8tion.jda.api.events.role.update.RoleUpdatePermissionsEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -53,16 +49,12 @@ public class BotEventListener extends ListenerAdapter {
         TIMEZONE_CONFLICTS = timezoneConflicts;
     }
 
-    // === BEGIN event handling for /toggle-times
-
     @Override
     public void onGuildJoin(@NotNull GuildJoinEvent event) {
         event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
                 .sendMessage("I just joined a new server! I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
 
-        // set up privileges for the new server!
-        logger.info("Updating /toggle-times permissions on newly joined guild {}", event.getGuild());
-        TimezoneBot.updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
+        logger.info("Just joined guild {}!", event.getGuild());
     }
 
     @Override
@@ -78,48 +70,6 @@ public class BotEventListener extends ListenerAdapter {
         logger.info("Force-refreshing roles after leaving guild {}", event.getGuild());
         TimezoneRoleUpdater.forceUpdate();
     }
-
-    @Override
-    public void onGuildUpdateOwner(@NotNull GuildUpdateOwnerEvent event) {
-        // this means the privileges should be given to the new owner!
-        logger.info("Updating /toggle-times permissions after ownership transfer on {} ({} -> {})", event.getGuild(), event.getOldOwner(), event.getNewOwner());
-        TimezoneBot.updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
-    }
-
-    @Override
-    public void onRoleCreate(@NotNull RoleCreateEvent event) {
-        if (hasAccessToAdminCommands(event.getRole())) {
-            // the new role has permission to call /toggle-times, so we should give it to it.
-            logger.info("Updating /toggle-times permissions after new role was created on {} ({} with permissions {})", event.getGuild(),
-                    event.getRole(), event.getRole().getPermissions());
-            TimezoneBot.updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
-        }
-    }
-
-    @Override
-    public void onRoleUpdatePermissions(@NotNull RoleUpdatePermissionsEvent event) {
-        if (event.getOldPermissions().contains(Permission.ADMINISTRATOR) != event.getNewPermissions().contains(Permission.ADMINISTRATOR)
-                || event.getOldPermissions().contains(Permission.MANAGE_SERVER) != event.getNewPermissions().contains(Permission.MANAGE_SERVER)) {
-
-            // the role was just added / removed a permission giving access to /toggle-times, so we need to update!
-            logger.info("Updating /toggle-times permissions after role {} was updated on {} ({} -> {})",
-                    event.getRole(), event.getGuild(), event.getOldPermissions(), event.getNewPermissions());
-            TimezoneBot.updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
-        }
-    }
-
-    @Override
-    public void onRoleDelete(@NotNull RoleDeleteEvent event) {
-        if (hasAccessToAdminCommands(event.getRole())) {
-            // the role had permission to call /toggle-times, so we should refresh.
-            // (this is mainly in case this makes the server go below the 10 overrides limit.)
-            logger.info("Updating /toggle-times permissions after role was deleted on {} ({} with permissions {})", event.getGuild(),
-                    event.getRole(), event.getRole().getPermissions());
-            TimezoneBot.updateToggleTimesPermsForGuilds(Collections.singletonList(event.getGuild()));
-        }
-    }
-
-    // === END event handling for /toggle-times
 
     @Override
     public void onSlashCommand(SlashCommandEvent event) {
