@@ -88,13 +88,7 @@ public class BotEventListener extends ListenerAdapter {
         } else if ("timezone-dropdown".equals(event.getName())) {
             // timezone-dropdown needs the raw event in order to reply with action rows and toggle the ephemeral flag.
             logger.info("New command: /timezone-dropdown by member {}, params=[{}]", event.getMember(), event.getOption("options"));
-
-            if (hasAccessToAdminCommands(event.getMember())) {
-                generateTimezoneDropdown(event);
-            } else {
-                event.reply("You must have the Administrator or Manage Server permission to use this!")
-                        .setEphemeral(true).queue();
-            }
+            generateTimezoneDropdown(event);
         } else {
             OptionMapping optionTimezone = event.getOption("tz_name");
             OptionMapping optionDateTime = event.getOption("date_time");
@@ -248,7 +242,7 @@ public class BotEventListener extends ListenerAdapter {
             }
         }
 
-        if (command.equals("toggle-times") && hasAccessToAdminCommands(member)) {
+        if (command.equals("toggle-times")) {
             // add or remove the server in the list, depending on the previous status.
             long guildId = member.getGuild().getIdLong();
             boolean newValue = !TimezoneBot.serversWithTime.contains(guildId);
@@ -275,10 +269,6 @@ public class BotEventListener extends ListenerAdapter {
                 logger.error("Error while writing file", e);
                 respond.accept(":x: A technical error occurred.");
             }
-        }
-
-        if (command.equals("toggle-times") && !hasAccessToAdminCommands(member)) {
-            respond.accept("You must have the Administrator or Manage Server permission to use this!");
         }
 
         if (command.equals("discord-timestamp") && dateTimeParam != null) {
@@ -378,10 +368,6 @@ public class BotEventListener extends ListenerAdapter {
                 respond.accept("The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "**.");
             }
         }
-    }
-
-    private boolean hasAccessToAdminCommands(IPermissionHolder holder) {
-        return holder.hasPermission(Permission.ADMINISTRATOR) || holder.hasPermission(Permission.MANAGE_SERVER);
     }
 
     /**
