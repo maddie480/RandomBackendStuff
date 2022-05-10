@@ -24,6 +24,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -597,6 +598,133 @@ public class GameBananaAutomatedChecks {
         for (int category : categoriesThatExistButDont) {
             sendAlertToWebhook(":warning: The category at <https://gamebanana.com/" + name.toLowerCase(Locale.ROOT) + "s/cats/" + category + "> does not seem to be approved by site admins!\n" +
                     "This means it will not appear in the categories list (neither in Olympus nor on GameBanana itself).");
+        }
+    }
+
+    public static void checkPngFilesArePngFiles() throws IOException {
+        List<String> oldAlreadyChecked;
+        List<String> newAlreadyChecked = new ArrayList<>();
+        try (InputStream is = new FileInputStream("already_validated_png_files.yaml")) {
+            oldAlreadyChecked = new Yaml().load(is);
+        }
+
+        // load mod list
+        List<String> mods;
+        try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
+            mods = new Yaml().load(is);
+        }
+
+        for (String mod : mods) {
+            // load file list for the mod
+            String modName;
+            List<String> files;
+            try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
+                Map<String, Object> info = new Yaml().load(is);
+                modName = info.get("Name").toString();
+                files = (List<String>) info.get("Files");
+            }
+
+            for (String file : files) {
+                newAlreadyChecked.add(file);
+
+                // skip already checked mods
+                if (oldAlreadyChecked.contains(file)) {
+                    continue;
+                }
+
+                // load file listing for the mod, so that we know which PNG files to check for
+                List<String> filesToCheck;
+                try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
+                    List<String> fileList = new Yaml().load(is);
+                    filesToCheck = fileList.stream()
+                            .filter(fileName -> fileName.startsWith("Graphics/") && fileName.endsWith(".png"))
+                            .collect(Collectors.toList());
+                }
+
+                // skip downloading entirely if there is no PNG file (if the file is not a zip, the file listing will be empty)
+                if (filesToCheck.isEmpty()) {
+                    logger.debug("Skipping file {} because it has no PNG file!", file);
+                    continue;
+                }
+
+                // download the file from GameBanana...
+                String url = "https://gamebanana.com/mmdl/" + file;
+                logger.debug("Downloading {} ({}) for PNG file checking, we have {} files to check", url, modName, filesToCheck.size());
+                ConnectionUtils.runWithRetry(() -> {
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
+                        FileUtils.copyToFile(is, new File("/tmp/png_police.zip"));
+                        return null;
+                    }
+                });
+
+                // extract its PNG files and check for the signature.
+                List<String> badPngs = new LinkedList<>();
+                try (ZipFile zip = new ZipFile(new File("/tmp/png_police.zip"))) {
+                    for (String fileName : filesToCheck) {
+                        if (!checkPngSignature(zip, zip.getEntry(fileName))) {
+                            badPngs.add(fileName);
+                        }
+                    }
+                }
+
+                logger.debug("Deleting temporary ZIP");
+                FileUtils.forceDelete(new File("/tmp/png_police.zip"));
+
+                if (!badPngs.isEmpty()) {
+                    // write the file listing to a file we will be able to attach to the alert.
+                    File tempListFile = new File("/tmp/bad_png_files.txt");
+                    FileUtils.writeStringToFile(tempListFile, String.join("\n", badPngs), UTF_8);
+
+                    String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
+
+                    for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+                        if (webhook.startsWith("https://discord.com/") && tempListFile.length() < 8_388_608L) {
+                            // Discord webhook: send the file with attachment
+                            WebhookExecutor.executeWebhook(webhook,
+                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "Banana Watch",
+                                    ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! You will find the list attached. " +
+                                            "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl,
+                                    false,
+                                    Collections.singletonList(tempListFile));
+                        } else {
+                            // Discord-compatible webhook or file is too big(???): send the file with special header but without the attachment
+                            WebhookExecutor.executeWebhook(webhook,
+                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "Banana Watch",
+                                    ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! " +
+                                            "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl,
+                                    ImmutableMap.of("X-Everest-Log", "true"));
+                        }
+                    }
+
+                    // delete temp file
+                    FileUtils.forceDelete(tempListFile);
+                }
+            }
+        }
+
+        try (FileWriter writer = new FileWriter("already_validated_png_files.yaml")) {
+            new Yaml().dump(newAlreadyChecked, writer);
+        }
+    }
+
+    static boolean checkPngSignature(ZipFile file, ZipEntry entry) throws IOException {
+        logger.debug("Checking file {}", entry.getName());
+
+        try (InputStream is = file.getInputStream(entry)) {
+            byte[] signature = new byte[8];
+            int readBytes = is.read(signature);
+
+            return readBytes == 8
+                    && signature[0] == -119 // 0x89
+                    && signature[1] == 0x50
+                    && signature[2] == 0x4E
+                    && signature[3] == 0x47
+                    && signature[4] == 0x0D
+                    && signature[5] == 0x0A
+                    && signature[6] == 0x1A
+                    && signature[7] == 0x0A;
         }
     }
 
