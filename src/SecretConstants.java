@@ -82,6 +82,8 @@ public class SecretConstants {
     public static List<String> SECRET_WEBHOOKS = Collections.emptyList();
     public static String DUCKDNS_TOKEN = null;
     public static String QUEST_COMMUNITY_BOT_SHARED_SECRET = null;
+    public static String TWITCH_CLIENT_ID = null;
+    public static String TWITCH_CLIENT_SECRET = null;
 
     static {
         try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
@@ -135,6 +137,8 @@ public class SecretConstants {
             SECRET_WEBHOOKS = getListOfStrings(secrets.getJSONArray("SECRET_WEBHOOKS"));
             DUCKDNS_TOKEN = secrets.getString("DUCKDNS_TOKEN");
             QUEST_COMMUNITY_BOT_SHARED_SECRET = secrets.getString("QUEST_COMMUNITY_BOT_SHARED_SECRET");
+            TWITCH_CLIENT_ID = secrets.getString("TWITCH_CLIENT_ID");
+            TWITCH_CLIENT_SECRET = secrets.getString("TWITCH_CLIENT_SECRET");
         } catch (IOException e) {
             logger.error("Could not load application secrets!", e);
         }
