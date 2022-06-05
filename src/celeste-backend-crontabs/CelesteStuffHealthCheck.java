@@ -649,10 +649,10 @@ public class CelesteStuffHealthCheck {
         }
 
         String url = result.getURL().toString();
-        log.debug("Font generator task tracker URL: {}, checking result in 15 seconds", url);
+        log.debug("Font generator task tracker URL: {}, checking result in 30 seconds", url);
 
         try {
-            Thread.sleep(15000);
+            Thread.sleep(30000);
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
