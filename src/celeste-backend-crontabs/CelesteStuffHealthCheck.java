@@ -297,7 +297,7 @@ public class CelesteStuffHealthCheck {
 
         // featured mods list
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-featured")), UTF_8)
-                .contains("\"Name\":\"Olympus - Everest Installer\"")) {
+                .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Featured mods list API failed");
         }
