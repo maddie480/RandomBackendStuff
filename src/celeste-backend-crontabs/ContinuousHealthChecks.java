@@ -1,15 +1,14 @@
 package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -88,10 +87,16 @@ public class ContinuousHealthChecks {
             URLConnection con = new URL(url).openConnection();
             con.setConnectTimeout(5000);
             con.setReadTimeout(10000);
-            try (InputStream is = con.getInputStream()) {
-                String s = IOUtils.toString(is, StandardCharsets.UTF_8);
-                return s.contains(content);
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String s;
+                while ((s = br.readLine()) != null) {
+                    if (s.contains(content)) {
+                        return true;
+                    }
+                }
             }
+
+            return false;
         }, serviceName, webhookUrls);
     }
 
