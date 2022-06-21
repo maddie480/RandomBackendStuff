@@ -15,7 +15,6 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONArray;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -734,15 +733,6 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
-            if (dep.equals("GravityHelper")) {
-                // download and analyze Gravity Helper.
-                try (InputStream gravityHelperTags = authenticatedGitHubRequest("https://api.github.com/repos/swoolcock/GravityHelper/tags")) {
-                    JSONArray tagsObject = new JSONArray(IOUtils.toString(gravityHelperTags, StandardCharsets.UTF_8));
-                    addStuffFromGravityHelper(availableEntities, availableTriggers, availableEffects,
-                            tagsObject.getJSONObject(0).getString("zipball_url"));
-                }
-            }
-
             // == delete when SJ is out -- end
         }
 
@@ -1023,56 +1013,6 @@ public class ModStructureVerifier extends ListenerAdapter {
         availableEffects.addAll(ahornEffects);
 
         FileUtils.forceDelete(modZip);
-    }
-
-    private static void addStuffFromGravityHelper(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
-                                                  String whereIsGravityHelper) throws IOException {
-
-        List<String> ahornEntities = new LinkedList<>();
-        List<String> ahornTriggers = new LinkedList<>();
-        List<String> ahornEffects = new LinkedList<>();
-
-        File modZip = new File("mod-ahornscan-gh-" + System.currentTimeMillis() + ".zip");
-
-        try (InputStream is = authenticatedGitHubRequest(whereIsGravityHelper)) {
-            FileUtils.copyToFile(is, modZip);
-        }
-
-        // scan its contents, opening Ahorn plugin files
-        try (ZipFile zipFile = new ZipFile(modZip)) {
-            final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
-            while (zipEntries.hasMoreElements()) {
-                ZipEntry entry = zipEntries.nextElement();
-                String name = entry.getName();
-                name = name.substring(name.indexOf("/") + 1);
-                if (name.startsWith("Ahorn/") && name.endsWith(".jl")) {
-                    InputStream inputStream = zipFile.getInputStream(entry);
-                    extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, name, inputStream);
-                }
-            }
-
-            logger.info("Found {} Ahorn entities, {} triggers, {} effects in Gravity Helper.",
-                    ahornEntities.size(), ahornTriggers.size(), ahornEffects.size());
-        } catch (IOException | IllegalArgumentException e) {
-            logger.error("Could not analyze Ahorn plugins from Gravity Helper", e);
-            throw new IOException(e);
-        }
-
-        // merge the result into available entities.
-        availableEntities.addAll(ahornEntities);
-        availableTriggers.addAll(ahornTriggers);
-        availableEffects.addAll(ahornEffects);
-
-        FileUtils.forceDelete(modZip);
-    }
-
-    private static InputStream authenticatedGitHubRequest(String url) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
-        connection.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString(
-                (SecretConstants.GITHUB_USERNAME + ":" + SecretConstants.GITHUB_PERSONAL_ACCESS_TOKEN).getBytes(UTF_8)));
-        return connection.getInputStream();
     }
 
     // literal copy-paste from update checker code

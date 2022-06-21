@@ -40,10 +40,6 @@ public class SecretConstants {
     // API key allowing to download stuff from Google Drive
     public static String GOOGLE_DRIVE_API_KEY = "";
 
-    // credentials allowing to check out the Gravity Helper repository (will be deleted when the repo goes public)
-    public static String GITHUB_USERNAME = "";
-    public static String GITHUB_PERSONAL_ACCESS_TOKEN = "";
-
     // secret used to call "reload" APIs on the frontend, when everest_update.yaml / mod_search_database.yaml is updated
     public static String RELOAD_SHARED_SECRET = "";
 
@@ -109,9 +105,6 @@ public class SecretConstants {
             MOD_STRUCTURE_VERIFIER_ROLE_ID = secrets.getLong("MOD_STRUCTURE_VERIFIER_ROLE_ID");
 
             GOOGLE_DRIVE_API_KEY = secrets.getString("GOOGLE_DRIVE_API_KEY");
-
-            GITHUB_USERNAME = secrets.getString("GITHUB_USERNAME");
-            GITHUB_PERSONAL_ACCESS_TOKEN = secrets.getString("GITHUB_PERSONAL_ACCESS_TOKEN");
 
             RELOAD_SHARED_SECRET = secrets.getString("RELOAD_SHARED_SECRET");
 
