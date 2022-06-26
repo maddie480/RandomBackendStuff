@@ -65,15 +65,15 @@ public class CelesteStuffHealthCheck {
         if (latestStable == -1) {
             throw new IOException("There is no Everest stable version :a:");
         }
-        log.debug("Latest stable version: " + latestStable);
+        log.debug("Latest Everest stable version: " + latestStable);
         if (latestBeta == -1) {
             throw new IOException("There is no beta Everest version :a:");
         }
-        log.debug("Latest beta version: " + latestBeta);
+        log.debug("Latest Everest beta version: " + latestBeta);
         if (latestDev == -1) {
             throw new IOException("There is no Everest dev version :a:");
         }
-        log.debug("Latest dev version: " + latestDev);
+        log.debug("Latest Everest dev version: " + latestDev);
 
         // check the last version we sent an SRC notification for.
         int savedLatestEverest = Integer.parseInt(FileUtils.readFileToString(new File("latest_everest.txt"), UTF_8));
@@ -94,9 +94,65 @@ public class CelesteStuffHealthCheck {
         }
 
         if (daily) {
-            checkExists(latestStable);
-            checkExists(latestBeta);
-            checkExists(latestDev);
+            checkExists(latestStable, "Everest", "main");
+            checkExists(latestBeta, "Everest", "main");
+            checkExists(latestDev, "Everest", "main");
+        }
+    }
+
+    /**
+     * Checks that every Olympus branch has a version and that we can download it for all 3 supported operating systems.
+     */
+    public static void checkOlympusExists(boolean daily) throws IOException {
+        JSONObject object = new JSONObject(IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds")), UTF_8));
+        JSONArray versionList = object.getJSONArray("value");
+        int latestStable = -1;
+        int latestMain = -1;
+        int latestWindowsInit = -1;
+        for (Object version : versionList) {
+            JSONObject versionObj = (JSONObject) version;
+            String reason = versionObj.getString("reason");
+            if (Arrays.asList("manual", "individualCI").contains(reason)
+                    && "completed".equals(versionObj.getString("status"))
+                    && "succeeded".equals(versionObj.getString("result"))) {
+
+                switch (versionObj.getString("sourceBranch")) {
+                    case "refs/heads/main":
+                        latestMain = Math.max(latestMain, versionObj.getInt("id"));
+                        break;
+                    case "refs/heads/stable":
+                        latestStable = Math.max(latestStable, versionObj.getInt("id"));
+                        break;
+                    case "refs/heads/windows-init":
+                        latestWindowsInit = Math.max(latestWindowsInit, versionObj.getInt("id"));
+                        break;
+                }
+            }
+        }
+
+        if (latestStable == -1) {
+            throw new IOException("There is no Olympus stable version :a:");
+        }
+        log.debug("Latest Olympus stable version: " + latestStable);
+        if (latestMain == -1) {
+            throw new IOException("There is no Olympus dev version :a:");
+        }
+        log.debug("Latest Olympus dev version: " + latestMain);
+        if (latestWindowsInit == -1) {
+            throw new IOException("There is no Olympus windows-init version :a:");
+        }
+        log.debug("Latest Olympus windows-init version: " + latestWindowsInit);
+
+        if (daily) {
+            checkExists(latestStable, "Olympus", "windows.main");
+            checkExists(latestStable, "Olympus", "macos.main");
+            checkExists(latestStable, "Olympus", "linux.main");
+            checkExists(latestMain, "Olympus", "windows.main");
+            checkExists(latestMain, "Olympus", "macos.main");
+            checkExists(latestMain, "Olympus", "linux.main");
+            checkExists(latestWindowsInit, "Olympus", "windows.main");
+            checkExists(latestWindowsInit, "Olympus", "macos.main");
+            checkExists(latestWindowsInit, "Olympus", "linux.main");
         }
     }
 
@@ -105,9 +161,9 @@ public class CelesteStuffHealthCheck {
      *
      * @param version The version to download
      */
-    private static void checkExists(int version) throws IOException {
-        log.debug("Downloading version " + version + "...");
-        byte[] contents = ConnectionUtils.toByteArrayWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + version + "/artifacts?artifactName=main&api-version=5.0&%24format=zip"));
+    private static void checkExists(int version, String projectName, String artifactName) throws IOException {
+        log.debug("Downloading {} version {}, artifact {}...", projectName, version, artifactName);
+        byte[] contents = ConnectionUtils.toByteArrayWithTimeout(new URL("https://dev.azure.com/EverestAPI/" + projectName + "/_apis/build/builds/" + version + "/artifacts?artifactName=" + artifactName + "&api-version=5.0&%24format=zip"));
         log.debug("Size of version {}: {}", version, contents.length);
         if (contents.length < 1_000_000) {
             throw new IOException("Version " + version + " is too small (" + contents.length + "), that's suspicious");
