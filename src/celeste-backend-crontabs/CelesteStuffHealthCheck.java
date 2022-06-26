@@ -38,6 +38,7 @@ public class CelesteStuffHealthCheck {
      * Also sends out a notification to SRC staff if a new stable Everest hits.
      * Ran hourly with daily = false, and daily with daily = true.
      */
+
     public static void checkEverestExists(boolean daily) throws IOException {
         JSONObject object = new JSONObject(IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&api-version=5.0")), UTF_8));
         JSONArray versionList = object.getJSONArray("value");
@@ -163,10 +164,20 @@ public class CelesteStuffHealthCheck {
      */
     private static void checkExists(int version, String projectName, String artifactName) throws IOException {
         log.debug("Downloading {} version {}, artifact {}...", projectName, version, artifactName);
-        byte[] contents = ConnectionUtils.toByteArrayWithTimeout(new URL("https://dev.azure.com/EverestAPI/" + projectName + "/_apis/build/builds/" + version + "/artifacts?artifactName=" + artifactName + "&api-version=5.0&%24format=zip"));
-        log.debug("Size of version {}: {}", version, contents.length);
-        if (contents.length < 1_000_000) {
-            throw new IOException("Version " + version + " is too small (" + contents.length + "), that's suspicious");
+
+        long size = 0;
+        byte[] buffer = new byte[4096];
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/" + projectName + "/_apis/build/builds/" + version + "/artifacts?artifactName=" + artifactName + "&api-version=5.0&%24format=zip"))) {
+            while (true) {
+                int read = is.read(buffer);
+                if (read == -1) break;
+                size += read;
+            }
+        }
+
+        log.debug("Size of version {}: {}", version, size);
+        if (size < 1_000_000) {
+            throw new IOException("Version " + version + " is too small (" + size + "), that's suspicious");
         }
     }
 
