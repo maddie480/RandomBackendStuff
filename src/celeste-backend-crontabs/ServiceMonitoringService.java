@@ -32,11 +32,13 @@ public class ServiceMonitoringService {
 
     public static Map<String, Object> getStatistics() throws IOException {
         Future<Integer> gamesBotUsage = countLogEntriesAsync("protoPayload.resource=\"/discord/games-bot\"");
+        Future<Integer> customSlashCommandsUsage = countLogEntriesAsync("protoPayload.resource=\"/discord/custom-slash-commands\"");
         Future<Integer> timezoneBotUsage = countLogEntriesAsync("labels.loggerName=\"com.max480.discord.randombots.BotEventListener\" and jsonPayload.message =~ \"^New command: .*\"");
 
         try (MetricServiceClient client = MetricServiceClient.create()) {
             return ImmutableMap.of(
                     "responseCountPerCode", getResponseCount(client),
+                    "customSlashCommandsUsage", customSlashCommandsUsage.get(),
                     "gamesBotUsage", gamesBotUsage.get(),
                     "timezoneBotUsage", timezoneBotUsage.get()
             );
