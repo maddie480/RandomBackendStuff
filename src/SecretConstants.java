@@ -27,6 +27,10 @@ public class SecretConstants {
     // Games Bot credentials
     public static String GAMES_BOT_TOKEN = "";
 
+    // Custom Slash Commands application credentials
+    public static String CUSTOM_SLASH_COMMANDS_CLIENT_ID = "";
+    public static String CUSTOM_SLASH_COMMANDS_CLIENT_SECRET = "";
+
     // Mod Structure Verifier credentials
     public static String MOD_STRUCTURE_VERIFIER_TOKEN = "";
     public static String STRAWBERRY_JAM_LOCATION = "";
@@ -95,6 +99,9 @@ public class SecretConstants {
             TIMEZONE_BOT_TOKEN = secrets.getString("TIMEZONE_BOT_TOKEN");
 
             GAMES_BOT_TOKEN = secrets.getString("GAMES_BOT_TOKEN");
+
+            CUSTOM_SLASH_COMMANDS_CLIENT_ID = secrets.getString("CUSTOM_SLASH_COMMANDS_CLIENT_ID");
+            CUSTOM_SLASH_COMMANDS_CLIENT_SECRET = secrets.getString("CUSTOM_SLASH_COMMANDS_CLIENT_SECRET");
 
             MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
             STRAWBERRY_JAM_LOCATION = secrets.getString("STRAWBERRY_JAM_LOCATION");
