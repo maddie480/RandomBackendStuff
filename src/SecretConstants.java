@@ -84,6 +84,7 @@ public class SecretConstants {
     public static String QUEST_COMMUNITY_BOT_SHARED_SECRET = null;
     public static String TWITCH_CLIENT_ID = null;
     public static String TWITCH_CLIENT_SECRET = null;
+    public static String RDV_BASIC_AUTH = null;
 
     static {
         try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
@@ -139,6 +140,7 @@ public class SecretConstants {
             QUEST_COMMUNITY_BOT_SHARED_SECRET = secrets.getString("QUEST_COMMUNITY_BOT_SHARED_SECRET");
             TWITCH_CLIENT_ID = secrets.getString("TWITCH_CLIENT_ID");
             TWITCH_CLIENT_SECRET = secrets.getString("TWITCH_CLIENT_SECRET");
+            RDV_BASIC_AUTH = secrets.getString("RDV_BASIC_AUTH");
         } catch (IOException e) {
             logger.error("Could not load application secrets!", e);
         }
