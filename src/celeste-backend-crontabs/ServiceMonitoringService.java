@@ -34,10 +34,12 @@ public class ServiceMonitoringService {
         Future<Integer> gamesBotUsage = countLogEntriesAsync("protoPayload.resource=\"/discord/games-bot\"");
         Future<Integer> customSlashCommandsUsage = countLogEntriesAsync("protoPayload.resource=\"/discord/custom-slash-commands\"");
         Future<Integer> timezoneBotUsage = countLogEntriesAsync("labels.loggerName=\"com.max480.discord.randombots.BotEventListener\" and jsonPayload.message =~ \"^New command: .*\"");
+        Future<Integer> restartCount = countLogEntriesAsync("protoPayload.resource=\"/_ah/warmup\"");
 
         try (MetricServiceClient client = MetricServiceClient.create()) {
             return ImmutableMap.of(
                     "responseCountPerCode", getResponseCount(client),
+                    "restartCount", restartCount.get(),
                     "customSlashCommandsUsage", customSlashCommandsUsage.get(),
                     "gamesBotUsage", gamesBotUsage.get(),
                     "timezoneBotUsage", timezoneBotUsage.get()
