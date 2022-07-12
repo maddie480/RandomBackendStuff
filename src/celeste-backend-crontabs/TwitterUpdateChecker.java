@@ -304,7 +304,7 @@ public class TwitterUpdateChecker {
         if (videoUrl != null) {
             boolean videoSent = false;
             File video = new File("/tmp/tweet_video" + getFileExtension(videoUrl));
-            if (video.exists() && video.length() < 8 * 1024 * 1024) {
+            if (video.exists() && video.length() <= 8 * 1024 * 1024) {
                 // post the video as a file, to avoid having to post a long link
                 try {
                     WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Video:", false, Collections.singletonList(video));
@@ -460,7 +460,42 @@ public class TwitterUpdateChecker {
             log.debug("Running ./youtube-dl --dump-single-json {} to get video URL for the tweet...", tweetUrl);
             Process youtubeDl = new ProcessBuilder("./youtube-dl", "--dump-single-json", tweetUrl).start();
             try (InputStream is = youtubeDl.getInputStream()) {
-                return new JSONObject(IOUtils.toString(is, UTF_8)).getString("url");
+                JSONObject output = new JSONObject(IOUtils.toString(is, UTF_8));
+
+                String bestUrl = output.getString("url");
+                long filesize = -1;
+
+                for (Object format : output.getJSONArray("formats")) {
+                    String url = ((JSONObject) format).getString("url");
+
+                    // skip m3u8 links that are not actually videos
+                    if (!url.contains(".mp4")) continue;
+
+                    try {
+                        // query the header of each video to get the file size
+                        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+                        connection.setConnectTimeout(10000);
+                        connection.setReadTimeout(30000);
+                        connection.setRequestMethod("HEAD");
+
+                        if (connection.getHeaderField("Content-Length") != null) {
+                            long contentLength = Long.parseLong(connection.getHeaderField("Content-Length"));
+                            log.debug("File size for video at {}: {}", url, contentLength);
+
+                            // the "best" video is the biggest one that still fits within the 8 MB size limit.
+                            if (contentLength > filesize && contentLength <= 8 * 1024 * 1024) {
+                                bestUrl = url;
+                                filesize = contentLength;
+                            }
+                        }
+                    } catch (IOException | NumberFormatException e) {
+                        // skip the format
+                        log.warn("Could not get video size for URL {}", url, e);
+                    }
+                }
+
+                log.debug("Best video format is {} with size {}", bestUrl, filesize);
+                return bestUrl;
             }
         } catch (IOException | JSONException e) {
             // this is an error, but this should NOT prevent from posting the tweet.
