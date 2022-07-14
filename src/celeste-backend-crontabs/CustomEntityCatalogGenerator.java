@@ -51,6 +51,7 @@ public class CustomEntityCatalogGenerator {
         private Map<String, List<String>> triggerList = new HashMap<>();
         private Map<String, List<String>> effectList = new HashMap<>();
         private List<AbstractKeyValue<String, String>> documentationLinks = new ArrayList<>();
+        private String fileId;
 
         private QueriedModInfo(String itemtype, int itemid) {
             this.itemtype = itemtype;
@@ -186,7 +187,13 @@ public class CustomEntityCatalogGenerator {
 
         modInfo = new ArrayList<>();
 
-        refreshList();
+        // get the update checker database.
+        Map<String, Map<String, Object>> everestUpdateYaml;
+        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+            everestUpdateYaml = new Yaml().load(is);
+        }
+
+        refreshList(everestUpdateYaml);
 
         // mod name -> (link name, link)
         Map<String, Map<String, String>> documentationLinks = new HashMap<>();
@@ -222,12 +229,6 @@ public class CustomEntityCatalogGenerator {
             }
         }
 
-        // get the update checker database.
-        Map<String, Map<String, Object>> everestUpdateYaml;
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            everestUpdateYaml = new Yaml().load(is);
-        }
-
         // get the dependency graph.
         Map<String, Map<String, Object>> dependencyGraphYaml;
         try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
@@ -235,10 +236,8 @@ public class CustomEntityCatalogGenerator {
         }
 
         for (QueriedModInfo info : new HashSet<>(modInfo)) {
-            // find the mod name based on GameBanana itemtype/itemid.
-            Map.Entry<String, Map<String, Object>> updateCheckerDatabaseEntry = everestUpdateYaml.entrySet()
-                    .stream().filter(entry -> info.itemtype.equals(entry.getValue().get("GameBananaType").toString())
-                            && info.itemid == (int) entry.getValue().get("GameBananaId")).findFirst().orElse(null);
+            // find the mod name based on GameBanana file URL.
+            Map.Entry<String, Map<String, Object>> updateCheckerDatabaseEntry = getUpdateCheckerDatabaseEntry(everestUpdateYaml, info.fileId);
 
             // if found, attach any docs to it.
             if (updateCheckerDatabaseEntry != null && documentationLinks.containsKey(updateCheckerDatabaseEntry.getKey())) {
@@ -301,6 +300,12 @@ public class CustomEntityCatalogGenerator {
         }
     }
 
+    private Map.Entry<String, Map<String, Object>> getUpdateCheckerDatabaseEntry(Map<String, Map<String, Object>> everestUpdateYaml, String fileId) {
+        return everestUpdateYaml.entrySet()
+                .stream().filter(entry -> entry.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL")
+                        .equals("https://gamebanana.com/mmdl/" + fileId)).findFirst().orElse(null);
+    }
+
     /**
      * Formats a GameBanana itemtype (Gamefile => Game file, MapCategory => Map Category).
      */
@@ -338,9 +343,10 @@ public class CustomEntityCatalogGenerator {
     /**
      * Loads the Ahorn plugin list and puts it in modInfo.
      *
+     * @param everestUpdateYaml The mod updater database contents (everest_update.yaml)
      * @throws IOException If an error occurs while reading the database
      */
-    private void refreshList() throws IOException {
+    private void refreshList(Map<String, Map<String, Object>> everestUpdateYaml) throws IOException {
         // load the entire mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
@@ -359,22 +365,21 @@ public class CustomEntityCatalogGenerator {
             thisModInfo.modName = fileInfo.get("Name").toString();
             List<String> files = (List<String>) fileInfo.get("Files");
 
-            // only show files from the first version listed.
-            boolean filesWereFound = false;
-
             for (String file : files) {
-                checkMapEditor("ahorn", mod, file, thisModInfo);
-                checkMapEditor("loenn", mod, file, thisModInfo);
+                if (getUpdateCheckerDatabaseEntry(everestUpdateYaml, file) != null) {
+                    checkMapEditor("ahorn", mod, file, thisModInfo);
+                    checkMapEditor("loenn", mod, file, thisModInfo);
 
-                // check if we found plugins!
-                if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
-                    filesWereFound = true;
-                    break;
+                    // check if we found plugins!
+                    if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
+                        thisModInfo.fileId = file;
+                        break;
+                    }
                 }
             }
 
             // add the mod to the custom entity catalog if it has any entity.
-            if (filesWereFound) {
+            if (thisModInfo.fileId != null) {
                 modInfo.add(thisModInfo);
             }
         }
