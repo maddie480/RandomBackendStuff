@@ -166,36 +166,42 @@ public class GameBananaAutomatedChecks {
                             if (dllPath == null) {
                                 logger.info("Mod actually has no DLL, skipping");
                             } else {
-                                logger.debug("Extracting DLL from {}", dllPath);
+                                ZipEntry entry = zip.getEntry(dllPath.toString());
 
-                                try (InputStream is = zip.getInputStream(zip.getEntry(dllPath.toString()))) {
-                                    FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.dll"));
-                                }
-
-                                // invoke ilspycmd to decompile the mod.
-                                logger.debug("Decompiling DLL...");
-                                Process p = new ProcessBuilder("/home/rsa-key-20181108/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start();
-                                String fullDecompile;
-                                try (InputStream is = p.getInputStream()) {
-                                    fullDecompile = IOUtils.toString(is, StandardCharsets.UTF_8);
-                                }
-
-                                // search for anything looking like yield return orig(self)
-                                if (fullDecompile.contains("yield return orig.Invoke")) {
-                                    logger.warn("Mod {} uses yield return orig(self)!", modName);
-                                    yieldReturnIssue = true;
-                                } else if (fullDecompile.contains(".MethodHandle.GetFunctionPointer()")) {
-                                    logger.warn("Mod {} might be using the IntPtr trick", modName);
-                                    intPtrIssue = true;
-                                } else if (fullDecompile.contains("readonly struct")) {
-                                    logger.warn("Mod {} might have a readonly struct", modName);
-                                    readonlyStructIssue = true;
+                                if (entry == null) {
+                                    logger.info("The DLL specified in the yaml file \"{}\" does not exist! Skipping.", dllPath);
                                 } else {
-                                    logger.info("No yield return orig(self) detected in mod {}", modName);
-                                }
+                                    logger.debug("Extracting DLL from {}", dllPath);
 
-                                logger.debug("Deleting temporary DLL");
-                                FileUtils.forceDelete(new File("/tmp/mod_yield_police.dll"));
+                                    try (InputStream is = zip.getInputStream(entry)) {
+                                        FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.dll"));
+                                    }
+
+                                    // invoke ilspycmd to decompile the mod.
+                                    logger.debug("Decompiling DLL...");
+                                    Process p = new ProcessBuilder("/home/rsa-key-20181108/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start();
+                                    String fullDecompile;
+                                    try (InputStream is = p.getInputStream()) {
+                                        fullDecompile = IOUtils.toString(is, StandardCharsets.UTF_8);
+                                    }
+
+                                    // search for anything looking like yield return orig(self)
+                                    if (fullDecompile.contains("yield return orig.Invoke")) {
+                                        logger.warn("Mod {} uses yield return orig(self)!", modName);
+                                        yieldReturnIssue = true;
+                                    } else if (fullDecompile.contains(".MethodHandle.GetFunctionPointer()")) {
+                                        logger.warn("Mod {} might be using the IntPtr trick", modName);
+                                        intPtrIssue = true;
+                                    } else if (fullDecompile.contains("readonly struct")) {
+                                        logger.warn("Mod {} might have a readonly struct", modName);
+                                        readonlyStructIssue = true;
+                                    } else {
+                                        logger.info("No yield return orig(self) detected in mod {}", modName);
+                                    }
+
+                                    logger.debug("Deleting temporary DLL");
+                                    FileUtils.forceDelete(new File("/tmp/mod_yield_police.dll"));
+                                }
                             }
                         }
 
