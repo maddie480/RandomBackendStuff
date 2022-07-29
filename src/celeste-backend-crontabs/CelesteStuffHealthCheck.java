@@ -1,5 +1,6 @@
 package com.max480.discord.randombots;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -93,6 +94,13 @@ public class CelesteStuffHealthCheck {
             // and save the fact that we notified about this version.
             FileUtils.writeStringToFile(new File("latest_everest.txt"), Integer.toString(latestStable), UTF_8);
         }
+
+        // save the latest versions to Cloud Storage for the everest.yaml validator to use
+        CloudStorageUtils.sendStringToCloudStorage(new JSONObject(ImmutableMap.of(
+                "stable", latestStable,
+                "beta", latestBeta,
+                "dev", latestDev
+        )).toString(), "everest_versions.json", "application/json");
 
         if (daily) {
             checkExists(latestStable, "Everest", "main");
