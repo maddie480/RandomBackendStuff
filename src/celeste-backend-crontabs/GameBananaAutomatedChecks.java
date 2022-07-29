@@ -341,7 +341,15 @@ public class GameBananaAutomatedChecks {
                     String nameForUrl1 = mod1.getValue().split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod1.getValue().split("/")[1];
                     String nameForUrl2 = mod2.getValue().split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod2.getValue().split("/")[1];
 
-                    if (!modIsObsolete(mod1.getValue()) && !modIsObsolete(mod2.getValue())) {
+                    // if one of the mods is a wip, check if they are linked.
+                    boolean modAndWipMatch = false;
+                    if (mod1.getValue().startsWith("Wip/") && !mod2.getValue().startsWith("Wip/")) {
+                        modAndWipMatch = modAndWipAreLinked(mod2.getValue(), mod1.getValue());
+                    } else if (!mod1.getValue().startsWith("Wip/") && mod2.getValue().startsWith("Wip/")) {
+                        modAndWipMatch = modAndWipAreLinked(mod1.getValue(), mod2.getValue());
+                    }
+
+                    if (!modAndWipMatch && !modIsObsolete(mod1.getValue()) && !modIsObsolete(mod2.getValue())) {
                         sendAlertToWebhook(":warning: Mods **" + mod1.getKey() + "** and **" + mod2.getKey() + "** seem to be using the same mod ID! " +
                                 "This is illegal <:landeline:458158726558384149>\n:arrow_right: " +
                                 "https://gamebanana.com/" + nameForUrl1 + " and https://gamebanana.com/" + nameForUrl2);
@@ -375,6 +383,22 @@ public class GameBananaAutomatedChecks {
             });
         } catch (IOException e) {
             logger.error("Cannot get whether {} is obsolete or not, so we will assume it is not.", mod, e);
+            return false;
+        }
+    }
+
+    private static boolean modAndWipAreLinked(String mod, String wip) {
+        try {
+            return ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_aWip"))) {
+                    JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+
+                    // check that the mod has a linked wip, and that it is the wip we were given
+                    return !modInfo.isNull("_aWip") && wip.equals("Wip/" + modInfo.getJSONObject("_aWip").getInt("_idRow"));
+                }
+            });
+        } catch (IOException e) {
+            logger.error("Cannot get whether {} is linked to {}, so we will assume it is not.", mod, e);
             return false;
         }
     }
