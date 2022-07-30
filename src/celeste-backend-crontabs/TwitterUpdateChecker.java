@@ -2,6 +2,7 @@ package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
 import com.max480.quest.modmanagerbot.BotClient;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -40,6 +41,9 @@ public class TwitterUpdateChecker {
     private static final Map<String, Set<String>> previousTweets = new HashMap<>();
 
     public static String serviceMessage = null;
+
+    private static String automaticOlympusNewsHash = "[first check]";
+    private static String manualOlympusNewsHash = "[first check]";
 
     public static void runCheckForUpdates() throws Exception {
         try {
@@ -199,28 +203,10 @@ public class TwitterUpdateChecker {
                     }
 
                     // Try to determine if the urls in the tweet have embeds.
-                    List<String> urls = new ArrayList<>();
-                    try {
-                        // if we're showing a retweet, show the urls of the retweet.
-                        JSONObject consideredTweet = tweet;
-                        if (consideredTweet.has("retweeted_status")) {
-                            consideredTweet = consideredTweet.getJSONObject("retweeted_status");
-                        }
-
-                        urls = consideredTweet.getJSONObject("entities").getJSONArray("urls").toList()
-                                .stream()
-                                .filter(s -> !((Map<String, String>) s).get("expanded_url").contains(id))
-                                .filter(s -> hasEmbed(((Map<String, String>) s).get("url")))
-                                .map(s -> ((Map<String, String>) s).get("url"))
-                                .collect(Collectors.toList());
-                    } catch (Exception e) {
-                        log.error("Error while trying to get urls from tweet", e);
-                        // it isn't a big deal though. we should still post the tweet.
-                    }
-                    final List<String> urlsFinalList = urls;
+                    final List<String> linksInTweet = detectLinksInTweet(tweet, true);
 
                     // post it to the personal Twitter channel
-                    postTweetToWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, date, link, profilePictureUrl, username, embed, videoUrl, urlsFinalList);
+                    postTweetToWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, date, link, profilePictureUrl, username, embed, videoUrl, linksInTweet);
 
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
                         // load webhook URLs from Cloud Storage
@@ -236,7 +222,7 @@ public class TwitterUpdateChecker {
                         List<String> goneWebhooks = new ArrayList<>();
                         for (String webhook : webhookUrls) {
                             try {
-                                postTweetToWebhook(webhook, date, link, profilePictureUrl, username, embed, videoUrl, urlsFinalList);
+                                postTweetToWebhook(webhook, date, link, profilePictureUrl, username, embed, videoUrl, linksInTweet);
                             } catch (WebhookExecutor.UnknownWebhookException e) {
                                 // if this happens, this means the webhook was deleted.
                                 goneWebhooks.add(webhook);
@@ -265,7 +251,7 @@ public class TwitterUpdateChecker {
                         BotClient.getInstance().getTextChannelById(SecretConstants.QUEST_UPDATE_CHANNEL)
                                 .sendMessage("<@" + String.join("> <@", patchNoteSubscribers) + ">\n" +
                                         "Nouveau tweet de @" + feed + "\n" +
-                                        ":arrow_right: " + link + (urls.isEmpty() ? "" : "\nLiens : " + String.join(", ", urls)))
+                                        ":arrow_right: " + link + (linksInTweet.isEmpty() ? "" : "\nLiens : " + String.join(", ", linksInTweet)))
                                 .queue();
                     }
 
@@ -288,7 +274,54 @@ public class TwitterUpdateChecker {
             }
         }
 
+        if (feed.equals("EverestAPI")) {
+            // check if either the Olympus news file or the tweet list changed.
+            String autoOlympusNews, manualOlympusNews;
+            try (InputStream is = new FileInputStream("previous_twitter_messages_EverestAPI.txt")) {
+                autoOlympusNews = DigestUtils.sha512Hex(is);
+            }
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/max4805/RandomBackendStuff/main/olympusnews.json"))) {
+                manualOlympusNews = DigestUtils.sha512Hex(is);
+            }
+
+            if (!autoOlympusNews.equals(automaticOlympusNewsHash) || !manualOlympusNews.equals(manualOlympusNewsHash)) {
+                // update the feed!
+                log.info("Regenerating the Olympus news! auto: {} -> {}, manual: {} -> {}",
+                        automaticOlympusNewsHash, autoOlympusNews,
+                        manualOlympusNewsHash, manualOlympusNews);
+
+                OlympusNewsGenerator.generateFeed(answer);
+
+                automaticOlympusNewsHash = autoOlympusNews;
+                manualOlympusNewsHash = manualOlympusNews;
+            }
+        }
+
         log.debug("Done.");
+    }
+
+    static List<String> detectLinksInTweet(JSONObject tweet, boolean withEmbedsOnly) {
+        String id = tweet.getString("id_str");
+
+        List<String> urls = new ArrayList<>();
+        try {
+            // if we're showing a retweet, show the urls of the retweet.
+            JSONObject consideredTweet = tweet;
+            if (consideredTweet.has("retweeted_status")) {
+                consideredTweet = consideredTweet.getJSONObject("retweeted_status");
+            }
+
+            urls = consideredTweet.getJSONObject("entities").getJSONArray("urls").toList()
+                    .stream()
+                    .filter(s -> !((Map<String, String>) s).get("expanded_url").contains(id))
+                    .filter(s -> !withEmbedsOnly || hasEmbed(((Map<String, String>) s).get("url")))
+                    .map(s -> ((Map<String, String>) s).get("url"))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error while trying to get urls from tweet", e);
+            // it isn't a big deal though. we should still post the tweet.
+        }
+        return urls;
     }
 
     /**
@@ -345,7 +378,7 @@ public class TwitterUpdateChecker {
      * @param tweet The tweet to turn into an embed
      * @return The embed data
      */
-    private static Map<String, Object> generateEmbedFor(JSONObject tweet) {
+    static Map<String, Object> generateEmbedFor(JSONObject tweet) {
         Map<String, Object> embed = new HashMap<>();
 
         // if that's an RT, we want to take the retweeted status instead.
