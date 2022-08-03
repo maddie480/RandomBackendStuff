@@ -383,6 +383,13 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Download from mirror test failed");
         }
+
+        // Olympus News
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/olympus-news")), UTF_8)
+                .contains("\"preview\":\"You can find every news post on Twitter!\"")) {
+
+            throw new IOException("Olympus News test failed");
+        }
     }
 
     /**
