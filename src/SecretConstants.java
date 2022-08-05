@@ -24,9 +24,6 @@ public class SecretConstants {
     // Timezone Bot credentials
     public static String TIMEZONE_BOT_TOKEN = "";
 
-    // Games Bot credentials
-    public static String GAMES_BOT_TOKEN = "";
-
     // Custom Slash Commands application credentials
     public static String CUSTOM_SLASH_COMMANDS_CLIENT_ID = "";
     public static String CUSTOM_SLASH_COMMANDS_CLIENT_SECRET = "";
@@ -98,8 +95,6 @@ public class SecretConstants {
             REPORT_SERVER_CHANNEL = secrets.getLong("REPORT_SERVER_CHANNEL");
 
             TIMEZONE_BOT_TOKEN = secrets.getString("TIMEZONE_BOT_TOKEN");
-
-            GAMES_BOT_TOKEN = secrets.getString("GAMES_BOT_TOKEN");
 
             CUSTOM_SLASH_COMMANDS_CLIENT_ID = secrets.getString("CUSTOM_SLASH_COMMANDS_CLIENT_ID");
             CUSTOM_SLASH_COMMANDS_CLIENT_SECRET = secrets.getString("CUSTOM_SLASH_COMMANDS_CLIENT_SECRET");
