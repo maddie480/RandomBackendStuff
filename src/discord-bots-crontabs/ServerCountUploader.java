@@ -79,5 +79,7 @@ public class ServerCountUploader {
         CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml");
 
         logger.info("Stats saved on Cloud Storage: {}", yamlData);
+
+        TopGGCommunicator.refreshServerCounts(guilds.size(), customSlashCommandsServerCount);
     }
 }

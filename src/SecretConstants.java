@@ -24,9 +24,16 @@ public class SecretConstants {
     // Timezone Bot credentials
     public static String TIMEZONE_BOT_TOKEN = "";
 
+    // Games Bot credentials
+    public static String GAMES_BOT_CLIENT_ID = "";
+    public static String GAMES_BOT_TOKEN = "";
+    public static String GAMES_BOT_TOP_GG_TOKEN = "";
+
     // Custom Slash Commands application credentials
     public static String CUSTOM_SLASH_COMMANDS_CLIENT_ID = "";
     public static String CUSTOM_SLASH_COMMANDS_CLIENT_SECRET = "";
+    public static String CUSTOM_SLASH_COMMANDS_TOKEN = "";
+    public static String CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN = "";
 
     // Mod Structure Verifier credentials
     public static String MOD_STRUCTURE_VERIFIER_TOKEN = "";
@@ -96,8 +103,14 @@ public class SecretConstants {
 
             TIMEZONE_BOT_TOKEN = secrets.getString("TIMEZONE_BOT_TOKEN");
 
+            GAMES_BOT_CLIENT_ID = secrets.getString("GAMES_BOT_CLIENT_ID");
+            GAMES_BOT_TOKEN = secrets.getString("GAMES_BOT_TOKEN");
+            GAMES_BOT_TOP_GG_TOKEN = secrets.getString("GAMES_BOT_TOP_GG_TOKEN");
+
             CUSTOM_SLASH_COMMANDS_CLIENT_ID = secrets.getString("CUSTOM_SLASH_COMMANDS_CLIENT_ID");
             CUSTOM_SLASH_COMMANDS_CLIENT_SECRET = secrets.getString("CUSTOM_SLASH_COMMANDS_CLIENT_SECRET");
+            CUSTOM_SLASH_COMMANDS_TOKEN = secrets.getString("CUSTOM_SLASH_COMMANDS_TOKEN");
+            CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN = secrets.getString("CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN");
 
             MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
             STRAWBERRY_JAM_LOCATION = secrets.getString("STRAWBERRY_JAM_LOCATION");
