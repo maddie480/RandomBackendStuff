@@ -34,7 +34,7 @@ public class TopGGCommunicator {
      * Refreshes the server counts once a day.
      * The actual counting is done by {@link ServerCountUploader}, which then calls this method.
      */
-    public static void refreshServerCounts(int gamesBot, int customSlashCommands) {
+    public static void refreshServerCounts(int gamesBot, int customSlashCommands) throws IOException {
         // update the server count on top.gg through the API
         updateBotGuildCount(SecretConstants.GAMES_BOT_CLIENT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN,
                 "Games Bot", gamesBot);
@@ -48,7 +48,7 @@ public class TopGGCommunicator {
      *
      * @param internalBotClient A private bot instance used to post the notifications
      */
-    public static void refreshVotes(JDA internalBotClient) {
+    public static void refreshVotes(JDA internalBotClient) throws IOException {
         // check if we got new upvotes through the API
         getAndUpdateBotScore(SecretConstants.GAMES_BOT_CLIENT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, internalBotClient,
                 "Games Bot", () -> gamesBotScore, score -> gamesBotScore = score);
@@ -62,8 +62,8 @@ public class TopGGCommunicator {
                 "Custom Slash Commands", () -> customSlashCommandsRatingCount, score -> customSlashCommandsRatingCount = score);
     }
 
-    private static void updateBotGuildCount(String botId, String botToken, String botName, int guildCount) {
-        try {
+    private static void updateBotGuildCount(String botId, String botToken, String botName, int guildCount) throws IOException {
+        ConnectionUtils.runWithRetry(() -> {
             HttpURLConnection connection = (HttpURLConnection) new URL("https://top.gg/api/bots/" + botId + "/stats").openConnection();
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
@@ -84,13 +84,13 @@ public class TopGGCommunicator {
 
             logger.debug("Updated guild count for {} on top.gg with {}.", botName, guildCount);
 
-        } catch (IOException e) {
-            logger.error("Could not update top.gg guild count for {}", botName, e);
-        }
+            // fulfill method signature
+            return null;
+        });
     }
 
-    private static void getAndUpdateBotScore(String botId, String botToken, JDA internalBotClient, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
-        try {
+    private static void getAndUpdateBotScore(String botId, String botToken, JDA internalBotClient, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
+        ConnectionUtils.runWithRetry(() -> {
             HttpURLConnection connection = (HttpURLConnection) new URL("https://top.gg/api/bots/" + botId).openConnection();
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
@@ -100,9 +100,10 @@ public class TopGGCommunicator {
                 JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                 updateBotScore(internalBotClient, response.getInt("points"), response.getInt("monthlyPoints"), botName, oldCount, newCount);
             }
-        } catch (IOException e) {
-            logger.error("Could not get top.gg score for {}", botName, e);
-        }
+
+            // fulfill method signature
+            return null;
+        });
     }
 
     private static void updateBotScore(JDA internalBotClient, int points, int monthlyPoints, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
@@ -117,8 +118,8 @@ public class TopGGCommunicator {
         newCount.accept(points);
     }
 
-    private static void updateBotRatingCount(JDA internalBotClient, String botId, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
-        try {
+    private static void updateBotRatingCount(JDA internalBotClient, String botId, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
+        ConnectionUtils.runWithRetry(() -> {
             // there is a JSON schema belonging to a ... product in the page, and it has the ratings, so go get it.
             JSONObject productMetadata = new JSONObject(Jsoup.connect("https://top.gg/fr/bot/" + botId).get()
                     .select("script[type=\"application/ld+json\"]").html());
@@ -126,7 +127,7 @@ public class TopGGCommunicator {
             if (productMetadata.isNull("aggregateRating")) {
                 logger.debug("There is no rating for " + botName + " yet.");
                 newCount.accept(0);
-                return;
+                return null;
             }
 
             // ratingCount is the amount of reviews, ratingValue is the rating out of 100.
@@ -143,8 +144,9 @@ public class TopGGCommunicator {
                                 " The new medium rating is **" + new DecimalFormat("0.00").format(score / 20.) + "/5**.").queue();
             }
             newCount.accept(newRatingCount);
-        } catch (IOException e) {
-            logger.error("Could not get top.gg comment count for {}", botName, e);
-        }
+
+            // fulfill method signature
+            return null;
+        });
     }
 }
