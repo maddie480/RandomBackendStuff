@@ -2,13 +2,15 @@ package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.*;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.Event;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageDeleteEvent;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
@@ -127,7 +129,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         // start up the bot.
-        jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, GatewayIntent.GUILD_MESSAGES)
+        jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)
                 .addEventListeners(new ModStructureVerifier(),
                         // some code specific to the Strawberry Jam 2021 server, not published and has nothing to do with timezones
                         // but that wasn't really enough to warrant a separate bot
@@ -202,7 +204,9 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     @Override
-    public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
+    public void onMessageReceived(@Nonnull MessageReceivedEvent event) {
+        if (!event.isFromGuild()) return;
+
         if (event.getAuthor().getIdLong() == event.getJDA().getSelfUser().getIdLong()) {
             // failsafe: do not react to our own messages.
             return;
@@ -219,7 +223,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             if (event.getMessage().getAttachments().isEmpty()) {
                 event.getChannel().sendMessage(":x: Send a text file in order to generate a font for it!").queue();
             } else {
-                event.getMessage().getAttachments().get(0).downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
+                event.getMessage().getAttachments().get(0).getProxy().downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
                         .thenAcceptAsync(file -> FontGenerator.generateFontFromDiscord(file, event.getMessage().getContentRaw().substring("--generate-font ".length()), event.getChannel(), event.getMessage()));
             }
         } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
@@ -255,15 +259,15 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @param expectedCollabMapPrefix   The prefix for maps to check in the structure
      * @param responseChannelId         The channel where all problems with the map will be sent
      */
-    private void scanMapFromMessage(@NotNull GuildMessageReceivedEvent event, String expectedCollabAssetPrefix, String expectedCollabMapPrefix, long responseChannelId) {
+    private void scanMapFromMessage(@NotNull MessageReceivedEvent event, String expectedCollabAssetPrefix, String expectedCollabMapPrefix, long responseChannelId) {
         for (Message.Attachment attachment : event.getMessage().getAttachments()) {
             if (attachment.getFileName().toLowerCase(Locale.ROOT).endsWith(".zip")) {
                 // this is a zip attachment! analyze it.
 
-                event.getMessage().addReaction("\uD83E\uDD14").complete(); // :thinking:
+                event.getMessage().addReaction(Emoji.fromUnicode("\uD83E\uDD14")).complete(); // :thinking:
 
                 logger.info("{} sent a file named {} in {} that we should analyze!", event.getMember(), attachment.getFileName(), event.getChannel());
-                attachment.downloadToFile(new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip"))
+                attachment.getProxy().downloadToFile(new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip"))
                         .thenAcceptAsync(file -> analyzeZipFileFromDiscord(event, attachment, expectedCollabAssetPrefix, expectedCollabMapPrefix, file, responseChannelId));
             }
         }
@@ -283,7 +287,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         if (googleDriveId != null) {
             logger.info("{} sent a Google Drive file with id {} in {} that we should analyze!", event.getMember(), googleDriveId, event.getChannel());
 
-            event.getMessage().addReaction("\uD83E\uDD14").complete(); // :thinking:
+            event.getMessage().addReaction(Emoji.fromUnicode("\uD83E\uDD14")).complete(); // :thinking:
 
             try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media"))) {
                 // download the file through the Google Drive API and analyze it.
@@ -293,11 +297,11 @@ public class ModStructureVerifier extends ListenerAdapter {
             } catch (IOException e) {
                 // the file could not be downloaded (the file is probably private or non-existent).
                 logger.warn("Could not download file id {}", googleDriveId, e);
-                event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-                event.getMessage().addReaction("\uD83D\uDCA3").queue(); // :bomb:
+                event.getMessage().removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
+                event.getMessage().addReaction(Emoji.fromUnicode("\uD83D\uDCA3")).queue(); // :bomb:
 
                 // post a message, since this kind of error might be on the user.
-                Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId))
+                Optional.<MessageChannel>ofNullable(event.getGuild().getTextChannelById(responseChannelId))
                         .orElse(event.getChannel())
                         .sendMessage(event.getAuthor().getAsMention() + " I couldn't download the file from the Google Drive link you posted in " + event.getChannel().getAsMention() + "." +
                                 " Maybe the file is private or it doesn't exist anymore? :thinking:\nMake sure anyone that has the link can download it.").queue();
@@ -305,7 +309,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    public static void analyzeZipFileFromDiscord(GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
+    public static void analyzeZipFileFromDiscord(MessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
                                                  String expectedCollabMapsPrefix, File file, Long responseChannelId) {
 
         analyzeZipFile(event, attachment, expectedCollabAssetPrefix, expectedCollabMapsPrefix, file, responseChannelId, null);
@@ -328,7 +332,7 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @param responseChannelId         The channel where all problems with the map will be sent
      * @param sendResultToFrontend      The method to call to send the result of the verification to the frontend
      */
-    private static void analyzeZipFile(GuildMessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
+    private static void analyzeZipFile(MessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
                                        String expectedCollabMapsPrefix, File file, Long responseChannelId, BiConsumer<String, List<File>> sendResultToFrontend) {
 
         if (event != null) {
@@ -485,9 +489,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
-            TextChannel channel = null;
+            GuildMessageChannel channel = null;
             if (event != null) {
-                channel = Optional.ofNullable(event.getGuild().getTextChannelById(responseChannelId)).orElse(event.getChannel());
+                channel = Optional.<GuildMessageChannel>ofNullable(event.getGuild().getTextChannelById(responseChannelId)).orElse(event.getChannel().asGuildMessageChannel());
             }
 
             logger.debug("Checking for missing fonts...");
@@ -504,8 +508,8 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (problemList.isEmpty()) {
                 if (event != null) {
-                    event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-                    event.getMessage().addReaction("\uD83D\uDC4C").queue(); // :ok_hand:
+                    event.getMessage().removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
+                    event.getMessage().addReaction(Emoji.fromUnicode("\uD83D\uDC4C")).queue(); // :ok_hand:
                 } else {
                     sendResultToFrontend.accept(":white_check_mark: **No issue was found with your zip!**", Collections.emptyList());
                 }
@@ -583,8 +587,8 @@ public class ModStructureVerifier extends ListenerAdapter {
 
                     sendingMessage.queue();
 
-                    event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-                    event.getMessage().addReaction("❌").queue(); // :x:
+                    event.getMessage().removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
+                    event.getMessage().addReaction(Emoji.fromUnicode("❌")).queue(); // :x:
                 } else {
                     // compose the message in a very similar but not identical way
                     String message = ":x: **Oops, there are issues with the zip you just sent:**\n- " + String.join("\n- ", problemList) + dependenciesList;
@@ -626,8 +630,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                 event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
                         .sendMessage("An error occurred while scanning a zip: " + e.toString()).queue();
 
-                event.getMessage().removeReaction("\uD83E\uDD14").queue(); // :thinking:
-                event.getMessage().addReaction("\uD83D\uDCA3").queue(); // :bomb:
+                event.getMessage().removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
+                event.getMessage().addReaction(Emoji.fromUnicode("\uD83D\uDCA3")).queue(); // :bomb:
             } else {
                 sendResultToFrontend.accept(":bomb: An error occurred while scanning your zip.", Collections.emptyList());
             }
@@ -638,7 +642,9 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     @Override
-    public void onGuildMessageDelete(@NotNull GuildMessageDeleteEvent event) {
+    public void onMessageDelete(@NotNull MessageDeleteEvent event) {
+        if (!event.isFromGuild()) return;
+
         if (messagesToEmbeds.containsKey(event.getMessageIdLong())) {
             // if a user deletes their file, make sure to delete the embed that goes with it.
             event.getChannel().deleteMessageById(messagesToEmbeds.get(event.getMessageIdLong())).queue();
@@ -1086,7 +1092,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private static void parseAdminCommand(GuildMessageReceivedEvent event) {
+    private static void parseAdminCommand(MessageReceivedEvent event) {
         String msg = event.getMessage().getContentRaw();
         if (msg.startsWith("--")) {
             // for logging purposes
@@ -1234,7 +1240,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private static void saveMap(GuildMessageReceivedEvent event, String successMessage) {
+    private static void saveMap(MessageReceivedEvent event, String successMessage) {
         try {
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(CHANNELS_SAVE_FILE_NAME))) {
                 for (Long channelId : responseChannels.keySet()) {
@@ -1278,7 +1284,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (event != null) {
                 event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                        .sendMessage("An error occurred while saving sent messages list: " + e.toString()).queue();
+                        .sendMessage("An error occurred while saving sent messages list: " + e).queue();
             }
         }
     }

@@ -2,6 +2,7 @@ package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -94,14 +95,14 @@ public class FontGenerator {
             FileUtils.writeStringToFile(textFile.toFile(), "\ufeff" + missingCharacters, StandardCharsets.UTF_8);
 
             // run BMFont to generate the font!
-            if (message != null) message.addReaction("\uD83E\uDD14").queue(); // :thinking:
+            if (message != null) message.addReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
             new ProcessBuilder("/usr/bin/wine", "font_generator_data/bmfont.exe",
                     "-c", toWindowsPath(Paths.get("font_generator_data/configs/" + language + ".bmfc")),
                     "-t", toWindowsPath(textFile),
                     "-o", toWindowsPath(targetFile))
                     .inheritIO()
                     .start().waitFor();
-            if (message != null) message.removeReaction("\uD83E\uDD14").queue(); // :thinking:
+            if (message != null) message.removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
 
             if (!Files.exists(targetFile)) {
                 cleanup(inputFile, tempDirectory);

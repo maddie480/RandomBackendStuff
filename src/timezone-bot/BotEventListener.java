@@ -2,21 +2,25 @@ package com.max480.discord.randombots;
 
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
-import net.dv8tion.jda.api.events.interaction.ButtonClickEvent;
-import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
-import net.dv8tion.jda.api.events.interaction.SelectionMenuEvent;
-import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.Button;
-import net.dv8tion.jda.api.interactions.components.ButtonStyle;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
-import net.dv8tion.jda.api.interactions.components.selections.SelectionMenu;
-import net.dv8tion.jda.api.requests.restaction.interactions.ReplyAction;
+import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +76,7 @@ public class BotEventListener extends ListenerAdapter {
     }
 
     @Override
-    public void onSlashCommand(SlashCommandEvent event) {
+    public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if (!event.isFromGuild()) {
             // wtf??? slash commands are disabled in DMs
             event.reply("This bot is not usable in DMs!").setEphemeral(true).queue();
@@ -108,14 +112,14 @@ public class BotEventListener extends ListenerAdapter {
     }
 
     @Override
-    public void onSelectionMenu(@NotNull SelectionMenuEvent event) {
+    public void onSelectMenuInteraction(@NotNull SelectMenuInteractionEvent event) {
         if ("discord-timestamp".equals(event.getComponent().getId())) {
             logger.info("New interaction with discord-timestamp selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
 
             // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
             // we also want the menu to stay the same, so that they can switch.
             event.editMessage(new MessageBuilder(event.getValues().get(0))
-                    .setActionRows(ActionRow.of(event.getSelectionMenu().createCopy()
+                    .setActionRows(ActionRow.of(event.getSelectMenu().createCopy()
                             .setDefaultValues(event.getValues())
                             .build()))
                     .build()).queue();
@@ -134,7 +138,7 @@ public class BotEventListener extends ListenerAdapter {
     }
 
     @Override
-    public void onButtonClick(@Nonnull ButtonClickEvent event) {
+    public void onButtonInteraction(@Nonnull ButtonInteractionEvent event) {
         if (event.getComponentId().startsWith("list-timezones-to-file")) {
             String nameFormat = event.getComponentId().substring("list-timezones-to-file".length());
             logger.info("New interaction with button from member {}, chose to get timezone list as text file with name format '{}'", event.getMember(), nameFormat);
@@ -325,7 +329,7 @@ public class BotEventListener extends ListenerAdapter {
                 }
 
                 // print `<t:timestamp:format>` => <t:timestamp:format> for all available formats.
-                b.append("Copy-paste one of those tags in your message, and others will see **" + dateTimeParam + "** in their timezone:\n");
+                b.append("Copy-paste one of those tags in your message, and others will see **").append(dateTimeParam).append("** in their timezone:\n");
                 for (char format : new char[]{'t', 'T', 'd', 'D', 'f', 'F', 'R'}) {
                     b.append("`<t:").append(timestamp).append(':').append(format)
                             .append(">` :arrow_right: <t:").append(timestamp).append(':').append(format).append(">\n");
@@ -338,7 +342,7 @@ public class BotEventListener extends ListenerAdapter {
                 ZonedDateTime time = Instant.ofEpochSecond(timestamp).atZone(ZoneId.of(timezoneToUse));
                 respond.accept(new MessageBuilder(b.toString().trim())
                         .setActionRows(ActionRow.of(
-                                SelectionMenu.create("discord-timestamp")
+                                SelectMenu.create("discord-timestamp")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":t>`")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "`<t:" + timestamp + ":T>`")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":d>`")
@@ -425,7 +429,7 @@ public class BotEventListener extends ListenerAdapter {
      * @param shouldRespondInPublic Whether the response should be public or private (aka "ephemeral").
      *                              Only matters if the given event is a SlashCommandEvent.
      */
-    private void listTimezones(GenericInteractionCreateEvent event, String namesToUse, boolean asTextFile, boolean shouldRespondInPublic) {
+    private void listTimezones(IReplyCallback event, String namesToUse, boolean asTextFile, boolean shouldRespondInPublic) {
         // list all members from the server
         Map<TimezoneBot.UserTimezone, TimezoneBot.CachedMember> members = TimezoneBot.userTimezones.stream()
                 .filter(user -> user.serverId == event.getGuild().getIdLong())
@@ -456,18 +460,18 @@ public class BotEventListener extends ListenerAdapter {
         String message = asTextFile ? "Here is a list of people's timezones on the server:" : timezonesList;
 
         // if that was a button click, we want to edit the message. Otherwise, that was a slash command, and we want to respond to it.
-        if (event instanceof ButtonClickEvent) {
-            ((ButtonClickEvent) event)
+        if (event instanceof ButtonInteractionEvent) {
+            ((ButtonInteractionEvent) event)
                     .editMessage(message)
                     .setActionRows() // I want NO action row
                     .addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt")
                     .queue();
         } else {
-            ReplyAction reply = event.reply(message).setEphemeral(!shouldRespondInPublic);
+            ReplyCallbackAction reply = event.reply(message).setEphemeral(!shouldRespondInPublic);
             if (asTextFile) {
-                reply.addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt");
+                reply = reply.addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt");
             } else {
-                reply.addActionRow(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file" + namesToUse, "Get as text file", Emoji.fromUnicode("\uD83D\uDCC4")));
+                reply = reply.addActionRow(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file" + namesToUse, "Get as text file", Emoji.fromUnicode("\uD83D\uDCC4")));
             }
             reply.queue();
         }
@@ -542,7 +546,7 @@ public class BotEventListener extends ListenerAdapter {
                 .orElse(null);
     }
 
-    private void generateTimezoneDropdown(SlashCommandEvent slashCommandEvent) {
+    private void generateTimezoneDropdown(SlashCommandInteractionEvent slashCommandEvent) {
         OptionMapping optionsParam = slashCommandEvent.getOption("options");
         OptionMapping messageParam = slashCommandEvent.getOption("message");
 
@@ -624,7 +628,7 @@ public class BotEventListener extends ListenerAdapter {
                 slashCommandEvent.reply(messageParam != null ? messageParam.getAsString() : "**Pick a timezone role here!**\n" +
                                 "If your timezone does not match any of those, run the `/timezone [tz_name]` command.\n" +
                                 "To remove your timezone role, run the `/remove-timezone` command.")
-                        .addActionRow(SelectionMenu.create("timezone-dropdown").addOptions(options).build())
+                        .addActionRow(SelectMenu.create("timezone-dropdown").addOptions(options).build())
                         .queue();
             }
         }

@@ -1,5 +1,6 @@
 package com.max480.discord.randombots;
 
+import com.google.common.collect.ImmutableMap;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
@@ -7,11 +8,12 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.interactions.DiscordLocale;
+import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.requests.ErrorResponse;
-import net.dv8tion.jda.api.utils.data.DataObject;
+import net.dv8tion.jda.internal.interactions.CommandDataImpl;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
@@ -335,63 +337,6 @@ public class TimezoneBot {
     }
 
     /**
-     * {@link CommandData} that supports command description localizations and the new default permission system.
-     */
-    private static class CommandDataUpdated extends CommandData {
-        private boolean restrictedToAdmins = false;
-        private final Map<String, String> descriptionLocalizations = new HashMap<>();
-
-        public CommandDataUpdated(@NotNull String name, @NotNull String description) {
-            super(name, description);
-        }
-
-        public CommandDataUpdated setRestrictedToAdmins(boolean restrictedToAdmins) {
-            this.restrictedToAdmins = restrictedToAdmins;
-            return this;
-        }
-
-        public CommandDataUpdated addDescriptionLocalization(String locale, String description) {
-            descriptionLocalizations.put(locale, description);
-            return this;
-        }
-
-        @Override
-        public @NotNull DataObject toData() {
-            DataObject data = super.toData()
-                    .put("default_permission", !restrictedToAdmins)
-                    .put("dm_permission", false)
-                    .put("description_localizations", descriptionLocalizations);
-
-            if (restrictedToAdmins) {
-                data = data.put("default_member_permissions", Permission.getRaw(Permission.MANAGE_SERVER));
-            }
-
-            return data;
-        }
-    }
-
-    /**
-     * {@link OptionData} that supports command description localizations.
-     */
-    private static class OptionDataUpdated extends OptionData {
-        private final Map<String, String> descriptionLocalizations = new HashMap<>();
-
-        public OptionDataUpdated(@NotNull OptionType type, @NotNull String name, @NotNull String description, boolean isRequired) {
-            super(type, name, description, isRequired);
-        }
-
-        public OptionDataUpdated addDescriptionLocalization(String locale, String description) {
-            descriptionLocalizations.put(locale, description);
-            return this;
-        }
-
-        @Override
-        public @NotNull DataObject toData() {
-            return super.toData().put("description_localizations", descriptionLocalizations);
-        }
-    }
-
-    /**
      * Replaces the command list. Usually not called, but the bot can be run once with this method called
      * to add, update or delete commands.
      */
@@ -399,46 +344,46 @@ public class TimezoneBot {
         // register the slash commands, then assign per-guild permissions for /toggle-times.
         // all commands have defaultEnabled = false to disable them in DMs.
         jda.updateCommands()
-                .addCommands(new CommandDataUpdated("timezone", "Sets up or replaces your timezone role")
-                        .addDescriptionLocalization("fr", "Configure ou remplace ton rôle de fuseau horaire")
-                        .addOptions(new OptionDataUpdated(OptionType.STRING, "tz_name", "Timezone name, use /detect-timezone to figure it out", true)
-                                .addDescriptionLocalization("fr", "Le nom du fuseau horaire, utilise /detect-timezone pour le déterminer")))
-                .addCommands(new CommandDataUpdated("detect-timezone", "Detects your current timezone")
-                        .addDescriptionLocalization("fr", "Détecte ton fuseau horaire actuel"))
-                .addCommands(new CommandDataUpdated("remove-timezone", "Removes your timezone role")
-                        .addDescriptionLocalization("fr", "Supprime ton rôle de fuseau horaire"))
-                .addCommands(new CommandDataUpdated("discord-timestamp", "Gives a Discord timestamp, to tell a date/time to other people regardless of their timezone")
-                        .addDescriptionLocalization("fr", "Donne un timestamp Discord, pour dire une date et heure à quelqu'un quel que soit son fuseau horaire")
-                        .addOptions(new OptionDataUpdated(OptionType.STRING, "date_time", "Date and time to convert (format: YYYY-MM-DD hh:mm:ss)", true)
-                                .addDescriptionLocalization("fr", "La date et heure à convertir (au format AAAA-MM-JJ hh:mm:ss)")))
-                .addCommands(new CommandDataUpdated("time-for", "Gives the time it is now for another member of the server")
-                        .addDescriptionLocalization("fr", "Donne l'heure qu'il est pour quelqu'un d'autre sur le serveur")
-                        .addOptions(new OptionDataUpdated(OptionType.USER, "member", "The member you want to get the time of", true)
-                                .addDescriptionLocalization("fr", "Le membre pour lequel tu veux savoir l'heure qu'il est")))
-                .addCommands(new CommandDataUpdated("toggle-times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
-                        .addDescriptionLocalization("fr", "[Admin] Active ou désactive l'affichage de l'heure qu'il est dans les rôles de fuseaux horaires")
-                        .setRestrictedToAdmins(true))
-                .addCommands(new CommandDataUpdated("list-timezones", "Lists the timezones of all members in the server")
-                        .addDescriptionLocalization("fr", "Montre une liste des fuseaux horaires de tous les membres du serveur")
+                .addCommands(new CommandDataImpl("timezone", "Sets up or replaces your timezone role")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Configure ou remplace ton rôle de fuseau horaire"))
+                        .addOptions(new OptionData(OptionType.STRING, "tz_name", "Timezone name, use /detect-timezone to figure it out", true)
+                                .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Le nom du fuseau horaire, utilise /detect-timezone pour le déterminer"))))
+                .addCommands(new CommandDataImpl("detect-timezone", "Detects your current timezone")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Détecte ton fuseau horaire actuel")))
+                .addCommands(new CommandDataImpl("remove-timezone", "Removes your timezone role")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Supprime ton rôle de fuseau horaire")))
+                .addCommands(new CommandDataImpl("discord-timestamp", "Gives a Discord timestamp, to tell a date/time to other people regardless of their timezone")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Donne un timestamp Discord, pour dire une date et heure à quelqu'un quel que soit son fuseau horaire"))
+                        .addOptions(new OptionData(OptionType.STRING, "date_time", "Date and time to convert (format: YYYY-MM-DD hh:mm:ss)", true)
+                                .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "La date et heure à convertir (au format AAAA-MM-JJ hh:mm:ss)"))))
+                .addCommands(new CommandDataImpl("time-for", "Gives the time it is now for another member of the server")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Donne l'heure qu'il est pour quelqu'un d'autre sur le serveur"))
+                        .addOptions(new OptionData(OptionType.USER, "member", "The member you want to get the time of", true)
+                                .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Le membre pour lequel tu veux savoir l'heure qu'il est"))))
+                .addCommands(new CommandDataImpl("toggle-times", "[Admin] Switches on/off whether to show the time it is in timezone roles")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "[Admin] Active ou désactive l'affichage de l'heure qu'il est dans les rôles de fuseaux horaires"))
+                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER)))
+                .addCommands(new CommandDataImpl("list-timezones", "Lists the timezones of all members in the server")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Montre une liste des fuseaux horaires de tous les membres du serveur"))
                         .addOptions(
-                                new OptionDataUpdated(OptionType.STRING, "visibility", "Whether the response should be \"public\" or \"private\" (\"private\" by default)", false)
-                                        .addDescriptionLocalization("fr", "\"public\" pour que la réponse soit publique, \"private\" pour qu'elle soit privée (privée par défaut)")
+                                new OptionData(OptionType.STRING, "visibility", "Whether the response should be \"public\" or \"private\" (\"private\" by default)", false)
+                                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "\"public\" pour que la réponse soit publique, \"private\" pour qu'elle soit privée (privée par défaut)"))
                                         .addChoice("public", "public")
                                         .addChoice("private", "private"),
-                                new OptionDataUpdated(OptionType.STRING, "names", "The names to use for people: \"discord_tags\", \"nicknames\" or \"both\" (\"discord_tags\" by default)", false)
-                                        .addDescriptionLocalization("fr", "Noms à utiliser : \"discord_tags\" (noms d'utilisateur), \"nicknames\" (pseudos) ou \"both\" (les deux)")
+                                new OptionData(OptionType.STRING, "names", "The names to use for people: \"discord_tags\", \"nicknames\" or \"both\" (\"discord_tags\" by default)", false)
+                                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Noms à utiliser : \"discord_tags\" (noms d'utilisateur), \"nicknames\" (pseudos) ou \"both\" (les deux)"))
                                         .addChoice("discord_tags", "discord_tags")
                                         .addChoice("nicknames", "nicknames")
                                         .addChoice("both", "both")
                         ))
-                .addCommands(new CommandDataUpdated("timezone-dropdown", "[Admin] Creates a dropdown that lets users pick a timezone role")
-                        .addDescriptionLocalization("fr", "[Admin] Crée une liste déroulante qui permet aux utilisateurs de choisir un rôle de fuseau horaire")
-                        .setRestrictedToAdmins(true)
+                .addCommands(new CommandDataImpl("timezone-dropdown", "[Admin] Creates a dropdown that lets users pick a timezone role")
+                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "[Admin] Crée une liste déroulante qui permet aux utilisateurs de choisir un rôle de fuseau horaire"))
+                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER))
                         .addOptions(
-                                new OptionDataUpdated(OptionType.STRING, "options", "The timezones that can be picked (pass \"help\" for syntax and examples)", true)
-                                        .addDescriptionLocalization("fr", "Les fuseaux horaires proposés dans la liste (tape \"help\" pour plus de détails et des exemples)"),
-                                new OptionDataUpdated(OptionType.STRING, "message", "The message to display above the dropdown", false)
-                                        .addDescriptionLocalization("fr", "Le message à afficher au-dessus de la liste déroulante")
+                                new OptionData(OptionType.STRING, "options", "The timezones that can be picked (pass \"help\" for syntax and examples)", true)
+                                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Les fuseaux horaires proposés dans la liste (tape \"help\" pour plus de détails et des exemples)")),
+                                new OptionData(OptionType.STRING, "message", "The message to display above the dropdown", false)
+                                        .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Le message à afficher au-dessus de la liste déroulante"))
                         ))
                 .complete();
     }
