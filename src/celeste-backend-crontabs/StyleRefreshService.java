@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
- * A (pretty silly) service aiming to change my GB profile background and Ripe supporter highlight on a daily basis (called every day).
+ * A (pretty silly) service aiming to change my GB profile background on a daily basis (called every day).
  * The result is sent to https://storage.googleapis.com/max480-random-stuff.appspot.com/gamebanana-profile-background.css
  */
 public class StyleRefreshService {
@@ -42,50 +42,9 @@ public class StyleRefreshService {
                     " } }";
         }
 
-        double rng = Math.random();
-        if (rng < 0.01) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter::before { background: url('https://media.discordapp.net/attachments/445236692136230943/927910115229696061/test5.png?width=128&height=128'); }\n" +
-                    "#IdentityModule .Avatar.IsRipeSupporter { background: #398066; }";
-        } else if (rng < 0.02) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter::before { background: url('https://media.discordapp.net/attachments/445236692136230943/921794754071650314/test.png?width=128&height=128'); }\n" +
-                    "#IdentityModule .Avatar.IsRipeSupporter { background: #EED7A5; }";
-        } else if (rng < 0.1) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, fuchsia, white, blue); }";
-        } else if (rng < 0.2) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA); }";
-        } else if (rng < 0.3) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #FDF336, #FBFAFD, #9F5AD2, #2E2B2E); }";
-        } else if (rng < 0.4) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #EC422A, #831121, #8A2E98, #DB49E3); }";
-        } else if (rng < 0.5) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #F07357, #444, #5D9DBF); }";
-        } else if (rng < 0.6) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter {\n" +
-                    "    background: linear-gradient(to bottom, #FF2457, #FF8524, #FFC824, #88FF24, #24BBFF, #B824FF);\n" +
-                    "    padding: 0.5em;\n" +
-                    "    border-radius: 1em;\n" +
-                    "}\n" +
-                    "#IdentityModule .Avatar.IsRipeSupporter::before { border-radius: 0.5em; }";
-        } else if (rng < 0.7) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #FF2457, #FF8524, #FFC824, #88FF24, #24BBFF, #B824FF); }";
-        } else if (rng < 0.8) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter {\n" +
-                    "    padding: 0;\n" +
-                    "    border-radius: 1em;\n" +
-                    "    background: none;\n" +
-                    "    box-shadow: 0 0 15px 10px #F07357;\n" +
-                    "    margin: 1em 0 1.5em 0;\n" +
-                    "}\n" +
-                    "#IdentityModule .Avatar.IsRipeSupporter::before { border-radius: 1em; }";
-        } else if (rng < 0.9) {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: linear-gradient(to bottom, #FF5F42, #8A0F36, #DE2A2A); }";
-        } else {
-            css += "\n#IdentityModule .Avatar.IsRipeSupporter { background: pink; }";
-        }
-
         CloudStorageUtils.sendStringToCloudStorage(css, "gamebanana-profile-background.css", "text/css");
 
-        String report = "RNG value is " + rng + ", day of year is " + dayOfYear + " (% " + backgrounds.length + " = " + (dayOfYear % backgrounds.length)
+        String report = "Day of year is " + dayOfYear + " (% " + backgrounds.length + " = " + (dayOfYear % backgrounds.length)
                 + ") => New CSS pushed:\n" + css;
         logger.info(report);
     }
