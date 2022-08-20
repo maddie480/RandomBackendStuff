@@ -144,7 +144,9 @@ public class CelesteStuffHealthCheck {
         }
         log.debug("Latest Olympus stable version: " + latestStable);
         if (latestMain == -1) {
-            throw new IOException("There is no Olympus dev version :a:");
+            // dev doesn't exist currently, and Olympus falls back to stable when it doesn't
+            // throw new IOException("There is no Olympus dev version :a:");
+            latestMain = latestStable;
         }
         log.debug("Latest Olympus dev version: " + latestMain);
         if (latestWindowsInit == -1) {
