@@ -77,6 +77,9 @@ public class SecretConstants {
     public static Long QUEST_UPDATE_CHANNEL = 0L;
     public static String TWITTER_BASIC_AUTH = "";
 
+    // header used to authenticate with the GitHub API
+    public static String GITHUB_BASIC_AUTH = "";
+
     // other secrets used for private stuff
     public static String SLASH_COMMAND_BOT_TOKEN = "";
     public static String QUEST_COMMUNITY_BOT_TOKEN = "";
@@ -137,6 +140,8 @@ public class SecretConstants {
             PERSONAL_TWITTER_WEBHOOK_URL = secrets.getString("PERSONAL_TWITTER_WEBHOOK_URL");
             QUEST_UPDATE_CHANNEL = secrets.getLong("QUEST_UPDATE_CHANNEL");
             TWITTER_BASIC_AUTH = secrets.getString("TWITTER_BASIC_AUTH");
+
+            GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
 
             SLASH_COMMAND_BOT_TOKEN = secrets.getString("SLASH_COMMAND_BOT_TOKEN");
             QUEST_COMMUNITY_BOT_TOKEN = secrets.getString("QUEST_COMMUNITY_BOT_TOKEN");
