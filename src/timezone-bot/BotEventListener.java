@@ -1,10 +1,8 @@
 package com.max480.discord.randombots;
 
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
@@ -21,6 +19,10 @@ import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,8 +104,8 @@ public class BotEventListener extends ListenerAdapter {
                     optionDateTime == null ? null : optionDateTime.getAsString(),
                     optionMember == null ? null : optionMember.getAsLong(),
                     response -> {
-                        if (response instanceof Message) {
-                            event.reply((Message) response).setEphemeral(true).queue();
+                        if (response instanceof MessageCreateData) {
+                            event.reply((MessageCreateData) response).setEphemeral(true).queue();
                         } else {
                             event.reply(response.toString()).setEphemeral(true).queue();
                         }
@@ -118,8 +120,9 @@ public class BotEventListener extends ListenerAdapter {
 
             // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
             // we also want the menu to stay the same, so that they can switch.
-            event.editMessage(new MessageBuilder(event.getValues().get(0))
-                    .setActionRows(ActionRow.of(event.getSelectMenu().createCopy()
+            event.editMessage(new MessageEditBuilder()
+                    .setContent(event.getValues().get(0))
+                    .setComponents(ActionRow.of(event.getSelectMenu().createCopy()
                             .setDefaultValues(event.getValues())
                             .build()))
                     .build()).queue();
@@ -340,8 +343,8 @@ public class BotEventListener extends ListenerAdapter {
                 // the idea is that they can get a message with only the tag to copy in it and can copy it on mobile,
                 // which is way more handy than selecting part of the full message on mobile.
                 ZonedDateTime time = Instant.ofEpochSecond(timestamp).atZone(ZoneId.of(timezoneToUse));
-                respond.accept(new MessageBuilder(b.toString().trim())
-                        .setActionRows(ActionRow.of(
+                respond.accept(new MessageCreateBuilder().setContent(b.toString().trim())
+                        .setComponents(ActionRow.of(
                                 SelectMenu.create("discord-timestamp")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":t>`")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "`<t:" + timestamp + ":T>`")
@@ -463,13 +466,13 @@ public class BotEventListener extends ListenerAdapter {
         if (event instanceof ButtonInteractionEvent) {
             ((ButtonInteractionEvent) event)
                     .editMessage(message)
-                    .setActionRows() // I want NO action row
-                    .addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt")
+                    .setComponents() // I want NO action row
+                    .setFiles(FileUpload.fromData(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt"))
                     .queue();
         } else {
             ReplyCallbackAction reply = event.reply(message).setEphemeral(!shouldRespondInPublic);
             if (asTextFile) {
-                reply = reply.addFile(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt");
+                reply = reply.addFiles(FileUpload.fromData(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt"));
             } else {
                 reply = reply.addActionRow(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file" + namesToUse, "Get as text file", Emoji.fromUnicode("\uD83D\uDCC4")));
             }

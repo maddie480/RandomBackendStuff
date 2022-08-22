@@ -1,6 +1,9 @@
 package com.max480.discord.randombots;
 
-import net.dv8tion.jda.api.*;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Message;
@@ -13,7 +16,9 @@ import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import net.dv8tion.jda.api.requests.restaction.MessageAction;
+import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
@@ -570,18 +575,18 @@ public class ModStructureVerifier extends ListenerAdapter {
                         message = message.substring(0, 1997) + "...";
                     }
 
-                    MessageBuilder discordMessage = new MessageBuilder(message);
+                    MessageCreateBuilder discordMessage = new MessageCreateBuilder().setContent(message);
 
                     // if there is any "website problem", attach a link to the help website.
                     if (url != null) {
                         discordMessage.setEmbeds(new EmbedBuilder().setTitle("Click here for more help", url).build());
                     }
 
-                    MessageAction sendingMessage = channel.sendMessage(discordMessage.build());
+                    MessageCreateAction sendingMessage = channel.sendMessage(discordMessage.build());
 
                     if (channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES)) {
                         for (Map.Entry<String, String> missingFont : missingFonts.entrySet()) {
-                            sendingMessage = sendingMessage.addFile(missingFont.getValue().getBytes(UTF_8), missingFont.getKey() + "_missing_chars.txt");
+                            sendingMessage = sendingMessage.addFiles(FileUpload.fromData(missingFont.getValue().getBytes(UTF_8), missingFont.getKey() + "_missing_chars.txt"));
                         }
                     }
 

@@ -3,6 +3,7 @@ package com.max480.discord.randombots;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
+import net.dv8tion.jda.api.utils.FileUpload;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -140,7 +141,7 @@ public class FontGenerator {
             } else if (stillMissingCharacters.isEmpty()) {
                 if (channel != null) {
                     channel.sendMessage(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:")
-                            .addFile(tempDirectory.resolve("font.zip").toFile())
+                            .addFiles(FileUpload.fromData(tempDirectory.resolve("font.zip").toFile()))
                             .complete();
                 } else {
                     sendResultToFrontend.accept(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:",
@@ -152,8 +153,10 @@ public class FontGenerator {
                 if (channel != null) {
                     channel.sendMessage(":warning: Some characters that are used in your file were not found in the font, you will find them in the attached text file.\n" +
                                     "Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder to fill in the remaining characters:")
-                            .addFile(tempDirectory.resolve("font.zip").toFile())
-                            .addFile(tempDirectory.resolve("missing_characters.txt").toFile())
+                            .addFiles(
+                                    FileUpload.fromData(tempDirectory.resolve("font.zip").toFile()),
+                                    FileUpload.fromData(tempDirectory.resolve("missing_characters.txt").toFile())
+                            )
                             .complete();
                 } else {
                     sendResultToFrontend.accept(":warning: Some characters that are used in your file were not found in the font, you will find them in the file below.\n" +
