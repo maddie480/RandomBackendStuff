@@ -497,12 +497,10 @@ public class UpdateCheckerTracker extends EventListener {
 
             // feed the mods to Lucene so that it indexes them
             try (IndexWriter index = new IndexWriter(newDirectory, new IndexWriterConfig(new StandardAnalyzer()))) {
-                List<ModInfo> newModDatabaseForSorting = new LinkedList<>();
-                Map<Integer, String> newModCategories = new HashMap<>();
+                List<ModInfo> modDatabaseForSorting = new LinkedList<>();
+                Map<Integer, String> modCategories = new HashMap<>();
 
                 for (HashMap<String, Object> mod : mods) {
-                    int categoryId = -1;
-
                     Document modDocument = new Document();
                     modDocument.add(new TextField("type", mod.get("GameBananaType").toString(), Field.Store.YES));
                     modDocument.add(new TextField("id", mod.get("GameBananaId").toString(), Field.Store.YES));
@@ -510,21 +508,21 @@ public class UpdateCheckerTracker extends EventListener {
                     modDocument.add(new TextField("author", mod.get("Author").toString(), Field.Store.NO));
                     modDocument.add(new TextField("summary", mod.get("Description").toString(), Field.Store.NO));
                     modDocument.add(new TextField("description", Jsoup.parseBodyFragment(mod.get("Text").toString()).text(), Field.Store.NO));
-                    if (mod.get("CategoryName") != null) {
-                        modDocument.add(new TextField("category", mod.get("CategoryName").toString(), Field.Store.NO));
-
-                        categoryId = (int) mod.get("CategoryId");
-                        newModCategories.put(categoryId, mod.get("CategoryName").toString());
-                    }
+                    modDocument.add(new TextField("category", mod.get("CategoryName").toString(), Field.Store.NO));
                     index.addDocument(modDocument);
 
-                    newModDatabaseForSorting.add(new ModInfo(mod.get("GameBananaType").toString(), (int) mod.get("GameBananaId"),
-                            (int) mod.get("Likes"), (int) mod.get("Views"), (int) mod.get("Downloads"), categoryId, (int) mod.get("CreatedDate"), mod));
+                    if ("Mod".equals(mod.get("GameBananaType"))) {
+                        modCategories.put((int) mod.get("CategoryId"), mod.get("CategoryName").toString());
+                    }
+
+                    modDatabaseForSorting.add(new ModInfo(mod.get("GameBananaType").toString(), (int) mod.get("GameBananaId"),
+                            (int) mod.get("Likes"), (int) mod.get("Views"), (int) mod.get("Downloads"), (int) mod.get("CategoryId"),
+                            (int) mod.get("CreatedDate"), mod));
                 }
 
                 try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("/tmp/mod_search_database.ser"))) {
-                    oos.writeObject(newModDatabaseForSorting);
-                    oos.writeObject(newModCategories);
+                    oos.writeObject(modDatabaseForSorting);
+                    oos.writeObject(modCategories);
                 }
                 CloudStorageUtils.sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream");
                 new File("/tmp/mod_search_database.ser").delete();
@@ -561,7 +559,7 @@ public class UpdateCheckerTracker extends EventListener {
      * DependencyName: DependencyVersion
      * to a list of
      * - Name: DependencyName
-     *   Version: DependencyVersion
+     * Version: DependencyVersion
      */
     private static List<Map<String, Object>> keyValueToEverestYamlFormat(Map<String, Object> keyValue) {
         return keyValue.entrySet().stream()
