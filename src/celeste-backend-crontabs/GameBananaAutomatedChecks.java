@@ -560,16 +560,21 @@ public class GameBananaAutomatedChecks {
     }
 
     public static void checkUnapprovedCategories() throws IOException {
-        checkUnapprovedCategoriesFor("Mod");
-        checkUnapprovedCategoriesFor("Tool");
-        checkUnapprovedCategoriesFor("Request");
-        checkUnapprovedCategoriesFor("Wip");
+        List<Map<String, Object>> modSearchDatabase;
+        try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
+            modSearchDatabase = new Yaml().load(is);
+        }
+
+        for (String itemtype : modSearchDatabase.stream().map(m -> (String) m.get("GameBananaType")).collect(Collectors.toSet())) {
+            checkUnapprovedCategoriesFor(itemtype);
+        }
     }
 
     private static void checkUnapprovedCategoriesFor(String name) throws IOException {
         // "unapproved categories" are categories that definitely exist, where people can add mods...
         // but that don't appear in the list when you just browse the Mods section because that requires admin approval.
         // so they're categories that exist... but don't exist. This makes no sense and that's why it needs fixing.
+        logger.debug("Checking for unapproved {} categories", name);
 
         JSONArray listOfCategories = ConnectionUtils.runWithRetry(() -> {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + name + "Category/ByGame?_aGameRowIds[]=6460&" +

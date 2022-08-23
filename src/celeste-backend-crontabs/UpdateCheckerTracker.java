@@ -559,7 +559,7 @@ public class UpdateCheckerTracker extends EventListener {
      * DependencyName: DependencyVersion
      * to a list of
      * - Name: DependencyName
-     * Version: DependencyVersion
+     *   Version: DependencyVersion
      */
     private static List<Map<String, Object>> keyValueToEverestYamlFormat(Map<String, Object> keyValue) {
         return keyValue.entrySet().stream()

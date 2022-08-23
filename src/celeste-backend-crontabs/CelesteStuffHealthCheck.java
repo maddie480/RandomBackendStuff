@@ -392,6 +392,17 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("Olympus News test failed");
         }
+
+        // Everest versions: check that latest dev is listed
+        int latestDev;
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("everest_versions.json")) {
+            latestDev = new JSONObject(IOUtils.toString(is, UTF_8)).getInt("dev");
+        }
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/everest-versions")), UTF_8)
+                .contains("\"version\":" + (latestDev + 700))) {
+
+            throw new IOException("Everest versions test failed");
+        }
     }
 
     /**
