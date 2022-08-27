@@ -274,32 +274,6 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
-     * Checks that max480-random-stuff.herokuapp.com APIs work as expected.
-     * Ran daily.
-     */
-    public static void checkHerokuAppWorks() throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.herokuapp.com/api/mods?q=spring").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
-        connection.setRequestProperty("Accept", "application/json");
-        connection.connect();
-        if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("\"url\":\"https://celestemodupdater.0x0a.de/banana-mirror/484937.zip\"")) {
-            throw new IOException("Banana Mirror Browser API test failed");
-        }
-        connection.disconnect();
-
-        connection = (HttpURLConnection) new URL("https://max480-random-stuff.herokuapp.com/api/assets/tilesets").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
-        connection.setRequestProperty("Accept", "application/json");
-        connection.connect();
-        if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("\"Tilesets/Background Tilesets")) {
-            throw new IOException("Google Drive category list API test failed");
-        }
-        connection.disconnect();
-    }
-
-    /**
      * Checks that GameBanana categories didn't change overnight (because that requires changes in the updater).
      * YES means the category accepts files, NO means it doesn't.
      * Run daily.
@@ -648,32 +622,6 @@ public class CelesteStuffHealthCheck {
         if (!resultBody.contains("Your everest.yaml file seems valid!")
                 || !resultBody.contains("WinterCollab2021Audio") || !resultBody.contains("VivHelper") || !resultBody.contains("1.4.1")) {
             throw new IOException("everest.yaml validator gave unexpected output for Winter Collab yaml file");
-        }
-    }
-
-    /**
-     * Checks that the wipe converter works by sending it a wipe from the unit test dataset on GitHub (black wipe => 2 triangles).
-     * Run daily.
-     */
-    public static void checkWipeConverter() throws IOException {
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/max4805/RandomStuffWebsiteJS/main/api/tests/assets/testwipe_black.png"));
-             OutputStream os = new FileOutputStream("/tmp/testwipe.png")) {
-
-            IOUtils.copy(is, os);
-        }
-
-        // build a request to wipe converter
-        HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.herokuapp.com/api/wipes", "UTF-8", new HashMap<>());
-        submit.addFilePart("wipe", new File("/tmp/testwipe.png"));
-        HttpURLConnection result = submit.finish();
-
-        // delete the temp file
-        new File("/tmp/testwipe.png").delete();
-
-        // read the response as JSON
-        JSONArray array = new JSONArray(IOUtils.toString(result.getInputStream(), UTF_8));
-        if (array.length() != 2) {
-            throw new IOException("Wipe converter gave an unexpected amount of triangles!");
         }
     }
 
