@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
+import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
@@ -28,7 +29,6 @@ import java.text.DecimalFormat;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -319,20 +319,20 @@ public class TimezoneBot {
      * Saves the user timezones to disk, then sends a message depending on success or failure to the user.
      * Both parameters can be null if no message should be sent.
      *
-     * @param respond The method that should be called to respond to the user
+     * @param event   The event that should be used to respond to the user
      * @param success The message to send in case of success
      */
-    static void saveUsersTimezonesToFile(Consumer<Object> respond, String success) {
+    static void saveUsersTimezonesToFile(IReplyCallback event, String success) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(SAVE_FILE_NAME))) {
             for (UserTimezone entry : userTimezones) {
                 writer.write(entry.serverId + ";" + entry.userId + ";" + entry.timezoneName + "\n");
             }
 
-            if (respond != null) respond.accept(success);
+            if (event != null) event.reply(success).setEphemeral(true).queue();
         } catch (IOException e) {
             // I/O error while saving to disk??
             logger.error("Error while writing file", e);
-            if (respond != null) respond.accept(":x: A technical error occurred.");
+            if (event != null) event.reply(":x: A technical error occurred.").setEphemeral(true).queue();
         }
     }
 

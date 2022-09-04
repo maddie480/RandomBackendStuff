@@ -37,7 +37,6 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -84,43 +83,59 @@ public class BotEventListener extends ListenerAdapter {
 
         if (!event.isFromGuild()) {
             // wtf??? slash commands are disabled in DMs
-            event.reply(localizeMessage(locale,
-                            "This bot is not usable in DMs!",
-                            "Ce bot ne peut pas être utilisé en MP !"))
-                    .setEphemeral(true).queue();
-        } else if ("list-timezones".equals(event.getName())) {
-            // list-timezones needs the raw event in order to reply with attachments and/or action rows.
-            OptionMapping visibility = event.getOption("visibility");
-            OptionMapping names = event.getOption("names");
-            logger.info("New command: /list-timezones by member {}, params=[{}, {}]", event.getMember(), visibility, names);
-            boolean isPublic = visibility != null && "public".equals(visibility.getAsString());
-            listTimezones(event,
-                    names == null ? "discord_tags" : names.getAsString(),
-                    false,
-                    isPublic,
-                    isPublic ? event.getGuildLocale() : event.getUserLocale());
-        } else if ("timezone-dropdown".equals(event.getName())) {
-            // timezone-dropdown needs the raw event in order to reply with action rows and toggle the ephemeral flag.
-            logger.info("New command: /timezone-dropdown by member {}, params=[{}]", event.getMember(), event.getOption("options"));
-            generateTimezoneDropdown(event);
+            respondPrivately(event, localizeMessage(locale,
+                    "This bot is not usable in DMs!",
+                    "Ce bot ne peut pas être utilisé en MP !"));
         } else {
-            OptionMapping optionTimezone = event.getOption("tz_name");
-            OptionMapping optionDateTime = event.getOption("date_time");
-            OptionMapping optionMember = event.getOption("member");
-            processMessage(event.getMember(), event.getName(),
-                    optionTimezone == null ? null : optionTimezone.getAsString(),
-                    optionDateTime == null ? null : optionDateTime.getAsString(),
-                    optionMember == null ? null : optionMember.getAsLong(),
-                    locale,
-                    response -> {
-                        if (response instanceof MessageCreateData) {
-                            event.reply((MessageCreateData) response).setEphemeral(true).queue();
-                        } else {
-                            event.reply(response.toString()).setEphemeral(true).queue();
-                        }
-                    });
+            Member member = event.getMember();
+
+            logger.info("New command: /{} by member {}, options={}", event.getName(), member, event.getOptions());
+
+            switch (event.getName()) {
+                case "list-timezones":
+                    OptionMapping visibility = event.getOption("visibility");
+                    OptionMapping names = event.getOption("names");
+                    boolean isPublic = visibility != null && "public".equals(visibility.getAsString());
+
+                    listTimezones(event,
+                            names == null ? "discord_tags" : names.getAsString(),
+                            false,
+                            isPublic,
+                            isPublic ? event.getGuildLocale() : event.getUserLocale());
+
+                    break;
+
+                case "timezone-dropdown":
+                    generateTimezoneDropdown(event);
+                    break;
+
+                case "detect-timezone":
+                    sendDetectTimezoneLink(event, locale);
+                    break;
+
+                case "timezone":
+                    defineUserTimezone(event, member, event.getOption("tz_name").getAsString(), locale);
+                    break;
+
+                case "remove-timezone":
+                    removeUserTimezone(event, member, locale);
+                    break;
+
+                case "toggle-times":
+                    toggleTimesInTimezoneRoles(event, member, locale);
+                    break;
+
+                case "discord-timestamp":
+                    giveDiscordTimestamp(event, member, event.getOption("date_time").getAsString(), locale);
+                    break;
+
+                case "time-for":
+                    giveTimeForOtherUser(event, member, event.getOption("member").getAsLong(), locale);
+                    break;
+            }
         }
     }
+
 
     @Override
     public void onSelectMenuInteraction(@NotNull SelectMenuInteractionEvent event) {
@@ -141,12 +156,7 @@ public class BotEventListener extends ListenerAdapter {
             logger.info("New interaction with timezone-dropdown selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
 
             // the user picked a timezone in the dropdown! we should act exactly like the /timezone command, actually.
-            processMessage(event.getMember(), "timezone",
-                    event.getValues().get(0),
-                    null,
-                    null,
-                    event.getUserLocale(),
-                    response -> event.reply(response.toString()).setEphemeral(true).queue());
+            defineUserTimezone(event, event.getMember(), event.getValues().get(0), event.getUserLocale());
         }
     }
 
@@ -163,294 +173,297 @@ public class BotEventListener extends ListenerAdapter {
     }
 
     /**
-     * Processes a command, received either by message or by slash command.
-     *
-     * @param member        The member that sent the command
-     * @param command       The command that was sent, without the ! or /
-     * @param timezoneParam The tz_name parameter passed
-     * @param dateTimeParam The date_time parameter passed
-     * @param memberParam   The member parameter passed
-     * @param respond       The method to call to respond to the message (either posting to the channel, or responding to the slash command)
+     * Handles the /detect-timezone command: sends the link to the detect timezone page.
      */
-    private void processMessage(Member member, String command, String timezoneParam, String dateTimeParam, Long memberParam,
-                                DiscordLocale locale, Consumer<Object> respond) {
+    private static void sendDetectTimezoneLink(IReplyCallback event, DiscordLocale locale) {
+        respondPrivately(event, localizeMessage(locale,
+                "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.",
+                "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/detect-timezone.html>."));
+    }
 
-        logger.info("New command: /{} by member {}, params=[tz_name='{}', date_time='{}', member='{}']", command, member, timezoneParam, dateTimeParam, memberParam);
-
-        if (command.equals("detect-timezone")) {
-            respond.accept(localizeMessage(locale,
-                    "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.",
-                    "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/detect-timezone.html>."));
-        }
-
-        if (command.equals("timezone") && timezoneParam != null) {
-            try {
-                // if the user passed for example "EST", convert it to "UTC-5".
-                String timezoneOffsetFromName = getIgnoreCase(TIMEZONE_MAP, timezoneParam);
-                if (timezoneOffsetFromName != null) {
-                    timezoneParam = timezoneOffsetFromName;
-                }
-
-                // check that the timezone is valid by passing it to ZoneId.of.
-                ZonedDateTime localNow = ZonedDateTime.now(ZoneId.of(timezoneParam));
-
-                // remove old link if there is any.
-                TimezoneBot.userTimezones.stream()
-                        .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
-                        .findFirst()
-                        .map(u -> TimezoneBot.userTimezones.remove(u));
-
-                // save the link, both in userTimezones and on disk.
-                TimezoneBot.userTimezones.add(new TimezoneBot.UserTimezone(member.getGuild().getIdLong(), member.getIdLong(), timezoneParam));
-                logger.info("User {} now has timezone {}", member.getIdLong(), timezoneParam);
-                TimezoneBot.memberCache.remove(TimezoneBot.getMemberWithCache(member.getGuild(), member.getIdLong()));
-
-                DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
-                DateTimeFormatter formatFr = DateTimeFormatter.ofPattern("d MMM, HH:mm", Locale.FRENCH);
-                TimezoneBot.saveUsersTimezonesToFile(respond, localizeMessage(locale,
-                        ":white_check_mark: Your timezone was saved as **" + timezoneParam + "**.\n" +
-                                "The current time in this timezone is **" + localNow.format(format) + "**. " +
-                                "If this does not match your local time, type `/detect-timezone` to find the right one.\n\n" +
-                                getRoleUpdateMessage(member.getGuild(), member,
-                                        "Your role will be assigned within 15 minutes once this is done.", locale),
-                        ":white_check_mark: Ton fuseau horaire a été enregistré : **" + timezoneParam + "**.\n" +
-                                "L'heure qu'il est dans ce fuseau horaire est **" + localNow.format(formatFr) + "**. " +
-                                "Si cela ne correspond pas à l'heure qu'il est chez toi, tape `/detect-timezone` pour trouver le bon fuseau horaire.\n\n" +
-                                getRoleUpdateMessage(member.getGuild(), member,
-                                        "Ton rôle sera attribué dans les 15 minutes une fois que ce sera fait.", locale))
-                );
-
-                TimezoneRoleUpdater.forceUpdate();
-            } catch (DateTimeException ex) {
-                // ZoneId.of blew up so the timezone is probably invalid.
-                logger.warn("Could not parse timezone " + timezoneParam, ex);
-
-                List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezoneParam);
-                if (conflictingTimezones != null) {
-                    respond.accept(localizeMessage(locale,
-                            ":x: The timezone **" + timezoneParam + "** is ambiguous! It could mean one of those: _"
-                                    + String.join("_, _", conflictingTimezones) + "_.\n" +
-                                    "Repeat the command with the timezone full name!",
-                            ":x: Le fuseau horaire **" + timezoneParam + "** est ambigu ! Il peut désigner _"
-                                    + String.join("_, _", conflictingTimezones) + "_.\n" +
-                                    "Relance la commande avec le nom complet du fuseau horaire !"));
-                } else {
-                    respond.accept(localizeMessage(locale,
-                            ":x: The given timezone was not recognized.\n" +
-                                    "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.",
-                            ":x: Le fuseau horaire que tu as donné n'a pas été reconnu.\n" +
-                                    "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/detect-timezone.html>."));
-                }
+    /**
+     * Handles the /timezone command: saves a new timezone for the given user.
+     */
+    private void defineUserTimezone(IReplyCallback event, Member member, String timezoneParam, DiscordLocale locale) {
+        try {
+            // if the user passed for example "EST", convert it to "UTC-5".
+            String timezoneOffsetFromName = getIgnoreCase(TIMEZONE_MAP, timezoneParam);
+            if (timezoneOffsetFromName != null) {
+                timezoneParam = timezoneOffsetFromName;
             }
-        }
 
-        if (command.equals("remove-timezone")) {
-            // find the user's timezone.
-            TimezoneBot.UserTimezone userTimezone = TimezoneBot.userTimezones.stream()
+            // check that the timezone is valid by passing it to ZoneId.of.
+            ZonedDateTime localNow = ZonedDateTime.now(ZoneId.of(timezoneParam));
+
+            // remove old link if there is any.
+            TimezoneBot.userTimezones.stream()
                     .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
-                    .findFirst().orElse(null);
+                    .findFirst()
+                    .map(u -> TimezoneBot.userTimezones.remove(u));
 
-            if (userTimezone != null) {
-                String error = getRoleUpdateMessage(member.getGuild(), member, localizeMessage(locale,
-                        "You will be able to remove your timezone role once this is done.",
-                        "Tu pourras supprimer ton rôle de fuseau horaire une fois que ce sera fait."
-                ), locale);
-                if (!error.isEmpty()) {
-                    // since the command involves removing the roles **now**, we can't do it at all if there are permission issues!
-                    respond.accept(error.replace(":warning:", ":x:"));
-                    return;
-                }
+            // save the link, both in userTimezones and on disk.
+            TimezoneBot.userTimezones.add(new TimezoneBot.UserTimezone(member.getGuild().getIdLong(), member.getIdLong(), timezoneParam));
+            logger.info("User {} now has timezone {}", member.getIdLong(), timezoneParam);
+            TimezoneBot.memberCache.remove(TimezoneBot.getMemberWithCache(member.getGuild(), member.getIdLong()));
 
-                // remove all timezone roles from the user.
-                Guild server = member.getGuild();
-                for (Role userRole : member.getRoles()) {
-                    if (TimezoneBot.getTimezoneOffsetRolesForGuild(server).containsValue(userRole.getIdLong())) {
-                        logger.info("Removing timezone role {} from {}", userRole, member);
-                        TimezoneBot.memberCache.remove(TimezoneBot.getMemberWithCache(server, member.getIdLong()));
-                        server.removeRoleFromMember(member, userRole).reason("User used /remove-timezone").complete();
-                    }
-                }
+            DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
+            DateTimeFormatter formatFr = DateTimeFormatter.ofPattern("d MMM, HH:mm", Locale.FRENCH);
+            TimezoneBot.saveUsersTimezonesToFile(event, localizeMessage(locale,
+                    ":white_check_mark: Your timezone was saved as **" + timezoneParam + "**.\n" +
+                            "The current time in this timezone is **" + localNow.format(format) + "**. " +
+                            "If this does not match your local time, type `/detect-timezone` to find the right one.\n\n" +
+                            getRoleUpdateMessage(member.getGuild(), member,
+                                    "Your role will be assigned within 15 minutes once this is done.", locale),
+                    ":white_check_mark: Ton fuseau horaire a été enregistré : **" + timezoneParam + "**.\n" +
+                            "L'heure qu'il est dans ce fuseau horaire est **" + localNow.format(formatFr) + "**. " +
+                            "Si cela ne correspond pas à l'heure qu'il est chez toi, tape `/detect-timezone` pour trouver le bon fuseau horaire.\n\n" +
+                            getRoleUpdateMessage(member.getGuild(), member,
+                                    "Ton rôle sera attribué dans les 15 minutes une fois que ce sera fait.", locale))
+            );
 
-                // forget the user timezone and write it to disk.
-                TimezoneBot.userTimezones.remove(userTimezone);
-                TimezoneBot.saveUsersTimezonesToFile(respond, localizeMessage(locale,
-                        ":white_check_mark: Your timezone role has been removed.",
-                        ":white_check_mark: Ton rôle de fuseau horaire a été supprimé."));
+            TimezoneRoleUpdater.forceUpdate();
+        } catch (DateTimeException ex) {
+            // ZoneId.of blew up so the timezone is probably invalid.
+            logger.warn("Could not parse timezone " + timezoneParam, ex);
+
+            List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezoneParam);
+            if (conflictingTimezones != null) {
+                respondPrivately(event, localizeMessage(locale,
+                        ":x: The timezone **" + timezoneParam + "** is ambiguous! It could mean one of those: _"
+                                + String.join("_, _", conflictingTimezones) + "_.\n" +
+                                "Repeat the command with the timezone full name!",
+                        ":x: Le fuseau horaire **" + timezoneParam + "** est ambigu ! Il peut désigner _"
+                                + String.join("_, _", conflictingTimezones) + "_.\n" +
+                                "Relance la commande avec le nom complet du fuseau horaire !"));
             } else {
-                // user asked for their timezone to be forgotten, but doesn't have a timezone to start with :thonk:
-                respond.accept(localizeMessage(locale,
-                        ":x: You don't currently have a timezone role!",
-                        ":x: Tu n'as pas de rôle de fuseau horaire !"));
+                respondPrivately(event, localizeMessage(locale,
+                        ":x: The given timezone was not recognized.\n" +
+                                "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.",
+                        ":x: Le fuseau horaire que tu as donné n'a pas été reconnu.\n" +
+                                "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/detect-timezone.html>."));
             }
         }
+    }
 
-        if (command.equals("toggle-times")) {
-            // add or remove the server in the list, depending on the previous status.
-            long guildId = member.getGuild().getIdLong();
-            boolean newValue = !TimezoneBot.serversWithTime.contains(guildId);
-            if (newValue) {
-                TimezoneBot.serversWithTime.add(guildId);
-            } else {
-                TimezoneBot.serversWithTime.remove(guildId);
+    /**
+     * Handles the /remove-timezone command: takes off the timezone role and forgets about the user.
+     */
+    private static void removeUserTimezone(IReplyCallback event, Member member, DiscordLocale locale) {
+        // find the user's timezone.
+        TimezoneBot.UserTimezone userTimezone = TimezoneBot.userTimezones.stream()
+                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
+                .findFirst().orElse(null);
+
+        if (userTimezone != null) {
+            String error = getRoleUpdateMessage(member.getGuild(), member, localizeMessage(locale,
+                    "You will be able to remove your timezone role once this is done.",
+                    "Tu pourras supprimer ton rôle de fuseau horaire une fois que ce sera fait."
+            ), locale);
+
+            if (!error.isEmpty()) {
+                // since the command involves removing the roles **now**, we can't do it at all if there are permission issues!
+                respondPrivately(event, error.replace(":warning:", ":x:"));
+                return;
             }
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(TimezoneBot.SERVERS_WITH_TIME_FILE_NAME))) {
-                for (Long server : TimezoneBot.serversWithTime) {
-                    writer.write(server + "\n");
+            // remove all timezone roles from the user.
+            Guild server = member.getGuild();
+            for (Role userRole : member.getRoles()) {
+                if (TimezoneBot.getTimezoneOffsetRolesForGuild(server).containsValue(userRole.getIdLong())) {
+                    logger.info("Removing timezone role {} from {}", userRole, member);
+                    TimezoneBot.memberCache.remove(TimezoneBot.getMemberWithCache(server, member.getIdLong()));
+                    server.removeRoleFromMember(member, userRole).reason("User used /remove-timezone").complete();
                 }
-
-                respond.accept(localizeMessage(locale,
-                        ":white_check_mark: " + (newValue ?
-                                "The timezone roles will now show the time it is in the timezone." :
-                                "The timezone roles won't show the time it is in the timezone anymore.") + "\n" +
-                                getRoleUpdateMessage(member.getGuild(), member,
-                                        "The roles will be updated within 15 minutes once this is done.", locale),
-                        ":white_check_mark: " + (newValue ?
-                                "Les rôles de fuseau horaire montrent maintenant l'heure qu'il est dans le fuseau horaire correspondant." :
-                                "Les rôles de fuseau horaire ne montrent plus l'heure qu'il est dans le fuseau horaire correspondant.") + "\n" +
-                                getRoleUpdateMessage(member.getGuild(), member,
-                                        "Les rôles seront mis à jour dans les 15 minutes une fois que ce sera fait.", locale)));
-
-                TimezoneRoleUpdater.forceUpdate();
-            } catch (IOException e) {
-                // I/O error while saving to disk??
-                logger.error("Error while writing file", e);
-                respond.accept(localizeMessage(locale,
-                        ":x: A technical error occurred.",
-                        ":x: Une erreur technique est survenue."));
             }
+
+            // forget the user timezone and write it to disk.
+            TimezoneBot.userTimezones.remove(userTimezone);
+            TimezoneBot.saveUsersTimezonesToFile(event, localizeMessage(locale,
+                    ":white_check_mark: Your timezone role has been removed.",
+                    ":white_check_mark: Ton rôle de fuseau horaire a été supprimé."));
+        } else {
+            // user asked for their timezone to be forgotten, but doesn't have a timezone to start with :thonk:
+            respondPrivately(event, localizeMessage(locale,
+                    ":x: You don't currently have a timezone role!",
+                    ":x: Tu n'as pas de rôle de fuseau horaire !"));
+        }
+    }
+
+    /**
+     * Handles the /toggle-times command: saves the new setting.
+     */
+    private static void toggleTimesInTimezoneRoles(IReplyCallback event, Member member, DiscordLocale locale) {
+        // add or remove the server in the list, depending on the previous status.
+        long guildId = member.getGuild().getIdLong();
+        boolean newValue = !TimezoneBot.serversWithTime.contains(guildId);
+        if (newValue) {
+            TimezoneBot.serversWithTime.add(guildId);
+        } else {
+            TimezoneBot.serversWithTime.remove(guildId);
         }
 
-        if (command.equals("discord-timestamp") && dateTimeParam != null) {
-            // find the user's timezone.
-            String timezoneName = TimezoneBot.userTimezones.stream()
-                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
-                    .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
-
-            // if the user has no timezone role, we want to use UTC instead!
-            String timezoneToUse = timezoneName == null ? "UTC" : timezoneName;
-
-            // take the given date time with the user's timezone (or UTC), then turn it into a timestamp.
-            LocalDateTime parsedDateTime = tryParseSuccessively(Arrays.asList(
-                    // full date
-                    () -> LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss")),
-                    () -> LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0),
-
-                    // year omitted
-                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear() + "-" + dateTimeParam,
-                            DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss")),
-                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear() + "-" + dateTimeParam,
-                            DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0),
-
-                    // month omitted
-                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear()
-                                    + "-" + LocalDate.now(ZoneId.of(timezoneToUse)).getMonthValue()
-                                    + "-" + dateTimeParam,
-                            DateTimeFormatter.ofPattern("yyyy-M-d H:mm:ss")),
-                    () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear()
-                                    + "-" + LocalDate.now(ZoneId.of(timezoneToUse)).getMonthValue()
-                                    + "-" + dateTimeParam,
-                            DateTimeFormatter.ofPattern("yyyy-M-d H:mm")).withSecond(0),
-
-                    // date omitted
-                    () -> LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm:ss"))
-                            .atDate(LocalDate.now(ZoneId.of(timezoneToUse))),
-                    () -> LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm")).withSecond(0)
-                            .atDate(LocalDate.now(ZoneId.of(timezoneToUse)))
-            ));
-
-            Long timestamp = null;
-            if (parsedDateTime == null) {
-                respond.accept(localizeMessage(locale,
-                        ":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
-                                "For example: `2020-10-01 15:42:00`\nYou can omit part of the date (or omit it entirely if you want today), and the seconds if you don't need that.",
-                        ":x: Je n'ai pas compris la date que tu as donnée !\nAssure-toi que tu as suivi le format `YYYY-MM-dd hh:mm:ss`. " +
-                                "Par exemple : `2020-10-01 15:42:00`\nTu peux enlever une partie de la date (ou l'enlever complètement pour obtenir le _timestamp_ d'aujourd'hui) et les secondes si tu n'en as pas besoin."));
-            } else {
-                timestamp = parsedDateTime.atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(TimezoneBot.SERVERS_WITH_TIME_FILE_NAME))) {
+            for (Long server : TimezoneBot.serversWithTime) {
+                writer.write(server + "\n");
             }
 
-            if (timestamp != null) {
-                StringBuilder b = new StringBuilder();
-                if (timezoneName == null) {
-                    // warn the user that we used UTC.
-                    b.append(":warning: You did not grab a timezone role, so **UTC** was used instead.\n\n");
-                }
+            respondPrivately(event, localizeMessage(locale,
+                    ":white_check_mark: " + (newValue ?
+                            "The timezone roles will now show the time it is in the timezone." :
+                            "The timezone roles won't show the time it is in the timezone anymore.") + "\n" +
+                            getRoleUpdateMessage(member.getGuild(), member,
+                                    "The roles will be updated within 15 minutes once this is done.", locale),
+                    ":white_check_mark: " + (newValue ?
+                            "Les rôles de fuseau horaire montrent maintenant l'heure qu'il est dans le fuseau horaire correspondant." :
+                            "Les rôles de fuseau horaire ne montrent plus l'heure qu'il est dans le fuseau horaire correspondant.") + "\n" +
+                            getRoleUpdateMessage(member.getGuild(), member,
+                                    "Les rôles seront mis à jour dans les 15 minutes une fois que ce sera fait.", locale)));
 
-                // print `<t:timestamp:format>` => <t:timestamp:format> for all available formats.
-                b.append(localizeMessage(locale,
-                                "Copy-paste one of those tags in your message, and others will see **",
-                                "Copie-colle l'un de ces tags dans ton message, et les autres verront **"))
-                        .append(dateTimeParam)
-                        .append(localizeMessage(locale,
-                                "** in their timezone:\n",
-                                "** dans leur fuseau horaire :\n"));
-                for (char format : new char[]{'t', 'T', 'd', 'D', 'f', 'F', 'R'}) {
-                    b.append("`<t:").append(timestamp).append(':').append(format)
-                            .append(">` :arrow_right: <t:").append(timestamp).append(':').append(format).append(">\n");
-                }
-                b.append(localizeMessage(locale,
-                        "\n\nIf you are on mobile, pick a format for easier copy-pasting:",
-                        "\n\nSi tu es sur mobile, choisis un format pour pouvoir le copier-coller plus facilement :"));
+            TimezoneRoleUpdater.forceUpdate();
+        } catch (IOException e) {
+            // I/O error while saving to disk??
+            logger.error("Error while writing file", e);
+            respondPrivately(event, localizeMessage(locale,
+                    ":x: A technical error occurred.",
+                    ":x: Une erreur technique est survenue."));
+        }
+    }
 
-                // we want to show a selection menu for the user to pick a format.
-                // the idea is that they can get a message with only the tag to copy in it and can copy it on mobile,
-                // which is way more handy than selecting part of the full message on mobile.
-                ZonedDateTime time = Instant.ofEpochSecond(timestamp).atZone(ZoneId.of(timezoneToUse));
+    /**
+     * Handles the /discord-timestamp command: gives the Discord timestamp for the given date.
+     */
+    private static void giveDiscordTimestamp(IReplyCallback event, Member member, String dateTimeParam, DiscordLocale locale) {
+        // find the user's timezone.
+        String timezoneName = TimezoneBot.userTimezones.stream()
+                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
+                .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
 
-                if (locale == DiscordLocale.FRENCH) {
-                    respond.accept(new MessageCreateBuilder().setContent(b.toString().trim())
-                            .setComponents(ActionRow.of(
-                                    SelectMenu.create("discord-timestamp")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)), "`<t:" + timestamp + ":t>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm:ss", Locale.FRENCH)), "`<t:" + timestamp + ":T>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRENCH)), "`<t:" + timestamp + ":d>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)), "`<t:" + timestamp + ":D>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy H:mm", Locale.FRENCH)), "`<t:" + timestamp + ":f>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy H:mm", Locale.FRENCH)), "`<t:" + timestamp + ":F>`")
-                                            .addOption("Différence par rapport à maintenant", "`<t:" + timestamp + ":R>`")
-                                            .build()
-                            ))
-                            .build());
-                } else {
-                    respond.accept(new MessageCreateBuilder().setContent(b.toString().trim())
-                            .setComponents(ActionRow.of(
-                                    SelectMenu.create("discord-timestamp")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":t>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "`<t:" + timestamp + ":T>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":d>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":D>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy h:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":f>`")
-                                            .addOption(time.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy h:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":F>`")
-                                            .addOption("Relative to now", "`<t:" + timestamp + ":R>`")
-                                            .build()
-                            ))
-                            .build());
-                }
-            }
+        // if the user has no timezone role, we want to use UTC instead!
+        String timezoneToUse = timezoneName == null ? "UTC" : timezoneName;
+
+        // take the given date time with the user's timezone (or UTC), then turn it into a timestamp.
+        LocalDateTime parsedDateTime = tryParseSuccessively(Arrays.asList(
+                // full date
+                () -> LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss")),
+                () -> LocalDateTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0),
+
+                // year omitted
+                () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear() + "-" + dateTimeParam,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss")),
+                () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear() + "-" + dateTimeParam,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm")).withSecond(0),
+
+                // month omitted
+                () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear()
+                                + "-" + LocalDate.now(ZoneId.of(timezoneToUse)).getMonthValue()
+                                + "-" + dateTimeParam,
+                        DateTimeFormatter.ofPattern("yyyy-M-d H:mm:ss")),
+                () -> LocalDateTime.parse(LocalDate.now(ZoneId.of(timezoneToUse)).getYear()
+                                + "-" + LocalDate.now(ZoneId.of(timezoneToUse)).getMonthValue()
+                                + "-" + dateTimeParam,
+                        DateTimeFormatter.ofPattern("yyyy-M-d H:mm")).withSecond(0),
+
+                // date omitted
+                () -> LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm:ss"))
+                        .atDate(LocalDate.now(ZoneId.of(timezoneToUse))),
+                () -> LocalTime.parse(dateTimeParam, DateTimeFormatter.ofPattern("H:mm")).withSecond(0)
+                        .atDate(LocalDate.now(ZoneId.of(timezoneToUse)))
+        ));
+
+        Long timestamp = null;
+        if (parsedDateTime == null) {
+            respondPrivately(event, localizeMessage(locale,
+                    ":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
+                            "For example: `2020-10-01 15:42:00`\nYou can omit part of the date (or omit it entirely if you want today), and the seconds if you don't need that.",
+                    ":x: Je n'ai pas compris la date que tu as donnée !\nAssure-toi que tu as suivi le format `YYYY-MM-dd hh:mm:ss`. " +
+                            "Par exemple : `2020-10-01 15:42:00`\nTu peux enlever une partie de la date (ou l'enlever complètement pour obtenir le _timestamp_ d'aujourd'hui) et les secondes si tu n'en as pas besoin."));
+        } else {
+            timestamp = parsedDateTime.atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
         }
 
-        if (command.equals("time-for") && memberParam != null) {
-            // find the target user's timezone.
-            String timezoneName = TimezoneBot.userTimezones.stream()
-                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == memberParam)
-                    .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
-
+        if (timestamp != null) {
+            StringBuilder b = new StringBuilder();
             if (timezoneName == null) {
-                // the user is not in the database.
-                respond.accept(localizeMessage(locale,
-                        ":x: <@" + memberParam + "> does not have a timezone role.",
-                        ":x: <@" + memberParam + "> n'a pas de rôle de fuseau horaire."));
-            } else {
-                // format the time and display it!
-                ZonedDateTime nowForUser = ZonedDateTime.now(ZoneId.of(timezoneName));
-                DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
-                DateTimeFormatter formatFr = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.FRENCH);
-
-                respond.accept(localizeMessage(locale,
-                        "The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "**.",
-                        "Pour <@" + memberParam + ">, l'horloge affiche **" + nowForUser.format(formatFr) + "**."));
+                // warn the user that we used UTC.
+                b.append(":warning: You did not grab a timezone role, so **UTC** was used instead.\n\n");
             }
+
+            // print `<t:timestamp:format>` => <t:timestamp:format> for all available formats.
+            b.append(localizeMessage(locale,
+                            "Copy-paste one of those tags in your message, and others will see **",
+                            "Copie-colle l'un de ces tags dans ton message, et les autres verront **"))
+                    .append(dateTimeParam)
+                    .append(localizeMessage(locale,
+                            "** in their timezone:\n",
+                            "** dans leur fuseau horaire :\n"));
+            for (char format : new char[]{'t', 'T', 'd', 'D', 'f', 'F', 'R'}) {
+                b.append("`<t:").append(timestamp).append(':').append(format)
+                        .append(">` :arrow_right: <t:").append(timestamp).append(':').append(format).append(">\n");
+            }
+            b.append(localizeMessage(locale,
+                    "\n\nIf you are on mobile, pick a format for easier copy-pasting:",
+                    "\n\nSi tu es sur mobile, choisis un format pour pouvoir le copier-coller plus facilement :"));
+
+            // we want to show a selection menu for the user to pick a format.
+            // the idea is that they can get a message with only the tag to copy in it and can copy it on mobile,
+            // which is way more handy than selecting part of the full message on mobile.
+            ZonedDateTime time = Instant.ofEpochSecond(timestamp).atZone(ZoneId.of(timezoneToUse));
+
+            if (locale == DiscordLocale.FRENCH) {
+                respondPrivately(event, new MessageCreateBuilder().setContent(b.toString().trim())
+                        .setComponents(ActionRow.of(
+                                SelectMenu.create("discord-timestamp")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)), "`<t:" + timestamp + ":t>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm:ss", Locale.FRENCH)), "`<t:" + timestamp + ":T>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRENCH)), "`<t:" + timestamp + ":d>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)), "`<t:" + timestamp + ":D>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy H:mm", Locale.FRENCH)), "`<t:" + timestamp + ":f>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy H:mm", Locale.FRENCH)), "`<t:" + timestamp + ":F>`")
+                                        .addOption("Différence par rapport à maintenant", "`<t:" + timestamp + ":R>`")
+                                        .build()
+                        ))
+                        .build());
+            } else {
+                respondPrivately(event, new MessageCreateBuilder().setContent(b.toString().trim())
+                        .setComponents(ActionRow.of(
+                                SelectMenu.create("discord-timestamp")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":t>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "`<t:" + timestamp + ":T>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":d>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":D>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy h:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":f>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy h:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":F>`")
+                                        .addOption("Relative to now", "`<t:" + timestamp + ":R>`")
+                                        .build()
+                        ))
+                        .build());
+            }
+        }
+    }
+
+    /**
+     * Handles the /time-for command: gives the time it is for another server member.
+     */
+    private static void giveTimeForOtherUser(IReplyCallback event, Member member, Long memberParam, DiscordLocale locale) {
+        // find the target user's timezone.
+        String timezoneName = TimezoneBot.userTimezones.stream()
+                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == memberParam)
+                .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+
+        if (timezoneName == null) {
+            // the user is not in the database.
+            respondPrivately(event, localizeMessage(locale,
+                    ":x: <@" + memberParam + "> does not have a timezone role.",
+                    ":x: <@" + memberParam + "> n'a pas de rôle de fuseau horaire."));
+        } else {
+            // format the time and display it!
+            ZonedDateTime nowForUser = ZonedDateTime.now(ZoneId.of(timezoneName));
+            DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
+            DateTimeFormatter formatFr = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.FRENCH);
+
+            respondPrivately(event, localizeMessage(locale,
+                    "The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "**.",
+                    "Pour <@" + memberParam + ">, l'horloge affiche **" + nowForUser.format(formatFr) + "**."));
         }
     }
 
@@ -651,11 +664,9 @@ public class BotEventListener extends ListenerAdapter {
 
         if (optionsParam != null) {
             if (optionsParam.getAsString().toLowerCase(Locale.ROOT).equals("help")) {
-                slashCommandEvent.reply(localizeMessage(locale,
-                                "Check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>",
-                                "Consulte cette page pour avoir des explications et des exemples : <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>"))
-                        .setEphemeral(true)
-                        .queue();
+                respondPrivately(slashCommandEvent, localizeMessage(locale,
+                        "Check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>",
+                        "Consulte cette page pour avoir des explications et des exemples : <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>"));
                 return;
             }
 
@@ -675,11 +686,9 @@ public class BotEventListener extends ListenerAdapter {
                 if (label.isEmpty() || label.length() > 32) {
                     logger.warn("Label {} was too long or too short!", label);
 
-                    slashCommandEvent.reply(localizeMessage(locale,
-                                    ":x: Labels should have between 1 and 32 characters!" + help,
-                                    ":x: Les libellés doivent faire entre 1 et 32 caractères !" + help))
-                            .setEphemeral(true)
-                            .queue();
+                    respondPrivately(slashCommandEvent, localizeMessage(locale,
+                            ":x: Labels should have between 1 and 32 characters!" + help,
+                            ":x: Les libellés doivent faire entre 1 et 32 caractères !" + help));
 
                     return;
                 }
@@ -704,21 +713,17 @@ public class BotEventListener extends ListenerAdapter {
 
                     List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezone);
                     if (conflictingTimezones != null) {
-                        slashCommandEvent.reply(localizeMessage(locale,
-                                        ":x: The timezone **" + timezone + "** is ambiguous! It could mean one of those: _"
-                                                + String.join("_, _", conflictingTimezones) + "_.\n" +
-                                                "Repeat the command with the timezone full name!" + help,
-                                        ":x: Le fuseau horaire **" + timezone + "** est ambigu ! Il peut désigner _"
-                                                + String.join("_, _", conflictingTimezones) + "_.\n" +
-                                                "Relance la commande avec le nom complet du fuseau horaire !" + help))
-                                .setEphemeral(true)
-                                .queue();
+                        respondPrivately(slashCommandEvent, localizeMessage(locale,
+                                ":x: The timezone **" + timezone + "** is ambiguous! It could mean one of those: _"
+                                        + String.join("_, _", conflictingTimezones) + "_.\n" +
+                                        "Repeat the command with the timezone full name!" + help,
+                                ":x: Le fuseau horaire **" + timezone + "** est ambigu ! Il peut désigner _"
+                                        + String.join("_, _", conflictingTimezones) + "_.\n" +
+                                        "Relance la commande avec le nom complet du fuseau horaire !" + help));
                     } else {
-                        slashCommandEvent.reply(localizeMessage(locale,
-                                        ":x: The timezone `" + timezone + "` was not recognized." + help,
-                                        ":x: Le fuseau horaire `" + timezone + "` n'a pas été reconnu." + help))
-                                .setEphemeral(true)
-                                .queue();
+                        respondPrivately(slashCommandEvent, localizeMessage(locale,
+                                ":x: The timezone `" + timezone + "` was not recognized." + help,
+                                ":x: Le fuseau horaire `" + timezone + "` n'a pas été reconnu." + help));
                     }
 
                     return;
@@ -727,11 +732,9 @@ public class BotEventListener extends ListenerAdapter {
 
             if (options.size() > 25) {
                 logger.warn("Too many options ({}): {}", options.size(), options);
-                slashCommandEvent.reply(localizeMessage(locale,
-                                ":x: You cannot have more than 25 options! You gave " + options.size() + " of them." + help,
-                                ":x: Il est impossible d'avoir plus de 25 options ! Tu en as donné " + options.size() + "." + help))
-                        .setEphemeral(true)
-                        .queue();
+                respondPrivately(slashCommandEvent, localizeMessage(locale,
+                        ":x: You cannot have more than 25 options! You gave " + options.size() + " of them." + help,
+                        ":x: Il est impossible d'avoir plus de 25 options ! Tu en as donné " + options.size() + "." + help));
             } else {
                 logger.debug("Posting options: {}", options);
                 slashCommandEvent.reply(messageParam != null ? messageParam.getAsString() : "**Pick a timezone role here!**\n" +
@@ -749,5 +752,13 @@ public class BotEventListener extends ListenerAdapter {
         }
 
         return english;
+    }
+
+    private static void respondPrivately(IReplyCallback event, String response) {
+        event.reply(response).setEphemeral(true).queue();
+    }
+
+    private static void respondPrivately(IReplyCallback event, MessageCreateData response) {
+        event.reply(response).setEphemeral(true).queue();
     }
 }
