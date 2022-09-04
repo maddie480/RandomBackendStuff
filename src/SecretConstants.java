@@ -80,6 +80,9 @@ public class SecretConstants {
     // header used to authenticate with the GitHub API
     public static String GITHUB_BASIC_AUTH = "";
 
+    // URL used to update the China-accessible mirror of updater files
+    public static String CHINA_MIRROR_UPDATE_WEBHOOK = "";
+
     // other secrets used for private stuff
     public static String SLASH_COMMAND_BOT_TOKEN = "";
     public static String QUEST_COMMUNITY_BOT_TOKEN = "";
@@ -142,6 +145,8 @@ public class SecretConstants {
             TWITTER_BASIC_AUTH = secrets.getString("TWITTER_BASIC_AUTH");
 
             GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
+
+            CHINA_MIRROR_UPDATE_WEBHOOK = secrets.getString("CHINA_MIRROR_UPDATE_WEBHOOK");
 
             SLASH_COMMAND_BOT_TOKEN = secrets.getString("SLASH_COMMAND_BOT_TOKEN");
             QUEST_COMMUNITY_BOT_TOKEN = secrets.getString("QUEST_COMMUNITY_BOT_TOKEN");
