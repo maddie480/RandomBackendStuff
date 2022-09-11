@@ -1,19 +1,21 @@
 package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.io.IOUtils;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This class checks the health of multiple platforms (the website, the bot, the mirror and GameBanana)
@@ -44,6 +46,8 @@ public class ContinuousHealthChecks {
                                 "Banana Mirror", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
                         checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
                                 "CelesteNet", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        checkHealth(ContinuousHealthChecks::checkCelesteNetUDP,
+                                "CelesteNet UDP", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // Update Checker health check
                         checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
@@ -98,6 +102,26 @@ public class ContinuousHealthChecks {
 
             return false;
         }, serviceName, webhookUrls);
+    }
+
+    private static boolean checkCelesteNetUDP() throws IOException {
+        // first, check whether there was no UDP traffic on both ipv4 and ipv6 for the last minute.
+        for (String chart : Arrays.asList("ipv4.udppackets", "ipv6.udppackets")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&gtime=60&group=sum"))) {
+                JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                JSONArray data = resp.getJSONArray("data").getJSONArray(0);
+                if (data.getDouble(1) != 0 || data.getDouble(2) != 0) {
+                    return true;
+                }
+            }
+        }
+
+        // if this is the case and there are were online players in the last minute, we got a problem!
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0a.de/api/v1/data?chart=CelesteNet_v2.online&after=-60&gtime=60&group=max"))) {
+            JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONArray data = resp.getJSONArray("data").getJSONArray(0);
+            return data.getInt(1) == 0;
+        }
     }
 
     private static void checkHealth(ConnectionUtils.NetworkingOperation<Boolean> healthCheck,
