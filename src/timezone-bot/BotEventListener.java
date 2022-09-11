@@ -178,14 +178,14 @@ public class BotEventListener extends ListenerAdapter {
 
     @Override
     public void onCommandAutoCompleteInteraction(@NotNull CommandAutoCompleteInteractionEvent event) {
-        event.replyChoices(suggestTimezones(event.getFocusedOption().getValue())).queue();
+        event.replyChoices(suggestTimezones(event.getFocusedOption().getValue(), event.getUserLocale())).queue();
     }
 
-    private List<Command.Choice> suggestTimezones(String input) {
+    private List<Command.Choice> suggestTimezones(String input, DiscordLocale locale) {
         // look up tz database timezones
         List<Command.Choice> matchingTzDatabaseTimezones = ZoneId.getAvailableZoneIds().stream()
                 .filter(tz -> tz.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
-                .map(tz -> mapToChoice(tz, tz))
+                .map(tz -> mapToChoice(tz, tz, locale))
                 .collect(Collectors.toList());
 
         if (input.isEmpty()) {
@@ -204,7 +204,7 @@ public class BotEventListener extends ListenerAdapter {
                     if (TIMEZONE_FULL_NAMES.containsKey(tzName)) {
                         tzName = TIMEZONE_FULL_NAMES.get(tzName) + " (" + tzName + ")";
                     }
-                    return mapToChoice(tzName, tz.getValue());
+                    return mapToChoice(tzName, tz.getValue(), locale);
                 })
                 .collect(Collectors.toList());
 
@@ -212,7 +212,7 @@ public class BotEventListener extends ListenerAdapter {
         List<Command.Choice> matchingTimezoneConflictNames = TIMEZONE_CONFLICTS.entrySet().stream()
                 .filter(tz -> tz.getKey().toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
                 .flatMap(tz -> tz.getValue().stream()
-                        .map(tzValue -> mapToChoice(tzValue + " (" + tz.getKey() + ")", TIMEZONE_MAP.get(tzValue))))
+                        .map(tzValue -> mapToChoice(tzValue + " (" + tz.getKey() + ")", TIMEZONE_MAP.get(tzValue), locale)))
                 .collect(Collectors.toList());
 
         List<Command.Choice> allChoices = new ArrayList<>(matchingTzDatabaseTimezones);
@@ -228,7 +228,7 @@ public class BotEventListener extends ListenerAdapter {
         } else {
             try {
                 // if the timezone is valid, be sure to allow the user to use it!
-                return Collections.singletonList(mapToChoice(input, input));
+                return Collections.singletonList(mapToChoice(input, input, locale));
             } catch (DateTimeException e) {
                 // no match :shrug:
                 return Collections.emptyList();
@@ -236,11 +236,14 @@ public class BotEventListener extends ListenerAdapter {
         }
     }
 
-    private Command.Choice mapToChoice(String tzName, String zoneId) {
-        String localTimeEn = ZonedDateTime.now(ZoneId.of(zoneId)).format(DateTimeFormatter.ofPattern("h:mma")).toLowerCase(Locale.ROOT);
-        String localTimeFr = ZonedDateTime.now(ZoneId.of(zoneId)).format(DateTimeFormatter.ofPattern("HH:mm"));
-        return new Command.Choice(tzName + " (" + localTimeEn + ")", zoneId)
-                .setNameLocalization(DiscordLocale.FRENCH, tzName + " (" + localTimeFr + ")");
+    private Command.Choice mapToChoice(String tzName, String zoneId, DiscordLocale locale) {
+        String localTime;
+        if (locale == DiscordLocale.FRENCH) {
+            localTime = ZonedDateTime.now(ZoneId.of(zoneId)).format(DateTimeFormatter.ofPattern("HH:mm"));
+        } else {
+            localTime = ZonedDateTime.now(ZoneId.of(zoneId)).format(DateTimeFormatter.ofPattern("h:mma")).toLowerCase(Locale.ROOT);
+        }
+        return new Command.Choice(tzName + " (" + localTime + ")", zoneId);
     }
 
     /**
@@ -484,13 +487,13 @@ public class BotEventListener extends ListenerAdapter {
                 respondPrivately(event, new MessageCreateBuilder().setContent(b.toString().trim())
                         .setComponents(ActionRow.of(
                                 SelectMenu.create("discord-timestamp")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)), "`<t:" + timestamp + ":t>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm:ss", Locale.FRENCH)), "`<t:" + timestamp + ":T>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRENCH)), "`<t:" + timestamp + ":d>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)), "`<t:" + timestamp + ":D>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy H:mm", Locale.FRENCH)), "`<t:" + timestamp + ":f>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy H:mm", Locale.FRENCH)), "`<t:" + timestamp + ":F>`")
-                                        .addOption("Différence par rapport à maintenant", "`<t:" + timestamp + ":R>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)), "<t:" + timestamp + ":t>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm:ss", Locale.FRENCH)), "<t:" + timestamp + ":T>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRENCH)), "<t:" + timestamp + ":d>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)), "<t:" + timestamp + ":D>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("d MMMM yyyy H:mm", Locale.FRENCH)), "<t:" + timestamp + ":f>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("EEEE d MMMM yyyy H:mm", Locale.FRENCH)), "<t:" + timestamp + ":F>")
+                                        .addOption("Différence par rapport à maintenant", "<t:" + timestamp + ":R>")
                                         .build()
                         ))
                         .build());
@@ -498,13 +501,13 @@ public class BotEventListener extends ListenerAdapter {
                 respondPrivately(event, new MessageCreateBuilder().setContent(b.toString().trim())
                         .setComponents(ActionRow.of(
                                 SelectMenu.create("discord-timestamp")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":t>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "`<t:" + timestamp + ":T>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":d>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)), "`<t:" + timestamp + ":D>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy h:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":f>`")
-                                        .addOption(time.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy h:mm a", Locale.ENGLISH)), "`<t:" + timestamp + ":F>`")
-                                        .addOption("Relative to now", "`<t:" + timestamp + ":R>`")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "<t:" + timestamp + ":t>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "<t:" + timestamp + ":T>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "<t:" + timestamp + ":d>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)), "<t:" + timestamp + ":D>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("MMMM d, yyyy h:mm a", Locale.ENGLISH)), "<t:" + timestamp + ":f>")
+                                        .addOption(time.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy h:mm a", Locale.ENGLISH)), "<t:" + timestamp + ":F>")
+                                        .addOption("Relative to now", "<t:" + timestamp + ":R>")
                                         .build()
                         ))
                         .build());
