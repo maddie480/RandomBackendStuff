@@ -226,12 +226,12 @@ public class CelesteStuffHealthCheck {
     public static void checkBananaMirrorDatabaseMatch() throws IOException {
         log.debug("Checking Banana Mirror contents...");
 
-        // === zips referenced in everest_update.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror/
-        List<String> bananaMirror = Jsoup.connect("https://celestemodupdater.0x0a.de/banana-mirror/").get()
+        // === zips referenced in everest_update.yaml should be present at https://celestemodupdater.0x0ade.io/banana-mirror/
+        List<String> bananaMirror = Jsoup.connect("https://celestemodupdater.0x0ade.io/banana-mirror/").get()
                 .select("td.indexcolname a")
                 .stream()
-                .map(a -> "https://celestemodupdater.0x0a.de/banana-mirror/" + a.attr("href"))
-                .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/banana-mirror//"))
+                .map(a -> "https://celestemodupdater.0x0ade.io/banana-mirror/" + a.attr("href"))
+                .filter(item -> !item.equals("https://celestemodupdater.0x0ade.io/banana-mirror//"))
                 .sorted()
                 .collect(Collectors.toList());
 
@@ -249,12 +249,12 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Banana Mirror contents don't match the mod updater database");
         }
 
-        // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror-images/
-        List<String> bananaMirrorImages = Jsoup.connect("https://celestemodupdater.0x0a.de/banana-mirror-images/").get()
+        // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0ade.io/banana-mirror-images/
+        List<String> bananaMirrorImages = Jsoup.connect("https://celestemodupdater.0x0ade.io/banana-mirror-images/").get()
                 .select("td.indexcolname a")
                 .stream()
-                .map(a -> "https://celestemodupdater.0x0a.de/banana-mirror-images/" + a.attr("href"))
-                .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/banana-mirror-images//"))
+                .map(a -> "https://celestemodupdater.0x0ade.io/banana-mirror-images/" + a.attr("href"))
+                .filter(item -> !item.equals("https://celestemodupdater.0x0ade.io/banana-mirror-images//"))
                 .sorted()
                 .collect(Collectors.toList());
 
@@ -354,7 +354,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // check that the mirror is alive by downloading a GhostNet screenshot
-        if (!DigestUtils.sha256Hex(ConnectionUtils.toByteArrayWithTimeout(new URL("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png")))
+        if (!DigestUtils.sha256Hex(ConnectionUtils.toByteArrayWithTimeout(new URL("https://celestemodupdater.0x0ade.io/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png")))
                 .equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
 
             throw new IOException("Download from mirror test failed");
@@ -731,7 +731,7 @@ public class CelesteStuffHealthCheck {
     public static void checkModStructureVerifier() throws IOException {
         log.debug("Downloading Tornado Valley...");
 
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip"));
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://celestemodupdater.0x0ade.io/banana-mirror/399127.zip"));
              OutputStream os = new FileOutputStream("/tmp/tornado.zip")) {
 
             IOUtils.copy(is, os);
