@@ -770,6 +770,42 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
+     * Checks that the map tree viewer can decode the Tornado Valley bin.
+     * Run daily.
+     */
+    public static void checkMapTreeViewer() throws IOException {
+        log.debug("Checking bin-to-json API...");
+
+        HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/bin-to-json").openConnection();
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(30000);
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        connection.connect();
+
+        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(new URL("https://celestemodupdater.0x0ade.io/banana-mirror/399127.zip")));
+             OutputStream os = connection.getOutputStream()) {
+
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if ("Maps/Meowsmith/1/TornadoValleyConcept.bin".equals(entry.getName())) {
+                    log.debug("Found map bin, sending...");
+                    IOUtils.copy(zis, os);
+
+                    try (InputStream response = connection.getInputStream()) {
+                        if (!IOUtils.toString(response, UTF_8).contains("\"texture\":\"9-core/fossil_b.png\"")) {
+                            throw new IOException("bin-to-json response didn't have the expected content!");
+                        }
+                        return;
+                    }
+                }
+            }
+
+            throw new IOException("The map bin to use as a test was not found!");
+        }
+    }
+
+    /**
      * Checks that the page for speedrun.com update notification setup still displays properly.
      * Run daily.
      */
