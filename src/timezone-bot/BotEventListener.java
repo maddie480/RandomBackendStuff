@@ -178,7 +178,11 @@ public class BotEventListener extends ListenerAdapter {
 
     @Override
     public void onCommandAutoCompleteInteraction(@NotNull CommandAutoCompleteInteractionEvent event) {
-        event.replyChoices(suggestTimezones(event.getFocusedOption().getValue(), event.getUserLocale())).queue();
+        String request = event.getFocusedOption().getValue();
+        logger.info("New autocomplete request for timezone name: requested '{}'", request);
+        List<Command.Choice> choices = suggestTimezones(request, event.getUserLocale());
+        logger.info("Answered with suggestions: {}", choices);
+        event.replyChoices(choices).queue();
     }
 
     private List<Command.Choice> suggestTimezones(String input, DiscordLocale locale) {
