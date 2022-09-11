@@ -188,7 +188,17 @@ public class BotEventListener extends ListenerAdapter {
     private List<Command.Choice> suggestTimezones(String input, DiscordLocale locale) {
         // look up tz database timezones
         List<Command.Choice> matchingTzDatabaseTimezones = ZoneId.getAvailableZoneIds().stream()
-                .filter(tz -> tz.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
+                .filter(tz -> {
+                    if (tz.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT))) {
+                        return true;
+                    }
+                    if (!tz.contains("/")) {
+                        return false;
+                    }
+                    // suggest "Europe/Paris" if the user started typing "Paris"
+                    return tz.substring(tz.lastIndexOf("/") + 1).toLowerCase(Locale.ROOT)
+                            .startsWith(input.toLowerCase(Locale.ROOT));
+                })
                 .map(tz -> mapToChoice(tz, tz, locale))
                 .collect(Collectors.toList());
 
