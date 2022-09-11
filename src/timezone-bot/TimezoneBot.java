@@ -110,6 +110,7 @@ public class TimezoneBot {
 
     public static void main(String[] args) throws Exception {
         Map<String, String> timezoneMap = new HashMap<>();
+        Map<String, String> timezoneFullNames = new HashMap<>();
         Map<String, List<String>> timezoneConflicts = new HashMap<>();
 
         // populate the timezones!
@@ -135,9 +136,11 @@ public class TimezoneBot {
             if (!timezoneConflicts.containsKey(name)) {
                 // there is no conflict (yet): add to the valid timezone map.
                 timezoneMap.put(name, offset);
+                timezoneFullNames.put(name, fullName);
                 timezoneConflicts.put(name, new ArrayList<>(Collections.singletonList(fullName)));
             } else {
                 timezoneConflicts.get(name).add(fullName);
+                timezoneFullNames.remove(name);
 
                 if (timezoneMap.containsKey(name) && !timezoneMap.get(name).equals(offset)) {
                     // there is a conflict and the offsets are different! remove it.
@@ -155,7 +158,7 @@ public class TimezoneBot {
         }
         timezoneConflicts = actualConflicts;
 
-        logger.info("Time zone offsets: {}, zone conflicts: {}", timezoneMap, timezoneConflicts);
+        logger.info("Time zone offsets: {}, time zone full names: {}, zone conflicts: {}", timezoneMap, timezoneFullNames, timezoneConflicts);
 
         // load the saved files (user settings, server settings, member cache).
         userTimezones = new ArrayList<>();
@@ -174,7 +177,7 @@ public class TimezoneBot {
 
         // start up the bot.
         jda = JDABuilder.createLight(SecretConstants.TIMEZONE_BOT_TOKEN, Collections.emptyList())
-                .addEventListeners(new BotEventListener(timezoneMap, timezoneConflicts))
+                .addEventListeners(new BotEventListener(timezoneMap, timezoneFullNames, timezoneConflicts))
                 .build().awaitReady();
 
         // do some cleanup, in case we were kicked from a server while offline.
@@ -347,7 +350,8 @@ public class TimezoneBot {
                 .addCommands(new CommandDataImpl("timezone", "Sets up or replaces your timezone role")
                         .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Configure ou remplace ton rôle de fuseau horaire"))
                         .addOptions(new OptionData(OptionType.STRING, "tz_name", "Timezone name, use /detect-timezone to figure it out", true)
-                                .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Le nom du fuseau horaire, utilise /detect-timezone pour le déterminer"))))
+                                .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Le nom du fuseau horaire, utilise /detect-timezone pour le déterminer"))
+                                .setAutoComplete(true)))
                 .addCommands(new CommandDataImpl("detect-timezone", "Detects your current timezone")
                         .setDescriptionLocalizations(ImmutableMap.of(DiscordLocale.FRENCH, "Détecte ton fuseau horaire actuel")))
                 .addCommands(new CommandDataImpl("remove-timezone", "Removes your timezone role")

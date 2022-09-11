@@ -7,12 +7,14 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
@@ -48,10 +50,12 @@ public class BotEventListener extends ListenerAdapter {
 
     // offset timezone database
     private final Map<String, String> TIMEZONE_MAP;
+    private final Map<String, String> TIMEZONE_FULL_NAMES;
     private final Map<String, List<String>> TIMEZONE_CONFLICTS;
 
-    public BotEventListener(Map<String, String> timezoneMap, Map<String, List<String>> timezoneConflicts) {
+    public BotEventListener(Map<String, String> timezoneMap, Map<String, String> timezoneFullNames, Map<String, List<String>> timezoneConflicts) {
         TIMEZONE_MAP = timezoneMap;
+        TIMEZONE_FULL_NAMES = timezoneFullNames;
         TIMEZONE_CONFLICTS = timezoneConflicts;
     }
 
@@ -170,6 +174,73 @@ public class BotEventListener extends ListenerAdapter {
             listTimezones(event, nameFormat, true, false,
                     event.getMessage().isEphemeral() ? event.getUserLocale() : event.getGuildLocale());
         }
+    }
+
+    @Override
+    public void onCommandAutoCompleteInteraction(@NotNull CommandAutoCompleteInteractionEvent event) {
+        event.replyChoices(suggestTimezones(event.getFocusedOption().getValue())).queue();
+    }
+
+    private List<Command.Choice> suggestTimezones(String input) {
+        // look up tz database timezones
+        List<Command.Choice> matchingTzDatabaseTimezones = ZoneId.getAvailableZoneIds().stream()
+                .filter(tz -> tz.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
+                .map(tz -> mapToChoice(tz, tz))
+                .collect(Collectors.toList());
+
+        if (input.isEmpty()) {
+            // we want to push for tz database timezones, so list them by default!
+            return matchingTzDatabaseTimezones.stream()
+                    .sorted(Comparator.comparing(tz -> tz.getAsString().toLowerCase(Locale.ROOT)))
+                    .limit(25)
+                    .collect(Collectors.toList());
+        }
+
+        // look up timezone names
+        List<Command.Choice> matchingTimezoneNames = TIMEZONE_MAP.entrySet().stream()
+                .filter(tz -> tz.getKey().toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
+                .map(tz -> {
+                    String tzName = tz.getKey();
+                    if (TIMEZONE_FULL_NAMES.containsKey(tzName)) {
+                        tzName = TIMEZONE_FULL_NAMES.get(tzName) + " (" + tzName + ")";
+                    }
+                    return mapToChoice(tzName, tz.getValue());
+                })
+                .collect(Collectors.toList());
+
+        // look up conflicting timezone names, showing all possibilities
+        List<Command.Choice> matchingTimezoneConflictNames = TIMEZONE_CONFLICTS.entrySet().stream()
+                .filter(tz -> tz.getKey().toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
+                .flatMap(tz -> tz.getValue().stream()
+                        .map(tzValue -> mapToChoice(tzValue + " (" + tz.getKey() + ")", TIMEZONE_MAP.get(tzValue))))
+                .collect(Collectors.toList());
+
+        List<Command.Choice> allChoices = new ArrayList<>(matchingTzDatabaseTimezones);
+        allChoices.addAll(matchingTimezoneNames);
+        allChoices.addAll(matchingTimezoneConflictNames);
+
+        if (!allChoices.isEmpty()) {
+            // send them sorting by alphabetical order and return as many as possible
+            return allChoices.stream()
+                    .sorted(Comparator.comparing(tz -> tz.getName().toLowerCase(Locale.ROOT)))
+                    .limit(25)
+                    .collect(Collectors.toList());
+        } else {
+            try {
+                // if the timezone is valid, be sure to allow the user to use it!
+                return Collections.singletonList(mapToChoice(input, input));
+            } catch (DateTimeException e) {
+                // no match :shrug:
+                return Collections.emptyList();
+            }
+        }
+    }
+
+    private Command.Choice mapToChoice(String tzName, String zoneId) {
+        String localTimeEn = ZonedDateTime.now(ZoneId.of(zoneId)).format(DateTimeFormatter.ofPattern("h:mma")).toLowerCase(Locale.ROOT);
+        String localTimeFr = ZonedDateTime.now(ZoneId.of(zoneId)).format(DateTimeFormatter.ofPattern("HH:mm"));
+        return new Command.Choice(tzName + " (" + localTimeEn + ")", zoneId)
+                .setNameLocalization(DiscordLocale.FRENCH, tzName + " (" + localTimeFr + ")");
     }
 
     /**
