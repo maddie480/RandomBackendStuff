@@ -41,15 +41,13 @@ public class ContinuousHealthChecks {
             public void run() {
                 while (true) {
                     try {
-                        // 0x0ade.io health checks
-                        checkURL("https://celestemodupdater.0x0ade.io/banana-mirror", "484937.zip",
+                        // 0x0a.de health checks
+                        checkURL("https://celestemodupdater.0x0a.de/banana-mirror", "484937.zip",
                                 "Banana Mirror", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
-                        checkURL("https://celestenet.0x0ade.io/api/status", "\"StartupTime\":",
+                        checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
                                 "CelesteNet", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
                         checkHealth(ContinuousHealthChecks::checkCelesteNetUDP,
                                 "CelesteNet UDP", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
-                        checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
-                                "celestenet.0x0a.de", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // Update Checker health check
                         checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
@@ -109,7 +107,7 @@ public class ContinuousHealthChecks {
     private static boolean checkCelesteNetUDP() throws IOException {
         // first, check whether there was no UDP traffic on both ipv4 and ipv6 for the last minute.
         for (String chart : Arrays.asList("ipv4.udppackets", "ipv6.udppackets")) {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0ade.io/api/v1/data?chart=" + chart + "&after=-60&gtime=60&group=sum"))) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&gtime=60&group=sum"))) {
                 JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                 JSONArray data = resp.getJSONArray("data").getJSONArray(0);
                 if (data.getDouble(1) != 0 || data.getDouble(2) != 0) {
@@ -119,7 +117,7 @@ public class ContinuousHealthChecks {
         }
 
         // if this is the case and there were online players in the last minute, we got a problem!
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0ade.io/api/v1/data?chart=CelesteNet_v2.online&after=-60&gtime=60&group=max"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0a.de/api/v1/data?chart=CelesteNet_v2.online&after=-60&gtime=60&group=max"))) {
             JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             JSONArray data = resp.getJSONArray("data").getJSONArray(0);
             return data.getInt(1) == 0;
