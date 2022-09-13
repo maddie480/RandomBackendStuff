@@ -5,7 +5,7 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.ISnowflake;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
@@ -13,7 +13,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.security.auth.login.LoginException;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Locale;
@@ -25,7 +24,7 @@ public class ServerManagerBot extends ListenerAdapter {
 
     private static JDA jda;
 
-    public static void main(String[] args) throws LoginException, InterruptedException {
+    public static void main(String[] args) throws InterruptedException {
         jda = JDABuilder.create(SecretConstants.SERVER_MANAGER_TOKEN, GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new ServerManagerBot())
                 .build().awaitReady();

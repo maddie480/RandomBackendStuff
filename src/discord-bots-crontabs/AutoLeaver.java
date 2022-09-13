@@ -6,7 +6,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.security.auth.login.LoginException;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -20,7 +19,7 @@ import java.util.Collections;
 public class AutoLeaver {
     private static final Logger logger = LoggerFactory.getLogger(AutoLeaver.class);
 
-    public static void main(String[] args) throws LoginException, InterruptedException {
+    public static void main(String[] args) throws InterruptedException {
         for (String token : Arrays.asList(SecretConstants.GAMES_BOT_TOKEN, SecretConstants.CUSTOM_SLASH_COMMANDS_TOKEN)) {
             final JDA jda = JDABuilder.createLight(token, Collections.emptyList()).build().awaitReady();
 
