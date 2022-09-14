@@ -116,11 +116,11 @@ public class ContinuousHealthChecks {
             }
         }
 
-        // if this is the case and there were online players in the last minute, we got a problem!
+        // if this is the case and there were 3 or more online players in the last minute, we got a problem!
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0a.de/api/v1/data?chart=CelesteNet_v2.online&after=-60&gtime=60&group=max"))) {
             JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             JSONArray data = resp.getJSONArray("data").getJSONArray(0);
-            return data.getInt(1) == 0;
+            return data.getInt(1) < 3;
         }
     }
 
