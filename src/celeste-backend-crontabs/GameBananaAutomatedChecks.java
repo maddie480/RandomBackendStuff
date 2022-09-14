@@ -287,8 +287,8 @@ public class GameBananaAutomatedChecks {
         }
 
         for (String file : files) {
-            // check for forbidden files in any file more recent than Crowd Control (653181)
-            if (Integer.parseInt(file) > 653181) {
+            // check for forbidden files in any file more recent than Crowd Control (863667)
+            if (Integer.parseInt(file) > 863667) {
                 List<String> contents;
                 try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
                     contents = new Yaml().load(is);
