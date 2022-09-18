@@ -148,7 +148,8 @@ public class UpdateCheckerTracker extends EventListener {
                     .collect(Collectors.toCollection(ArrayList::new));
 
             if (srcModIds.contains(mod.getName())) {
-                String message = "**" + mod.getName() + "** was updated to version **" + mod.getVersion() + "** on <t:" + mod.getLastUpdate() + ":f>.";
+                String message = "**" + mod.getName() + "** was updated to version **" + mod.getVersion() + "** on <t:" + mod.getLastUpdate() + ":f>.\n" +
+                        ":arrow_right: <https://gamebanana.com/" + mod.getGameBananaType().toLowerCase(Locale.ROOT) + "s/" + mod.getGameBananaId() + ">";
                 executeWebhookAsUpdateChecker(SecretConstants.SRC_UPDATE_CHECKER_HOOK, message);
                 executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: Message sent to SRC staff:\n> " + message);
             }
