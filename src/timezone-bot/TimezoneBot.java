@@ -15,6 +15,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import net.dv8tion.jda.internal.interactions.CommandDataImpl;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
@@ -159,6 +160,14 @@ public class TimezoneBot {
         timezoneConflicts = actualConflicts;
 
         logger.info("Time zone offsets: {}, time zone full names: {}, zone conflicts: {}", timezoneMap, timezoneFullNames, timezoneConflicts);
+
+        try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream("/tmp/timezone_name_data.ser"))) {
+            os.writeObject(timezoneMap);
+            os.writeObject(timezoneFullNames);
+            os.writeObject(timezoneConflicts);
+        }
+        CloudStorageUtils.sendToCloudStorage("/tmp/timezone_name_data.ser", "timezone_name_data.ser", "application/octet-stream");
+        FileUtils.forceDelete(new File("/tmp/timezone_name_data.ser"));
 
         // load the saved files (user settings, server settings, member cache).
         userTimezones = new ArrayList<>();
