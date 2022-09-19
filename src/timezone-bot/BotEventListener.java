@@ -488,7 +488,9 @@ public class BotEventListener extends ListenerAdapter {
             StringBuilder b = new StringBuilder();
             if (timezoneName == null) {
                 // warn the user that we used UTC.
-                b.append(":warning: You did not grab a timezone role, so **UTC** was used instead.\n\n");
+                b.append(localizeMessage(locale,
+                        ":warning: You did not grab a timezone role with `/timezone`, so **UTC** was used instead.\n\n",
+                        ":warning: Tu n'as pas pris de rôle de fuseau horaire avec `/timezone`, donc le fuseau horaire **UTC** sera utilisé à la place.\n\n"));
             }
 
             // print `<t:timestamp:format>` => <t:timestamp:format> for all available formats.
