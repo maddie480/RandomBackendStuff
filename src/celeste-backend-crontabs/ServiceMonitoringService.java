@@ -33,7 +33,8 @@ public class ServiceMonitoringService {
     public static Map<String, Object> getStatistics() throws IOException {
         Future<Integer> gamesBotUsage = countLogEntriesAsync("protoPayload.resource=\"/discord/games-bot\"");
         Future<Integer> customSlashCommandsUsage = countLogEntriesAsync("protoPayload.resource=\"/discord/custom-slash-commands\"");
-        Future<Integer> timezoneBotUsage = countLogEntriesAsync("labels.loggerName=\"com.max480.discord.randombots.BotEventListener\" and jsonPayload.message =~ \"^New command: .*\"");
+        Future<Integer> timezoneBotLiteUsage = countLogEntriesAsync("protoPayload.resource=\"/discord/timezone-bot\"");
+        Future<Integer> timezoneBotFullUsage = countLogEntriesAsync("labels.loggerName=\"com.max480.discord.randombots.BotEventListener\" and jsonPayload.message =~ \"^New command: .*\"");
         Future<Integer> restartCount = countLogEntriesAsync("protoPayload.resource=\"/_ah/warmup\"");
 
         try (MetricServiceClient client = MetricServiceClient.create()) {
@@ -42,7 +43,8 @@ public class ServiceMonitoringService {
                     "restartCount", restartCount.get(),
                     "customSlashCommandsUsage", customSlashCommandsUsage.get(),
                     "gamesBotUsage", gamesBotUsage.get(),
-                    "timezoneBotUsage", timezoneBotUsage.get()
+                    "timezoneBotLiteUsage", timezoneBotLiteUsage.get(),
+                    "timezoneBotFullUsage", timezoneBotFullUsage.get()
             );
         } catch (ExecutionException | InterruptedException e) {
             throw new IOException(e);
