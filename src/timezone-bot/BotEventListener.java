@@ -26,7 +26,11 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
+import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +38,16 @@ import javax.annotation.Nonnull;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -52,6 +61,8 @@ public class BotEventListener extends ListenerAdapter {
     private final Map<String, String> TIMEZONE_MAP;
     private final Map<String, String> TIMEZONE_FULL_NAMES;
     private final Map<String, List<String>> TIMEZONE_CONFLICTS;
+
+    private static final AtomicLong lastTimezoneDBRequest = new AtomicLong(0);
 
     public BotEventListener(Map<String, String> timezoneMap, Map<String, String> timezoneFullNames, Map<String, List<String>> timezoneConflicts) {
         TIMEZONE_MAP = timezoneMap;
@@ -135,6 +146,10 @@ public class BotEventListener extends ListenerAdapter {
 
                 case "time-for":
                     giveTimeForOtherUser(event, member, event.getOption("member").getAsLong(), locale);
+                    break;
+
+                case "world-clock":
+                    giveTimeForOtherPlace(event, event.getOption("place").getAsString(), locale);
                     break;
             }
         }
@@ -552,6 +567,83 @@ public class BotEventListener extends ListenerAdapter {
             respondPrivately(event, localizeMessage(locale,
                     "The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "**.",
                     "Pour <@" + memberParam + ">, l'horloge affiche **" + nowForUser.format(formatFr) + "**."));
+        }
+    }
+
+    private static void giveTimeForOtherPlace(IReplyCallback event, String place, DiscordLocale locale) {
+        try {
+            // rate limit: 1 request per second
+            synchronized (lastTimezoneDBRequest) {
+                long timeToWait = lastTimezoneDBRequest.get() - System.currentTimeMillis() + 1000;
+                if (timeToWait > 0) {
+                    Thread.sleep(timeToWait);
+                }
+                lastTimezoneDBRequest.set(System.currentTimeMillis());
+            }
+
+            // query OpenStreetMap
+            HttpURLConnection osm = (HttpURLConnection) new URL("https://nominatim.openstreetmap.org/search.php?" +
+                    "q=" + URLEncoder.encode(place, StandardCharsets.UTF_8) +
+                    "&accept-language=" + (locale == DiscordLocale.FRENCH ? "fr" : "en") +
+                    "&limit=1&format=jsonv2")
+                    .openConnection();
+            osm.setConnectTimeout(10000);
+            osm.setReadTimeout(30000);
+            osm.setRequestProperty("User-Agent", "TimezoneBot/1.0 (+https://max480-random-stuff.appspot.com/discord-bots#timezone-bot)");
+
+            JSONArray osmResults;
+            try (InputStream is = osm.getInputStream()) {
+                osmResults = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+            }
+
+            if (osmResults.isEmpty()) {
+                logger.info("Place '{}' was not found by OpenStreetMap!", place);
+                respondPrivately(event, localizeMessage(locale,
+                        ":x: This place was not found!",
+                        ":x: Ce lieu n'a pas été trouvé !"));
+            } else {
+                double latitude = osmResults.getJSONObject(0).getFloat("lat");
+                double longitude = osmResults.getJSONObject(0).getFloat("lon");
+                String name = osmResults.getJSONObject(0).getString("display_name");
+
+                logger.debug("Result for place '{}': '{}', latitude {}, longitude {}", place, name, latitude, longitude);
+
+                JSONObject timezoneDBResult;
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://api.timezonedb.com/v2.1/get-time-zone?key="
+                        + SecretConstants.TIMEZONEDB_API_KEY + "&format=json&by=position&lat=" + latitude + "&lng=" + longitude))) {
+
+                    timezoneDBResult = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                }
+
+                if (timezoneDBResult.getString("status").equals("OK")) {
+                    ZoneId zoneId;
+                    try {
+                        zoneId = ZoneId.of(timezoneDBResult.getString("zoneName"));
+                    } catch (DateTimeException e) {
+                        logger.info("Zone ID '{}' was not recognized! Falling back to UTC offset.", timezoneDBResult.getString("zoneName"));
+                        zoneId = ZoneId.ofOffset("UTC", ZoneOffset.ofTotalSeconds(timezoneDBResult.getInt("gmtOffset")));
+                    }
+                    logger.debug("Timezone of '{}' is: {}", name, zoneId);
+
+                    ZonedDateTime nowAtPlace = ZonedDateTime.now(zoneId);
+                    DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
+                    DateTimeFormatter formatFr = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.FRENCH);
+
+                    respondPrivately(event, localizeMessage(locale,
+                            "The current time in **" + name + "** is **" + nowAtPlace.format(format) + "**.",
+                            "A **" + name + "**, l'horloge affiche **" + nowAtPlace.format(formatFr) + "**."));
+                } else {
+                    logger.info("Coordinates ({}, {}) were not found by TimeZoneDB!", latitude, longitude);
+                    respondPrivately(event, localizeMessage(locale,
+                            ":x: This place was not found!",
+                            ":x: Ce lieu n'a pas été trouvé !"));
+                }
+            }
+        } catch (IOException | JSONException | InterruptedException e) {
+            logger.error("Error while querying timezone for {}", place, e);
+            respondPrivately(event, localizeMessage(locale,
+                    ":x: A technical error occurred.",
+                    ":x: Une erreur technique est survenue."));
         }
     }
 

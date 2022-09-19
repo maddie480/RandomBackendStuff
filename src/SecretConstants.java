@@ -24,6 +24,9 @@ public class SecretConstants {
     // Timezone Bot credentials
     public static String TIMEZONE_BOT_TOKEN = "";
 
+    // API key to access the TimeZoneDB API
+    public static String TIMEZONEDB_API_KEY = "";
+
     // Games Bot credentials
     public static String GAMES_BOT_CLIENT_ID = "";
     public static String GAMES_BOT_TOKEN = "";
@@ -108,6 +111,8 @@ public class SecretConstants {
             REPORT_SERVER_CHANNEL = secrets.getLong("REPORT_SERVER_CHANNEL");
 
             TIMEZONE_BOT_TOKEN = secrets.getString("TIMEZONE_BOT_TOKEN");
+
+            TIMEZONEDB_API_KEY = secrets.getString("TIMEZONEDB_API_KEY");
 
             GAMES_BOT_CLIENT_ID = secrets.getString("GAMES_BOT_CLIENT_ID");
             GAMES_BOT_TOKEN = secrets.getString("GAMES_BOT_TOKEN");
