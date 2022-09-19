@@ -105,12 +105,12 @@ public class ContinuousHealthChecks {
     }
 
     private static boolean checkCelesteNetUDP() throws IOException {
-        // first, check whether there was no UDP traffic on both ipv4 and ipv6 for the last minute.
-        for (String chart : Arrays.asList("ipv4.udppackets", "ipv6.udppackets")) {
+        // first, check whether there was no UDP traffic in both directions for the last minute.
+        for (String chart : Arrays.asList("CelesteNet_v2.udpDownlinkPpS", "CelesteNet_v2.udpUplinkPpS")) {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&gtime=60&group=sum"))) {
                 JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                 JSONArray data = resp.getJSONArray("data").getJSONArray(0);
-                if (data.getDouble(1) > 100 || data.getDouble(2) < -100) {
+                if (data.getInt(1) != 0) {
                     return true;
                 }
             }
