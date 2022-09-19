@@ -110,7 +110,7 @@ public class ContinuousHealthChecks {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&gtime=60&group=sum"))) {
                 JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                 JSONArray data = resp.getJSONArray("data").getJSONArray(0);
-                if (data.getDouble(1) != 0 || data.getDouble(2) != 0) {
+                if (data.getDouble(1) > 100 || data.getDouble(2) < -100) {
                     return true;
                 }
             }
