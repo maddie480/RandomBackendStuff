@@ -7,6 +7,7 @@ This bot allows server members to grab _timezone roles_ on your server, using sl
 -    `/remove-timezone` - removes your timezone role
 -    `/discord-timestamp [date_time]` - gives a [Discord timestamp](https://discord.com/developers/docs/reference#message-formatting-timestamp-styles), to tell a date/time to other people regardless of their timezone
 -    `/time-for [member]` - gives the time it is now for another member of the server, if they have a timezone role
+-    `/world-clock [place]` - gives the time it is in another place in the world (a city or a country)
 -    `/list-timezones [visibility] [names]` - lists the timezones of all members in the server that have timezone roles. You can pass `visibility = public` in order to have the bot response be visible to everyone in the channel.
 
 Two more commands allow admins to set the bot up, and are only accessible to members with the "Administrator" or "Manage Server" permission:
@@ -19,3 +20,5 @@ These slash commands issue private responses, so they can be used from anywhere 
 This bot **requires the Manage Roles permission** as it creates, deletes and updates timezone roles itself as needed. No other permission is required.
 
 [Invite to your server](https://discord.com/oauth2/authorize?client_id=806514800045064213&scope=bot%20applications.commands&permissions=268435456)
+
+_Note that this is the source code for the "with roles" variant of the Timezone Bot. The "without roles" variant does not require a bot user to work, and is part of [the max480-random-stuff.appspot.com website](https://github.com/max4805/RandomStuffWebsite/tree/main/src/main/java/com/max480/randomstuff/gae/discord/timezonebot)._
