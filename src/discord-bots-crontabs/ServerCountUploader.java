@@ -1,13 +1,14 @@
 package com.max480.discord.randombots;
 
+import com.google.api.gax.paging.Page;
 import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
 import com.google.cloud.logging.Payload;
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableMap;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -35,8 +36,15 @@ public class ServerCountUploader {
 
     public static void run() throws IOException {
         int gamesBotServerCount = getServerUsageOfSlashCommandBot("/discord/games-bot");
-        int customSlashCommandsServerCount = getServerUsageOfSlashCommandBot("/discord/custom-slash-commands");
         int timezoneBotServerCount = getServerUsageOfSlashCommandBot("/discord/timezone-bot");
+
+        // to know how many servers use the Custom Slash Commands bot, just list out how many guild ids have created custom commands!
+        int customSlashCommandsServerCount = 0;
+        Page<Blob> blobs = storage.list("max480-random-stuff.appspot.com",
+                Storage.BlobListOption.prefix("custom_slash_commands/"), Storage.BlobListOption.currentDirectory());
+        for (Blob b : blobs.iterateAll()) {
+            customSlashCommandsServerCount++;
+        }
 
         // write a file with all counts in it and send it to Cloud Storage.
         String yamlData = new Yaml().dump(ImmutableMap.of(
@@ -53,7 +61,13 @@ public class ServerCountUploader {
         TopGGCommunicator.refreshServerCounts(gamesBotServerCount, customSlashCommandsServerCount);
     }
 
-    @NotNull
+    /**
+     * Roughly estimates the server count of an interaction-based bot, by counting the amount of servers it was
+     * used on in the last 30 days.
+     *
+     * @param botPath The interactions endpoint URL
+     * @return The amount of servers where the bot was used in the last 30 days
+     */
     private static int getServerUsageOfSlashCommandBot(String botPath) {
         Set<String> guilds = new HashSet<>();
         int logEntries = 0;
