@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -198,6 +199,12 @@ public class BotEventListener extends ListenerAdapter {
         List<Command.Choice> choices = suggestTimezones(request, event.getUserLocale());
         logger.info("Answered with suggestions: {}", choices);
         event.replyChoices(choices).queue();
+    }
+
+    @Override
+    public void onUserContextInteraction(@NotNull UserContextInteractionEvent event) {
+        logger.info("New user command on user {}: {}", event.getTargetMember(), event.getName());
+        giveTimeForOtherUser(event, event.getMember(), event.getTargetMember().getIdLong(), event.getUserLocale());
     }
 
     private List<Command.Choice> suggestTimezones(String input, DiscordLocale locale) {
