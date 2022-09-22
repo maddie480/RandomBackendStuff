@@ -44,6 +44,14 @@ public class EverestVersionLister {
                     .collect(Collectors.toList());
         }
 
+        // temporarily add Azure beta builds
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0"))) {
+            currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
+                    .toList().stream()
+                    .map(version -> (int) ((Map<String, Object>) version).get("id"))
+                    .collect(Collectors.toList()));
+        }
+
         // get the latest GitHub release names
         List<String> currentGitHubReleases;
         try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/releases")) {
@@ -166,6 +174,30 @@ public class EverestVersionLister {
                         entry.put("description", commitMessage);
                     }
                 }
+
+                info.add(entry);
+            }
+        }
+
+
+        // === Azure: for beta builds (TEMPORARY, without commit descriptions)
+
+        {
+            JSONObject azureBuilds;
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0"))) {
+                azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            }
+
+            for (Object b : azureBuilds.getJSONArray("value")) {
+                Map<String, Object> entry = new HashMap<>();
+                JSONObject build = (JSONObject) b;
+
+                entry.put("branch", "beta");
+                entry.put("date", build.getString("finishTime"));
+                entry.put("version", build.getInt("id") + 700);
+                entry.put("mainDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=main&api-version=5.0&%24format=zip");
+                entry.put("olympusMetaDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=olympus-meta&api-version=5.0&%24format=zip");
+                entry.put("olympusBuildDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=olympus-build&api-version=5.0&%24format=zip");
 
                 info.add(entry);
             }
