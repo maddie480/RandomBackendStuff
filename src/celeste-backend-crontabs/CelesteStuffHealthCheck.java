@@ -41,24 +41,25 @@ public class CelesteStuffHealthCheck {
      */
 
     public static void checkEverestExists(boolean daily) throws IOException {
-        JSONObject object = new JSONObject(IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&api-version=5.0")), UTF_8));
-        JSONArray versionList = object.getJSONArray("value");
         int latestStable = -1;
         int latestBeta = -1;
         int latestDev = -1;
-        for (Object version : versionList) {
-            JSONObject versionObj = (JSONObject) version;
-            String reason = versionObj.getString("reason");
-            if (Arrays.asList("manual", "individualCI").contains(reason)) {
-                switch (versionObj.getString("sourceBranch")) {
-                    case "refs/heads/dev":
-                        latestDev = Math.max(latestDev, versionObj.getInt("id"));
+
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("everest_version_list.json")) {
+            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+
+            for (Object version : versionList) {
+                JSONObject versionObj = (JSONObject) version;
+
+                switch (versionObj.getString("branch")) {
+                    case "dev":
+                        latestDev = Math.max(latestDev, versionObj.getInt("version"));
                         break;
-                    case "refs/heads/beta":
-                        latestBeta = Math.max(latestBeta, versionObj.getInt("id"));
+                    case "beta":
+                        latestBeta = Math.max(latestBeta, versionObj.getInt("version"));
                         break;
-                    case "refs/heads/stable":
-                        latestStable = Math.max(latestStable, versionObj.getInt("id"));
+                    case "stable":
+                        latestStable = Math.max(latestStable, versionObj.getInt("version"));
                         break;
                 }
             }
@@ -69,7 +70,9 @@ public class CelesteStuffHealthCheck {
         }
         log.debug("Latest Everest stable version: " + latestStable);
         if (latestBeta == -1) {
-            throw new IOException("There is no beta Everest version :a:");
+            // latest beta does not exist currently
+            // throw new IOException("There is no beta Everest version :a:");
+            latestBeta = latestStable;
         }
         log.debug("Latest Everest beta version: " + latestBeta);
         if (latestDev == -1) {
@@ -85,11 +88,11 @@ public class CelesteStuffHealthCheck {
             WebhookExecutor.executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK,
                     "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
                     "Everest Update Checker",
-                    "**A new Everest stable was just released!**\nThe latest stable version is now **" + (latestStable + 700) + "**.");
+                    "**A new Everest stable was just released!**\nThe latest stable version is now **" + latestStable + "**.");
             WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
                     "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
                     "Everest Update Checker",
-                    ":information_source: Message sent to SRC staff:\n> **A new Everest stable was just released!**\n> The latest stable version is now **" + (latestStable + 700) + "**.");
+                    ":information_source: Message sent to SRC staff:\n> **A new Everest stable was just released!**\n> The latest stable version is now **" + latestStable + "**.");
 
             // and save the fact that we notified about this version.
             FileUtils.writeStringToFile(new File("latest_everest.txt"), Integer.toString(latestStable), UTF_8);
@@ -103,9 +106,9 @@ public class CelesteStuffHealthCheck {
         )).toString(), "everest_versions.json", "application/json");
 
         if (daily) {
-            checkExists(latestStable, "Everest", "main");
-            checkExists(latestBeta, "Everest", "main");
-            checkExists(latestDev, "Everest", "main");
+            checkEverestVersionExists(latestStable);
+            checkEverestVersionExists(latestBeta);
+            checkEverestVersionExists(latestDev);
         }
     }
 
@@ -155,29 +158,55 @@ public class CelesteStuffHealthCheck {
         log.debug("Latest Olympus windows-init version: " + latestWindowsInit);
 
         if (daily) {
-            checkExists(latestStable, "Olympus", "windows.main");
-            checkExists(latestStable, "Olympus", "macos.main");
-            checkExists(latestStable, "Olympus", "linux.main");
-            checkExists(latestMain, "Olympus", "windows.main");
-            checkExists(latestMain, "Olympus", "macos.main");
-            checkExists(latestMain, "Olympus", "linux.main");
-            checkExists(latestWindowsInit, "Olympus", "windows.main");
-            checkExists(latestWindowsInit, "Olympus", "macos.main");
-            checkExists(latestWindowsInit, "Olympus", "linux.main");
+            checkOlympusVersionExists(latestStable, "windows.main");
+            checkOlympusVersionExists(latestStable, "macos.main");
+            checkOlympusVersionExists(latestStable, "linux.main");
+            checkOlympusVersionExists(latestMain, "windows.main");
+            checkOlympusVersionExists(latestMain, "macos.main");
+            checkOlympusVersionExists(latestMain, "linux.main");
+            checkOlympusVersionExists(latestWindowsInit, "windows.main");
+            checkOlympusVersionExists(latestWindowsInit, "macos.main");
+            checkOlympusVersionExists(latestWindowsInit, "linux.main");
         }
     }
 
     /**
-     * Tries downloading an Everest version.
-     *
-     * @param version The version to download
+     * Checks that all artifacts of an Everest version are downloadable.
      */
-    private static void checkExists(int version, String projectName, String artifactName) throws IOException {
-        log.debug("Downloading {} version {}, artifact {}...", projectName, version, artifactName);
+    private static void checkEverestVersionExists(int versionNumber) throws IOException {
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("everest_version_list.json")) {
+            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+
+            for (Object version : versionList) {
+                JSONObject versionObj = (JSONObject) version;
+
+                if (versionObj.getInt("version") == versionNumber) {
+                    checkExists(versionObj.getString("mainDownload"));
+                    checkExists(versionObj.getString("olympusMetaDownload"));
+                    checkExists(versionObj.getString("olympusBuildDownload"));
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks that an Olympus artifact is downloadable.
+     */
+    private static void checkOlympusVersionExists(int version, String artifactName) throws IOException {
+        log.debug("Downloading Olympus version {}, artifact {}...", version, artifactName);
+
+        checkExists("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds/" + version + "/artifacts?artifactName=" + artifactName + "&api-version=5.0&%24format=zip");
+    }
+
+    /**
+     * Checks that a link is downloadable.
+     */
+    private static void checkExists(String link) throws IOException {
+        log.debug("Trying to download {}...", link);
 
         long size = 0;
         byte[] buffer = new byte[4096];
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/" + projectName + "/_apis/build/builds/" + version + "/artifacts?artifactName=" + artifactName + "&api-version=5.0&%24format=zip"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(link))) {
             while (true) {
                 int read = is.read(buffer);
                 if (read == -1) break;
@@ -185,9 +214,14 @@ public class CelesteStuffHealthCheck {
             }
         }
 
-        log.debug("Size of version {}: {}", version, size);
-        if (size < 1_000_000) {
-            throw new IOException("Version " + version + " is too small (" + size + "), that's suspicious");
+        int minSize = 1_000_000;
+        if (link.contains("meta")) {
+            minSize = 100;
+        }
+
+        log.debug("Total size: {}, expecting at least {}", size, minSize);
+        if (size < minSize) {
+            throw new IOException(link + " is too small (" + size + "), that's suspicious");
         }
     }
 
@@ -373,7 +407,7 @@ public class CelesteStuffHealthCheck {
             latestDev = new JSONObject(IOUtils.toString(is, UTF_8)).getInt("dev");
         }
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/everest-versions")), UTF_8)
-                .contains("\"version\":" + (latestDev + 700))) {
+                .contains("\"version\":" + latestDev)) {
 
             throw new IOException("Everest versions test failed");
         }
