@@ -58,7 +58,7 @@ public class ServerCountUploader {
 
         logger.info("Stats saved on Cloud Storage: {}", yamlData);
 
-        TopGGCommunicator.refreshServerCounts(gamesBotServerCount, customSlashCommandsServerCount);
+        TopGGCommunicator.refreshServerCounts(gamesBotServerCount, customSlashCommandsServerCount, timezoneBotServerCount);
     }
 
     /**

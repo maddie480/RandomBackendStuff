@@ -30,16 +30,21 @@ public class TopGGCommunicator {
     private static int customSlashCommandsScore = -1;
     private static int customSlashCommandsRatingCount = -1;
 
+    private static int timezoneBotScore = -1;
+    private static int timezoneBotRatingCount = -1;
+
     /**
      * Refreshes the server counts once a day.
      * The actual counting is done by {@link ServerCountUploader}, which then calls this method.
      */
-    public static void refreshServerCounts(int gamesBot, int customSlashCommands) throws IOException {
+    public static void refreshServerCounts(int gamesBot, int customSlashCommands, int timezoneBot) throws IOException {
         // update the server count on top.gg through the API
         updateBotGuildCount(SecretConstants.GAMES_BOT_CLIENT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN,
                 "Games Bot", gamesBot);
         updateBotGuildCount(SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID, SecretConstants.CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN,
                 "Custom Slash Commands", customSlashCommands);
+        updateBotGuildCount(SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID, SecretConstants.TIMEZONE_BOT_LITE_TOP_GG_TOKEN,
+                "Timezone Bot", timezoneBot);
     }
 
     /**
@@ -54,12 +59,16 @@ public class TopGGCommunicator {
                 "Games Bot", () -> gamesBotScore, score -> gamesBotScore = score);
         getAndUpdateBotScore(SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID, SecretConstants.CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN, internalBotClient,
                 "Custom Slash Commands", () -> customSlashCommandsScore, score -> customSlashCommandsScore = score);
+        getAndUpdateBotScore(SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID, SecretConstants.TIMEZONE_BOT_LITE_TOP_GG_TOKEN, internalBotClient,
+                "Timezone Bot", () -> timezoneBotScore, score -> timezoneBotScore = score);
 
         // check if we got new ratings (through more... unconventional means)
         updateBotRatingCount(internalBotClient, SecretConstants.GAMES_BOT_CLIENT_ID,
                 "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score);
         updateBotRatingCount(internalBotClient, SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID,
                 "Custom Slash Commands", () -> customSlashCommandsRatingCount, score -> customSlashCommandsRatingCount = score);
+        updateBotRatingCount(internalBotClient, SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID,
+                "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score);
     }
 
     private static void updateBotGuildCount(String botId, String botToken, String botName, int guildCount) throws IOException {

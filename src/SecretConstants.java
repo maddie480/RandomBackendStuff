@@ -38,6 +38,11 @@ public class SecretConstants {
     public static String CUSTOM_SLASH_COMMANDS_TOKEN = "";
     public static String CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN = "";
 
+    // Credentials for the frontend ("no roles") version of the Timezone Bot
+    public static String TIMEZONE_BOT_LITE_CLIENT_ID = "";
+    public static String TIMEZONE_BOT_LITE_TOKEN = "";
+    public static String TIMEZONE_BOT_LITE_TOP_GG_TOKEN = "";
+
     // Mod Structure Verifier credentials
     public static String MOD_STRUCTURE_VERIFIER_TOKEN = "";
     public static String STRAWBERRY_JAM_LOCATION = "";
@@ -122,6 +127,10 @@ public class SecretConstants {
             CUSTOM_SLASH_COMMANDS_CLIENT_SECRET = secrets.getString("CUSTOM_SLASH_COMMANDS_CLIENT_SECRET");
             CUSTOM_SLASH_COMMANDS_TOKEN = secrets.getString("CUSTOM_SLASH_COMMANDS_TOKEN");
             CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN = secrets.getString("CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN");
+
+            TIMEZONE_BOT_LITE_CLIENT_ID = secrets.getString("TIMEZONE_BOT_LITE_CLIENT_ID");
+            TIMEZONE_BOT_LITE_TOKEN = secrets.getString("TIMEZONE_BOT_LITE_TOKEN");
+            TIMEZONE_BOT_LITE_TOP_GG_TOKEN = secrets.getString("TIMEZONE_BOT_LITE_TOP_GG_TOKEN");
 
             MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
             STRAWBERRY_JAM_LOCATION = secrets.getString("STRAWBERRY_JAM_LOCATION");
