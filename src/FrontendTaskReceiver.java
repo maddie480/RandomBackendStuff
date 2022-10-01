@@ -78,6 +78,17 @@ public class FrontendTaskReceiver {
                     handleFontGenerateRequest(o.getString("fileName"), o.getString("language"));
                     break;
 
+                case "fileSearch":
+                    try {
+                        ModFileSearcher.findAllModsByFile(
+                                o.getString("search"),
+                                o.getBoolean("exact")
+                        );
+                    } catch (IOException e) {
+                        log.error("Error while searching file for request {}", o, e);
+                    }
+                    break;
+
                 default:
                     log.error("Received invalid task type {}!", o.getString("taskType"));
                     break;
