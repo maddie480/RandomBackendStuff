@@ -58,6 +58,8 @@ import java.util.stream.Collectors;
 public class BotEventListener extends ListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(BotEventListener.class);
 
+    static BotEventListener INSTANCE;
+
     // offset timezone database
     private final Map<String, String> TIMEZONE_MAP;
     private final Map<String, String> TIMEZONE_FULL_NAMES;
@@ -69,6 +71,8 @@ public class BotEventListener extends ListenerAdapter {
         TIMEZONE_MAP = timezoneMap;
         TIMEZONE_FULL_NAMES = timezoneFullNames;
         TIMEZONE_CONFLICTS = timezoneConflicts;
+
+        INSTANCE = this;
     }
 
     @Override
@@ -207,7 +211,7 @@ public class BotEventListener extends ListenerAdapter {
         giveTimeForOtherUser(event, event.getMember(), event.getTargetMember().getIdLong(), event.getUserLocale());
     }
 
-    private List<Command.Choice> suggestTimezones(String input, DiscordLocale locale) {
+    List<Command.Choice> suggestTimezones(String input, DiscordLocale locale) {
         // look up tz database timezones
         List<Command.Choice> matchingTzDatabaseTimezones = ZoneId.getAvailableZoneIds().stream()
                 .filter(tz -> {
@@ -579,7 +583,7 @@ public class BotEventListener extends ListenerAdapter {
         }
     }
 
-    private static void giveTimeForOtherPlace(IReplyCallback event, String place, DiscordLocale locale) {
+    static void giveTimeForOtherPlace(IReplyCallback event, String place, DiscordLocale locale) {
         try {
             // rate limit: 1 request per second
             synchronized (lastTimezoneDBRequest) {

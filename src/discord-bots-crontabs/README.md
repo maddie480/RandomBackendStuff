@@ -19,3 +19,4 @@ This folder contains some extra processes related to the Games Bot and the Custo
 - `TopGGCommunicator`: this class is in charge of communicating with [top.gg](https://top.gg/), where the Games Bot and Custom Slash Commands are referenced.
   - It uploads the server count for both bots, once a day, based on the results of `ServerCountUploader`
   - It notifies the owner of any votes or comments, in order to act on them in case there is a complaint / bug report left on the top.gg page
+- `WorldClockHealthCheck`: checks daily that Timezone Bot commands relying on external APIs (`/world-clock` relies on [Nominatim from OpenStreetMap](https://nominatim.openstreetmap.org/) and [TimeZoneDB.com](https://timezonedb.com/), recognizing timezones like "CEST" relies on [timeanddate.com](https://www.timeanddate.com/time/zones/)) still work as expected.
