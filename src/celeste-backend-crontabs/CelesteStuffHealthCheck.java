@@ -840,6 +840,40 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
+     * Checks that the file searcher can find Tornado Valley.
+     * Run daily.
+     */
+    public static void checkFileSearcher() throws IOException {
+        log.debug("Checking File Searcher...");
+
+        // run the search
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/file-search?" +
+                "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true"))) {
+
+            log.debug("Response to first request: {}", IOUtils.toString(is, UTF_8));
+        }
+
+        // leave time for the search to be done
+        try {
+            Thread.sleep(15000);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
+
+        // check the result of the search
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/file-search?" +
+                "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true"))) {
+
+            String result = IOUtils.toString(is, UTF_8);
+            log.debug("Response to second request: {}", result);
+
+            if (!result.contains("{\"itemid\":150597,\"itemtype\":\"Mod\",\"fileid\":399127}")) {
+                throw new IOException("File Searcher did not return expected result!");
+            }
+        }
+    }
+
+    /**
      * Checks that the page for speedrun.com update notification setup still displays properly.
      * Run daily.
      */
