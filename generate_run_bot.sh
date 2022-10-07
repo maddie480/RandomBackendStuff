@@ -11,6 +11,6 @@ mv dependency/ java-libs/
 echo "#!/bin/bash" > run_bot.sh
 echo "" >> run_bot.sh
 
-echo -n "java -Xmx96m -cp \"random-discord-bots-0.0.1-SNAPSHOT.jar:java-libs/" >> run_bot.sh
+echo -n "java -Xmx128m -cp \"random-discord-bots-0.0.1-SNAPSHOT.jar:java-libs/" >> run_bot.sh
 echo -n `ls -1 java-libs/ | tr '\n' ':' | sed 's,:,:java-libs/,g' | sed 's,:java-libs/$,,'` >> run_bot.sh
 echo "\" com.max480.quest.modmanagerbot.Entrypoint /tmp" >> run_bot.sh
