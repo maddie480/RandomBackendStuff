@@ -44,6 +44,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -154,7 +155,7 @@ public class BotEventListener extends ListenerAdapter {
                     break;
 
                 case "world-clock":
-                    giveTimeForOtherPlace(event, event.getOption("place").getAsString(), locale);
+                    giveTimeForOtherPlace(event, event.getMember(), event.getOption("place").getAsString(), locale);
                     break;
             }
         }
@@ -566,6 +567,11 @@ public class BotEventListener extends ListenerAdapter {
                 .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == memberParam)
                 .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
 
+        // find the calling user's timezone.
+        String userTimezone = TimezoneBot.userTimezones.stream()
+                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
+                .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+
         if (timezoneName == null) {
             // the user is not in the database.
             respondPrivately(event, localizeMessage(locale,
@@ -578,12 +584,22 @@ public class BotEventListener extends ListenerAdapter {
             DateTimeFormatter formatFr = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.FRENCH);
 
             respondPrivately(event, localizeMessage(locale,
-                    "The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "**.",
-                    "Pour <@" + memberParam + ">, l'horloge affiche **" + nowForUser.format(formatFr) + "**."));
+                    "The current time for <@" + memberParam + "> is **" + nowForUser.format(format) + "** " +
+                            "(" + getOffsetAndDifference(timezoneName, userTimezone, locale) + ").",
+                    "Pour <@" + memberParam + ">, l'horloge affiche **" + nowForUser.format(formatFr) + "** " +
+                            "(" + getOffsetAndDifference(timezoneName, userTimezone, locale) + ")."));
         }
     }
 
-    static void giveTimeForOtherPlace(IReplyCallback event, String place, DiscordLocale locale) {
+    static void giveTimeForOtherPlace(IReplyCallback event, Member member, String place, DiscordLocale locale) {
+        // find the calling user's timezone.
+        String userTimezone = null;
+        if (member != null) {
+            userTimezone = TimezoneBot.userTimezones.stream()
+                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
+                    .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+        }
+
         try {
             // rate limit: 1 request per second
             synchronized (lastTimezoneDBRequest) {
@@ -643,8 +659,10 @@ public class BotEventListener extends ListenerAdapter {
                     DateTimeFormatter formatFr = DateTimeFormatter.ofPattern("dd MMM, HH:mm", Locale.FRENCH);
 
                     respondPrivately(event, localizeMessage(locale,
-                            "The current time in **" + name + "** is **" + nowAtPlace.format(format) + "**.",
-                            "A **" + name + "**, l'horloge affiche **" + nowAtPlace.format(formatFr) + "**."));
+                            "The current time in **" + name + "** is **" + nowAtPlace.format(format) + "** " +
+                                    "(" + getOffsetAndDifference(zoneId.toString(), userTimezone, locale) + ").",
+                            "A **" + name + "**, l'horloge affiche **" + nowAtPlace.format(formatFr) + "** " +
+                                    "(" + getOffsetAndDifference(zoneId.toString(), userTimezone, locale) + ")."));
                 } else {
                     logger.info("Coordinates ({}, {}) were not found by TimeZoneDB!", latitude, longitude);
                     respondPrivately(event, localizeMessage(locale,
@@ -844,6 +862,45 @@ public class BotEventListener extends ListenerAdapter {
                 .map(Map.Entry::getValue)
                 .orElse(null);
     }
+
+    private static String getOffsetAndDifference(String consideredTimezone, String userTimezone, DiscordLocale locale) {
+        ZoneId zone = ZoneId.of(consideredTimezone);
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        int consideredTimezoneOffset = now.getOffset().getTotalSeconds() / 60;
+
+        if (userTimezone == null) {
+            return TimezoneBot.formatTimezoneName(consideredTimezoneOffset);
+        } else {
+            zone = ZoneId.of(userTimezone);
+            now = ZonedDateTime.now(zone);
+            int userTimezoneOffset = now.getOffset().getTotalSeconds() / 60;
+
+            int timeDifference = consideredTimezoneOffset - userTimezoneOffset;
+
+            if (timeDifference == 0) {
+                return TimezoneBot.formatTimezoneName(consideredTimezoneOffset) + ", " + localizeMessage(locale, "same time as you", "même heure que toi");
+            } else {
+                String comment;
+                int hours = Math.abs(timeDifference / 60);
+                int minutes = Math.abs(timeDifference % 60);
+
+                if (minutes == 0) {
+                    comment = hours + " " + localizeMessage(locale, "hour", "heure") + (hours == 1 ? "" : "s");
+                } else {
+                    comment = hours + ":" + new DecimalFormat("00").format(minutes);
+                }
+
+                if (timeDifference < 0) {
+                    comment += " " + localizeMessage(locale, "behind you", "de retard sur toi");
+                } else {
+                    comment += " " + localizeMessage(locale, "ahead of you", "d'avance sur toi");
+                }
+
+                return TimezoneBot.formatTimezoneName(consideredTimezoneOffset) + ", " + comment;
+            }
+        }
+    }
+
 
     private void generateTimezoneDropdown(SlashCommandInteractionEvent slashCommandEvent) {
         DiscordLocale locale = slashCommandEvent.getUserLocale();

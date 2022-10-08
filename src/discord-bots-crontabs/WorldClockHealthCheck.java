@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -235,12 +236,14 @@ public class WorldClockHealthCheck {
     public static void main(String[] args) throws IOException {
         // /world-clock health check
         MockCallback callback = new MockCallback();
-        BotEventListener.giveTimeForOtherPlace(callback, "washington", DiscordLocale.ENGLISH_US);
+        BotEventListener.giveTimeForOtherPlace(callback, null, "washington", DiscordLocale.ENGLISH_US);
 
         ZonedDateTime nowAtPlace = ZonedDateTime.now(ZoneId.of("America/New_York"));
         DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
+        int consideredTimezoneOffsetHours = nowAtPlace.getOffset().getTotalSeconds() / 3600;
 
-        String expected = "The current time in **Washington, District of Columbia, United States** is **" + nowAtPlace.format(format) + "**.";
+        String expected = "The current time in **Washington, District of Columbia, United States** is **"
+                + nowAtPlace.format(format) + "** (UTC" + new DecimalFormat("00").format(consideredTimezoneOffsetHours) + ":00).";
 
         logger.debug("Expected: {}, Actual: {}", expected, callback.getResponse());
 
