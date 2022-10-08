@@ -747,6 +747,15 @@ public class BotEventListener extends ListenerAdapter {
                 .filter(user -> user.serverId == event.getGuild().getIdLong())
                 .collect(Collectors.toMap(user -> user, user -> TimezoneBot.getMemberWithCache(event.getGuild(), user.userId)));
 
+        if (members.isEmpty()) {
+            event.reply(localizeMessage(locale,
+                            ":x: Nobody grabbed a timezone role with `/timezone` on this server!",
+                            ":x: Personne n'a pris de rôle de fuseau horaire avec `/timezone` sur ce serveur !"))
+                    .setEphemeral(!shouldRespondInPublic)
+                    .queue();
+            return;
+        }
+
         // group them by UTC offset
         Map<Integer, Set<String>> peopleByUtcOffset = new TreeMap<>();
         for (Map.Entry<TimezoneBot.UserTimezone, TimezoneBot.CachedMember> member : members.entrySet()) {
