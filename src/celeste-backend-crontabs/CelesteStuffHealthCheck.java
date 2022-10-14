@@ -69,9 +69,7 @@ public class CelesteStuffHealthCheck {
         }
         log.debug("Latest Everest stable version: " + latestStable);
         if (latestBeta == -1) {
-            // latest beta does not exist currently
-            // throw new IOException("There is no beta Everest version :a:");
-            latestBeta = latestStable;
+            throw new IOException("There is no beta Everest version :a:");
         }
         log.debug("Latest Everest beta version: " + latestBeta);
         if (latestDev == -1) {
