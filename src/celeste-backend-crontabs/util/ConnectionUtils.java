@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
@@ -23,18 +24,30 @@ public final class ConnectionUtils {
     }
 
     /**
-     * Opens a stream to the specified URL, getting sure timeouts are set
+     * Creates an HttpURLConnection to the specified URL, getting sure timeouts are set
+     * (connect timeout = 10 seconds, read timeout = 30 seconds).
+     *
+     * @param url The URL to connect to
+     * @return An HttpURLConnection to this URL
+     * @throws IOException If an exception occured while trying to connect
+     */
+    public static HttpURLConnection openConnectionWithTimeout(String url) throws IOException {
+        URLConnection con = new URL(url).openConnection();
+        con.setConnectTimeout(10000);
+        con.setReadTimeout(30000);
+        return (HttpURLConnection) con;
+    }
+
+    /**
+     * Creates a stream to the specified URL, getting sure timeouts are set
      * (connect timeout = 10 seconds, read timeout = 30 seconds).
      *
      * @param url The URL to connect to
      * @return A stream to this URL
-     * @throws IOException If an exception occurred while trying to connect
+     * @throws IOException If an exception occured while trying to connect
      */
-    public static InputStream openStreamWithTimeout(URL url) throws IOException {
-        URLConnection con = url.openConnection();
-        con.setConnectTimeout(10000);
-        con.setReadTimeout(30000);
-        return con.getInputStream();
+    public static InputStream openStreamWithTimeout(String url) throws IOException {
+        return openConnectionWithTimeout(url).getInputStream();
     }
 
     /**
@@ -45,7 +58,7 @@ public final class ConnectionUtils {
      * @return The entire contents of the URL as a string
      * @throws IOException If an exception occurred while reading the contents
      */
-    public static String toStringWithTimeout(URL url, Charset charset) throws IOException {
+    public static String toStringWithTimeout(String url, Charset charset) throws IOException {
         return IOUtils.toString(openStreamWithTimeout(url), charset);
     }
 
@@ -56,7 +69,7 @@ public final class ConnectionUtils {
      * @return The entire contents of the URL as a byte array
      * @throws IOException If an exception occurred while reading the contents
      */
-    public static byte[] toByteArrayWithTimeout(URL url) throws IOException {
+    public static byte[] toByteArrayWithTimeout(String url) throws IOException {
         return IOUtils.toByteArray(openStreamWithTimeout(url));
     }
 

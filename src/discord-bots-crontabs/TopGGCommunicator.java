@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.function.Consumer;
@@ -73,9 +72,7 @@ public class TopGGCommunicator {
 
     private static void updateBotGuildCount(String botId, String botToken, String botName, int guildCount) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
-            HttpURLConnection connection = (HttpURLConnection) new URL("https://top.gg/api/bots/" + botId + "/stats").openConnection();
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(30000);
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://top.gg/api/bots/" + botId + "/stats");
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
             connection.setRequestProperty("Authorization", botToken);
@@ -100,9 +97,7 @@ public class TopGGCommunicator {
 
     private static void getAndUpdateBotScore(String botId, String botToken, JDA internalBotClient, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
-            HttpURLConnection connection = (HttpURLConnection) new URL("https://top.gg/api/bots/" + botId).openConnection();
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(30000);
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://top.gg/api/bots/" + botId);
             connection.setRequestProperty("Authorization", botToken);
 
             try (InputStream is = connection.getInputStream()) {

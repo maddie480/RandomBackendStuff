@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -106,10 +105,8 @@ public class TwitterUpdateChecker {
      * @throws IOException In case an error occurs when connecting
      */
     private static String authenticateTwitter() throws IOException {
-        HttpURLConnection connAuth = (HttpURLConnection) new URL("https://api.twitter.com/oauth2/token").openConnection();
+        HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://api.twitter.com/oauth2/token");
 
-        connAuth.setConnectTimeout(10000);
-        connAuth.setReadTimeout(30000);
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.TWITTER_BASIC_AUTH);
         connAuth.setRequestMethod("POST");
         connAuth.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
@@ -142,11 +139,9 @@ public class TwitterUpdateChecker {
         boolean firstRun = !previousTweets.containsKey(feed);
         Set<String> tweetsAlreadyNotified = previousTweets.getOrDefault(feed, new HashSet<>());
 
-        HttpURLConnection connAuth = (HttpURLConnection) new URL("https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name="
-                + URLEncoder.encode(feed, UTF_8) + "&count=50&include_rts=1&exclude_replies=1&tweet_mode=extended").openConnection();
+        HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name="
+                + URLEncoder.encode(feed, UTF_8) + "&count=50&include_rts=1&exclude_replies=1&tweet_mode=extended");
 
-        connAuth.setConnectTimeout(10000);
-        connAuth.setReadTimeout(30000);
         connAuth.setRequestProperty("Authorization", "Bearer " + token);
         connAuth.setRequestMethod("GET");
         connAuth.setDoInput(true);
@@ -193,7 +188,7 @@ public class TwitterUpdateChecker {
                         videoUrl = ((Map<String, String>) embed.get("video")).get("url");
                         videoFile = new File("/tmp/tweet_video" + getFileExtension(videoUrl));
 
-                        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(videoUrl))) {
+                        try (InputStream is = ConnectionUtils.openStreamWithTimeout(videoUrl)) {
                             FileUtils.copyToFile(is, videoFile);
                         } catch (IOException e) {
                             // don't worry about it!
@@ -280,7 +275,7 @@ public class TwitterUpdateChecker {
             try (InputStream is = new FileInputStream("previous_twitter_messages_EverestAPI.txt")) {
                 autoOlympusNews = DigestUtils.sha512Hex(is);
             }
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/max4805/RandomBackendStuff/main/olympusnews.json"))) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/max4805/RandomBackendStuff/main/olympusnews.json")) {
                 manualOlympusNews = DigestUtils.sha512Hex(is);
             }
 
@@ -443,9 +438,7 @@ public class TwitterUpdateChecker {
             String link = linkAtEndMatch.group(1);
 
             try {
-                HttpURLConnection connection = (HttpURLConnection) new URL(link).openConnection();
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(30000);
+                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(link);
                 connection.setInstanceFollowRedirects(false);
 
                 String tweetLink = "https://twitter.com/" + tweet.getJSONObject("user").getString("screen_name") + "/status/" + tweet.getString("id_str");
@@ -506,9 +499,7 @@ public class TwitterUpdateChecker {
 
                     try {
                         // query the header of each video to get the file size
-                        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-                        connection.setConnectTimeout(10000);
-                        connection.setReadTimeout(30000);
+                        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
                         connection.setRequestMethod("HEAD");
 
                         if (connection.getHeaderField("Content-Length") != null) {

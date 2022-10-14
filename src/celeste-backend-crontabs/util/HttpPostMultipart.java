@@ -2,7 +2,6 @@ package com.max480.discord.randombots;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLConnection;
 import java.util.Map;
 import java.util.UUID;
@@ -28,10 +27,7 @@ public class HttpPostMultipart {
     public HttpPostMultipart(String requestURL, String charset, Map<String, String> headers) throws IOException {
         this.charset = charset;
         boundary = UUID.randomUUID().toString();
-        URL url = new URL(requestURL);
-        httpConn = (HttpURLConnection) url.openConnection();
-        httpConn.setConnectTimeout(10000);
-        httpConn.setReadTimeout(30000);
+        httpConn = ConnectionUtils.openConnectionWithTimeout(requestURL);
         httpConn.setUseCaches(false);
         httpConn.setDoOutput(true);    // indicates POST method
         httpConn.setDoInput(true);

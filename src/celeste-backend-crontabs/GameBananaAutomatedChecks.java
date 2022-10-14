@@ -16,7 +16,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -103,7 +102,7 @@ public class GameBananaAutomatedChecks {
                     // file listing contains dll, so download!
                     logger.debug("Downloading mod {} (file id {})", modName, fileName);
 
-                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(mod.get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString()))) {
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(mod.get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString())) {
                         FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.zip"));
                     }
 
@@ -342,7 +341,7 @@ public class GameBananaAutomatedChecks {
     private static boolean modIsObsolete(String mod) {
         try {
             return ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_bIsObsolete"))) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_bIsObsolete")) {
                     JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                     return modInfo.getBoolean("_bIsObsolete");
                 }
@@ -356,7 +355,7 @@ public class GameBananaAutomatedChecks {
     private static boolean modAndWipAreLinked(String mod, String wip) {
         try {
             return ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_aWip"))) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_aWip")) {
                     JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
 
                     // check that the mod has a linked wip, and that it is the wip we were given
@@ -415,7 +414,7 @@ public class GameBananaAutomatedChecks {
             String url = modMap.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString();
             if (!oldAlreadyChecked.contains(url)) {
                 logger.debug("Downloading {} ({}) for everest.yaml checking", url, modName);
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
                     FileUtils.copyToFile(is, new File("/tmp/everest_yaml_police.zip"));
                 }
 
@@ -567,8 +566,8 @@ public class GameBananaAutomatedChecks {
         logger.debug("Checking for unapproved {} categories", name);
 
         JSONArray listOfCategories = ConnectionUtils.runWithRetry(() -> {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + name + "Category/ByGame?_aGameRowIds[]=6460&" +
-                    "_csvProperties=_idRow,_idParentCategoryRow&_sOrderBy=_idRow,ASC&_nPage=1&_nPerpage=50"))) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + name + "Category/ByGame?_aGameRowIds[]=6460&" +
+                    "_csvProperties=_idRow,_idParentCategoryRow&_sOrderBy=_idRow,ASC&_nPage=1&_nPerpage=50")) {
 
                 return new JSONArray(IOUtils.toString(is, UTF_8));
             }
@@ -595,8 +594,8 @@ public class GameBananaAutomatedChecks {
             // load a page of mods.
             final int thisPage = page;
             JSONArray pageContents = ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/" + name + "/ByGame?_aGameRowIds[]=6460&" +
-                        "_csvProperties=_aCategory&_sOrderBy=_idRow,ASC&_nPage=" + thisPage + "&_nPerpage=50"))) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + name + "/ByGame?_aGameRowIds[]=6460&" +
+                        "_csvProperties=_aCategory&_sOrderBy=_idRow,ASC&_nPage=" + thisPage + "&_nPerpage=50")) {
 
                     return new JSONArray(IOUtils.toString(is, UTF_8));
                 }
@@ -676,7 +675,7 @@ public class GameBananaAutomatedChecks {
                 String url = "https://gamebanana.com/mmdl/" + file;
                 logger.debug("Downloading {} ({}) for PNG file checking, we have {} files to check", url, modName, filesToCheck.size());
                 ConnectionUtils.runWithRetry(() -> {
-                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
                         FileUtils.copyToFile(is, new File("/tmp/png_police.zip"));
                         return null;
                     }

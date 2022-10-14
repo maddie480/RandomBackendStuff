@@ -14,7 +14,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -116,7 +115,7 @@ public class CelesteStuffHealthCheck {
      * Checks that every Olympus branch has a version and that we can download it for all 3 supported operating systems.
      */
     public static void checkOlympusExists(boolean daily) throws IOException {
-        JSONObject object = new JSONObject(IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds")), UTF_8));
+        JSONObject object = new JSONObject(ConnectionUtils.toStringWithTimeout("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds", UTF_8));
         JSONArray versionList = object.getJSONArray("value");
         int latestStable = -1;
         int latestMain = -1;
@@ -206,7 +205,7 @@ public class CelesteStuffHealthCheck {
 
         long size = 0;
         byte[] buffer = new byte[4096];
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(link))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(link)) {
             while (true) {
                 int read = is.read(buffer);
                 if (read == -1) break;
@@ -235,7 +234,7 @@ public class CelesteStuffHealthCheck {
                 .format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH));
 
         log.debug("Loading custom entity catalog... (expecting date: {})", expectedRefreshDate);
-        if (!ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog"), UTF_8)
+        if (!ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog", UTF_8)
                 .contains(expectedRefreshDate)) {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog is not \"" + expectedRefreshDate + "\" :a:");
@@ -245,7 +244,7 @@ public class CelesteStuffHealthCheck {
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH));
 
         log.debug("Loading custom entity catalog JSON... (expecting date: {})", expectedRefreshDate);
-        if (!ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog.json"), UTF_8)
+        if (!ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/custom-entity-catalog.json", UTF_8)
                 .contains(expectedRefreshDate)) {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog JSON is not \"" + expectedRefreshDate + "\" :a:");
@@ -270,7 +269,7 @@ public class CelesteStuffHealthCheck {
                 .collect(Collectors.toList());
 
         List<String> everestUpdate;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml")) {
             Map<String, Map<String, Object>> mapped = new Yaml().load(is);
             everestUpdate = mapped.values()
                     .stream()
@@ -293,7 +292,7 @@ public class CelesteStuffHealthCheck {
                 .collect(Collectors.toList());
 
         List<String> modSearchDatabase;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml")) {
             List<Map<String, Object>> mapped = new Yaml().load(is);
             modSearchDatabase = mapped.stream()
                     .map(item -> (List<String>) item.get("MirroredScreenshots"))
@@ -358,21 +357,21 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkOlympusAPIs() throws IOException {
         // search
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE&full=true")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE&full=true"), UTF_8)
                 .contains("\"Name\":\"Extended Variant Mode\"")) {
 
             throw new IOException("Extended Variant Mode search test failed");
         }
 
         // sorted list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&category=6800&page=1&full=true")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&category=6800&page=1&full=true"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Sorted list API test failed");
         }
 
         // categories list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2"), UTF_8)
                 .contains("- categoryid: 6800\n" +
                         "  formatted: Maps\n" +
                         "  count: ")) {
@@ -381,21 +380,21 @@ public class CelesteStuffHealthCheck {
         }
 
         // featured mods list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-featured")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-featured"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Featured mods list API failed");
         }
 
         // check that the mirror is alive by downloading a GhostNet screenshot
-        if (!DigestUtils.sha256Hex(ConnectionUtils.toByteArrayWithTimeout(new URL("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png")))
+        if (!DigestUtils.sha256Hex(ConnectionUtils.toByteArrayWithTimeout("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png"))
                 .equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
 
             throw new IOException("Download from mirror test failed");
         }
 
         // Olympus News
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/olympus-news")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news"), UTF_8)
                 .contains("\"preview\":\"You can find every news post on Twitter!\"")) {
 
             throw new IOException("Olympus News test failed");
@@ -406,7 +405,7 @@ public class CelesteStuffHealthCheck {
         try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("everest_versions.json")) {
             latestDev = new JSONObject(IOUtils.toString(is, UTF_8)).getInt("dev");
         }
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/everest-versions")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest-versions"), UTF_8)
                 .contains("\"version\":" + latestDev)) {
 
             throw new IOException("Everest versions test failed");
@@ -419,9 +418,7 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkSmallerGameBananaAPIs() throws IOException {
         // "random Celeste map" button
-        HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/random-map").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/random-map");
         connection.setInstanceFollowRedirects(true);
         connection.connect();
         if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("Celeste")) {
@@ -430,7 +427,7 @@ public class CelesteStuffHealthCheck {
         connection.disconnect();
 
         // deprecated GameBanana categories API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories"), UTF_8)
                 .contains("- itemtype: Tool\n" +
                         "  formatted: Tools\n" +
                         "  count: ")) {
@@ -439,24 +436,21 @@ public class CelesteStuffHealthCheck {
         }
 
         // deprecated GameBanana search API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE"), UTF_8)
                 .contains("{itemtype: Mod, itemid: 53650}")) {
 
             throw new IOException("Extended Variant Mode search test failed");
         }
 
         // deprecated GameBanana sorted list API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1"), UTF_8)
                 .contains("{itemtype: Tool, itemid: 6449}")) { // Everest
 
             throw new IOException("Sorted list API test failed");
         }
 
         // deprecated webp to png API
-        connection = (HttpURLConnection)
-                new URL("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
+        connection = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp");
         connection.setInstanceFollowRedirects(true);
         connection.connect();
         if (!DigestUtils.sha256Hex(IOUtils.toByteArray(connection.getInputStream())).equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
@@ -465,10 +459,7 @@ public class CelesteStuffHealthCheck {
         connection.disconnect();
 
         // Banana Mirror image redirect
-        connection = (HttpURLConnection)
-                new URL("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
+        connection = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp");
         connection.setInstanceFollowRedirects(true);
         connection.connect();
         if (!DigestUtils.sha256Hex(IOUtils.toByteArray(connection.getInputStream())).equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
@@ -477,19 +468,19 @@ public class CelesteStuffHealthCheck {
         connection.disconnect();
 
         // mod search database API
-        final String modSearchDatabase = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml"), UTF_8);
+        final String modSearchDatabase = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml", UTF_8);
         if (!modSearchDatabase.contains("Name: The 2020 Celeste Spring Community Collab")) {
             throw new IOException("mod_search_database.yaml check failed");
         }
 
         // file IDs list API
-        final String fileIds = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml"), UTF_8);
+        final String fileIds = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml", UTF_8);
         if (!fileIds.contains("'484937'")) {
             throw new IOException("file_ids.yaml check failed");
         }
 
         // mod files database zip
-        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_files_database.zip")))) {
+        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_files_database.zip"))) {
             Set<String> expectedFiles = new HashSet<>(Arrays.asList(
                     "ahorn_vanilla.yaml", "list.yaml", "Mod/150813/info.yaml", "Mod/150813/484937.yaml", "Mod/53641/ahorn_506448.yaml"
             ));
@@ -505,7 +496,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // mod_dependency_graph.yaml
-        final String modDependencyGraph = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml"), UTF_8);
+        final String modDependencyGraph = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml", UTF_8);
         if (!modDependencyGraph.contains("SpringCollab2020Audio:")
                 || !modDependencyGraph.contains("URL: https://gamebanana.com/mmdl/484937")
                 || !modDependencyGraph.contains("SpringCollab2020Audio: 1.0.0")) {
@@ -513,7 +504,7 @@ public class CelesteStuffHealthCheck {
             throw new IOException("mod_dependency_graph.yaml check failed");
         }
 
-        final String modDependencyGraphEverest = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml?format=everestyaml"), UTF_8);
+        final String modDependencyGraphEverest = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml?format=everestyaml", UTF_8);
         if (!modDependencyGraphEverest.contains("SpringCollab2020Audio:")
                 || !modDependencyGraphEverest.contains("URL: https://gamebanana.com/mmdl/484937")
                 || !modDependencyGraphEverest.contains("- Name: SpringCollab2020Audio")
@@ -523,13 +514,13 @@ public class CelesteStuffHealthCheck {
         }
 
         // Update Checker status, widget version
-        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true"), UTF_8);
+        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/update-checker-status?widget=true", UTF_8);
         if (!updateCheckerStatus.contains("<span class=\"GreenColor\">Up</span>")) {
             throw new IOException("Update checker is not OK according to status widget!");
         }
 
         // GameBanana "JSON to RSS feed" API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10")), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10"), UTF_8)
                 .contains("<title>Outcast Outback Helper</title>")) {
 
             throw new IOException("RSS feed by category API failed");
@@ -545,7 +536,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Checking Update Checker");
 
         // everest_update.yaml responds
-        final String everestUpdate = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"), UTF_8);
+        final String everestUpdate = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml", UTF_8);
         if (!everestUpdate.contains("SpringCollab2020Audio:") || !everestUpdate.contains("URL: https://gamebanana.com/mmdl/484937")) {
             throw new IOException("everest_update.yaml check failed");
         }
@@ -557,7 +548,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // the status page says everything is fine
-        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/update-checker-status"), UTF_8);
+        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/update-checker-status", UTF_8);
         if (!updateCheckerStatus.contains("The update checker is up and running!")) {
             throw new IOException("Update checker is not OK according to status page!");
         }
@@ -666,7 +657,7 @@ public class CelesteStuffHealthCheck {
     public static void checkFontGeneratorLibGdx() throws IOException {
         log.debug("Downloading sample dialog file...");
 
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt"));
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt");
              OutputStream os = new FileOutputStream("/tmp/Japanese.txt")) {
 
             IOUtils.copy(is, os);
@@ -703,7 +694,7 @@ public class CelesteStuffHealthCheck {
     public static void checkFontGeneratorBMFont() throws IOException {
         log.debug("Downloading sample dialog file...");
 
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt"));
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt");
              OutputStream os = new FileOutputStream("/tmp/Japanese.txt")) {
 
             IOUtils.copy(is, os);
@@ -735,7 +726,7 @@ public class CelesteStuffHealthCheck {
         }
 
         log.debug("Loading result page: {}", url);
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
             String response = IOUtils.toString(is, UTF_8);
             if (!response.contains("Here is the font you need to place")) {
                 throw new IOException("Font generator result page does not indicate success!");
@@ -744,7 +735,7 @@ public class CelesteStuffHealthCheck {
 
         // read the response as a zip file
         log.debug("Loading generated font file: {}/download/0", url);
-        try (ZipInputStream zip = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(new URL(url + "/download/0")))) {
+        try (ZipInputStream zip = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(url + "/download/0"))) {
             for (int i = 0; i < 2; i++) {
                 ZipEntry entry = zip.getNextEntry();
                 if (entry == null || (!entry.getName().equals("japanese.fnt") && !entry.getName().startsWith("japanese_generated_"))) {
@@ -765,7 +756,7 @@ public class CelesteStuffHealthCheck {
     public static void checkModStructureVerifier() throws IOException {
         log.debug("Downloading Tornado Valley...");
 
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip"));
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip");
              OutputStream os = new FileOutputStream("/tmp/tornado.zip")) {
 
             IOUtils.copy(is, os);
@@ -795,7 +786,7 @@ public class CelesteStuffHealthCheck {
         }
 
         log.debug("Loading result page: {}", url);
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(url))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
             String response = IOUtils.toString(is, UTF_8);
             if (!response.contains("No issue was found with your zip!")) {
                 throw new IOException("Mod structure verifier result page does not indicate success!");
@@ -810,14 +801,12 @@ public class CelesteStuffHealthCheck {
     public static void checkMapTreeViewer() throws IOException {
         log.debug("Checking bin-to-json API...");
 
-        HttpURLConnection connection = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/bin-to-json").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/bin-to-json");
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         connection.connect();
 
-        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(new URL("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip")));
+        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip"));
              OutputStream os = connection.getOutputStream()) {
 
             ZipEntry entry;
@@ -847,8 +836,8 @@ public class CelesteStuffHealthCheck {
         log.debug("Checking File Searcher...");
 
         // run the search
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/file-search?" +
-                "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/file-search?" +
+                "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
 
             log.debug("Response to first request: {}", IOUtils.toString(is, UTF_8));
         }
@@ -861,8 +850,8 @@ public class CelesteStuffHealthCheck {
         }
 
         // check the result of the search
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/file-search?" +
-                "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/file-search?" +
+                "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
 
             String result = IOUtils.toString(is, UTF_8);
             log.debug("Response to second request: {}", result);
@@ -878,8 +867,8 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkSrcModUpdateNotificationsPage() throws IOException {
-        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/src-mod-update-notifications?key="
-                + SecretConstants.SRC_MOD_UPDATE_NOTIFICATIONS_KEY)), UTF_8);
+        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/src-mod-update-notifications?key="
+                + SecretConstants.SRC_MOD_UPDATE_NOTIFICATIONS_KEY), UTF_8);
         if (!contents.contains("SpringCollab2020")
                 || !contents.contains("The 2020 Celeste Spring Community Collab")
                 || !contents.contains("https://gamebanana.com/mods/150813")) {
@@ -911,7 +900,7 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkCelesteNewsNetworkSubscriptionService() throws IOException {
-        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/news-network-subscription")), UTF_8);
+        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/news-network-subscription"), UTF_8);
 
         String expected;
         try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("celeste_news_network_subscribers.json")) {

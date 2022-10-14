@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -27,8 +26,8 @@ public class ArbitraryModAppCacher {
 
     public static void refreshArbitraryModAppCache() throws IOException {
         JSONArray modList;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL(
-                "https://max480-random-stuff.appspot.com/gamebanana/arbitrary-mod-app-modlist?key=" + SecretConstants.RELOAD_SHARED_SECRET))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(
+                "https://max480-random-stuff.appspot.com/gamebanana/arbitrary-mod-app-modlist?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
 
             modList = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
         }
@@ -40,8 +39,8 @@ public class ArbitraryModAppCacher {
             logger.debug("Caching mod {}...", modId);
 
             byte[] modInfo = ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://gamebanana.com/apiv8/Mod/" + modId +
-                        "?_csvProperties=_sProfileUrl,_sName,_aPreviewMedia,_tsDateAdded,_tsDateUpdated,_aGame,_aSubmitter,_bIsWithheld,_bIsTrashed,_bIsPrivate"))) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/Mod/" + modId +
+                        "?_csvProperties=_sProfileUrl,_sName,_aPreviewMedia,_tsDateAdded,_tsDateUpdated,_aGame,_aSubmitter,_bIsWithheld,_bIsTrashed,_bIsPrivate")) {
 
                     return IOUtils.toByteArray(is);
                 }

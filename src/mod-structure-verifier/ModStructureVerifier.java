@@ -38,7 +38,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -294,7 +293,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             event.getMessage().addReaction(Emoji.fromUnicode("\uD83E\uDD14")).complete(); // :thinking:
 
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media"))) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media")) {
                 // download the file through the Google Drive API and analyze it.
                 File target = new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip");
                 FileUtils.copyToFile(is, target);
@@ -735,7 +734,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (dep.equals("StrawberryJam2021")) {
                 // download and analyze the SJ2021 helper.
-                try (InputStream databaseStrawberryJam = ConnectionUtils.openStreamWithTimeout(new URL(SecretConstants.STRAWBERRY_JAM_LOCATION))) {
+                try (InputStream databaseStrawberryJam = ConnectionUtils.openStreamWithTimeout(SecretConstants.STRAWBERRY_JAM_LOCATION)) {
                     String whereIsStrawberryJam = new Yaml().<Map<String, Map<String, Object>>>load(databaseStrawberryJam)
                             .get("StrawberryJam2021")
                             .get("URL").toString();
@@ -988,9 +987,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
         // download file (pretending we are Firefox since Discord hates Java and responds 403 to it for some reason)
         try (OutputStream os = new BufferedOutputStream(new FileOutputStream(modZip))) {
-            HttpURLConnection connection = (HttpURLConnection) new URL(whereIsStrawberryJam).openConnection();
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(30000);
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(whereIsStrawberryJam);
             connection.setDoInput(true);
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0");
             connection.connect();

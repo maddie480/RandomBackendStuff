@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -20,9 +19,7 @@ public class UpdateOutgoingWebhooks {
     public static void notifyUpdate() throws IOException {
         // update China-accessible mirror of everest_update.yaml, mod_search_database.yaml, everest-versions and olympus-news
         ConnectionUtils.runWithRetry(() -> {
-            HttpURLConnection urlConn = (HttpURLConnection) new URL(SecretConstants.CHINA_MIRROR_UPDATE_WEBHOOK).openConnection();
-            urlConn.setConnectTimeout(10000);
-            urlConn.setReadTimeout(30000);
+            HttpURLConnection urlConn = ConnectionUtils.openConnectionWithTimeout(SecretConstants.CHINA_MIRROR_UPDATE_WEBHOOK);
             urlConn.setInstanceFollowRedirects(false);
             urlConn.setRequestProperty("Content-Type", "application/json");
             urlConn.setDoOutput(true);

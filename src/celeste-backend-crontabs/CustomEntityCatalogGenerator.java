@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
-import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -176,7 +175,7 @@ public class CustomEntityCatalogGenerator {
         {
             Map<String, String> tempdic = new HashMap<>();
             try {
-                tempdic = Arrays.stream(ConnectionUtils.toStringWithTimeout(new URL("https://raw.githubusercontent.com/max4805/RandomDiscordBots/main/modcatalogdictionary.txt"), UTF_8).split("\n"))
+                tempdic = Arrays.stream(ConnectionUtils.toStringWithTimeout("https://raw.githubusercontent.com/max4805/RandomDiscordBots/main/modcatalogdictionary.txt", UTF_8).split("\n"))
                         .collect(Collectors.toMap(a -> a.substring(0, a.lastIndexOf("=")), a -> a.substring(a.lastIndexOf("=") + 1)));
             } catch (Exception e) {
                 logger.warn("Could not fetch dictionary for entity names: " + e.toString());
@@ -200,7 +199,7 @@ public class CustomEntityCatalogGenerator {
 
         // get the documentation links on the Everest wiki.
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/wiki/EverestAPI/Resources/Mapping/Helper-Manuals.md"))))) {
+                ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/wiki/EverestAPI/Resources/Mapping/Helper-Manuals.md")))) {
 
             // we're expecting - [label](link)
             Pattern linkPattern = Pattern.compile("^- \\[(.*)]\\((.*)\\)$");

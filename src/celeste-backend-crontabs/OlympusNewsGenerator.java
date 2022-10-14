@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +24,7 @@ public class OlympusNewsGenerator {
     public static void generateFeed(JSONArray tweetFeed) throws IOException {
         // download the manual Olympus news entries
         JSONObject manualNews;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://raw.githubusercontent.com/max4805/RandomBackendStuff/main/olympusnews.json"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/max4805/RandomBackendStuff/main/olympusnews.json")) {
             manualNews = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
         }
         final JSONArray manualAddBefore = manualNews.getJSONArray("add_before");
@@ -119,10 +118,8 @@ public class OlympusNewsGenerator {
         CloudStorageUtils.sendStringToCloudStorage(output.toString(), "olympus_news.json", "application/json");
 
         // update the frontend cache
-        HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/olympus-news-reload?key="
-                + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(30000);
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news-reload?key="
+                + SecretConstants.RELOAD_SHARED_SECRET);
         if (conn.getResponseCode() != 200) {
             throw new IOException("Olympus News Reload API sent non 200 code: " + conn.getResponseCode());
         }
@@ -140,9 +137,7 @@ public class OlympusNewsGenerator {
 
         try {
             return ConnectionUtils.runWithRetry(() -> {
-                HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(30000);
+                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
                 connection.setInstanceFollowRedirects(false);
 
                 if (connection.getResponseCode() == 301 && connection.getHeaderField("Location") != null) {

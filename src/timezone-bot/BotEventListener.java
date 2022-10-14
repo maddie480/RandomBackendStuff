@@ -41,7 +41,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
@@ -611,13 +610,10 @@ public class BotEventListener extends ListenerAdapter {
             }
 
             // query OpenStreetMap
-            HttpURLConnection osm = (HttpURLConnection) new URL("https://nominatim.openstreetmap.org/search.php?" +
+            HttpURLConnection osm = ConnectionUtils.openConnectionWithTimeout("https://nominatim.openstreetmap.org/search.php?" +
                     "q=" + URLEncoder.encode(place, StandardCharsets.UTF_8) +
                     "&accept-language=" + (locale == DiscordLocale.FRENCH ? "fr" : "en") +
-                    "&limit=1&format=jsonv2")
-                    .openConnection();
-            osm.setConnectTimeout(10000);
-            osm.setReadTimeout(30000);
+                    "&limit=1&format=jsonv2");
             osm.setRequestProperty("User-Agent", "TimezoneBot/1.0 (+https://max480-random-stuff.appspot.com/discord-bots#timezone-bot)");
 
             JSONArray osmResults;
@@ -638,8 +634,8 @@ public class BotEventListener extends ListenerAdapter {
                 logger.debug("Result for place '{}': '{}', latitude {}, longitude {}", place, name, latitude, longitude);
 
                 JSONObject timezoneDBResult;
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://api.timezonedb.com/v2.1/get-time-zone?key="
-                        + SecretConstants.TIMEZONEDB_API_KEY + "&format=json&by=position&lat=" + latitude + "&lng=" + longitude))) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://api.timezonedb.com/v2.1/get-time-zone?key="
+                        + SecretConstants.TIMEZONEDB_API_KEY + "&format=json&by=position&lat=" + latitude + "&lng=" + longitude)) {
 
                     timezoneDBResult = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                 }

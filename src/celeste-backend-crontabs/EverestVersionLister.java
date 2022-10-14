@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -37,7 +36,7 @@ public class EverestVersionLister {
     public static void checkEverestVersions() throws IOException {
         // get the latest Azure builds
         List<Integer> currentAzureBuilds;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
             currentAzureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
                     .toList().stream()
                     .map(version -> (int) ((Map<String, Object>) version).get("id"))
@@ -45,7 +44,7 @@ public class EverestVersionLister {
         }
 
         // temporarily add Azure beta builds
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
             currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
                     .toList().stream()
                     .map(version -> (int) ((Map<String, Object>) version).get("id"))
@@ -126,7 +125,7 @@ public class EverestVersionLister {
 
         {
             JSONObject azureBuilds;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0"))) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
                 azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             }
 
@@ -184,7 +183,7 @@ public class EverestVersionLister {
 
         {
             JSONObject azureBuilds;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0"))) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
                 azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             }
 
@@ -210,10 +209,8 @@ public class EverestVersionLister {
         CloudStorageUtils.sendStringToCloudStorage(new JSONArray(info).toString(), "everest_version_list.json", "application/json");
 
         // update the frontend cache
-        HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-versions-reload?key="
-                + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(30000);
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest-versions-reload?key="
+                + SecretConstants.RELOAD_SHARED_SECRET);
         if (conn.getResponseCode() != 200) {
             throw new IOException("Everest Versions Reload API sent non 200 code: " + conn.getResponseCode());
         }
@@ -226,12 +223,8 @@ public class EverestVersionLister {
     }
 
     private static InputStream authenticatedGitHubRequest(String url) throws IOException {
-        HttpURLConnection connAuth = (HttpURLConnection) new URL(url).openConnection();
-
-        connAuth.setConnectTimeout(10000);
-        connAuth.setReadTimeout(30000);
+        HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout(url);
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
-
         return connAuth.getInputStream();
     }
 }

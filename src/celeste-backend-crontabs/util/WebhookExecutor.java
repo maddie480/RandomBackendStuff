@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -124,10 +123,7 @@ public class WebhookExecutor {
             // webhook with no attachment: pure JSON
             log.debug("Sending request to [{}]: {}", webhookUrl, request);
 
-            connection = (HttpURLConnection) new URL(webhookUrl + "?wait=true").openConnection();
-
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(30000);
+            connection = ConnectionUtils.openConnectionWithTimeout(webhookUrl + "?wait=true");
 
             connection.setDoInput(true);
             connection.setDoOutput(true);

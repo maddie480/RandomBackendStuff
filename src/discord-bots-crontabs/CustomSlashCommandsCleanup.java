@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -87,9 +86,8 @@ public class CustomSlashCommandsCleanup {
     }
 
     private static JSONArray getSlashCommandList(long serverId, String token) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL("https://discord.com/api/v10/applications/" + SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID + "/guilds/" + serverId + "/commands").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://discord.com/api/v10/applications/" + SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID + "/guilds/" + serverId + "/commands");
+
         connection.setRequestProperty("Authorization", "Bearer " + token);
         connection.setRequestProperty("User-Agent", USER_AGENT);
 
@@ -114,9 +112,7 @@ public class CustomSlashCommandsCleanup {
         String basicAuth = Base64.getEncoder().encodeToString(
                 (SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID + ":" + SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_SECRET).getBytes(StandardCharsets.UTF_8));
 
-        HttpURLConnection connection = (HttpURLConnection) new URL("https://discord.com/api/oauth2/token").openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://discord.com/api/oauth2/token");
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Authorization", "Basic " + basicAuth);
         connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");

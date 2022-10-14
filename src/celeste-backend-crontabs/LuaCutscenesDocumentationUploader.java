@@ -9,7 +9,6 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.Locale;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -27,7 +26,7 @@ public class LuaCutscenesDocumentationUploader {
         // search for the Lua Cutscenes download URL in the mod updater database.
         // (we want the mirror so that we don't impact download count... and because it tends to be more stable.)
         String luaCutscenesDownloadUrl;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(new URL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml"))) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml")) {
             Map<String, Map<String, Object>> db = new Yaml().load(is);
             luaCutscenesDownloadUrl = db.get("LuaCutscenes").get("URL").toString();
         }
@@ -40,9 +39,7 @@ public class LuaCutscenesDocumentationUploader {
 
         // download Lua Cutscenes and go through its files
         logger.info("Downloading Lua Cutscenes from " + luaCutscenesDownloadUrl + "...");
-        HttpURLConnection connection = (HttpURLConnection) new URL(luaCutscenesDownloadUrl).openConnection();
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(luaCutscenesDownloadUrl);
         connection.setRequestProperty("User-Agent", "max480-random-stuff/1.0.0"); // the mirror hates Java 8 for some reason.
         try (ZipInputStream zip = new ZipInputStream(connection.getInputStream())) {
             ZipEntry entry;

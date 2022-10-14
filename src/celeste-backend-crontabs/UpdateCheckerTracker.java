@@ -25,7 +25,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -337,10 +336,8 @@ public class UpdateCheckerTracker extends EventListener {
                 CloudStorageUtils.sendStringToCloudStorage(convertModDependencyGraphToEverestYamlFormat(),
                         "mod_dependency_graph_everest.yaml", "text/yaml");
 
-                HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
-                        + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(30000);
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
+                        + SecretConstants.RELOAD_SHARED_SECRET);
                 if (conn.getResponseCode() != 200) {
                     throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
                 }
@@ -365,10 +362,8 @@ public class UpdateCheckerTracker extends EventListener {
                 Files.delete(Paths.get("/tmp/mod_index.zip"));
                 FileUtils.deleteDirectory(new File("/tmp/mod_index"));
 
-                HttpURLConnection conn = (HttpURLConnection) new URL("https://max480-random-stuff.appspot.com/celeste/gamebanana-search-reload?key="
-                        + SecretConstants.RELOAD_SHARED_SECRET).openConnection();
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(30000);
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search-reload?key="
+                        + SecretConstants.RELOAD_SHARED_SECRET);
                 if (conn.getResponseCode() != 200) {
                     throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
                 }
