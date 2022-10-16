@@ -220,6 +220,8 @@ public class EverestVersionLister {
                 "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
                 "Everest Update Checker",
                 ":sparkles: Everest versions were updated.");
+
+        UpdateOutgoingWebhooks.changesHappened();
     }
 
     private static InputStream authenticatedGitHubRequest(String url) throws IOException {

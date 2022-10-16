@@ -16,7 +16,17 @@ import java.nio.charset.StandardCharsets;
 public class UpdateOutgoingWebhooks {
     private static final Logger log = LoggerFactory.getLogger(UpdateOutgoingWebhooks.class);
 
+    private static boolean changesHappened = false;
+
+    public static void changesHappened() {
+        changesHappened = true;
+    }
+
     public static void notifyUpdate() throws IOException {
+        if (!changesHappened) {
+            return;
+        }
+
         // update China-accessible mirror of everest_update.yaml, mod_search_database.yaml, everest-versions and olympus-news
         ConnectionUtils.runWithRetry(() -> {
             HttpURLConnection urlConn = ConnectionUtils.openConnectionWithTimeout(SecretConstants.CHINA_MIRROR_UPDATE_WEBHOOK);
@@ -37,5 +47,7 @@ public class UpdateOutgoingWebhooks {
 
             return null; // method signature
         });
+
+        changesHappened = false;
     }
 }

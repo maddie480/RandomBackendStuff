@@ -130,6 +130,8 @@ public class OlympusNewsGenerator {
                 ":sparkles: Olympus news were updated.\n" +
                         "Unused replace entries: [" + String.join(", ", manualReplace.toMap().keySet()) + "]\n" +
                         "Unused delete entries: " + manualDelete.toString().replace("\"", "").replace(",", ", "));
+
+        UpdateOutgoingWebhooks.changesHappened();
     }
 
     private static String getLinkTarget(String url) {

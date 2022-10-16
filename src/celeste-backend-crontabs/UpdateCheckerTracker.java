@@ -75,14 +75,22 @@ public class UpdateCheckerTracker extends EventListener {
     protected static ZonedDateTime lastEndOfCheckForUpdates = ZonedDateTime.now();
 
     private String everestUpdateSha256 = "[first check]";
+    private String modSearchDatabaseSha256 = "[first check]";
     private String fileIdsSha256 = "[first check]";
     private boolean luaCutscenesUpdated = false;
+
+    private boolean currentUpdateIsFull = false;
+    private long lastFullCheckTimestamp = 0L;
+    private long lastIncrementalCheckTimestamp = 0L;
     private final List<Map<String, Object>> latestUpdates = new ArrayList<>();
 
     public UpdateCheckerTracker() {
         // read back the latest updates that happened before the tracker was started up.
         try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("update_checker_status.json")) {
             JSONObject updateCheckerStatusData = new JSONObject(IOUtils.toString(is, UTF_8));
+
+            lastFullCheckTimestamp = updateCheckerStatusData.getLong("lastFullCheckTimestamp");
+            lastIncrementalCheckTimestamp = updateCheckerStatusData.getLong("lastIncrementalCheckTimestamp");
 
             for (Object o : updateCheckerStatusData.getJSONArray("latestUpdatesEntries")) {
                 JSONObject latestUpdatesEntry = (JSONObject) o;
@@ -96,8 +104,8 @@ public class UpdateCheckerTracker extends EventListener {
     }
 
     @Override
-    public void startedSearchingForUpdates() {
-        // nothing!
+    public void startedSearchingForUpdates(boolean full) {
+        currentUpdateIsFull = full;
     }
 
     @Override
@@ -182,6 +190,12 @@ public class UpdateCheckerTracker extends EventListener {
     public void scannedModDependencies(String modId, int dependencyCount, int optionalDependencyCount) {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: **" + modId + "** has " +
                 pluralize(dependencyCount, "dependency", "dependencies") + " and " + pluralize(optionalDependencyCount, "optional dependency", "optional dependencies") + ".");
+    }
+
+    @Override
+    public void modUpdatedIncrementally(String gameBananaType, int gameBananaId, String modName) {
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: **" + modName + "** " +
+                "was updated incrementally.\n:arrow_right: <https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId + ">\n");
     }
 
     @Override
@@ -326,6 +340,7 @@ public class UpdateCheckerTracker extends EventListener {
             long postProcessingStart = System.currentTimeMillis();
 
             String newEverestUpdateHash = hash("uploads/everestupdate.yaml");
+            String newModSearchDatabaseHash = hash("uploads/modsearchdatabase.yaml");
             String newFileIdsHash = hash("modfilesdatabase/file_ids.yaml");
 
             if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
@@ -347,11 +362,11 @@ public class UpdateCheckerTracker extends EventListener {
                 everestUpdateSha256 = newEverestUpdateHash;
 
                 executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: everest_update.yaml and mod_dependency_graph.yaml were updated.");
+                UpdateOutgoingWebhooks.changesHappened();
             }
 
-            {
-                // mod_search_database.yaml always changes, as it contains download and view counts.
-                log.info("Reloading mod_search_database.yaml");
+            if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
+                log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
 
                 CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml");
 
@@ -367,6 +382,9 @@ public class UpdateCheckerTracker extends EventListener {
                 if (conn.getResponseCode() != 200) {
                     throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
                 }
+
+                modSearchDatabaseSha256 = newModSearchDatabaseHash;
+                UpdateOutgoingWebhooks.changesHappened();
             }
 
             if (!newFileIdsHash.equals(fileIdsSha256)) {
@@ -666,8 +684,15 @@ public class UpdateCheckerTracker extends EventListener {
     }
 
     private void updateUpdateCheckerStatusInformation(long lastCheckDuration) throws IOException {
+        if (currentUpdateIsFull) {
+            lastFullCheckTimestamp = System.currentTimeMillis();
+        } else {
+            lastIncrementalCheckTimestamp = System.currentTimeMillis();
+        }
+
         JSONObject result = new JSONObject();
-        result.put("lastCheckTimestamp", System.currentTimeMillis());
+        result.put("lastFullCheckTimestamp", lastFullCheckTimestamp);
+        result.put("lastIncrementalCheckTimestamp", lastIncrementalCheckTimestamp);
         result.put("lastCheckDuration", lastCheckDuration);
         result.put("latestUpdatesEntries", latestUpdates);
 
