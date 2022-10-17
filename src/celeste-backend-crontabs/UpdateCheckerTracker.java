@@ -82,6 +82,8 @@ public class UpdateCheckerTracker extends EventListener {
     private boolean currentUpdateIsFull = false;
     private long lastFullCheckTimestamp = 0L;
     private long lastIncrementalCheckTimestamp = 0L;
+    private long lastFullCheckDuration = 0L;
+    private long lastIncrementalCheckDuration = 0L;
     private final List<Map<String, Object>> latestUpdates = new ArrayList<>();
 
     public UpdateCheckerTracker() {
@@ -91,6 +93,8 @@ public class UpdateCheckerTracker extends EventListener {
 
             lastFullCheckTimestamp = updateCheckerStatusData.getLong("lastFullCheckTimestamp");
             lastIncrementalCheckTimestamp = updateCheckerStatusData.getLong("lastIncrementalCheckTimestamp");
+            lastFullCheckDuration = updateCheckerStatusData.getLong("lastFullCheckDuration");
+            lastIncrementalCheckDuration = updateCheckerStatusData.getLong("lastIncrementalCheckDuration");
 
             for (Object o : updateCheckerStatusData.getJSONArray("latestUpdatesEntries")) {
                 JSONObject latestUpdatesEntry = (JSONObject) o;
@@ -194,7 +198,7 @@ public class UpdateCheckerTracker extends EventListener {
 
     @Override
     public void modUpdatedIncrementally(String gameBananaType, int gameBananaId, String modName) {
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: **" + modName + "** " +
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: **" + modName + "** " +
                 "was updated incrementally.\n:arrow_right: <https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId + ">\n");
     }
 
@@ -360,8 +364,6 @@ public class UpdateCheckerTracker extends EventListener {
                 updateModStructureVerifierMaps();
 
                 everestUpdateSha256 = newEverestUpdateHash;
-
-                executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: everest_update.yaml and mod_dependency_graph.yaml were updated.");
                 UpdateOutgoingWebhooks.changesHappened();
             }
 
@@ -397,8 +399,6 @@ public class UpdateCheckerTracker extends EventListener {
                 FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
 
                 fileIdsSha256 = newFileIdsHash;
-
-                executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: file_ids.yaml and mod_files_database.zip were updated.");
             }
 
             if (luaCutscenesUpdated) {
@@ -686,14 +686,17 @@ public class UpdateCheckerTracker extends EventListener {
     private void updateUpdateCheckerStatusInformation(long lastCheckDuration) throws IOException {
         if (currentUpdateIsFull) {
             lastFullCheckTimestamp = System.currentTimeMillis();
+            lastFullCheckDuration = lastCheckDuration;
         } else {
             lastIncrementalCheckTimestamp = System.currentTimeMillis();
+            lastIncrementalCheckDuration = lastCheckDuration;
         }
 
         JSONObject result = new JSONObject();
         result.put("lastFullCheckTimestamp", lastFullCheckTimestamp);
         result.put("lastIncrementalCheckTimestamp", lastIncrementalCheckTimestamp);
-        result.put("lastCheckDuration", lastCheckDuration);
+        result.put("lastFullCheckDuration", lastFullCheckDuration);
+        result.put("lastIncrementalCheckDuration", lastIncrementalCheckDuration);
         result.put("latestUpdatesEntries", latestUpdates);
 
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
