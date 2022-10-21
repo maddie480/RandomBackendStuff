@@ -1,15 +1,11 @@
 package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
-import io.github.furstenheim.CopyDown;
-import io.github.furstenheim.Options;
-import io.github.furstenheim.OptionsBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -36,10 +32,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public class GameBananaAutomatedChecks {
     private static final Logger logger = LoggerFactory.getLogger(GameBananaAutomatedChecks.class);
-
-    private static final Options markdownOptions = OptionsBuilder.anOptions()
-            .withBulletListMaker("-")
-            .build();
 
     // files that should trigger a warning when present in a mod (files that ship with Celeste or Everest)
     private static final List<String> BAD_FILE_LIST = Arrays.asList("Celeste.exe",
@@ -437,37 +429,24 @@ public class GameBananaAutomatedChecks {
                     logger.debug("Sending to validator");
                     HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
                     submit.addFilePart("file", destination.toFile());
+                    submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
 
-                    String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
+                    JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
                     logger.debug("Checking result");
-                    if (!resultBody.contains("Your everest.yaml file seems valid!")) {
-                        // this doesn't sound good...
-                        String resultHtml = Jsoup.parse(resultBody).select(".alert").html();
-
-                        // turn <pre> blocks into <code> blocks for proper formatting, and remove the extended explanations for everest.yaml structure
-                        // (because it is formatted wrong and that people we're sending that to already know how everest.yamls are formatted :p)
-                        resultHtml = resultHtml.replace("<pre>", "<code>").replace("</pre>", "</code>");
-                        if (resultHtml.contains("<p class=\"error-description\">")) {
-                            resultHtml = resultHtml.substring(0, resultHtml.indexOf("<p class=\"error-description\">"));
+                    if (resultBody.has("parseError")) {
+                        sendAlertToWebhook(":warning: The mod called **" + modName + "** has an everest.yaml file with invalid syntax:\n```\n"
+                                + resultBody.getString("parseError")
+                                + "\n```\n:arrow_right: https://gamebanana.com/"
+                                + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
+                    } else if (resultBody.has("validationErrors")) {
+                        List<String> allErrors = new ArrayList<>();
+                        for (Object o : resultBody.getJSONArray("validationErrors")) {
+                            allErrors.add((String) o);
                         }
-
-                        String resultMd = new CopyDown(markdownOptions).convert(resultHtml);
-
-                        // clean up the output a bit to make it sound less weird
-                        resultMd = resultMd
-                                .replace("Your everest.yaml", "This mod's everest.yaml")
-                                .replace("your everest.yaml", "this mod's everest.yaml")
-                                .replace("-   ", "- ");
-
-                        while (resultMd.contains("\n\n")) {
-                            resultMd = resultMd.replace("\n\n", "\n");
-                        }
-                        if (resultMd.length() > 1000) {
-                            resultMd = resultMd.substring(0, 1000) + "...";
-                        }
-                        sendAlertToWebhook(":warning: The mod called **" + modName + "** doesn't pass the everest.yaml validator.\n" +
-                                resultMd + "\n:arrow_right: https://gamebanana.com/"
+                        sendAlertToWebhook(":warning: The mod called **" + modName + "** does not pass the everest.yaml validator:\n- "
+                                + String.join("\n- ", allErrors)
+                                + "\n:arrow_right: https://gamebanana.com/"
                                 + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
                     } else {
                         // let's check that it refers to DLLs that actually exist.

@@ -632,20 +632,45 @@ public class CelesteStuffHealthCheck {
                         "    - Name: WinterCollab2021Audio\n" +
                         "      Version: 1.3.0", UTF_8);
 
-        // build a request to everest.yaml validator
-        HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
-        submit.addFilePart("file", new File("/tmp/everest.yaml"));
-        HttpURLConnection result = submit.finish();
+        { // HTML version
+            // build a request to everest.yaml validator
+            HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+            submit.addFilePart("file", new File("/tmp/everest.yaml"));
+            submit.addFormField("outputFormat", "html");
+            HttpURLConnection result = submit.finish();
+
+            // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
+            String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
+            if (!resultBody.contains("Your everest.yaml file seems valid!")
+                    || !resultBody.contains("WinterCollab2021Audio") || !resultBody.contains("VivHelper") || !resultBody.contains("1.4.1")) {
+                throw new IOException("everest.yaml validator gave unexpected output for Winter Collab yaml file");
+            }
+        }
+
+        { // JSON version
+            // build a request to everest.yaml validator
+            HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+            submit.addFilePart("file", new File("/tmp/everest.yaml"));
+            submit.addFormField("outputFormat", "json");
+            HttpURLConnection result = submit.finish();
+
+            // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
+            JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
+            boolean found = false;
+            for (Object dependency : resultBody.getJSONObject("modInfo").getJSONArray("Dependencies")) {
+                JSONObject dep = (JSONObject) dependency;
+                if (dep.getString("Name").equals("VivHelper") && dep.getString("Version").equals("1.4.1")) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                throw new IOException("everest.yaml validator gave unexpected output for Winter Collab yaml file");
+            }
+        }
 
         // delete the temp file
         new File("/tmp/everest.yaml").delete();
-
-        // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
-        String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
-        if (!resultBody.contains("Your everest.yaml file seems valid!")
-                || !resultBody.contains("WinterCollab2021Audio") || !resultBody.contains("VivHelper") || !resultBody.contains("1.4.1")) {
-            throw new IOException("everest.yaml validator gave unexpected output for Winter Collab yaml file");
-        }
     }
 
     /**

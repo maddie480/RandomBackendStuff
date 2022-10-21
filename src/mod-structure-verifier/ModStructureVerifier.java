@@ -22,7 +22,7 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jsoup.Jsoup;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -463,6 +463,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     // build a request to everest.yaml validator
                     HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
                     submit.addFilePart("file", new File(dir + "/everest.yaml"));
+                    submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
 
                     // delete the temp file
@@ -470,18 +471,17 @@ public class ModStructureVerifier extends ListenerAdapter {
                     new File(dir).delete();
 
                     // read the response from everest.yaml validator
-                    String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
-                    if (!resultBody.contains("Your everest.yaml file seems valid!")) {
+                    JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
+                    if (!resultBody.has("modInfo")) {
                         problemList.add("Your everest.yaml seems to have problems, send it to <https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator> for more details");
                         websiteProblemList.add("yamlinvalid");
                     } else {
-                        // grab the mod name and dependency names given by the validator so that we don't have to do that ourselves later. h
-                        dependencies = Jsoup.parse(resultBody)
-                                .select("li b")
-                                .eachText();
-                        yamlName = Jsoup.parse(resultBody)
-                                .select("div > b")
-                                .get(1).text();
+                        // grab the mod name and dependency names given by the validator so that we don't have to do that ourselves later!
+                        yamlName = resultBody.getJSONObject("modInfo").getString("Name");
+                        dependencies = new ArrayList<>();
+                        for (Object o : resultBody.getJSONObject("modInfo").getJSONArray("Dependencies")) {
+                            dependencies.add(((JSONObject) o).getString("Name"));
+                        }
                     }
                 }
             }

@@ -159,12 +159,6 @@
             <version>0.2.0</version>
         </dependency>
 
-        <dependency>
-            <groupId>io.github.furstenheim</groupId>
-            <artifactId>copy_down</artifactId>
-            <version>1.1</version>
-        </dependency>
-
         <!-- https://mvnrepository.com/artifact/org.apache.lucene/lucene-core -->
         <dependency>
             <groupId>org.apache.lucene</groupId>
