@@ -490,9 +490,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                         websiteProblemList.add("yamlinvalid");
                     } else {
                         // grab the mod name and dependency names given by the validator so that we don't have to do that ourselves later!
-                        yamlName = resultBody.getJSONObject("modInfo").getString("Name");
+                        yamlName = resultBody.getJSONArray("modInfo").getJSONObject(0).getString("Name");
                         dependencies = new ArrayList<>();
-                        for (Object o : resultBody.getJSONObject("modInfo").getJSONArray("Dependencies")) {
+                        for (Object o : resultBody.getJSONArray("modInfo").getJSONObject(0).getJSONArray("Dependencies")) {
                             dependencies.add(((JSONObject) o).getString("Name"));
                         }
                     }
@@ -621,7 +621,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     // compose the message in a very similar but not identical way
                     String message = "❌ <b>Oops, there are issues with the zip you just sent:</b><ul><li>" + String.join("</li><li>", problemList) + "</li></ul>" + dependenciesList;
                     if (url != null) {
-                        message += "<a href=\"" + url + "\" target=\"_blank\">Click here for more help.</a>";
+                        message += "<p class=\"mt-2 mb-0\"><a href=\"" + url + "\" target=\"_blank\">Click here for more help.</a></p>";
                     }
 
                     // write the files to the disk to prepare sending them out

@@ -657,7 +657,7 @@ public class CelesteStuffHealthCheck {
             // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
             JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
             boolean found = false;
-            for (Object dependency : resultBody.getJSONObject("modInfo").getJSONArray("Dependencies")) {
+            for (Object dependency : resultBody.getJSONArray("modInfo").getJSONObject(0).getJSONArray("Dependencies")) {
                 JSONObject dep = (JSONObject) dependency;
                 if (dep.getString("Name").equals("VivHelper") && dep.getString("Version").equals("1.4.1")) {
                     found = true;
