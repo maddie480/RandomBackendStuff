@@ -21,6 +21,7 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -347,6 +348,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                             + serverCount + " server" + (serverCount == 1 ? "" : "s")));
         }
 
+        boolean isHtml = (sendResultToFrontend != null);
+
         logger.debug("Collab assets folder = {}, Collab maps folder = {}", expectedCollabAssetPrefix, expectedCollabMapsPrefix);
 
         try (ZipFile zipFile = new ZipFile(file)) {
@@ -370,7 +373,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         .filter(entry -> entry.startsWith("Assets/") || entry.startsWith("Graphics/ColorGrading/")
                                 || entry.startsWith("Graphics/Atlases/") || entry.startsWith("Tutorials/"))
                         .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabAssetPrefix + "/.+/.+$"))
-                        .collect(Collectors.toList()));
+                        .collect(Collectors.toList()), isHtml);
 
                 logger.debug("Scanning invalid XML paths...");
 
@@ -379,7 +382,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 parseProblematicPaths(problemList, websiteProblemList, "xmls", "You have XMLs that are at the wrong place, please move them", fileListing.stream()
                         .filter(entry -> entry.startsWith("Graphics/") && entry.endsWith(".xml"))
                         .filter(entry -> !entry.matches("^Graphics/" + expectedCollabAssetPrefix + "xmls/.+/.+\\.xml$"))
-                        .collect(Collectors.toList()));
+                        .collect(Collectors.toList()), isHtml);
             }
 
             logger.debug("Scanning presence of map bins...");
@@ -392,11 +395,13 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             boolean shouldScanMapContents = true;
             if (maps.size() == 0) {
-                problemList.add("**There is no map in the Maps folder!** No map will appear in-game.");
+                problemList.add(pickFormat(isHtml,
+                        "<b>There is no map in the Maps folder!</b> No map will appear in-game.",
+                        "**There is no map in the Maps folder!** No map will appear in-game."));
                 websiteProblemList.add("nomap");
                 shouldScanMapContents = false;
             } else if (maps.size() >= 2 && hasNameScan) {
-                problemList.add("There are " + maps.size() + " maps in this zip. :thinking:");
+                problemList.add("There are " + maps.size() + " maps in this zip. \uD83E\uDD14"); // :thinking:
                 websiteProblemList.add("multiplemaps");
                 shouldScanMapContents = false;
             } else if (hasNameScan) {
@@ -404,7 +409,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 String mapPath = maps.get(0);
                 if (!mapPath.matches("^Maps/" + expectedCollabMapsPrefix + "/.+/.+\\.bin$")) {
                     parseProblematicPaths(problemList, websiteProblemList, "badmappath",
-                            "Your map is not in the right folder", Collections.singletonList(mapPath));
+                            "Your map is not in the right folder", Collections.singletonList(mapPath), isHtml);
                 }
             }
 
@@ -433,7 +438,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         }
                     }
 
-                    parseProblematicPaths(problemList, websiteProblemList, "badenglish", "You have English.txt entries with invalid names, please rename them", badDialogEntries);
+                    parseProblematicPaths(problemList, websiteProblemList, "badenglish", "You have English.txt entries with invalid names, please rename them", badDialogEntries, isHtml);
                 }
             }
 
@@ -446,11 +451,17 @@ public class ModStructureVerifier extends ListenerAdapter {
             ZipEntry everestYaml = zipFile.getEntry("everest.yaml");
             if (everestYaml == null) {
                 if (fileListing.stream().anyMatch(f -> f.endsWith("/everest.yaml"))) {
-                    problemList.add("You have an everest.yaml, but it is in a subfolder. **Hint:** when zipping your mod, don't zip the folder, but the contents of it. " +
-                            "That is, go inside your mod folder, select everything, and compress that!");
+                    problemList.add(pickFormat(isHtml,
+                            "You have an everest.yaml, but it is in a subfolder. <b>Hint:</b> when zipping your mod, don't zip the folder, but the contents of it. " +
+                                    "That is, go inside your mod folder, select everything, and compress that!",
+                            "You have an everest.yaml, but it is in a subfolder. **Hint:** when zipping your mod, don't zip the folder, but the contents of it. " +
+                                    "That is, go inside your mod folder, select everything, and compress that!"));
                     websiteProblemList.add("misplacedyaml");
                 } else {
-                    problemList.add("You have no everest.yaml, please create one. You can install this tool to help you out: <https://gamebanana.com/tools/6908>");
+                    problemList.add(pickFormat(isHtml,
+                            "You have no everest.yaml, please create one. You can install" +
+                                    " <a href=\"https://gamebanana.com/tools/6908\" target=\"_blank\">this tool</a> to help you out.",
+                            "You have no everest.yaml, please create one. You can install this tool to help you out: <https://gamebanana.com/tools/6908>"));
                     websiteProblemList.add("noyaml");
                 }
             } else {
@@ -473,7 +484,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                     // read the response from everest.yaml validator
                     JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
                     if (!resultBody.has("modInfo")) {
-                        problemList.add("Your everest.yaml seems to have problems, send it to <https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator> for more details");
+                        problemList.add(pickFormat(isHtml,
+                                "Your everest.yaml seems to have problems, send it to <a href=\"https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> for more details",
+                                "Your everest.yaml seems to have problems, send it to <https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator> for more details"));
                         websiteProblemList.add("yamlinvalid");
                     } else {
                         // grab the mod name and dependency names given by the validator so that we don't have to do that ourselves later!
@@ -489,7 +502,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             if (shouldScanMapContents && dependencies != null) {
                 for (String mapPath : maps) {
                     // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
-                    searchForMissingComponents(problemList, websiteProblemList, missingDependencies, fileListing, zipFile, mapPath, dependencies);
+                    searchForMissingComponents(problemList, websiteProblemList, missingDependencies, fileListing, zipFile, mapPath, dependencies, isHtml);
                 }
             }
 
@@ -505,8 +518,12 @@ public class ModStructureVerifier extends ListenerAdapter {
                         "You will find the missing characters in the attached text files." :
                         "_Grant the Attach Files permission to the bot in order to get text files with all missing characters._";
 
-                problemList.add("You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
-                        " If you want to be able to use them, you can use <https://max480-random-stuff.appspot.com/celeste/font-generator> or use the bot's `--generate-font [language]` command to add them to the game.");
+                problemList.add(pickFormat(isHtml,
+                        "You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
+                                " If you want to be able to use them, use <a href=\"https://max480-random-stuff.appspot.com/celeste/font-generator\" target=\"_blank\">the Font Generator</a>" +
+                                " to add them to the game.",
+                        "You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
+                                " If you want to be able to use them, you can use this bot's `--generate-font [language]` command to add them to the game."));
                 websiteProblemList.add("missingfonts");
             }
 
@@ -515,7 +532,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     event.getMessage().removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
                     event.getMessage().addReaction(Emoji.fromUnicode("\uD83D\uDC4C")).queue(); // :ok_hand:
                 } else {
-                    sendResultToFrontend.accept(":white_check_mark: **No issue was found with your zip!**", Collections.emptyList());
+                    sendResultToFrontend.accept("✅ <b>No issue was found with your zip!</b>", Collections.emptyList());
                 }
 
                 if (attachment != null && event != null) {
@@ -547,7 +564,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                 String dependenciesList = "";
                 missingDependencies.remove(null); // "mod not found" = null
                 if (missingDependencies.size() == 1) {
-                    dependenciesList = "\n\nYou should probably add `" + missingDependencies.iterator().next().replace("`", "") + "` as a dependency for your map, or stop using things from it if it is another map.";
+                    dependenciesList = pickFormat(isHtml,
+                            "\n\nYou should probably add <code>" + StringEscapeUtils.escapeHtml4(missingDependencies.iterator().next()) + "</code> as a dependency for your map, or stop using things from it if it is another map.",
+                            "\n\nYou should probably add `" + missingDependencies.iterator().next().replace("`", "") + "` as a dependency for your map, or stop using things from it if it is another map.");
                 } else if (!missingDependencies.isEmpty()) {
                     StringBuilder list = new StringBuilder("\n\nYou should probably add ");
                     int index = 0;
@@ -558,7 +577,12 @@ public class ModStructureVerifier extends ListenerAdapter {
                             list.append(", ");
                         }
 
-                        list.append('`').append(dependency.replace("`", "")).append('`');
+                        if (isHtml) {
+                            list.append("<code>").append(StringEscapeUtils.escapeHtml4(dependency)).append("</code>");
+                        } else {
+                            list.append('`').append(dependency.replace("`", "")).append('`');
+                        }
+
                         index++;
                     }
                     list.append(" as dependencies for your map, or stop using things from them if they are other maps.");
@@ -595,9 +619,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                     event.getMessage().addReaction(Emoji.fromUnicode("❌")).queue(); // :x:
                 } else {
                     // compose the message in a very similar but not identical way
-                    String message = ":x: **Oops, there are issues with the zip you just sent:**\n- " + String.join("\n- ", problemList) + dependenciesList;
+                    String message = "❌ <b>Oops, there are issues with the zip you just sent:</b><ul><li>" + String.join("</li><li>", problemList) + "</li></ul>" + dependenciesList;
                     if (url != null) {
-                        message += "\n\nClick here for more help: " + url;
+                        message += "<a href=\"" + url + "\" target=\"_blank\">Click here for more help.</a>";
                     }
 
                     // write the files to the disk to prepare sending them out
@@ -637,7 +661,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 event.getMessage().removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
                 event.getMessage().addReaction(Emoji.fromUnicode("\uD83D\uDCA3")).queue(); // :bomb:
             } else {
-                sendResultToFrontend.accept(":bomb: An error occurred while scanning your zip.", Collections.emptyList());
+                sendResultToFrontend.accept("\uD83D\uDCA3 An error occurred while scanning your zip.", Collections.emptyList());
             }
         }
 
@@ -658,7 +682,7 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     private static void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, Set<String> missingDependencies,
-                                                   List<String> fileListing, ZipFile zipFile, String mapPath, List<String> dependencies) throws IOException {
+                                                   List<String> fileListing, ZipFile zipFile, String mapPath, List<String> dependencies, boolean isHtml) throws IOException {
 
         // first, let's collect what is available to us with vanilla, the map's assets, and the dependencies.
         Set<String> availableDecals = VanillaDatabase.allVanillaDecals.stream().map(a -> a.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
@@ -739,7 +763,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                             .get("StrawberryJam2021")
                             .get("URL").toString();
 
-                    addStuffFromSJ2021(availableEntities, availableTriggers, availableEffects, whereIsStrawberryJam);
+                    addStuffFromSJ2021(availableEntities, availableTriggers, availableEffects, whereIsStrawberryJam, isHtml);
                 }
             }
 
@@ -763,11 +787,11 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
         tempBin.delete();
 
-        String mapPathEsc = mapPath.replace("`", "");
+        String mapPathEsc = formatProblematicThing(isHtml, mapPath);
 
         if (binAsXmlFile == null) {
             // conversion failed
-            problemList.add("Something wrong happened while trying to analyze `" + mapPathEsc + "` :thinking: check that it is not corrupt.");
+            problemList.add("Something wrong happened while trying to analyze " + mapPathEsc + " \uD83E\uDD14 check that it is not corrupt."); // :thinking:
         } else {
             // let's start listing everything that's wrong!
             Set<String> badDecals = new HashSet<>();
@@ -811,11 +835,11 @@ public class ModStructureVerifier extends ListenerAdapter {
             checkForMissingEntities(availableEffects, "Backgrounds", badEffects, binAsXmlFile);
 
             // and list out every single problem!
-            parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals));
-            parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing parallax stylegrounds in `" + mapPathEsc + "`, use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs));
-            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEntities));
-            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badTriggers));
-            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in `" + mapPathEsc + "`, make sure your dependencies are set up correctly", new ArrayList<>(badEffects));
+            parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in " + mapPathEsc + ", use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals), isHtml);
+            parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing parallax stylegrounds in " + mapPathEsc + ", use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badSGs), isHtml);
+            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing entities in " + mapPathEsc + ", make sure your dependencies are set up correctly", new ArrayList<>(badEntities), isHtml);
+            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing triggers in " + mapPathEsc + ", make sure your dependencies are set up correctly", new ArrayList<>(badTriggers), isHtml);
+            parseProblematicPaths(problemList, websiteProblemsList, "missingentities", "You use missing effects in " + mapPathEsc + ", make sure your dependencies are set up correctly", new ArrayList<>(badEffects), isHtml);
 
             // look up which mod each of these missing things could belong to, in order to have an exhaustive list at the end.
             for (String entity : badEntities) {
@@ -977,7 +1001,7 @@ public class ModStructureVerifier extends ListenerAdapter {
     // == delete when SJ is out -- start
 
     private static void addStuffFromSJ2021(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
-                                           String whereIsStrawberryJam) throws IOException {
+                                           String whereIsStrawberryJam, boolean isHtml) throws IOException {
 
         List<String> ahornEntities = new LinkedList<>();
         List<String> ahornTriggers = new LinkedList<>();
@@ -1004,7 +1028,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 ZipEntry entry = zipEntries.nextElement();
                 if (entry.getName().startsWith("Ahorn/") && entry.getName().endsWith(".jl")) {
                     InputStream inputStream = zipFile.getInputStream(entry);
-                    extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, entry.getName(), inputStream);
+                    extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, entry.getName(), inputStream, isHtml);
                 }
             }
 
@@ -1025,7 +1049,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     // literal copy-paste from update checker code
     private static void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
-                                             String file, InputStream inputStream) throws IOException {
+                                             String file, InputStream inputStream, boolean isHtml) throws IOException {
 
         Pattern mapdefMatcher = Pattern.compile(".*@mapdef [A-Za-z]+ \"([^\"]+)\".*");
         Pattern pardefMatcher = Pattern.compile(".*Entity\\(\"([^\"]+)\".*");
@@ -1060,37 +1084,46 @@ public class ModStructureVerifier extends ListenerAdapter {
     // == delete when SJ is out -- end (also clean up secrets that are left unused)
 
     private static void parseProblematicPaths(List<String> problemList, Set<String> websiteProblemList,
-                                              String websiteProblem, String problemLabel, List<String> paths) {
+                                              String websiteProblem, String problemLabel, List<String> paths, boolean isHtml) {
         logger.debug("{}: {}", problemLabel, paths);
 
         if (paths.size() != 0) {
             websiteProblemList.add(websiteProblem);
         }
 
+
         // just a formatting method: to display "x", "x and y" or "x and 458 others" depending on how many problematic paths there are.
         if (paths.size() == 1) {
-            problemList.add(problemLabel + ": `"
-                    + paths.get(0).replace("`", "") + "`");
+            problemList.add(problemLabel + ": "
+                    + formatProblematicThing(isHtml, paths.get(0)));
         } else if (paths.size() == 2) {
-            problemList.add(problemLabel + ": `"
-                    + paths.get(0).replace("`", "")
-                    + "` and `" + paths.get(1).replace("`", "") + "`");
+            problemList.add(problemLabel + ": "
+                    + formatProblematicThing(isHtml, paths.get(0))
+                    + " and " + formatProblematicThing(isHtml, paths.get(1)));
         } else if (paths.size() == 3) {
-            problemList.add(problemLabel + ": `"
-                    + paths.get(0).replace("`", "")
-                    + "`, `" + paths.get(1).replace("`", "")
-                    + "` and `" + paths.get(2).replace("`", "") + "`");
+            problemList.add(problemLabel + ": "
+                    + formatProblematicThing(isHtml, paths.get(0))
+                    + ", " + formatProblematicThing(isHtml, paths.get(1))
+                    + " and " + formatProblematicThing(isHtml, paths.get(2)));
         } else if (paths.size() == 4) {
-            problemList.add(problemLabel + ": `"
-                    + paths.get(0).replace("`", "")
-                    + "`, `" + paths.get(1).replace("`", "")
-                    + "`, `" + paths.get(2).replace("`", "")
-                    + "` and `" + paths.get(3).replace("`", "") + "`");
+            problemList.add(problemLabel + ": "
+                    + formatProblematicThing(isHtml, paths.get(0))
+                    + ", " + formatProblematicThing(isHtml, paths.get(1))
+                    + ", " + formatProblematicThing(isHtml, paths.get(2))
+                    + " and " + formatProblematicThing(isHtml, paths.get(3)));
         } else if (paths.size() > 4) {
-            problemList.add(problemLabel + ": `" + paths.get(0).replace("`", "")
-                    + "`, `" + paths.get(1).replace("`", "")
-                    + "`, `" + paths.get(2).replace("`", "")
-                    + "` and " + (paths.size() - 3) + " others");
+            problemList.add(problemLabel + ": " + formatProblematicThing(isHtml, paths.get(0))
+                    + ", " + formatProblematicThing(isHtml, paths.get(1))
+                    + ", " + formatProblematicThing(isHtml, paths.get(2))
+                    + " and " + (paths.size() - 3) + " others");
+        }
+    }
+
+    private static String formatProblematicThing(boolean isHtml, String thing) {
+        if (isHtml) {
+            return "<code>" + StringEscapeUtils.escapeHtml4(thing) + "</code>";
+        } else {
+            return "`" + thing.replace("`", "") + "`";
         }
     }
 
@@ -1310,6 +1343,10 @@ public class ModStructureVerifier extends ListenerAdapter {
         return "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
                 "- all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies\n" +
                 "- the dialog files for vanilla languages should not contain characters that are missing from the game's font, or those extra characters should be included in the zip";
+    }
+
+    private static String pickFormat(boolean isHtml, String html, String md) {
+        return isHtml ? html : md;
     }
 
     static void registerChannelFromSupportServer(Long channelId) {

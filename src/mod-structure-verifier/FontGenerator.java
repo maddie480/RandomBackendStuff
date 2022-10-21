@@ -59,6 +59,8 @@ public class FontGenerator {
             }
         };
 
+        boolean isHtml = (channel == null);
+
         Path tempDirectory = null;
 
         try {
@@ -66,7 +68,9 @@ public class FontGenerator {
             Files.delete(inputFile.toPath());
 
             if (!Arrays.asList("chinese", "japanese", "korean", "renogare", "russian").contains(language)) {
-                sendSimpleResponse.accept(":x: The language should be one of the following: `chinese`, `japanese`, `korean`, `renogare` or `russian`.");
+                sendSimpleResponse.accept(pickFormat(isHtml,
+                        "❌ The language should be one of the following: <code>chinese</code>, <code>japanese</code>, <code>korean</code>, <code>renogare</code> or <code>russian</code>.",
+                        ":x: The language should be one of the following: `chinese`, `japanese`, `korean`, `renogare` or `russian`."));
                 cleanup(inputFile, tempDirectory);
                 return;
             }
@@ -84,7 +88,9 @@ public class FontGenerator {
 
             if (missingCharacters.isEmpty()) {
                 // we have nothing to generate
-                sendSimpleResponse.accept(":white_check_mark: **All the characters in your dialog file are already present in the vanilla font!** You have nothing to do.");
+                sendSimpleResponse.accept(pickFormat(isHtml,
+                        "✅ <b>All the characters in your dialog file are already present in the vanilla font!</b> You have nothing to do.",
+                        ":white_check_mark: **All the characters in your dialog file are already present in the vanilla font!** You have nothing to do."));
                 cleanup(inputFile, tempDirectory);
                 return;
             }
@@ -119,7 +125,9 @@ public class FontGenerator {
 
             if (generatedCodes.size() == 0) {
                 // heyyyy, BMFont generated no character at all, what's this?
-                sendSimpleResponse.accept(":x: **All characters are missing from the font!** Make sure you picked the right language.");
+                sendSimpleResponse.accept(pickFormat(isHtml,
+                        "❌ <b>All characters are missing from the font!</b> Make sure you picked the right language.",
+                        ":x: **All characters are missing from the font!** Make sure you picked the right language."));
                 cleanup(inputFile, tempDirectory);
                 return;
             }
@@ -144,7 +152,7 @@ public class FontGenerator {
                             .addFiles(FileUpload.fromData(tempDirectory.resolve("font.zip").toFile()))
                             .complete();
                 } else {
-                    sendResultToFrontend.accept(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:",
+                    sendResultToFrontend.accept("✅ Here is the font you need to place in your <code>Mods/yourmod/Dialog/Fonts</code> folder:",
                             Collections.singletonList(tempDirectory.resolve("font.zip").toFile()));
                 }
             } else {
@@ -159,14 +167,14 @@ public class FontGenerator {
                             )
                             .complete();
                 } else {
-                    sendResultToFrontend.accept(":warning: Some characters that are used in your file were not found in the font, you will find them in the file below.\n" +
-                                    "Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder to fill in the remaining characters:",
+                    sendResultToFrontend.accept("⚠ Some characters that are used in your file were not found in the font, you will find them in the file below.<br>" +
+                                    "Here is the font you need to place in your <code>Mods/yourmod/Dialog/Fonts</code> folder to fill in the remaining characters:",
                             Arrays.asList(tempDirectory.resolve("font.zip").toFile(), tempDirectory.resolve("missing_characters.txt").toFile()));
                 }
             }
         } catch (IOException | InterruptedException e) {
             logger.error("Failed generating the font!", e);
-            sendSimpleResponse.accept(":x: An error occurred while generating the font file!");
+            sendSimpleResponse.accept("❌ An error occurred while generating the font file!");
 
             if (channel != null) {
                 channel.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
@@ -213,5 +221,9 @@ public class FontGenerator {
         } catch (ParserConfigurationException | SAXException e) {
             throw new IOException(e);
         }
+    }
+
+    private static String pickFormat(boolean isHtml, String html, String md) {
+        return isHtml ? html : md;
     }
 }
