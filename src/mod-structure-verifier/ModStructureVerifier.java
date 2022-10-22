@@ -1,5 +1,7 @@
 package com.max480.discord.randombots;
 
+import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.ServerConfig;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -30,6 +32,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.annotation.Nonnull;
@@ -446,6 +449,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             String yamlName = null;
             List<String> dependencies = null;
+            List<Map<String, Object>> yamlContents = null;
 
             // everest.yaml should exist
             ZipEntry everestYaml = zipFile.getEntry("everest.yaml");
@@ -477,10 +481,6 @@ public class ModStructureVerifier extends ListenerAdapter {
                     submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
 
-                    // delete the temp file
-                    new File(dir + "/everest.yaml").delete();
-                    new File(dir).delete();
-
                     // read the response from everest.yaml validator
                     JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
                     if (!resultBody.has("modInfo")) {
@@ -502,7 +502,15 @@ public class ModStructureVerifier extends ListenerAdapter {
                         for (Object o : resultBody.getJSONArray("modInfo").getJSONObject(0).getJSONArray("Dependencies")) {
                             dependencies.add(((JSONObject) o).getString("Name"));
                         }
+
+                        try (InputStream yaml = new FileInputStream(dir + "/everest.yaml")) {
+                            yamlContents = new Yaml().load(yaml);
+                        }
                     }
+
+                    // delete the temp file
+                    new File(dir + "/everest.yaml").delete();
+                    new File(dir).delete();
                 }
             }
 
@@ -545,7 +553,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 if (attachment != null && event != null) {
                     // post an embed to the 2-click installer.
                     EmbedBuilder embedBuilder = new EmbedBuilder()
-                            .setTitle("Install " + yamlName, "https://0x0ade.ga/twoclick?" + attachment.getUrl())
+                            .setTitle("Install " + yamlName, "https://0x0a.de/twoclick?" + attachment.getUrl())
                             .setDescription("Posted by " + event.getAuthor().getAsMention())
                             .setTimestamp(Instant.now());
                     event.getChannel().sendMessageEmbeds(embedBuilder.build())
@@ -597,6 +605,36 @@ public class ModStructureVerifier extends ListenerAdapter {
                     dependenciesList = list.toString();
                 }
 
+                // if we can send files, create an everest.yaml with the missing dependencies added to it.
+                String updatedYaml = null;
+                if (!dependenciesList.isEmpty() && (channel == null || channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES))) {
+                    List<Map<String, String>> modDependencies;
+                    if (yamlContents.get(0).containsKey("Dependencies")) {
+                        modDependencies = (List<Map<String, String>>) yamlContents.get(0).get("Dependencies");
+                    } else {
+                        modDependencies = new ArrayList<>();
+                        yamlContents.get(0).put("Dependencies", modDependencies);
+                    }
+
+                    Map<String, Map<String, Object>> databaseContents;
+                    try (InputStream databaseFile = new FileInputStream("uploads/everestupdate.yaml")) {
+                        databaseContents = new Yaml().load(databaseFile);
+                    }
+
+                    for (String dependency : missingDependencies) {
+                        modDependencies.add(ImmutableMap.of(
+                                "Name", dependency,
+                                "Version", (String) databaseContents.get(dependency).get("Version")
+                        ));
+                    }
+
+                    dependenciesList += pickFormat(isHtml,
+                            " Here is an updated version of your <code>everest.yaml</code> with those dependencies added.",
+                            " Here is an updated version of your `everest.yaml` with those dependencies added.");
+
+                    updatedYaml = new Yaml().dumpAs(yamlContents, null, DumperOptions.FlowStyle.BLOCK);
+                }
+
                 if (event != null) {
                     // ping the user with an issues list in the response channel, truncating the message if it is somehow too long.
                     String message = event.getAuthor().getAsMention() + " Oops, there are issues with the zip you just posted in " + event.getChannel().getAsMention() + ":\n- "
@@ -618,6 +656,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                         for (Map.Entry<String, String> missingFont : missingFonts.entrySet()) {
                             sendingMessage = sendingMessage.addFiles(FileUpload.fromData(missingFont.getValue().getBytes(UTF_8), missingFont.getKey() + "_missing_chars.txt"));
                         }
+                    }
+                    if (updatedYaml != null) {
+                        sendingMessage = sendingMessage.addFiles(FileUpload.fromData(updatedYaml.getBytes(UTF_8), "everest.yaml"));
                     }
 
                     sendingMessage.queue();
@@ -644,6 +685,12 @@ public class ModStructureVerifier extends ListenerAdapter {
                                 }
                             })
                             .collect(Collectors.toList());
+
+                    if (updatedYaml != null) {
+                        File output = new File("/tmp/everest_" + System.currentTimeMillis() + ".yaml");
+                        FileUtils.writeStringToFile(output, updatedYaml, UTF_8);
+                        files.add(output);
+                    }
 
                     if (files.contains(null)) {
                         throw new IOException("Could not send missing font file!");
