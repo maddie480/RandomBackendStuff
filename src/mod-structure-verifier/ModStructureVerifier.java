@@ -488,6 +488,13 @@ public class ModStructureVerifier extends ListenerAdapter {
                                 "Your everest.yaml seems to have problems, send it to <a href=\"https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> for more details",
                                 "Your everest.yaml seems to have problems, send it to <https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator> for more details"));
                         websiteProblemList.add("yamlinvalid");
+                    } else if (resultBody.getJSONArray("modInfo").length() > 1) {
+                        problemList.add(pickFormat(isHtml,
+                                "Your everest.yaml declares multiple mods, you usually don't want to do this unless you know what you are doing \uD83E\uDD14 " +
+                                        "Send it to <a href=\"https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> if you want to check which mods it is declaring.",
+                                "Your everest.yaml declares multiple mods, you usually don't want to do this unless you know what you are doing :thinking: " +
+                                        "Send it to <https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator> if you want to check which mods it is declaring."));
+                        websiteProblemList.add("multiyaml");
                     } else {
                         // grab the mod name and dependency names given by the validator so that we don't have to do that ourselves later!
                         yamlName = resultBody.getJSONArray("modInfo").getJSONObject(0).getString("Name");
