@@ -414,6 +414,20 @@ public class UpdateCheckerTracker extends EventListener {
                 CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip");
                 FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
 
+                // also reload Rich Presence icons because they might have changed as well
+                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("/tmp/rich_presence_icons.ser"))) {
+                    oos.writeObject(getRichPresenceIcons("https://celestemodupdater.0x0a.de/rich-presence-icons/"));
+                    oos.writeObject(getRichPresenceIcons("https://celestemodupdater.0x0a.de/rich-presence-icons-static/"));
+                }
+                CloudStorageUtils.sendToCloudStorage("/tmp/rich_presence_icons.ser", "rich_presence_icons.ser", "application/octet-stream");
+                new File("/tmp/rich_presence_icons.ser").delete();
+
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/rich-presence-icons-reload?key="
+                        + SecretConstants.RELOAD_SHARED_SECRET);
+                if (conn.getResponseCode() != 200) {
+                    throw new IOException("Rich Presence Icons Reload API sent non 200 code: " + conn.getResponseCode());
+                }
+
                 fileIdsSha256 = newFileIdsHash;
             }
 
@@ -722,5 +736,14 @@ public class UpdateCheckerTracker extends EventListener {
 
         log.info("Uploading new Update Checker status: {}", result);
         CloudStorageUtils.sendStringToCloudStorage(result.toString(), "update_checker_status.json", "application/json");
+    }
+
+    private Set<String> getRichPresenceIcons(String url) throws IOException {
+        return Jsoup.connect(url).get()
+                .select("td.indexcolname a")
+                .stream()
+                .map(a -> a.attr("href"))
+                .filter(item -> !item.equals(url + "/"))
+                .collect(Collectors.toSet());
     }
 }
