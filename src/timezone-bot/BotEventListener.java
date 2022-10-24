@@ -11,7 +11,7 @@ import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInterac
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.UserContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
@@ -20,8 +20,8 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
-import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
+import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -162,7 +162,7 @@ public class BotEventListener extends ListenerAdapter {
 
 
     @Override
-    public void onSelectMenuInteraction(@NotNull SelectMenuInteractionEvent event) {
+    public void onStringSelectInteraction(@NotNull StringSelectInteractionEvent event) {
         if ("discord-timestamp".equals(event.getComponent().getId())) {
             logger.info("New interaction with discord-timestamp selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
 
@@ -528,7 +528,7 @@ public class BotEventListener extends ListenerAdapter {
             if (locale == DiscordLocale.FRENCH) {
                 respondPrivately(event, new MessageCreateBuilder().setContent(b.toString().trim())
                         .setComponents(ActionRow.of(
-                                SelectMenu.create("discord-timestamp")
+                                StringSelectMenu.create("discord-timestamp")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)), "<t:" + timestamp + ":t>")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("HH:mm:ss", Locale.FRENCH)), "<t:" + timestamp + ":T>")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRENCH)), "<t:" + timestamp + ":d>")
@@ -542,7 +542,7 @@ public class BotEventListener extends ListenerAdapter {
             } else {
                 respondPrivately(event, new MessageCreateBuilder().setContent(b.toString().trim())
                         .setComponents(ActionRow.of(
-                                SelectMenu.create("discord-timestamp")
+                                StringSelectMenu.create("discord-timestamp")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)), "<t:" + timestamp + ":t>")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.ENGLISH)), "<t:" + timestamp + ":T>")
                                         .addOption(time.format(DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)), "<t:" + timestamp + ":d>")
@@ -995,7 +995,7 @@ public class BotEventListener extends ListenerAdapter {
                 slashCommandEvent.reply(messageParam != null ? messageParam.getAsString() : "**Pick a timezone role here!**\n" +
                                 "If your timezone does not match any of those, run the `/timezone [tz_name]` command.\n" +
                                 "To remove your timezone role, run the `/remove-timezone` command.")
-                        .addActionRow(SelectMenu.create("timezone-dropdown").addOptions(options).build())
+                        .addActionRow(StringSelectMenu.create("timezone-dropdown").addOptions(options).build())
                         .queue();
             }
         }
