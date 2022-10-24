@@ -15,6 +15,8 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -301,6 +303,44 @@ public class CelesteStuffHealthCheck {
 
         if (!bananaMirrorImages.equals(modSearchDatabase)) {
             throw new IOException("Banana Mirror Images contents don't match the mod updater database");
+        }
+
+        // === Rich Presence icons we saved locally should be present at https://celestemodupdater.0x0a.de/rich-presence-icons/
+        List<String> richPresenceIcons = Jsoup.connect("https://celestemodupdater.0x0a.de/rich-presence-icons/").get()
+                .select("td.indexcolname a")
+                .stream()
+                .map(a -> "https://celestemodupdater.0x0a.de/rich-presence-icons/" + a.attr("href"))
+                .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/rich-presence-icons//"))
+                .sorted()
+                .collect(Collectors.toList());
+
+        List<String> richPresenceIconsLocal;
+        try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
+            Map<String, Map<String, List<String>>> mapped = new Yaml().load(is);
+
+            for (Map.Entry<String, List<String>> hashToFiles : mapped.get("HashesToFiles").entrySet()) {
+                for (String file : hashToFiles.getValue()) {
+                    if (!mapped.get("FilesToHashes").get(file).contains(hashToFiles.getKey())) {
+                        throw new IOException("Backwards link for " + hashToFiles.getKey() + " => " + file + " does not exist!");
+                    }
+                }
+            }
+            for (Map.Entry<String, List<String>> fileToHashes : mapped.get("FilesToHashes").entrySet()) {
+                for (String hash : fileToHashes.getValue()) {
+                    if (!mapped.get("HashesToFiles").get(hash).contains(fileToHashes.getKey())) {
+                        throw new IOException("Backwards link for " + fileToHashes.getKey() + " => " + hash + " does not exist!");
+                    }
+                }
+            }
+
+            richPresenceIconsLocal = mapped.get("HashesToFiles").keySet().stream()
+                    .map(a -> "https://celestemodupdater.0x0a.de/rich-presence-icons/" + a + ".png")
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+
+        if (!richPresenceIcons.equals(richPresenceIconsLocal)) {
+            throw new IOException("Banana Mirror Rich Presence Icons contents don't match the ones we have saved locally");
         }
     }
 

@@ -141,6 +141,22 @@ public class UpdateCheckerTracker extends EventListener {
     }
 
     @Override
+    public void uploadedRichPresenceIconToBananaMirror(String fileName, String originatingFileId) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":outbox_tray: Uploaded Rich Presence icon " + fileName +
+                    " (coming from <https://gamebanana.com/mmdl/" + originatingFileId + ">) to Banana Mirror");
+        }
+    }
+
+    @Override
+    public void deletedRichPresenceIconFromBananaMirror(String fileName, String originatingFileId) {
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            executeWebhookAsUpdateChecker(webhook, ":wastebasket: Deleted Rich Presence icon " + fileName +
+                    " (coming from <https://gamebanana.com/mmdl/" + originatingFileId + ">) from Banana Mirror");
+        }
+    }
+
+    @Override
     public void savedNewInformationToDatabase(Mod mod) {
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
             executeWebhookAsUpdateChecker(webhook, ":white_check_mark: **" + mod.getName() + "** was updated to version **" + mod.getVersion() + "** on <t:" + mod.getLastUpdate() + ">.\n" +
