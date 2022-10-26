@@ -156,7 +156,7 @@
         <dependency>
             <groupId>com.max480.everest.updatechecker</groupId>
             <artifactId>update-checker</artifactId>
-            <version>0.3.0</version>
+            <version>0.3.1</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.lucene/lucene-core -->
