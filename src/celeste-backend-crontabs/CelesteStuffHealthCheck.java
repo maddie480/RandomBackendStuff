@@ -310,7 +310,7 @@ public class CelesteStuffHealthCheck {
                 .select("td.indexcolname a")
                 .stream()
                 .map(a -> "https://celestemodupdater.0x0a.de/rich-presence-icons/" + a.attr("href"))
-                .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/rich-presence-icons//"))
+                .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/rich-presence-icons//") && !item.equals("https://celestemodupdater.0x0a.de/rich-presence-icons/list.json"))
                 .sorted()
                 .collect(Collectors.toList());
 
@@ -339,7 +339,18 @@ public class CelesteStuffHealthCheck {
                     .collect(Collectors.toList());
         }
 
-        if (!richPresenceIcons.equals(richPresenceIconsLocal)) {
+        // and they should also match the list present at list.json
+        JSONArray richPresenceIconListJson;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater.0x0a.de/rich-presence-icons/list.json")) {
+            richPresenceIconListJson = new JSONArray(IOUtils.toString(is, UTF_8));
+        }
+        List<String> richPresenceIconsList = new ArrayList<>();
+        for (Object o : richPresenceIconListJson) {
+            richPresenceIconsList.add("https://celestemodupdater.0x0a.de/rich-presence-icons/" + o + ".png");
+        }
+        richPresenceIconsList.sort(Comparator.naturalOrder());
+
+        if (!richPresenceIcons.equals(richPresenceIconsLocal) || !richPresenceIcons.equals(richPresenceIconsList)) {
             throw new IOException("Banana Mirror Rich Presence Icons contents don't match the ones we have saved locally");
         }
     }
