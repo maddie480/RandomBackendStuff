@@ -1,7 +1,7 @@
 package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
-import com.max480.everest.updatechecker.ServerConfig;
+import com.max480.everest.updatechecker.ZipFileWithAutoEncoding;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -355,7 +355,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
         logger.debug("Collab assets folder = {}, Collab maps folder = {}", expectedCollabAssetPrefix, expectedCollabMapsPrefix);
 
-        try (ZipFile zipFile = new ZipFile(file)) {
+        try (ZipFile zipFile = ZipFileWithAutoEncoding.open(file.getAbsolutePath())) {
             List<String> problemList = new ArrayList<>();
             Set<String> websiteProblemList = new HashSet<>();
             Set<String> missingDependencies = new HashSet<>();
@@ -1076,7 +1076,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         // scan its contents, opening Ahorn plugin files
-        try (ZipFile zipFile = new ZipFile(modZip)) {
+        try (ZipFile zipFile = ZipFileWithAutoEncoding.open(modZip.getAbsolutePath())) {
             final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();

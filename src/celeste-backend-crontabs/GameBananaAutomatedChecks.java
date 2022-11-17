@@ -1,6 +1,7 @@
 package com.max480.discord.randombots;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.ZipFileWithAutoEncoding;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -100,7 +101,7 @@ public class GameBananaAutomatedChecks {
 
                     logger.debug("Searching for DLL");
 
-                    try (ZipFile zip = new ZipFile(new File("/tmp/mod_yield_police.zip"))) {
+                    try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/mod_yield_police.zip")) {
                         // find the everest.yaml name used in this mod.
                         ZipEntry yaml = zip.getEntry("everest.yaml");
                         if (yaml == null) {
@@ -410,7 +411,7 @@ public class GameBananaAutomatedChecks {
                     FileUtils.copyToFile(is, new File("/tmp/everest_yaml_police.zip"));
                 }
 
-                try (ZipFile zip = new ZipFile(new File("/tmp/everest_yaml_police.zip"))) {
+                try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/everest_yaml_police.zip")) {
                     // find the everest.yaml name used in this mod.
                     ZipEntry yaml = zip.getEntry("everest.yaml");
                     if (yaml == null) {
@@ -662,7 +663,7 @@ public class GameBananaAutomatedChecks {
 
                 // extract its PNG files and check for the signature.
                 List<String> badPngs = new LinkedList<>();
-                try (ZipFile zip = new ZipFile(new File("/tmp/png_police.zip"))) {
+                try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/png_police.zip")) {
                     for (String fileName : filesToCheck) {
                         if (!checkPngSignature(zip, zip.getEntry(fileName))) {
                             badPngs.add(fileName);
