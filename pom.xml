@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.max480.discord.randombots</groupId>
-    <artifactId>random-discord-bots</artifactId>
+    <groupId>com.max480.randomstuff.backend</groupId>
+    <artifactId>random-stuff-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>
@@ -183,13 +183,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>${maven-jar-plugin.version}</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.max480.quest.modmanagerbot.Entrypoint</mainClass>
-                        </manifest>
-                    </archive>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

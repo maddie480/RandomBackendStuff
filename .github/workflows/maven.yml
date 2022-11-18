@@ -23,23 +23,4 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: |
-        # We first need to restructure the project for it to build
-        mkdir -p newsrc/main/java/com/max480/quest/modmanagerbot
-        mv -v src/DummyBotClient.java newsrc/main/java/com/max480/quest/modmanagerbot/BotClient.java
-        mkdir -p newsrc/main/java/com/max480/discord/randombots
-        find src -type f -exec mv -v {} newsrc/main/java/com/max480/discord/randombots \;
-        rm -rfv src/
-        mv -v newsrc src
-        
-        # Temporarily create a dummy StrawberryJamUpdate
-        echo "package com.max480.discord.randombots; public class StrawberryJamUpdate extends net.dv8tion.jda.api.hooks.ListenerAdapter {}" > src/main/java/com/max480/discord/randombots/StrawberryJamUpdate.java
-        
-        # Bring in the update checker and install it
-        git clone https://github.com/max4805/EverestUpdateCheckerServer.git
-        cd EverestUpdateCheckerServer
-        mvn install
-        cd ..
-        
-        # And finally compile the project
-        mvn -B package --file pom.xml
+      run: mvn -B package --file pom.xml
