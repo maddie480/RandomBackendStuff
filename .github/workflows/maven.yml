@@ -23,4 +23,12 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: |
+        # Bring in the update checker and install it
+        git clone https://github.com/max4805/EverestUpdateCheckerServer.git
+        cd EverestUpdateCheckerServer
+        mvn install
+        cd ..
+        
+        # And compile the project
+        mvn -B package --file pom.xml
