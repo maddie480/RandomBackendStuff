@@ -6,6 +6,6 @@ updates:
       interval: "daily"
 
   - package-ecosystem: "maven"
-    directory: "/"
+    directory: "/maven-parent/"
     schedule:
       interval: "daily"

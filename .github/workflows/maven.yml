@@ -30,5 +30,10 @@ jobs:
         mvn install
         cd ..
         
-        # And compile the project
+        # Build the parent POM
+        cd maven-parent
+        mvn install
+        cd ..
+        
+        # Build the project
         mvn -B package --file pom.xml
