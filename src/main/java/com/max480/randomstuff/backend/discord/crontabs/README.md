@@ -3,9 +3,9 @@
 These classes have methods that are run periodically, and take part in the operations of [the Discord bots](https://max480-random-stuff.appspot.com/discord-bots).
 
 The code for the bots is open-sourced here:
-- [Timezone Bot (with roles)](https://github.com/max4805/RandomBackendStuff/tree/main/src/timezone-bot)
+- [Timezone Bot (with roles)](https://github.com/max4805/RandomBackendStuff/tree/main/src/main/java/com/max480/randomstuff/backend/discord/timezonebot)
 - [Timezone Bot (without roles)](https://github.com/max4805/RandomStuffWebsite/tree/main/src/main/java/com/max480/randomstuff/gae/discord/timezonebot)
-- [Mod Structure Verifier](https://github.com/max4805/RandomBackendStuff/tree/main/src/mod-structure-verifier)
+- [Mod Structure Verifier](https://github.com/max4805/RandomBackendStuff/tree/main/src/main/java/com/max480/randomstuff/backend/discord/modstructureverifier)
 - [Games Bot](https://github.com/max4805/RandomStuffWebsite/tree/main/src/main/java/com/max480/randomstuff/gae/discord/gamescommands)
 - [Custom Slash Commands](https://github.com/max4805/RandomStuffWebsite/tree/main/src/main/java/com/max480/randomstuff/gae/discord/customslashcommands)
 

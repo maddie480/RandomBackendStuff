@@ -31,7 +31,7 @@ public class StyleRefreshService {
         int dayOfYear = ZonedDateTime.now(ZoneId.of("Europe/Paris")).getDayOfYear();
 
         String css = "/* Generated on " + ZonedDateTime.now(ZoneId.of("UTC")).format(DateTimeFormatter.ofPattern("MMMM d, yyyy HH:mm zzz", Locale.ENGLISH)) + "" +
-                " by https://github.com/max4805/RandomBackendStuff/blob/main/src/celeste-backend-crontabs/StyleRefreshService.java */\n";
+                " by https://github.com/max4805/RandomBackendStuff/blob/main/src/main/java/com/max480/randomstuff/backend/celeste/crontabs/StyleRefreshService.java */\n";
 
         css += "body::before { background: url('"
                 + backgrounds[dayOfYear % backgrounds.length]
