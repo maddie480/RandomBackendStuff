@@ -1,188 +1,174 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
+import com.google.common.collect.ImmutableMap;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 import org.json.JSONArray;
-import org.json.JSONObject;
-import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * This class generates the Olympus news feed based on the EverestAPI Twitter feed
- * provided by the Twitter Update Checker.
+ * This class converts the Olympus news that are published on GitHub to JSON, and posts notifications
+ * to Discord webhooks whenever a new one comes out.
  */
 public class OlympusNewsGenerator {
     private static final Logger log = LoggerFactory.getLogger(OlympusNewsGenerator.class);
 
-    public static void generateFeed(JSONArray tweetFeed) throws IOException {
-        // download the manual Olympus news entries
-        JSONObject manualNews;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/max4805/RandomBackendStuff/main/olympusnews.json")) {
-            manualNews = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+    private static Set<String> alreadyNotified = new HashSet<>();
+    private static String latestNewsHash = "[first check]";
+
+    public static void main(String[] args) throws IOException {
+        refreshOlympusNews();
+    }
+
+    public static void loadPreviouslyPostedNews() {
+        try (Stream<String> lines = Files.lines(Paths.get("previous_olympus_news.txt"))) {
+            alreadyNotified = lines.collect(Collectors.toCollection(HashSet::new));
+        } catch (IOException e) {
+            log.error("Could not load previously posted news!", e);
         }
-        final JSONArray manualAddBefore = manualNews.getJSONArray("add_before");
-        final JSONArray manualAddAfter = manualNews.getJSONArray("add_after");
-        final JSONObject manualReplace = manualNews.getJSONObject("replace");
-        final JSONArray manualDelete = manualNews.getJSONArray("delete");
+    }
 
-        JSONArray output = new JSONArray();
+    public static void refreshOlympusNews() throws IOException {
+        // this is pretty much a port of what Olympus itself does.
+        log.debug("Refreshing Olympus news...");
 
-        // add tweets that have to be inserted before
-        for (Object o : manualAddBefore) {
-            output.put(o);
+        // list the Olympus news posts
+        List<String> entries = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.openStreamWithTimeout("https://everestapi.github.io/olympusnews/index.txt")))) {
+            String s;
+            while ((s = br.readLine()) != null) {
+                if (s.endsWith(".md")) {
+                    entries.add(s);
+                }
+            }
         }
 
-        for (int i = 0; i < tweetFeed.length() && output.length() < 10 + manualAddBefore.length(); i++) {
-            JSONObject tweet = tweetFeed.getJSONObject(i);
-            String tweetId = tweet.getString("id_str");
+        // sort them by descending order
+        entries.sort(Comparator.<String>naturalOrder().reversed());
 
-            // do not include RTs
-            if (tweet.has("retweeted_status")) {
+        JSONArray result = new JSONArray();
+
+        for (String entryName : entries) {
+            String data = ConnectionUtils.toStringWithTimeout("https://everestapi.github.io/olympusnews/" + entryName, StandardCharsets.UTF_8);
+
+            // split between data, preview and full text
+            String[] split = data.split("\n---\n", 3);
+            data = split[0];
+            String preview = split[1].trim();
+            String text = split.length < 3 ? null : split[2].trim();
+
+            // parse the data part
+            Map<String, Object> dataParsed = new Yaml().load(data);
+
+            // skip ignored news
+            if ((boolean) dataParsed.get("ignore")) {
+                log.debug("Skipped {} because ignored = true", entryName);
                 continue;
             }
+            dataParsed.remove("ignore");
 
-            // skip tweets that were marked as "delete" in manual news
-            boolean isDeleted = false;
-            for (int q = 0; q < manualDelete.length(); q++) {
-                if (manualDelete.getString(q).equals(tweetId)) {
-                    manualDelete.remove(q);
-                    isDeleted = true;
-                }
-            }
-            if (isDeleted) continue;
-
-            // replace tweets that were marked as "replace"
-            if (manualReplace.has(tweetId)) {
-                output.put(manualReplace.getJSONObject(tweetId));
-                manualReplace.remove(tweetId);
-                continue;
+            // relative image links should be turned into absolute ones
+            if (dataParsed.containsKey("image") && dataParsed.get("image").toString().startsWith("./")) {
+                dataParsed.put("image", "https://everestapi.github.io/olympusnews/" + dataParsed.get("image").toString().substring(2));
             }
 
-            // we are going to reuse the Twitter update checker to process the tweet into a more convenient form.
-            final Map<String, Object> embed = TwitterUpdateChecker.generateEmbedFor(tweet);
-            final List<String> links = TwitterUpdateChecker.detectLinksInTweet(tweet, false);
+            // bring in the preview and text we retrieved earlier
+            dataParsed.put("preview", preview);
+            dataParsed.put("text", text);
 
-            JSONObject mappedTweet = new JSONObject();
-
-            // use the tweet contents as the preview text for the news, removing all non-ascii characters
-            mappedTweet.put("preview", embed.get("description").toString()
-                    .replaceAll("[^\\x00-\\xFF]", "").trim());
-
-            if (embed.containsKey("image")) {
-                // use the first image of the tweet as an image for the news
-                mappedTweet.put("image", ((Map<String, String>) embed.get("image")).get("url"));
-            } else {
-                // use the embed image of the first link in the tweet that has one as an image for the news
-                for (String link : links) {
-                    String embeddedImage = getEmbedAttribute(link, "image");
-                    if (embeddedImage != null) {
-                        mappedTweet.put("image", embeddedImage);
-                        break;
-                    }
+            // clean up the result by removing null values and empty strings
+            for (Map.Entry<String, Object> entry : new HashSet<>(dataParsed.entrySet())) {
+                if (entry.getValue() == null || (entry.getValue() instanceof String && entry.getValue().toString().isEmpty())) {
+                    dataParsed.remove(entry.getKey());
                 }
             }
 
-            if (!links.isEmpty()) {
-                // use the target of the first t.co link of the tweet as a link for the news
-                mappedTweet.put("link", getLinkTarget(links.get(0)));
+            log.debug("Parsed {} -> {}", entryName, dataParsed);
+            result.put(dataParsed);
 
-                // and remove it from the preview text as well
-                mappedTweet.put("preview", mappedTweet.getString("preview").replace(links.get(0), "").trim());
+            if (!alreadyNotified.contains(entryName)) {
+                postToDiscord(dataParsed);
+                alreadyNotified.add(entryName);
+            }
+        }
+
+        // update it if anything changed in it!
+        if (!DigestUtils.sha512Hex(result.toString()).equals(latestNewsHash)) {
+            log.info("Olympus news changed! {} -> {}", latestNewsHash, DigestUtils.sha512Hex(result.toString()));
+
+            // push to Cloud Storage
+            CloudStorageUtils.sendStringToCloudStorage(result.toString(), "olympus_news.json", "application/json");
+
+            // update the frontend cache
+            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news-reload?key="
+                    + SecretConstants.RELOAD_SHARED_SECRET);
+            if (conn.getResponseCode() != 200) {
+                throw new IOException("Olympus News Reload API sent non 200 code: " + conn.getResponseCode());
             }
 
-            // use the embed title as a title for the news
-            for (String link : links) {
-                String embedTitle = getEmbedAttribute(link, "title");
-                if (embedTitle != null) {
-                    mappedTweet.put("title", embedTitle.replace("[Celeste] [Mods]", "").trim());
-                    break;
-                }
-            }
+            WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "Everest Update Checker",
+                    ":sparkles: Olympus news were updated.");
 
-            output.put(mappedTweet);
+            UpdateOutgoingWebhooks.changesHappened();
+
+            latestNewsHash = DigestUtils.sha512Hex(result.toString());
         }
 
-        // add tweets that have to be inserted after
-        for (Object o : manualAddAfter) {
-            output.put(o);
+        FileUtils.writeStringToFile(new File("previous_olympus_news.txt"), String.join("\n", alreadyNotified), StandardCharsets.UTF_8);
+    }
+
+    private static void postToDiscord(Map<String, Object> newsEntry) throws IOException {
+        Map<String, Object> embed = new HashMap<>();
+
+        // title
+        if (newsEntry.containsKey("title")) {
+            embed.put("title", newsEntry.get("title"));
         }
 
-        // push to Cloud Storage
-        CloudStorageUtils.sendStringToCloudStorage(output.toString(), "olympus_news.json", "application/json");
-
-        // update the frontend cache
-        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news-reload?key="
-                + SecretConstants.RELOAD_SHARED_SECRET);
-        if (conn.getResponseCode() != 200) {
-            throw new IOException("Olympus News Reload API sent non 200 code: " + conn.getResponseCode());
+        // image
+        if (newsEntry.containsKey("image")) {
+            embed.put("image", ImmutableMap.of("url", newsEntry.get("image")));
         }
+
+        // text content: use text if present, otherwise use preview
+        if (newsEntry.containsKey("preview")) {
+            embed.put("description", newsEntry.get("preview"));
+        }
+        if (newsEntry.containsKey("text")) {
+            embed.put("description", newsEntry.get("text"));
+        }
+
+        if (newsEntry.containsKey("link")) {
+            String fullDescription = embed.getOrDefault("description", "") + "\n[Open in browser](" + newsEntry.get("link") + ")";
+            embed.put("description", fullDescription.trim());
+        }
+
+        embed.put("color", 3878218);
 
         WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
-                "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
-                "Everest Update Checker",
-                ":sparkles: Olympus news were updated.\n" +
-                        "Unused replace entries: [" + String.join(", ", manualReplace.toMap().keySet()) + "]\n" +
-                        "Unused delete entries: " + manualDelete.toString().replace("\"", "").replace(",", ", "));
-
-        UpdateOutgoingWebhooks.changesHappened();
-    }
-
-    private static String getLinkTarget(String url) {
-        log.debug("Sending request to {} to figure out the actual target...", url);
-
-        try {
-            return ConnectionUtils.runWithRetry(() -> {
-                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
-                connection.setInstanceFollowRedirects(false);
-
-                if (connection.getResponseCode() == 301 && connection.getHeaderField("Location") != null) {
-                    return connection.getHeaderField("Location");
-                } else {
-                    throw new IOException(url + " is not a redirect!");
-                }
-            });
-        } catch (IOException e) {
-            log.warn("Could not determine where {} leads to", url, e);
-
-            // as a fallback, just return the t.co URL
-            return url;
-        }
-    }
-
-    private static String getEmbedAttribute(String url, String attribute) {
-        try {
-            log.debug("Sending request to {} to check if it has an embed {}...", url, attribute);
-
-            return ConnectionUtils.runWithRetry(() -> {
-                String result = Jsoup
-                        .connect(url)
-                        .userAgent("Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)")
-                        .followRedirects(true)
-                        .timeout(10000)
-                        .get()
-                        .select("meta[property=\"og:" + attribute + "\"]")
-                        .attr("content");
-
-                if (result.isEmpty()) {
-                    return null;
-                }
-
-                return result;
-            });
-        } catch (IOException e) {
-            log.warn("Cannot access {} to check for embed image", url, e);
-            return null;
-        }
+                "https://avatars.githubusercontent.com/u/36135162",
+                "Olympus News",
+                "",
+                Collections.singletonList(embed));
     }
 }

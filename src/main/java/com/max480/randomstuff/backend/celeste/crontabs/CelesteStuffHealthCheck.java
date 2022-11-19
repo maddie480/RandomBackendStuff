@@ -448,9 +448,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // Olympus News
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news"), UTF_8)
-                .contains("\"preview\":\"You can find every news post on Twitter!\"")) {
-
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news"), UTF_8).contains("\"title\":")) {
             throw new IOException("Olympus News test failed");
         }
 

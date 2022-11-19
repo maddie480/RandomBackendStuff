@@ -6,7 +6,6 @@ import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import net.dv8tion.jda.api.JDA;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -44,9 +43,6 @@ public class TwitterUpdateChecker {
     private static final Map<String, Set<String>> previousTweets = new HashMap<>();
 
     public static String serviceMessage = null;
-
-    private static String automaticOlympusNewsHash = "[first check]";
-    private static String manualOlympusNewsHash = "[first check]";
 
     public static void runCheckForUpdates(JDA botClient) throws Exception {
         try {
@@ -270,29 +266,6 @@ public class TwitterUpdateChecker {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter("previous_twitter_messages_" + feed + ".txt"))) {
             for (String bl : tweetsAlreadyNotified) {
                 bw.write(bl + "\n");
-            }
-        }
-
-        if (feed.equals("EverestAPI")) {
-            // check if either the Olympus news file or the tweet list changed.
-            String autoOlympusNews, manualOlympusNews;
-            try (InputStream is = new FileInputStream("previous_twitter_messages_EverestAPI.txt")) {
-                autoOlympusNews = DigestUtils.sha512Hex(is);
-            }
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/max4805/RandomBackendStuff/main/olympusnews.json")) {
-                manualOlympusNews = DigestUtils.sha512Hex(is);
-            }
-
-            if (!autoOlympusNews.equals(automaticOlympusNewsHash) || !manualOlympusNews.equals(manualOlympusNewsHash)) {
-                // update the feed!
-                log.info("Regenerating the Olympus news! auto: {} -> {}, manual: {} -> {}",
-                        automaticOlympusNewsHash, autoOlympusNews,
-                        manualOlympusNewsHash, manualOlympusNews);
-
-                OlympusNewsGenerator.generateFeed(answer);
-
-                automaticOlympusNewsHash = autoOlympusNews;
-                manualOlympusNewsHash = manualOlympusNews;
             }
         }
 
