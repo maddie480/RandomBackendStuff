@@ -165,10 +165,10 @@ public class OlympusNewsGenerator {
 
         embed.put("color", 3878218);
 
-        WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
+        TwitterUpdateChecker.sendToCelesteNewsNetwork(webhookUrl -> WebhookExecutor.executeWebhook(webhookUrl,
                 "https://avatars.githubusercontent.com/u/36135162",
                 "Olympus News",
                 "",
-                Collections.singletonList(embed));
+                Collections.singletonList(embed)));
     }
 }

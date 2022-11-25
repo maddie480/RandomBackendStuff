@@ -196,48 +196,16 @@ public class TwitterUpdateChecker {
                             videoFile.delete();
                         }
                     }
+                    String finalVideoUrl = videoUrl;
 
                     // Try to determine if the urls in the tweet have embeds.
-                    final List<String> linksInTweet = detectLinksInTweet(tweet, true);
+                    final List<String> linksInTweet = detectLinksInTweet(tweet);
 
                     // post it to the personal Twitter channel
                     postTweetToWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, date, link, profilePictureUrl, username, embed, videoUrl, linksInTweet);
 
                     if (THREADS_TO_WEBHOOK.contains(feed)) {
-                        // load webhook URLs from Cloud Storage
-                        List<String> webhookUrls;
-                        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("celeste_news_network_subscribers.json")) {
-                            webhookUrls = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
-                                    .stream()
-                                    .map(Object::toString)
-                                    .collect(Collectors.toCollection(ArrayList::new));
-                        }
-
-                        // invoke webhooks
-                        List<String> goneWebhooks = new ArrayList<>();
-                        for (String webhook : webhookUrls) {
-                            try {
-                                postTweetToWebhook(webhook, date, link, profilePictureUrl, username, embed, videoUrl, linksInTweet);
-                            } catch (WebhookExecutor.UnknownWebhookException e) {
-                                // if this happens, this means the webhook was deleted.
-                                goneWebhooks.add(webhook);
-                            }
-                        }
-
-                        if (!goneWebhooks.isEmpty()) {
-                            // some webhooks were deleted! notify the owner about it.
-                            for (String goneWebhook : goneWebhooks) {
-                                WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
-                                        "https://cdn.discordapp.com/attachments/445236692136230943/945779742462865478/2021_Twitter_logo_-_blue.png",
-                                        "Twitter Bot",
-                                        ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook);
-
-                                webhookUrls.remove(goneWebhook);
-                            }
-
-                            // save the deletion to Cloud Storage.
-                            CloudStorageUtils.sendStringToCloudStorage(new JSONArray(webhookUrls).toString(), "celeste_news_network_subscribers.json", "application/json");
-                        }
+                        sendToCelesteNewsNetwork(webhookUrl -> postTweetToWebhook(webhookUrl, date, link, profilePictureUrl, username, embed, finalVideoUrl, linksInTweet));
                     }
 
                     if (THREADS_TO_QUEST.contains(feed)) {
@@ -272,7 +240,52 @@ public class TwitterUpdateChecker {
         log.debug("Done.");
     }
 
-    static List<String> detectLinksInTweet(JSONObject tweet, boolean withEmbedsOnly) {
+    interface SendToWebhookHandler {
+        void sendToWebhook(String webhookUrl) throws IOException;
+    }
+
+    /**
+     * Calls the given method for all webhooks subscribed to #celeste_news_network,
+     * and unsubscribes webhooks automatically if an UnknownWebhookException happens.
+     */
+    static void sendToCelesteNewsNetwork(SendToWebhookHandler handler) throws IOException {
+        // load webhook URLs from Cloud Storage
+        List<String> webhookUrls;
+        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("celeste_news_network_subscribers.json")) {
+            webhookUrls = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
+                    .stream()
+                    .map(Object::toString)
+                    .collect(Collectors.toCollection(ArrayList::new));
+        }
+
+        // invoke webhooks
+        List<String> goneWebhooks = new ArrayList<>();
+        for (String webhook : webhookUrls) {
+            try {
+                handler.sendToWebhook(webhook);
+            } catch (WebhookExecutor.UnknownWebhookException e) {
+                // if this happens, this means the webhook was deleted.
+                goneWebhooks.add(webhook);
+            }
+        }
+
+        if (!goneWebhooks.isEmpty()) {
+            // some webhooks were deleted! notify the owner about it.
+            for (String goneWebhook : goneWebhooks) {
+                WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
+                        "https://cdn.discordapp.com/attachments/445236692136230943/945779742462865478/2021_Twitter_logo_-_blue.png",
+                        "Twitter Bot",
+                        ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook);
+
+                webhookUrls.remove(goneWebhook);
+            }
+
+            // save the deletion to Cloud Storage.
+            CloudStorageUtils.sendStringToCloudStorage(new JSONArray(webhookUrls).toString(), "celeste_news_network_subscribers.json", "application/json");
+        }
+    }
+
+    private static List<String> detectLinksInTweet(JSONObject tweet) {
         String id = tweet.getString("id_str");
 
         List<String> urls = new ArrayList<>();
@@ -286,7 +299,7 @@ public class TwitterUpdateChecker {
             urls = consideredTweet.getJSONObject("entities").getJSONArray("urls").toList()
                     .stream()
                     .filter(s -> !((Map<String, String>) s).get("expanded_url").contains(id))
-                    .filter(s -> !withEmbedsOnly || hasEmbed(((Map<String, String>) s).get("url")))
+                    .filter(s -> hasEmbed(((Map<String, String>) s).get("url")))
                     .map(s -> ((Map<String, String>) s).get("url"))
                     .collect(Collectors.toList());
         } catch (Exception e) {
