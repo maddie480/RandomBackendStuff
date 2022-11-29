@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.utils;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.function.IOSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,15 +14,6 @@ import java.nio.charset.Charset;
 
 public final class ConnectionUtils {
     private static final Logger logger = LoggerFactory.getLogger(ConnectionUtils.class);
-
-    /**
-     * Much like {@link java.util.function.Supplier} but throwing an IOException (which a network operation may do).
-     *
-     * @param <T> The return type for the operation
-     */
-    public interface NetworkingOperation<T> {
-        T run() throws IOException;
-    }
 
     /**
      * Creates an HttpURLConnection to the specified URL, getting sure timeouts are set
@@ -81,10 +73,10 @@ public final class ConnectionUtils {
      * @return What the task returned
      * @throws IOException If the task failed 3 times
      */
-    public static <T> T runWithRetry(NetworkingOperation<T> task) throws IOException {
+    public static <T> T runWithRetry(IOSupplier<T> task) throws IOException {
         for (int i = 1; i < 3; i++) {
             try {
-                return task.run();
+                return task.get();
             } catch (IOException e) {
                 logger.warn("I/O exception while doing networking operation (try {}/3).", i, e);
 
@@ -99,6 +91,6 @@ public final class ConnectionUtils {
         }
 
         // 3rd try: this time, if it crashes, let it crash
-        return task.run();
+        return task.get();
     }
 }

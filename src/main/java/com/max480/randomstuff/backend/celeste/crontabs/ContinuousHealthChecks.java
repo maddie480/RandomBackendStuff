@@ -5,6 +5,7 @@ import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.function.IOSupplier;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -127,12 +128,12 @@ public class ContinuousHealthChecks {
         }
     }
 
-    private static void checkHealth(ConnectionUtils.NetworkingOperation<Boolean> healthCheck,
+    private static void checkHealth(IOSupplier<Boolean> healthCheck,
                                     String serviceName, List<String> webhookUrls) {
         boolean result;
 
         try {
-            result = healthCheck.run();
+            result = healthCheck.get();
         } catch (Exception e) {
             logger.warn("Health check error for {}!", serviceName, e);
             result = false;
