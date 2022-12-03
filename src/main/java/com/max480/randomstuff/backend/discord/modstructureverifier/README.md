@@ -10,6 +10,6 @@ Server admins and moderators with the "Manage Server" permission can set up chan
 
 You can combine `--setup-free-names` with one of the 2 other setups in the same channel: the bot will pick depending on whether the user uses `--verify` or not.
 
-After setting the bot up, the users will be able to have their zips checked by just dropping the zip or the Google Drive link in the channel you designated (they will have to use the `--verify` command if you set up the bot with `--setup-free-names`). 
+After setting the bot up, the users will be able to have their zips checked by just dropping the zip or the Google Drive link in the channel you designated (they will have to use the `--verify` command if you set up the bot with `--setup-free-names`).
 
 [Invite to your server](https://discord.com/oauth2/authorize?client_id=809572233953542154&scope=bot&permissions=19520)
