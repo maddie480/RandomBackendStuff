@@ -462,6 +462,10 @@ public class ModStructureVerifier extends ListenerAdapter {
             // everest.yaml should exist
             ZipEntry everestYaml = zipFile.getEntry("everest.yaml");
             if (everestYaml == null) {
+                everestYaml = zipFile.getEntry("everest.yml");
+            }
+
+            if (everestYaml == null) {
                 if (fileListing.stream().anyMatch(f -> f.endsWith("/everest.yaml"))) {
                     problemList.add(pickFormat(isHtml,
                             "You have an everest.yaml, but it is in a subfolder. <b>Hint:</b> when zipping your mod, don't zip the folder, but the contents of it. " +
