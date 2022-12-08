@@ -111,9 +111,6 @@ public class GameBananaAutomatedChecks {
                         if (yaml == null) {
                             yaml = zip.getEntry("everest.yml");
                         }
-                        if (yaml == null) {
-                            yaml = zip.getEntry("multimetadata.yaml");
-                        }
 
                         // read everest.yaml without extracting
                         List<Map<String, Object>> yamlContent;
@@ -420,9 +417,6 @@ public class GameBananaAutomatedChecks {
                     ZipEntry yaml = zip.getEntry("everest.yaml");
                     if (yaml == null) {
                         yaml = zip.getEntry("everest.yml");
-                    }
-                    if (yaml == null) {
-                        yaml = zip.getEntry("multimetadata.yaml");
                     }
 
                     logger.debug("Extracting {}", yaml.getName());
