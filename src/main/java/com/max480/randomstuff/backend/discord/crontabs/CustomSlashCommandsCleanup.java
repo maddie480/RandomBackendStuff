@@ -100,7 +100,18 @@ public class CustomSlashCommandsCleanup {
         } else {
             try (InputStream is = connection.getErrorStream()) {
                 JSONObject error = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
-                if (error.getInt("code") == 50001) {
+
+                if (error.has("retry_after")) {
+                    try {
+                        log.warn("Waiting for {}s because of rate limit!", error.getFloat("retry_after"));
+                        Thread.sleep((int) (error.getFloat("retry_after") * 1000));
+                        return getSlashCommandList(serverId, token);
+                    } catch (InterruptedException e) {
+                        throw new IOException(e);
+                    }
+                }
+
+                if (error.has("code") && error.getInt("code") == 50001) {
                     // Missing Access: this means we got kicked
                     return null;
                 }
