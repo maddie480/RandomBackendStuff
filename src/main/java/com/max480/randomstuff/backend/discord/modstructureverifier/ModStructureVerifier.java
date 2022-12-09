@@ -1414,11 +1414,4 @@ public class ModStructureVerifier extends ListenerAdapter {
     private static String pickFormat(boolean isHtml, String html, String md) {
         return isHtml ? html : md;
     }
-
-    public static void registerChannelFromSupportServer(Long channelId) {
-        logger.info("Registering channel {} as free response and no-name response for support server", channelId);
-        freeResponseChannels.put(channelId, channelId);
-        noNameResponseChannels.put(channelId, channelId);
-        saveMap(null, null);
-    }
 }

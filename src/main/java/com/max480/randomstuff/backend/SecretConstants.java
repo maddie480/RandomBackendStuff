@@ -48,10 +48,11 @@ public class SecretConstants {
     public static String STRAWBERRY_JAM_LOCATION = "";
 
     // Server Manager bot credentials
-    public static String SERVER_MANAGER_TOKEN = "";
+    public static String SERVER_JANITOR_TOKEN = "";
     public static Long SUPPORT_SERVER_ID = 0L;
-    public static Long SUPPORT_SERVER_PRIVATE_CATEGORY_ID = 0L;
-    public static Long MOD_STRUCTURE_VERIFIER_ROLE_ID = 0L;
+    public static Long SUPPORT_SERVER_HIDE_ROLE_ID = 0L;
+    public static List<Long> SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = Collections.emptyList();
+
 
     // API key allowing to download stuff from Google Drive
     public static String GOOGLE_DRIVE_API_KEY = "";
@@ -135,10 +136,10 @@ public class SecretConstants {
             MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
             STRAWBERRY_JAM_LOCATION = secrets.getString("STRAWBERRY_JAM_LOCATION");
 
-            SERVER_MANAGER_TOKEN = secrets.getString("SERVER_MANAGER_TOKEN");
+            SERVER_JANITOR_TOKEN = secrets.getString("SERVER_JANITOR_TOKEN");
             SUPPORT_SERVER_ID = secrets.getLong("SUPPORT_SERVER_ID");
-            SUPPORT_SERVER_PRIVATE_CATEGORY_ID = secrets.getLong("SUPPORT_SERVER_PRIVATE_CATEGORY_ID");
-            MOD_STRUCTURE_VERIFIER_ROLE_ID = secrets.getLong("MOD_STRUCTURE_VERIFIER_ROLE_ID");
+            SUPPORT_SERVER_HIDE_ROLE_ID = secrets.getLong("SUPPORT_SERVER_HIDE_ROLE_ID");
+            SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = getListOfLongs(secrets.getJSONArray("SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP"));
 
             GOOGLE_DRIVE_API_KEY = secrets.getString("GOOGLE_DRIVE_API_KEY");
 
@@ -182,6 +183,14 @@ public class SecretConstants {
         List<String> result = new ArrayList<>();
         for (int i = 0; i < array.length(); i++) {
             result.add(array.getString(i));
+        }
+        return result;
+    }
+
+    private static List<Long> getListOfLongs(JSONArray array) {
+        List<Long> result = new ArrayList<>();
+        for (int i = 0; i < array.length(); i++) {
+            result.add(array.getLong(i));
         }
         return result;
     }
