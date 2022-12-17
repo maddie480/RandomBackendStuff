@@ -13,16 +13,8 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.store.FSDirectory;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.DumperOptions;
@@ -401,12 +393,7 @@ public class UpdateCheckerTracker extends EventListener {
 
                 CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml");
 
-                // build the new indices and send them to Cloud Storage
-                buildIndex();
-                pack("/tmp/mod_index", "/tmp/mod_index.zip");
-                CloudStorageUtils.sendToCloudStorage("/tmp/mod_index.zip", "mod_index.zip", "application/zip");
-                Files.delete(Paths.get("/tmp/mod_index.zip"));
-                FileUtils.deleteDirectory(new File("/tmp/mod_index"));
+                serializeModSearchDatabase();
 
                 HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search-reload?key="
                         + SecretConstants.RELOAD_SHARED_SECRET);
@@ -528,53 +515,42 @@ public class UpdateCheckerTracker extends EventListener {
         }
     }
 
-    private static void buildIndex() throws IOException {
+    private static void serializeModSearchDatabase() throws IOException {
         try (InputStream connectionToDatabase = new FileInputStream("uploads/modsearchdatabase.yaml")) {
             // download the mods
             List<HashMap<String, Object>> mods = new Yaml().load(connectionToDatabase);
             log.debug("There are " + mods.size() + " mods in the search database.");
 
-            new File("/tmp/mod_index").mkdir();
+            // serialize the mod list for the frontend to be able to load it
+            List<ModInfo> modDatabaseForSorting = new LinkedList<>();
+            Map<Integer, String> modCategories = new HashMap<>();
 
-            FSDirectory newDirectory = FSDirectory.open(Paths.get("/tmp/mod_index"));
-
-            // feed the mods to Lucene so that it indexes them
-            try (IndexWriter index = new IndexWriter(newDirectory, new IndexWriterConfig(new StandardAnalyzer()))) {
-                List<ModInfo> modDatabaseForSorting = new LinkedList<>();
-                Map<Integer, String> modCategories = new HashMap<>();
-
-                for (HashMap<String, Object> mod : mods) {
-                    Document modDocument = new Document();
-                    modDocument.add(new TextField("type", mod.get("GameBananaType").toString(), Field.Store.YES));
-                    modDocument.add(new TextField("id", mod.get("GameBananaId").toString(), Field.Store.YES));
-                    modDocument.add(new TextField("name", mod.get("Name").toString(), Field.Store.YES));
-                    modDocument.add(new TextField("author", mod.get("Author").toString(), Field.Store.NO));
-                    modDocument.add(new TextField("summary", mod.get("Description").toString(), Field.Store.NO));
-                    modDocument.add(new TextField("description", Jsoup.parseBodyFragment(mod.get("Text").toString()).text(), Field.Store.NO));
-                    modDocument.add(new TextField("category", mod.get("CategoryName").toString(), Field.Store.NO));
-                    index.addDocument(modDocument);
-
-                    if ("Mod".equals(mod.get("GameBananaType"))) {
-                        modCategories.put((int) mod.get("CategoryId"), mod.get("CategoryName").toString());
-                    }
-
-                    modDatabaseForSorting.add(new ModInfo(mod.get("GameBananaType").toString(), (int) mod.get("GameBananaId"),
-                            (int) mod.get("Likes"), (int) mod.get("Views"), (int) mod.get("Downloads"), (int) mod.get("CategoryId"),
-                            (int) mod.get("CreatedDate"), mod));
+            for (HashMap<String, Object> mod : mods) {
+                if ("Mod".equals(mod.get("GameBananaType"))) {
+                    modCategories.put((int) mod.get("CategoryId"), mod.get("CategoryName").toString());
                 }
 
-                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("/tmp/mod_search_database.ser"))) {
-                    oos.writeObject(modDatabaseForSorting);
-                    oos.writeObject(modCategories);
-                }
-                CloudStorageUtils.sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream");
-                new File("/tmp/mod_search_database.ser").delete();
+                HashMap<String, Object> modWithTokenizedName = new HashMap<>(mod);
+                modWithTokenizedName.put("TokenizedName", tokenize((String) mod.get("Name")));
+
+                modDatabaseForSorting.add(new ModInfo(mod.get("GameBananaType").toString(), (int) mod.get("GameBananaId"),
+                        (int) mod.get("Likes"), (int) mod.get("Views"), (int) mod.get("Downloads"), (int) mod.get("CategoryId"),
+                        (int) mod.get("CreatedDate"), modWithTokenizedName));
             }
 
-            log.debug("Index directory contains " + newDirectory.listAll().length + " files.");
-
-            newDirectory.close();
+            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("/tmp/mod_search_database.ser"))) {
+                oos.writeObject(modDatabaseForSorting);
+                oos.writeObject(modCategories);
+            }
+            CloudStorageUtils.sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream");
+            new File("/tmp/mod_search_database.ser").delete();
         }
+    }
+
+    private static String[] tokenize(String string) {
+        string = string.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9* ]", "");
+        while (string.contains("  ")) string = string.replace("  ", " ");
+        return string.split(" ");
     }
 
     /**

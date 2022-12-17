@@ -86,13 +86,6 @@
                 <version>0.4.0</version>
             </dependency>
 
-            <!-- https://mvnrepository.com/artifact/org.apache.lucene/lucene-core -->
-            <dependency>
-                <groupId>org.apache.lucene</groupId>
-                <artifactId>lucene-core</artifactId>
-                <version>8.11.2</version>
-            </dependency>
-
             <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
