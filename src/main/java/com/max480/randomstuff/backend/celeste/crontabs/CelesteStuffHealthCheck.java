@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -15,7 +16,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -275,7 +275,7 @@ public class CelesteStuffHealthCheck {
 
         List<String> everestUpdate;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml")) {
-            Map<String, Map<String, Object>> mapped = new Yaml().load(is);
+            Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
             everestUpdate = mapped.values()
                     .stream()
                     .map(item -> item.get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString())
@@ -298,7 +298,7 @@ public class CelesteStuffHealthCheck {
 
         List<String> modSearchDatabase;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml")) {
-            List<Map<String, Object>> mapped = new Yaml().load(is);
+            List<Map<String, Object>> mapped = YamlUtil.load(is);
             modSearchDatabase = mapped.stream()
                     .map(item -> (List<String>) item.get("MirroredScreenshots"))
                     .flatMap(List::stream)
@@ -321,7 +321,7 @@ public class CelesteStuffHealthCheck {
 
         List<String> richPresenceIconsLocal;
         try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
-            Map<String, Map<String, List<String>>> mapped = new Yaml().load(is);
+            Map<String, Map<String, List<String>>> mapped = YamlUtil.load(is);
 
             for (Map.Entry<String, List<String>> hashToFiles : mapped.get("HashesToFiles").entrySet()) {
                 for (String file : hashToFiles.getValue()) {
@@ -489,14 +489,14 @@ public class CelesteStuffHealthCheck {
 
         // deprecated GameBanana search API
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE"), UTF_8)
-                .contains("{itemtype: Mod, itemid: 53650}")) {
+                .contains("itemid: 53650")) {
 
             throw new IOException("Extended Variant Mode search test failed");
         }
 
         // deprecated GameBanana sorted list API
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1"), UTF_8)
-                .contains("{itemtype: Tool, itemid: 6449}")) { // Everest
+                .contains("itemid: 6449")) { // Everest
 
             throw new IOException("Sorted list API test failed");
         }
@@ -963,7 +963,7 @@ public class CelesteStuffHealthCheck {
 
         String expected;
         try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("bot_server_counts.yaml")) {
-            int count = new Yaml().<Map<String, Integer>>load(is).get("ModStructureVerifier");
+            int count = YamlUtil.<Map<String, Integer>>load(is).get("ModStructureVerifier");
             expected = count + " " + (count == 1 ? "server" : "servers");
         }
 

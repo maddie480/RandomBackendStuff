@@ -1,11 +1,11 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.cloud.storage.*;
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +28,7 @@ public class LuaCutscenesDocumentationUploader {
         // (we want the mirror so that we don't impact download count... and because it tends to be more stable.)
         String luaCutscenesDownloadUrl;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml")) {
-            Map<String, Map<String, Object>> db = new Yaml().load(is);
+            Map<String, Map<String, Object>> db = YamlUtil.load(is);
             luaCutscenesDownloadUrl = db.get("LuaCutscenes").get("URL").toString();
         }
 

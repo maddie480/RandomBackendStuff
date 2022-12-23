@@ -4,9 +4,9 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.max480.everest.updatechecker.YamlUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -27,7 +27,7 @@ public class ModFileSearcher {
         // load mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-            mods = new Yaml().load(is);
+            mods = YamlUtil.load(is);
         }
 
         for (String mod : mods) {
@@ -37,7 +37,7 @@ public class ModFileSearcher {
             // load file list for the mod
             List<String> files;
             try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-                Map<String, Object> info = new Yaml().load(is);
+                Map<String, Object> info = YamlUtil.load(is);
                 files = (List<String>) info.get("Files");
             }
 
@@ -45,7 +45,7 @@ public class ModFileSearcher {
                 // load file listing for the mod, so that we know which PNG files to check for
                 List<String> fileList;
                 try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
-                    fileList = new Yaml().load(is);
+                    fileList = YamlUtil.load(is);
                 }
 
                 for (String path : fileList) {

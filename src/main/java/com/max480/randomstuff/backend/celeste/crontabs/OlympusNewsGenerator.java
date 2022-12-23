@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -10,12 +11,8 @@ import org.apache.commons.io.FileUtils;
 import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -76,7 +73,10 @@ public class OlympusNewsGenerator {
             String text = split.length < 3 ? null : split[2].trim();
 
             // parse the data part
-            Map<String, Object> dataParsed = new Yaml().load(data);
+            Map<String, Object> dataParsed;
+            try (ByteArrayInputStream is = new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8))) {
+                dataParsed = YamlUtil.load(is);
+            }
 
             // skip ignored news
             if ((boolean) dataParsed.get("ignore")) {

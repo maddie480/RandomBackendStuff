@@ -1,5 +1,6 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -10,7 +11,6 @@ import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.time.ZonedDateTime;
@@ -193,7 +193,7 @@ public class CustomEntityCatalogGenerator {
         // get the update checker database.
         Map<String, Map<String, Object>> everestUpdateYaml;
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            everestUpdateYaml = new Yaml().load(is);
+            everestUpdateYaml = YamlUtil.load(is);
         }
 
         refreshList(everestUpdateYaml);
@@ -235,7 +235,7 @@ public class CustomEntityCatalogGenerator {
         // get the dependency graph.
         Map<String, Map<String, Object>> dependencyGraphYaml;
         try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
-            dependencyGraphYaml = new Yaml().load(is);
+            dependencyGraphYaml = YamlUtil.load(is);
         }
 
         for (QueriedModInfo info : new HashSet<>(modInfo)) {
@@ -273,7 +273,7 @@ public class CustomEntityCatalogGenerator {
         // fill out the category IDs for all mods.
         List<Map<String, Object>> modSearchDatabase;
         try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
-            modSearchDatabase = new Yaml().load(is);
+            modSearchDatabase = YamlUtil.load(is);
         }
 
         for (QueriedModInfo modInfo : modInfo) {
@@ -353,14 +353,14 @@ public class CustomEntityCatalogGenerator {
         // load the entire mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-            mods = new Yaml().load(is);
+            mods = YamlUtil.load(is);
         }
 
         for (String mod : mods) {
             // load this mod's info
             Map<String, Object> fileInfo;
             try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-                fileInfo = new Yaml().load(is);
+                fileInfo = YamlUtil.load(is);
             }
 
             // create a QueriedModInfo for it
@@ -401,7 +401,7 @@ public class CustomEntityCatalogGenerator {
         if (new File("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml").exists()) {
             Map<String, List<String>> entityList;
             try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml")) {
-                entityList = new Yaml().load(is);
+                entityList = YamlUtil.load(is);
             }
 
             for (String entity : entityList.get("Entities")) {

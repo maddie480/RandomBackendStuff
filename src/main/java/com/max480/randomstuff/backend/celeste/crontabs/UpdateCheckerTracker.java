@@ -4,6 +4,7 @@ import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import com.max480.everest.updatechecker.EventListener;
 import com.max480.everest.updatechecker.Mod;
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import com.max480.randomstuff.backend.utils.CloudStorageUtils;
@@ -17,8 +18,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -518,7 +517,7 @@ public class UpdateCheckerTracker extends EventListener {
     private static void serializeModSearchDatabase() throws IOException {
         try (InputStream connectionToDatabase = new FileInputStream("uploads/modsearchdatabase.yaml")) {
             // download the mods
-            List<HashMap<String, Object>> mods = new Yaml().load(connectionToDatabase);
+            List<HashMap<String, Object>> mods = YamlUtil.load(connectionToDatabase);
             log.debug("There are " + mods.size() + " mods in the search database.");
 
             // serialize the mod list for the frontend to be able to load it
@@ -560,7 +559,7 @@ public class UpdateCheckerTracker extends EventListener {
         // read
         Map<String, Map<String, Object>> dependencyGraph;
         try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
-            dependencyGraph = new Yaml().load(is);
+            dependencyGraph = YamlUtil.load(is);
         }
 
         // convert
@@ -570,7 +569,10 @@ public class UpdateCheckerTracker extends EventListener {
         }
 
         // write
-        return new Yaml().dumpAs(dependencyGraph, null, DumperOptions.FlowStyle.BLOCK);
+        try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+            YamlUtil.dump(dependencyGraph, os);
+            return os.toString(UTF_8);
+        }
     }
 
     /**
@@ -602,7 +604,7 @@ public class UpdateCheckerTracker extends EventListener {
 
         Map<String, String> assets = getElementMap("", file -> {
             try (InputStream is = new FileInputStream(file)) {
-                return new Yaml().<List<String>>load(is)
+                return YamlUtil.<List<String>>load(is)
                         .stream().filter(e -> e.toLowerCase(Locale.ROOT).startsWith("graphics/atlases/gameplay/bgs/")
                                 || e.toLowerCase(Locale.ROOT).startsWith("graphics/atlases/gameplay/decals/"))
                         .collect(Collectors.toList());
@@ -622,14 +624,14 @@ public class UpdateCheckerTracker extends EventListener {
     private static Map<String, String> getEntityMap(String type) throws IOException {
         Map<String, String> ahornEntities = getElementMap("ahorn_", file -> {
             try (InputStream is = new FileInputStream(file)) {
-                Map<String, List<String>> info = new Yaml().load(is);
+                Map<String, List<String>> info = YamlUtil.load(is);
                 return info.get(type);
             }
         });
 
         Map<String, String> loennEntities = getElementMap("loenn_", file -> {
             try (InputStream is = new FileInputStream(file)) {
-                Map<String, List<String>> info = new Yaml().load(is);
+                Map<String, List<String>> info = YamlUtil.load(is);
                 return info.get(type);
             }
         });
@@ -651,7 +653,7 @@ public class UpdateCheckerTracker extends EventListener {
         // load the updater database.
         Map<String, Map<String, Object>> updaterDatabase;
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = new Yaml().load(is);
+            updaterDatabase = YamlUtil.load(is);
         }
 
         Map<String, String> elementMap = new HashMap<>();
@@ -705,7 +707,7 @@ public class UpdateCheckerTracker extends EventListener {
         result.put("latestUpdatesEntries", latestUpdates);
 
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            Map<Object, Object> mods = new Yaml().load(is);
+            Map<Object, Object> mods = YamlUtil.load(is);
             result.put("modCount", mods.size());
         }
 

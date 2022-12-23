@@ -9,14 +9,16 @@ import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
@@ -50,16 +52,19 @@ public class ServerCountUploader {
         }
 
         // write a file with all counts in it and send it to Cloud Storage.
-        String yamlData = new Yaml().dump(ImmutableMap.of(
-                "TimezoneBotLite", timezoneBotServerCount,
-                "TimezoneBotFull", TimezoneBot.getServerCount(),
-                "ModStructureVerifier", ModStructureVerifier.getServerCount(),
-                "GamesBot", gamesBotServerCount,
-                "CustomSlashCommands", customSlashCommandsServerCount
-        ));
-        CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml");
+        try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+            YamlUtil.dump(ImmutableMap.of(
+                    "TimezoneBotLite", timezoneBotServerCount,
+                    "TimezoneBotFull", TimezoneBot.getServerCount(),
+                    "ModStructureVerifier", ModStructureVerifier.getServerCount(),
+                    "GamesBot", gamesBotServerCount,
+                    "CustomSlashCommands", customSlashCommandsServerCount
+            ), os);
 
-        logger.info("Stats saved on Cloud Storage: {}", yamlData);
+            String yamlData = os.toString(StandardCharsets.UTF_8);
+            CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml");
+            logger.info("Stats saved on Cloud Storage: {}", yamlData);
+        }
 
         TopGGCommunicator.refreshServerCounts(gamesBotServerCount, customSlashCommandsServerCount, timezoneBotServerCount);
     }

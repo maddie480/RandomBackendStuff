@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.discord.modstructureverifier;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.everest.updatechecker.ZipFileWithAutoEncoding;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -35,8 +36,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
 
 import javax.annotation.Nonnull;
 import javax.xml.XMLConstants;
@@ -516,7 +515,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         }
 
                         try (InputStream yaml = new FileInputStream(dir + "/everest.yaml")) {
-                            yamlContents = new Yaml().load(yaml);
+                            yamlContents = YamlUtil.load(yaml);
                         }
                     }
 
@@ -630,7 +629,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
                     Map<String, Map<String, Object>> databaseContents;
                     try (InputStream databaseFile = new FileInputStream("uploads/everestupdate.yaml")) {
-                        databaseContents = new Yaml().load(databaseFile);
+                        databaseContents = YamlUtil.load(databaseFile);
                     }
 
                     for (String dependency : missingDependencies) {
@@ -644,7 +643,10 @@ public class ModStructureVerifier extends ListenerAdapter {
                             " Here is an updated version of your <code>everest.yaml</code> with those dependencies added.",
                             " Here is an updated version of your `everest.yaml` with those dependencies added.");
 
-                    updatedYaml = new Yaml().dumpAs(yamlContents, null, DumperOptions.FlowStyle.BLOCK);
+                    try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                        YamlUtil.dump(yamlContents, os);
+                        updatedYaml = os.toString(UTF_8);
+                    }
                 }
 
                 if (event != null) {
@@ -759,7 +761,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
         // collect vanilla entity info by grabbing the file left by the update checker.
         try (InputStream vanillaEntities = new FileInputStream("modfilesdatabase/ahorn_vanilla.yaml")) {
-            Map<String, List<String>> entitiesList = new Yaml().load(vanillaEntities);
+            Map<String, List<String>> entitiesList = YamlUtil.load(vanillaEntities);
             availableEntities = new HashSet<>(entitiesList.get("Entities"));
             availableTriggers = new HashSet<>(entitiesList.get("Triggers"));
             availableEffects = new HashSet<>(entitiesList.get("Effects"));
@@ -782,7 +784,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         logger.debug("Loading mod database for decal & styleground analysis...");
         Map<String, Map<String, Object>> databaseContents;
         try (InputStream databaseFile = new FileInputStream("uploads/everestupdate.yaml")) {
-            databaseContents = new Yaml().load(databaseFile);
+            databaseContents = YamlUtil.load(databaseFile);
         }
 
         for (String dep : dependencies) {
@@ -800,7 +802,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         logger.debug("Loading decals and stylegrounds from dependency {} (file {})...", dep, modFilesDatabaseFile.getAbsolutePath());
                         List<String> depFileListing;
                         try (InputStream databaseFile = new FileInputStream(modFilesDatabaseFile)) {
-                            depFileListing = new Yaml().load(databaseFile);
+                            depFileListing = YamlUtil.load(databaseFile);
                         }
 
                         // get everything looking like a decal or a styleground.
@@ -825,7 +827,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             if (dep.equals("StrawberryJam2021")) {
                 // download and analyze the SJ2021 helper.
                 try (InputStream databaseStrawberryJam = ConnectionUtils.openStreamWithTimeout(SecretConstants.STRAWBERRY_JAM_LOCATION)) {
-                    String whereIsStrawberryJam = new Yaml().<Map<String, Map<String, Object>>>load(databaseStrawberryJam)
+                    String whereIsStrawberryJam = YamlUtil.<Map<String, Map<String, Object>>>load(databaseStrawberryJam)
                             .get("StrawberryJam2021")
                             .get("URL").toString();
 
@@ -937,7 +939,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             // there is! load the entities, triggers and effects from it.
             logger.debug("Loading {} entities, triggers and effects from dependency {} (file {})...", mapEditor, dep, modFilesDatabaseEditorFile.getAbsolutePath());
             try (InputStream databaseFile = new FileInputStream(modFilesDatabaseEditorFile)) {
-                Map<String, List<String>> entitiesList = new Yaml().load(databaseFile);
+                Map<String, List<String>> entitiesList = YamlUtil.load(databaseFile);
                 availableEntities.addAll(entitiesList.get("Entities"));
                 availableTriggers.addAll(entitiesList.get("Triggers"));
                 availableEffects.addAll(entitiesList.get("Effects"));

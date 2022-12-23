@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.everest.updatechecker.ZipFileWithAutoEncoding;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -13,7 +14,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -66,13 +66,13 @@ public class GameBananaAutomatedChecks {
         // and we want to load the previous state to be sure we don't handle already handled mods.
         List<String> oldResults;
         try (InputStream is = new FileInputStream("already_validated_dll_files.yaml")) {
-            oldResults = new Yaml().load(is);
+            oldResults = YamlUtil.load(is);
         }
 
         // download the updater database to figure out which mods we should scan...
         Map<String, Map<String, Object>> updaterDatabase;
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = new Yaml().load(is);
+            updaterDatabase = YamlUtil.load(is);
         }
 
         for (Map.Entry<String, Map<String, Object>> modEntry : updaterDatabase.entrySet()) {
@@ -92,7 +92,7 @@ public class GameBananaAutomatedChecks {
                 try (InputStream is = new FileInputStream(
                         "modfilesdatabase/" + mod.get("GameBananaType") + "/" + mod.get("GameBananaId") + "/" + fileName + ".yaml")) {
 
-                    fileList = new Yaml().load(is);
+                    fileList = YamlUtil.load(is);
                 }
 
                 if (fileList.stream().anyMatch(file -> file.toLowerCase(Locale.ROOT).endsWith(".dll"))) {
@@ -115,7 +115,7 @@ public class GameBananaAutomatedChecks {
                         // read everest.yaml without extracting
                         List<Map<String, Object>> yamlContent;
                         try (InputStream is = zip.getInputStream(yaml)) {
-                            yamlContent = new Yaml().load(is);
+                            yamlContent = YamlUtil.load(is);
                         }
 
                         boolean yieldReturnIssue = false;
@@ -213,8 +213,8 @@ public class GameBananaAutomatedChecks {
             }
         }
 
-        try (FileWriter writer = new FileWriter("already_validated_dll_files.yaml")) {
-            new Yaml().dump(newResults, writer);
+        try (OutputStream os = new FileOutputStream("already_validated_dll_files.yaml")) {
+            YamlUtil.dump(newResults, os);
         }
     }
 
@@ -227,7 +227,7 @@ public class GameBananaAutomatedChecks {
         // load mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-            mods = new Yaml().load(is);
+            mods = YamlUtil.load(is);
         }
 
         for (String mod : mods) {
@@ -240,7 +240,7 @@ public class GameBananaAutomatedChecks {
         String modName;
         List<String> files;
         try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-            Map<String, Object> info = new Yaml().load(is);
+            Map<String, Object> info = YamlUtil.load(is);
             modName = info.get("Name").toString();
             files = (List<String>) info.get("Files");
         }
@@ -250,7 +250,7 @@ public class GameBananaAutomatedChecks {
             if (Integer.parseInt(file) > 863667) {
                 List<String> contents;
                 try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
-                    contents = new Yaml().load(is);
+                    contents = YamlUtil.load(is);
                 }
 
                 for (String entry : contents) {
@@ -277,7 +277,7 @@ public class GameBananaAutomatedChecks {
     public static void checkForDuplicateModIds() throws IOException {
         Map<String, String> excludedFilesList;
         try (InputStream is = new FileInputStream("uploads/everestupdateexcluded.yaml")) {
-            excludedFilesList = new Yaml().load(is);
+            excludedFilesList = YamlUtil.load(is);
         }
 
         Set<Pair<String, String>> alreadyFoundConflicts = new HashSet<>();
@@ -363,28 +363,18 @@ public class GameBananaAutomatedChecks {
     }
 
     static Pair<String, String> whichModDoesFileBelongTo(String fileId) throws IOException {
-        // load mod list
-        List<String> mods = ConnectionUtils.runWithRetry(() -> {
-            try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-                return new Yaml().load(is);
-            }
-        });
+        for (String itemtype : new File("modfilesdatabase").list()) {
+            if (!new File("modfilesdatabase/" + itemtype).isDirectory()) continue;
 
-        for (String mod : mods) {
-            // load file list for the mod
-            String modName;
-            List<String> files;
-            Map<String, Object> info = ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-                    return new Yaml().load(is);
+            for (String itemid : new File("modfilesdatabase/" + itemtype).list()) {
+                if (new File("modfilesdatabase/" + itemtype + "/" + itemid + "/" + fileId + ".yaml").exists()) {
+                    String modName;
+                    try (InputStream is = new FileInputStream("modfilesdatabase/" + itemtype + "/" + itemid + "/info.yaml")) {
+                        Map<String, Object> info = YamlUtil.load(is);
+                        modName = info.get("Name").toString();
+                    }
+                    return Pair.of(modName, itemtype + "/" + itemid);
                 }
-            });
-
-            modName = info.get("Name").toString();
-            files = (List<String>) info.get("Files");
-
-            if (files.contains(fileId)) {
-                return Pair.of(modName, mod);
             }
         }
 
@@ -395,12 +385,12 @@ public class GameBananaAutomatedChecks {
         List<String> oldAlreadyChecked;
         List<String> newAlreadyChecked = new ArrayList<>();
         try (InputStream is = new FileInputStream("already_validated_yaml_files.yaml")) {
-            oldAlreadyChecked = new Yaml().load(is);
+            oldAlreadyChecked = YamlUtil.load(is);
         }
 
         Map<String, Map<String, Object>> updaterDatabase;
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = new Yaml().load(is);
+            updaterDatabase = YamlUtil.load(is);
         }
 
         for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
@@ -451,7 +441,7 @@ public class GameBananaAutomatedChecks {
                         // let's check that it refers to DLLs that actually exist.
                         List<Map<String, Object>> yamlFile;
                         try (InputStream is = Files.newInputStream(destination)) {
-                            yamlFile = new Yaml().load(is);
+                            yamlFile = YamlUtil.load(is);
                         }
 
                         boolean problem = false;
@@ -484,15 +474,15 @@ public class GameBananaAutomatedChecks {
             newAlreadyChecked.add(url);
         }
 
-        try (FileWriter writer = new FileWriter("already_validated_yaml_files.yaml")) {
-            new Yaml().dump(newAlreadyChecked, writer);
+        try (OutputStream os = new FileOutputStream("already_validated_yaml_files.yaml")) {
+            YamlUtil.dump(newAlreadyChecked, os);
         }
     }
 
     public static void checkForFilesBelongingToMultipleMods() throws IOException {
         Map<String, Map<String, Object>> updaterDatabase;
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = new Yaml().load(is);
+            updaterDatabase = YamlUtil.load(is);
         }
 
         Set<String> filesWeAlreadyWarnedAbout = new HashSet<>();
@@ -529,7 +519,7 @@ public class GameBananaAutomatedChecks {
     public static void checkUnapprovedCategories() throws IOException {
         List<Map<String, Object>> modSearchDatabase;
         try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
-            modSearchDatabase = new Yaml().load(is);
+            modSearchDatabase = YamlUtil.load(is);
         }
 
         for (String itemtype : modSearchDatabase.stream().map(m -> (String) m.get("GameBananaType")).collect(Collectors.toSet())) {
@@ -607,13 +597,13 @@ public class GameBananaAutomatedChecks {
         List<String> oldAlreadyChecked;
         List<String> newAlreadyChecked = new ArrayList<>();
         try (InputStream is = new FileInputStream("already_validated_png_files.yaml")) {
-            oldAlreadyChecked = new Yaml().load(is);
+            oldAlreadyChecked = YamlUtil.load(is);
         }
 
         // load mod list
         List<String> mods;
         try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-            mods = new Yaml().load(is);
+            mods = YamlUtil.load(is);
         }
 
         for (String mod : mods) {
@@ -621,7 +611,7 @@ public class GameBananaAutomatedChecks {
             String modName;
             List<String> files;
             try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-                Map<String, Object> info = new Yaml().load(is);
+                Map<String, Object> info = YamlUtil.load(is);
                 modName = info.get("Name").toString();
                 files = (List<String>) info.get("Files");
             }
@@ -637,7 +627,7 @@ public class GameBananaAutomatedChecks {
                 // load file listing for the mod, so that we know which PNG files to check for
                 List<String> filesToCheck;
                 try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
-                    List<String> fileList = new Yaml().load(is);
+                    List<String> fileList = YamlUtil.load(is);
                     filesToCheck = fileList.stream()
                             .filter(fileName -> fileName.startsWith("Graphics/") && fileName.endsWith(".png"))
                             .collect(Collectors.toList());
@@ -706,8 +696,8 @@ public class GameBananaAutomatedChecks {
             }
         }
 
-        try (FileWriter writer = new FileWriter("already_validated_png_files.yaml")) {
-            new Yaml().dump(newAlreadyChecked, writer);
+        try (OutputStream os = new FileOutputStream("already_validated_png_files.yaml")) {
+            YamlUtil.dump(newAlreadyChecked, os);
         }
     }
 
