@@ -53,4 +53,4 @@ jobs:
         cd ..
 
         # Build the project
-        mvn -B package --file pom.xml
+        mvn -B verify --file pom.xml
