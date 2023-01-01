@@ -845,19 +845,19 @@ public class ModStructureVerifier extends ListenerAdapter {
             FileUtils.copyToFile(is, tempBin);
         }
 
-        // convert it to XML
-        Document binAsXmlFile = null;
-        logger.debug("Reading {} as XML...", tempBin.getAbsolutePath());
-        try {
-            binAsXmlFile = BinToXML.toXmlDocument(tempBin.getAbsolutePath());
+        // convert it to JSON
+        JSONObject binAsJSON = null;
+        logger.debug("Reading {} as JSON...", tempBin.getAbsolutePath());
+        try (InputStream is = new FileInputStream(tempBin)) {
+            binAsJSON = BinToJSON.toJsonDocument(is);
         } catch (IOException e) {
-            logger.error("Something bad happened while reading the XML!", e);
+            logger.error("Something bad happened while reading the map bin!", e);
         }
         tempBin.delete();
 
         String mapPathEsc = formatProblematicThing(isHtml, mapPath);
 
-        if (binAsXmlFile == null) {
+        if (binAsJSON == null) {
             // conversion failed
             problemList.add("Something wrong happened while trying to analyze " + mapPathEsc + " \uD83E\uDD14 check that it is not corrupt."); // :thinking:
         } else {
@@ -868,12 +868,13 @@ public class ModStructureVerifier extends ListenerAdapter {
             Set<String> badTriggers = new HashSet<>();
             Set<String> badEffects = new HashSet<>();
 
-            { // check all decals in a case insensitive way
-                NodeList decals = binAsXmlFile.getElementsByTagName("decal");
-                for (int i = 0; i < decals.getLength(); i++) {
-                    Node decal = decals.item(i);
-                    if (decal.getAttributes().getNamedItem("texture") != null) {
-                        String decalName = decal.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
+            { // check all decals in a case-insensitive way
+                List<JSONObject> decals = getElementsAt(binAsJSON, "$.celestemap.levels.level.fgdecals", "$");
+                decals.addAll(getElementsAt(binAsJSON, "$.celestemap.levels.level.bgdecals", "$"));
+
+                for (JSONObject decal : decals) {
+                    if (decal.getJSONObject("attributes").has("texture")) {
+                        String decalName = decal.getJSONObject("attributes").getString("texture").replace("\\", "/");
                         if (decalName.endsWith(".png")) decalName = decalName.substring(0, decalName.length() - 4);
                         if (!availableDecals.contains("decals/" + decalName.toLowerCase(Locale.ROOT))) {
                             badDecals.add(decalName);
@@ -883,11 +884,13 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
 
             { // check all stylegrounds starting with bgs/ (to exclude stuff from the Misc atlas) in a case-insensitive way.
-                NodeList stylegrounds = binAsXmlFile.getElementsByTagName("parallax");
-                for (int i = 0; i < stylegrounds.getLength(); i++) {
-                    Node styleground = stylegrounds.item(i);
-                    if (styleground.getAttributes().getNamedItem("texture") != null) {
-                        String sgName = styleground.getAttributes().getNamedItem("texture").getNodeValue().replace("\\", "/");
+                List<JSONObject> stylegrounds = getElementsAt(binAsJSON, "$.celestemap.style.foregrounds", "$");
+                stylegrounds.addAll(getElementsAt(binAsJSON, "$.celestemap.style.backgrounds", "$"));
+
+                for (JSONObject styleground : stylegrounds) {
+                    if ("parallax".equals(styleground.getString("name").toLowerCase(Locale.ROOT))
+                            && styleground.getJSONObject("attributes").has("texture")) {
+                        String sgName = styleground.getJSONObject("attributes").getString("texture").replace("\\", "/");
                         if (sgName.endsWith(".png")) sgName = sgName.substring(0, sgName.length() - 4);
                         if (sgName.startsWith("bgs/") && !availableStylegrounds.contains(sgName.toLowerCase(Locale.ROOT))) {
                             badSGs.add(sgName);
@@ -897,10 +900,10 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
 
             // check entities, triggers and effects.
-            checkForMissingEntities(availableEntities, "entities", badEntities, binAsXmlFile);
-            checkForMissingEntities(availableTriggers, "triggers", badTriggers, binAsXmlFile);
-            checkForMissingEntities(availableEffects, "Foregrounds", badEffects, binAsXmlFile);
-            checkForMissingEntities(availableEffects, "Backgrounds", badEffects, binAsXmlFile);
+            checkForMissingEntities(availableEntities, "$.celestemap.levels.level.entities", badEntities, binAsJSON);
+            checkForMissingEntities(availableTriggers, "$.celestemap.levels.level.triggers", badTriggers, binAsJSON);
+            checkForMissingEntities(availableEffects, "$.celestemap.style.foregrounds", badEffects, binAsJSON);
+            checkForMissingEntities(availableEffects, "$.celestemap.style.backgrounds", badEffects, binAsJSON);
 
             // and list out every single problem!
             parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in " + mapPathEsc + ", use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals), isHtml);
@@ -947,18 +950,14 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private static void checkForMissingEntities(Set<String> availableEntities, String tagName, Set<String> badEntities, Document document) {
+    private static void checkForMissingEntities(Set<String> availableEntities, String jsonPath, Set<String> badEntities, JSONObject binAsJSON) {
         // list all the <entities> tags.
-        NodeList entities = document.getElementsByTagName(tagName);
-        for (int i = 0; i < entities.getLength(); i++) {
-            // ... go through its children...
-            Node entityBlock = entities.item(i);
-            for (int j = 0; j < entityBlock.getChildNodes().getLength(); j++) {
-                // ... and check if this is an entity that exists, replacing "_" with "/" since BinToXML turns "/" into "_" for XML escaping purposes.
-                String entityName = entityBlock.getChildNodes().item(j).getNodeName();
-                if (!availableEntities.contains(entityName) && !availableEntities.contains(entityName.replace("_", "/"))) {
-                    badEntities.add(entityName.replace("_", "/"));
-                }
+        List<JSONObject> entityList = getElementsAt(binAsJSON, jsonPath, "$");
+        for (JSONObject entity : entityList) {
+            // ... and check if this is an entity that exists.
+            String entityName = entity.getString("name");
+            if (!availableEntities.contains(entityName)) {
+                badEntities.add(entityName);
             }
         }
     }
@@ -1415,5 +1414,24 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     private static String pickFormat(boolean isHtml, String html, String md) {
         return isHtml ? html : md;
+    }
+
+    private static List<JSONObject> getElementsAt(JSONObject node, String filterPath, String currentPath) {
+        currentPath += "." + node.getString("name").toLowerCase(Locale.ROOT);
+        if (currentPath.equals(filterPath)) {
+            List<JSONObject> result = new ArrayList<>(node.getJSONArray("children").length());
+            for (Object o : node.getJSONArray("children")) {
+                result.add((JSONObject) o);
+            }
+            return result;
+        }
+
+        List<JSONObject> result = new LinkedList<>();
+        for (Object o : node.getJSONArray("children")) {
+            List<JSONObject> subList = getElementsAt((JSONObject) o, filterPath, currentPath);
+            result.addAll(subList);
+        }
+
+        return result;
     }
 }

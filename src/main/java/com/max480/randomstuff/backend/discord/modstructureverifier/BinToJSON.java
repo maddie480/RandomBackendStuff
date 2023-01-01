@@ -1,32 +1,23 @@
 package com.max480.randomstuff.backend.discord.modstructureverifier;
 
 import org.apache.commons.io.EndianUtils;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
- * A port of iSkLz's BinToXML tool to Java, for use by the {@link ModStructureVerifier}.
+ * A port of iSkLz's BinToXML tool to Java, made to output JSON instead of XML.
+ * For use by the Mod Structure Verifier and by the Map Tree Viewer.
  */
-public class BinToXML {
-    private static final Logger log = LoggerFactory.getLogger(BinToXML.class);
+public class BinToJSON {
+    private static final Logger logger = LoggerFactory.getLogger(BinToJSON.class);
 
     private enum AttributeValueType {
         Boolean(0),
@@ -51,52 +42,30 @@ public class BinToXML {
         }
     }
 
-    public static void convert(String inputPath, String outputPath) throws IOException {
-        Document converted = toXmlDocument(inputPath);
-
-        try {
-            // write the Document to an XML file
-            DOMSource source = new DOMSource(converted);
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            StreamResult file = new StreamResult(new File(outputPath));
-            transformer.transform(source, file);
-
-            log.info("Wrote converted XML to {}", outputPath);
-        } catch (TransformerException e) {
-            throw new IOException("Error while writing out XML to file!", e);
-        }
-    }
-
-    public static Document toXmlDocument(String inputPath) throws IOException {
+    public static JSONObject toJsonDocument(InputStream is) {
         long startTime = System.currentTimeMillis();
 
-        if (!new File(inputPath).isFile()) {
-            throw new IOException("Input file does not exist!");
-        }
+        try (DataInputStream bin = new DataInputStream(is)) {
+            JSONObject root = new JSONObject();
+            root.put("name", "CelesteMap");
+            root.put("attributes", new JSONObject());
+            root.put("children", new JSONArray());
 
-        try (DataInputStream bin = new DataInputStream(new FileInputStream(inputPath))) {
-            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-            DocumentBuilder db = dbf.newDocumentBuilder();
-            Document document = db.newDocument();
-
-            Element root = document.createElement("CelesteMap");
-            document.appendChild(root);
-            readString(bin); // skip "CELESTE MAP"
-            addAttribute(document, root, "Package", readString(bin));
+            root.getJSONObject("attributes").put("Header", readString(bin));
+            root.getJSONObject("attributes").put("Package", readString(bin));
 
             int lookupTableSize = EndianUtils.readSwappedShort(bin);
             String[] stringLookupTable = new String[lookupTableSize];
             for (int i = 0; i < lookupTableSize; i++) {
                 stringLookupTable[i] = readString(bin);
             }
-            recursiveConvert(bin, document, root, stringLookupTable, true);
+            recursiveConvert(bin, root, stringLookupTable, true);
 
-            log.info("Converted {} to XML in {} ms", inputPath, System.currentTimeMillis() - startTime);
-            return document;
+            logger.info("Converted input to JSON in " + (System.currentTimeMillis() - startTime) + " ms");
+            return root;
         } catch (Exception e) {
-            log.error("Could not convert BIN to XML!", e);
-            throw new IOException("Error while reading BIN file!", e);
+            logger.warn("Could not convert BIN to JSON! " + e);
+            return null;
         }
     }
 
@@ -121,23 +90,29 @@ public class BinToXML {
         return new String(stringBytes, StandardCharsets.UTF_8);
     }
 
-    private static void recursiveConvert(DataInputStream bin, Document document, Node parent, String[] stringLookupTable, boolean first) throws Exception {
-        Node element;
+    private static void recursiveConvert(DataInputStream bin, JSONObject current, String[] stringLookupTable, boolean first) throws Exception {
+        JSONObject element;
         if (!first) {
-            element = document.createElement(escapeXmlName(stringLookupTable[EndianUtils.readSwappedShort(bin)]));
-            parent.appendChild(element);
+            element = new JSONObject();
+            element.put("name", stringLookupTable[EndianUtils.readSwappedShort(bin)]);
+            element.put("attributes", new JSONObject());
+            element.put("children", new JSONArray());
+
+            current.getJSONArray("children").put(element);
         } else {
-            element = parent;
+            element = current;
             EndianUtils.readSwappedShort(bin);
         }
-        recursiveConvertAttributes(bin, document, element, stringLookupTable, bin.readUnsignedByte());
+
+        recursiveConvertAttributes(bin, element, stringLookupTable, bin.readUnsignedByte());
+
         short childrenCount = EndianUtils.readSwappedShort(bin);
         for (int i = 0; i < childrenCount; i++) {
-            recursiveConvert(bin, document, element, stringLookupTable, false);
+            recursiveConvert(bin, element, stringLookupTable, false);
         }
     }
 
-    private static void recursiveConvertAttributes(DataInputStream bin, Document document, Node element, String[] stringLookupTable, int count) throws Exception {
+    private static void recursiveConvertAttributes(DataInputStream bin, JSONObject element, String[] stringLookupTable, int count) throws Exception {
         for (byte b = 0; b < count; b = (byte) (b + 1)) {
             String localName = stringLookupTable[EndianUtils.readSwappedShort(bin)];
             AttributeValueType attributeValueType = AttributeValueType.fromValue(bin.readUnsignedByte());
@@ -186,7 +161,8 @@ public class BinToXML {
                     obj = stringLookupTable[EndianUtils.readSwappedShort(bin)];
                     break;
             }
-            addAttribute(document, element, localName, obj.toString());
+
+            element.getJSONObject("attributes").put(localName, obj);
         }
     }
 
@@ -196,23 +172,5 @@ public class BinToXML {
         int i = b;
         if (i < 0) i += 256;
         return i;
-    }
-
-    private static void addAttribute(Document document, Node node, String name, String value) {
-        Attr attribute = document.createAttribute(escapeXmlName(name));
-        attribute.setValue(value);
-        node.getAttributes().setNamedItem(attribute);
-    }
-
-    public static String escapeXmlName(String name) {
-        // replace any disallowed character with _
-        name = name.replaceAll("[^\\w\\d:_.-]", "_");
-
-        // the first character is more restricted, replace it with _ as well if necessary
-        if (name.matches("^[^\\w:_].*")) {
-            name = "_" + name.substring(1);
-        }
-
-        return name;
     }
 }
