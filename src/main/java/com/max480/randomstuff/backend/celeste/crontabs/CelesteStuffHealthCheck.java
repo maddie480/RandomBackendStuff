@@ -987,4 +987,24 @@ public class CelesteStuffHealthCheck {
             throw new IOException("#celeste_news_network subscription service page does not show subscriber count anywhere!");
         }
     }
+
+    /**
+     * Checks that the static pages still responds (since they're not *that* static).
+     * Run daily.
+     */
+    public static void checkStaticPages() throws IOException {
+        for (String url : Arrays.asList(
+                "https://max480-random-stuff.appspot.com/",
+                "https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/detect-timezone",
+                "https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help",
+                "https://max480-random-stuff.appspot.com/discord-bots/terms-and-privacy",
+                "https://max480-random-stuff.appspot.com/estcequeckc.html"
+        )) {
+            log.debug("Checking response code of {}", url);
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
+            if (connection.getResponseCode() != 200) {
+                throw new IOException(url + " responded with " + connection.getResponseCode());
+            }
+        }
+    }
 }

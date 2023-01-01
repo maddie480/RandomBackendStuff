@@ -293,8 +293,8 @@ public class BotEventListener extends ListenerAdapter {
      */
     private static void sendDetectTimezoneLink(IReplyCallback event, DiscordLocale locale) {
         respondPrivately(event, localizeMessage(locale,
-                "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.",
-                "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/detect-timezone.html>."));
+                "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/detect-timezone>.",
+                "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/detect-timezone>."));
     }
 
     /**
@@ -354,9 +354,9 @@ public class BotEventListener extends ListenerAdapter {
             } else {
                 respondPrivately(event, localizeMessage(locale,
                         ":x: The given timezone was not recognized.\n" +
-                                "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/detect-timezone.html>.",
+                                "To figure out your timezone, visit <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/detect-timezone>.",
                         ":x: Le fuseau horaire que tu as donné n'a pas été reconnu.\n" +
-                                "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/detect-timezone.html>."));
+                                "Pour déterminer ton fuseau horaire, consulte <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/detect-timezone>."));
             }
         }
     }
@@ -916,14 +916,14 @@ public class BotEventListener extends ListenerAdapter {
         OptionMapping messageParam = slashCommandEvent.getOption("message");
 
         final String help = localizeMessage(locale,
-                "\n\nIf you need help, check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>",
-                "\n\nSi tu as besoin d'aide, consulte cette page pour avoir des explications et des exemples : <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>");
+                "\n\nIf you need help, check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help>",
+                "\n\nSi tu as besoin d'aide, consulte cette page pour avoir des explications et des exemples : <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help>");
 
         if (optionsParam != null) {
             if (optionsParam.getAsString().toLowerCase(Locale.ROOT).equals("help")) {
                 respondPrivately(slashCommandEvent, localizeMessage(locale,
-                        "Check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>",
-                        "Consulte cette page pour avoir des explications et des exemples : <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help.html>"));
+                        "Check this page for syntax and examples: <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help>",
+                        "Consulte cette page pour avoir des explications et des exemples : <https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help>"));
                 return;
             }
 

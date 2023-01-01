@@ -14,7 +14,7 @@ This folder contains some extra processes related to the Games Bot and the Custo
 - `CustomSlashCommandsCleanup`: this checks every day if the application is still present on all servers with registered custom slash commands, and deletes slash command information if this is not the case (since they do not exist on Discord's end anyway).
 - `ServerCountUploader`: fetches server counts of each bot and uploads a file on Google Cloud Storage for display on [the Discord bots page](https://max480-random-stuff.appspot.com/discord-bots) on the website.
   - The Timezone Bot (with roles) and the Mod Structure Verifier just use the number of servers the bot user is part of
-  - The Games Bot and Timezone Bot (without roles) use command history to figure out in how many servers they were used in the last 30 days ([command history is kept for no longer than that](https://max480-random-stuff.appspot.com/discord-bots/terms-and-privacy.html))
+  - The Games Bot and Timezone Bot (without roles) use command history to figure out in how many servers they were used in the last 30 days ([command history is kept for no longer than that](https://max480-random-stuff.appspot.com/discord-bots/terms-and-privacy))
   - Custom Slash Commands uses the amount of servers that have custom slash commands configured. This runs after `CustomSlashCommandsCleanup`, so the count takes removed servers into account
 - `TopGGCommunicator`: this class is in charge of communicating with [top.gg](https://top.gg/), where the Games Bot and Custom Slash Commands are referenced.
   - It uploads the server count for both bots, once a day, based on the results of `ServerCountUploader`
