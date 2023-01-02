@@ -46,6 +46,7 @@ JungleHelper/RemoteKevin=Slide Block
 JungleHelper/RemoteKevinRefill=Slide Block Refill
 JungleHelper/TheoStatue=Green Crystal
 JungleHelper/TheoStatueGate=Green Crystal Gate
+JungleHelper/TreeDepthController=Grabless Golden Strawberry
 JungleHelper/UIImageTrigger=UI Image Trigger
 JungleHelper/UITextTrigger=UI Text Trigger
 Madhunt/C3OshiroSecret=Chapter 3 Oshiro Secret
