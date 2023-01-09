@@ -476,6 +476,13 @@ public class CelesteStuffHealthCheck {
         }
         connection.disconnect();
 
+        // GameBanana info API (used by file searcher only)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-info?itemtype=Mod&itemid=53650"), UTF_8)
+                .contains("\"Name\":\"Extended Variant Mode\"")) {
+
+            throw new IOException("Extended Variant Mode info check failed");
+        }
+
         // deprecated GameBanana categories API
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories"), UTF_8)
                 .contains("- itemtype: Tool\n" +
