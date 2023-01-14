@@ -185,7 +185,7 @@ public class ModStructureVerifier extends ListenerAdapter {
     // == delete when SJ is out -- end
 
     /**
-     * This is called from {@link UpdateCheckerTracker} when the database changes (or on startup),
+     * This is called from UpdateCheckerTracker when the database changes (or on startup),
      * in order to refresh the asset maps.
      */
     public static void updateAssetToModDictionary(Map<String, String> assetToMod,
@@ -757,18 +757,27 @@ public class ModStructureVerifier extends ListenerAdapter {
         Set<String> availableStylegrounds = VanillaDatabase.allVanillaStylegrounds.stream().map(a -> a.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
         Set<String> availableEntities;
         Set<String> availableTriggers;
-        Set<String> availableEffects;
 
-        // collect vanilla entity info by grabbing the file left by the update checker.
-        try (InputStream vanillaEntities = new FileInputStream("modfilesdatabase/ahorn_vanilla.yaml")) {
-            Map<String, List<String>> entitiesList = YamlUtil.load(vanillaEntities);
+        // vanilla effects are case-insensitive, mod effects are not.
+        Set<String> availableVanillaEffects = new HashSet<>();
+        Set<String> availableModEffects = new HashSet<>();
+
+        // collect vanilla entity info by grabbing the files left by the update checker.
+        try (InputStream vanillaEntitiesFromAhorn = new FileInputStream("modfilesdatabase/ahorn_vanilla.yaml")) {
+            Map<String, List<String>> entitiesList = YamlUtil.load(vanillaEntitiesFromAhorn);
             availableEntities = new HashSet<>(entitiesList.get("Entities"));
             availableTriggers = new HashSet<>(entitiesList.get("Triggers"));
-            availableEffects = new HashSet<>(entitiesList.get("Effects"));
+            entitiesList.get("Effects").stream().map(s -> s.toLowerCase(Locale.ROOT)).forEach(availableVanillaEffects::add);
+        }
+        try (InputStream vanillaEntitiesFromLoenn = new FileInputStream("modfilesdatabase/loenn_vanilla.yaml")) {
+            Map<String, List<String>> entitiesList = YamlUtil.load(vanillaEntitiesFromLoenn);
+            availableEntities.addAll(entitiesList.get("Entities"));
+            availableTriggers.addAll(entitiesList.get("Triggers"));
+            entitiesList.get("Effects").stream().map(s -> s.toLowerCase(Locale.ROOT)).forEach(availableVanillaEffects::add);
         }
 
         // parallax is an effect too!
-        availableEffects.add("parallax");
+        availableVanillaEffects.add("parallax");
 
         // grab the decals and stylegrounds that ship with the mod.
         fileListing.stream()
@@ -817,8 +826,8 @@ public class ModStructureVerifier extends ListenerAdapter {
                     }
 
                     // is there a file for Ahorn and Lönn entities as well?
-                    checkMapEditorEntities("ahorn", availableEntities, availableTriggers, availableEffects, databaseContents, dep, depUrl);
-                    checkMapEditorEntities("loenn", availableEntities, availableTriggers, availableEffects, databaseContents, dep, depUrl);
+                    checkMapEditorEntities("ahorn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
+                    checkMapEditorEntities("loenn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
                 }
             }
 
@@ -831,7 +840,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                             .get("StrawberryJam2021")
                             .get("URL").toString();
 
-                    addStuffFromSJ2021(availableEntities, availableTriggers, availableEffects, whereIsStrawberryJam, isHtml);
+                    addStuffFromSJ2021(availableEntities, availableTriggers, availableModEffects, whereIsStrawberryJam, isHtml);
                 }
             }
 
@@ -900,10 +909,10 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
 
             // check entities, triggers and effects.
-            checkForMissingEntities(availableEntities, "$.celestemap.levels.level.entities", badEntities, binAsJSON);
-            checkForMissingEntities(availableTriggers, "$.celestemap.levels.level.triggers", badTriggers, binAsJSON);
-            checkForMissingEntities(availableEffects, "$.celestemap.style.foregrounds", badEffects, binAsJSON);
-            checkForMissingEntities(availableEffects, "$.celestemap.style.backgrounds", badEffects, binAsJSON);
+            checkForMissingEntities(availableEntities, Collections.emptySet(), "$.celestemap.levels.level.entities", badEntities, binAsJSON);
+            checkForMissingEntities(availableTriggers, Collections.emptySet(), "$.celestemap.levels.level.triggers", badTriggers, binAsJSON);
+            checkForMissingEntities(availableModEffects, availableVanillaEffects, "$.celestemap.style.foregrounds", badEffects, binAsJSON);
+            checkForMissingEntities(availableModEffects, availableVanillaEffects, "$.celestemap.style.backgrounds", badEffects, binAsJSON);
 
             // and list out every single problem!
             parseProblematicPaths(problemList, websiteProblemsList, "missingassets", "You use missing decals in " + mapPathEsc + ", use other ones or make sure your dependencies are set up correctly", new ArrayList<>(badDecals), isHtml);
@@ -950,13 +959,13 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private static void checkForMissingEntities(Set<String> availableEntities, String jsonPath, Set<String> badEntities, JSONObject binAsJSON) {
+    private static void checkForMissingEntities(Set<String> availableEntities, Set<String> availableEntitiesCaseInsensitive, String jsonPath, Set<String> badEntities, JSONObject binAsJSON) {
         // list all the <entities> tags.
         List<JSONObject> entityList = getElementsAt(binAsJSON, jsonPath, "$");
         for (JSONObject entity : entityList) {
             // ... and check if this is an entity that exists.
             String entityName = entity.getString("name");
-            if (!availableEntities.contains(entityName)) {
+            if (!availableEntities.contains(entityName) && !availableEntitiesCaseInsensitive.contains(entityName.toLowerCase(Locale.ROOT))) {
                 badEntities.add(entityName);
             }
         }
