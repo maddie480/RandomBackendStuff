@@ -401,7 +401,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             // otherwise, there should be at least one.
             List<String> maps = fileListing.stream()
                     .filter(entry -> entry.startsWith("Maps/") && entry.endsWith(".bin"))
-                    .collect(Collectors.toList());
+                    .toList();
 
             boolean shouldScanMapContents = true;
             if (maps.size() == 0) {
@@ -724,7 +724,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
             if (event != null) {
                 event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                        .sendMessage("An error occurred while scanning a zip: " + e.toString()).queue();
+                        .sendMessage("An error occurred while scanning a zip: " + e).queue();
 
                 event.getMessage().removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
                 event.getMessage().addReaction(Emoji.fromUnicode("\uD83D\uDCA3")).queue(); // :bomb:
@@ -1095,7 +1095,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 ZipEntry entry = zipEntries.nextElement();
                 if (entry.getName().startsWith("Ahorn/") && entry.getName().endsWith(".jl")) {
                     InputStream inputStream = zipFile.getInputStream(entry);
-                    extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, entry.getName(), inputStream, isHtml);
+                    extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, entry.getName(), inputStream);
                 }
             }
 
@@ -1116,7 +1116,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     // literal copy-paste from update checker code
     private static void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
-                                             String file, InputStream inputStream, boolean isHtml) throws IOException {
+                                             String file, InputStream inputStream) throws IOException {
 
         Pattern mapdefMatcher = Pattern.compile(".*@mapdef [A-Za-z]+ \"([^\"]+)\".*");
         Pattern pardefMatcher = Pattern.compile(".*Entity\\(\"([^\"]+)\".*");
@@ -1202,27 +1202,34 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         if (msg.equals("--help")) {
-            event.getChannel().sendMessage("`--setup-fixed-names [response channel] [collab assets folder name] [collab maps folder name]`\n" +
-                    "will tell the bot to analyze all the .zip files in the current channel, and to post issues in [response channel]." +
-                    "\n- [collab assets folder name] should identify the collab/contest and be alphanumeric. It will have to be used for asset folders (graphics, tutorials, etc)." +
-                    "\n- [collab maps folder name] is the name of the folder the collab/contest map bins will be in." +
-                    " It has to be alphanumeric, and can be identical to the assets folder name.\n\n" +
-                    "`--setup-free-names [response channel]`\n" +
-                    "allows everyone on the server to use the `--verify` command in the channel it is posted in, and will post issues in [response channel].\n" +
-                    "This allows people to verify their mods with the folder names they want.\n\n" +
-                    "`--setup-no-name [response channel]`\n" +
-                    "will tell the bot to analyze all the .zip files in the current channel, and to post issues in [response channel].\n" +
-                    "No checks will be done on folder names, and multiple maps are allowed.\n\n" +
-                    "`--verify [assets folder name] [maps folder name]`\n" +
-                    "will verify the given map (as an attachment, or as a Google Drive link) with the given parameters, with the same checks as collabs. Both names should be alphanumeric.\n\n" +
-                    "`--generate-font [language]`\n" +
-                    "will generate font files with all missing characters from the vanilla font. You should send your dialog file along with this command. `[language]` is one of `chinese`, `japanese`, `korean`, `renogare` or `russian`.\n\n" +
-                    "`--remove-setup`\n" +
-                    "will tell the bot to stop analyzing the .zip files in the current channel.\n\n" +
-                    "`--rules`\n" +
-                    "will print out the checks run by the bot in the current channel.\n\n" +
-                    "`--reactions`\n" +
-                    "will give a message explaining what the different reactions from the bot mean.").queue();
+            event.getChannel().sendMessage("""
+                    `--setup-fixed-names [response channel] [collab assets folder name] [collab maps folder name]`
+                    will tell the bot to analyze all the .zip files in the current channel, and to post issues in [response channel].
+                    - [collab assets folder name] should identify the collab/contest and be alphanumeric. It will have to be used for asset folders (graphics, tutorials, etc).
+                    - [collab maps folder name] is the name of the folder the collab/contest map bins will be in. It has to be alphanumeric, and can be identical to the assets folder name.
+
+                    `--setup-free-names [response channel]`
+                    allows everyone on the server to use the `--verify` command in the channel it is posted in, and will post issues in [response channel].
+                    This allows people to verify their mods with the folder names they want.
+
+                    `--setup-no-name [response channel]`
+                    will tell the bot to analyze all the .zip files in the current channel, and to post issues in [response channel].
+                    No checks will be done on folder names, and multiple maps are allowed.
+
+                    `--verify [assets folder name] [maps folder name]`
+                    will verify the given map (as an attachment, or as a Google Drive link) with the given parameters, with the same checks as collabs. Both names should be alphanumeric.
+
+                    `--generate-font [language]`
+                    will generate font files with all missing characters from the vanilla font. You should send your dialog file along with this command. `[language]` is one of `chinese`, `japanese`, `korean`, `renogare` or `russian`.
+
+                    `--remove-setup`
+                    will tell the bot to stop analyzing the .zip files in the current channel.
+
+                    `--rules`
+                    will print out the checks run by the bot in the current channel.
+
+                    `--reactions`
+                    will give a message explaining what the different reactions from the bot mean.""").queue();
         } else if (msg.startsWith("--setup-fixed-names ")) {
             // setting up a new channel!
             String[] settings = msg.split(" ");
@@ -1407,9 +1414,10 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     private static String getRulesForNoFolderName() {
-        return "- `everest.yaml` should exist and should be valid according to the everest.yaml validator\n" +
-                "- all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies\n" +
-                "- the dialog files for vanilla languages should not contain characters that are missing from the game's font, or those extra characters should be included in the zip";
+        return """
+                - `everest.yaml` should exist and should be valid according to the everest.yaml validator
+                - all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies
+                - the dialog files for vanilla languages should not contain characters that are missing from the game's font, or those extra characters should be included in the zip""";
     }
 
     private static String pickFormat(boolean isHtml, String html, String md) {

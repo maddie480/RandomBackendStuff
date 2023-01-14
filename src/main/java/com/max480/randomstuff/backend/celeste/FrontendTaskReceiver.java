@@ -68,19 +68,15 @@ public class FrontendTaskReceiver {
             JSONObject o = new JSONObject(message.getData().toStringUtf8());
 
             switch (o.getString("taskType")) {
-                case "modStructureVerify":
+                case "modStructureVerify" -> {
                     boolean withPathsCheck = o.getBoolean("withPathsCheck");
                     handleModStructureVerifyRequest(
                             o.getString("fileName"),
                             withPathsCheck ? o.getString("mapFolderName") : null,
                             withPathsCheck ? o.getString("assetFolderName") : null);
-                    break;
-
-                case "fontGenerate":
-                    handleFontGenerateRequest(o.getString("fileName"), o.getString("language"));
-                    break;
-
-                case "fileSearch":
+                }
+                case "fontGenerate" -> handleFontGenerateRequest(o.getString("fileName"), o.getString("language"));
+                case "fileSearch" -> {
                     try {
                         ModFileSearcher.findAllModsByFile(
                                 o.getString("search"),
@@ -89,11 +85,8 @@ public class FrontendTaskReceiver {
                     } catch (IOException e) {
                         log.error("Error while searching file for request {}", o, e);
                     }
-                    break;
-
-                default:
-                    log.error("Received invalid task type {}!", o.getString("taskType"));
-                    break;
+                }
+                default -> log.error("Received invalid task type {}!", o.getString("taskType"));
             }
         } catch (JSONException e) {
             log.error("Received an invalid JSON payload!", e);
@@ -167,7 +160,7 @@ public class FrontendTaskReceiver {
             object.put("attachments", attachments);
 
             // write the JSON and send it to Cloud Storage
-            log.debug("Sending JSON to Cloud Storage as {}: {}", taskName + ".json", object.toString());
+            log.debug("Sending JSON to Cloud Storage as {}: {}", taskName + ".json", object);
             File json = new File("/tmp/" + taskName + ".json");
             FileUtils.writeStringToFile(json, object.toString(), StandardCharsets.UTF_8);
             sendToCloudStorageAndGiveFileName(taskName, json);

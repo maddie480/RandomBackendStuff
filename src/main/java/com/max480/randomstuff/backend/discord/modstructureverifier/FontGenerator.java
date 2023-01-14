@@ -72,7 +72,7 @@ public class FontGenerator {
                 sendSimpleResponse.accept(pickFormat(isHtml,
                         "❌ The language should be one of the following: <code>chinese</code>, <code>japanese</code>, <code>korean</code>, <code>renogare</code> or <code>russian</code>.",
                         ":x: The language should be one of the following: `chinese`, `japanese`, `korean`, `renogare` or `russian`."));
-                cleanup(inputFile, tempDirectory);
+                cleanup(inputFile, null);
                 return;
             }
 
@@ -92,7 +92,7 @@ public class FontGenerator {
                 sendSimpleResponse.accept(pickFormat(isHtml,
                         "✅ <b>All the characters in your dialog file are already present in the vanilla font!</b> You have nothing to do.",
                         ":white_check_mark: **All the characters in your dialog file are already present in the vanilla font!** You have nothing to do."));
-                cleanup(inputFile, tempDirectory);
+                cleanup(inputFile, null);
                 return;
             }
 
@@ -179,7 +179,7 @@ public class FontGenerator {
 
             if (channel != null) {
                 channel.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                        .sendMessage("An error occurred while generating a font file: " + e.toString()).queue();
+                        .sendMessage("An error occurred while generating a font file: " + e).queue();
             }
         }
 

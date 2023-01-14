@@ -52,7 +52,7 @@ public class EverestVersionLister {
             currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
                     .toList().stream()
                     .map(version -> (int) ((Map<String, Object>) version).get("id"))
-                    .collect(Collectors.toList()));
+                    .toList());
         }
 
         // get the latest GitHub release names
@@ -109,15 +109,11 @@ public class EverestVersionLister {
                     JSONObject artifact = (JSONObject) a;
 
                     switch (artifact.getString("name")) {
-                        case "main.zip":
-                            entry.put("mainDownload", artifact.getString("browser_download_url"));
-                            break;
-                        case "olympus-meta.zip":
-                            entry.put("olympusMetaDownload", artifact.getString("browser_download_url"));
-                            break;
-                        case "olympus-build.zip":
-                            entry.put("olympusBuildDownload", artifact.getString("browser_download_url"));
-                            break;
+                        case "main.zip" -> entry.put("mainDownload", artifact.getString("browser_download_url"));
+                        case "olympus-meta.zip" ->
+                                entry.put("olympusMetaDownload", artifact.getString("browser_download_url"));
+                        case "olympus-build.zip" ->
+                                entry.put("olympusBuildDownload", artifact.getString("browser_download_url"));
                     }
                 }
 

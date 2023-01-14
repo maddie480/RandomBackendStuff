@@ -114,50 +114,26 @@ public class BotEventListener extends ListenerAdapter {
             logger.info("New command: /{} by member {}, options={}", event.getName(), member, event.getOptions());
 
             switch (event.getName()) {
-                case "list-timezones":
+                case "list-timezones" -> {
                     OptionMapping visibility = event.getOption("visibility");
                     OptionMapping names = event.getOption("names");
                     boolean isPublic = visibility != null && "public".equals(visibility.getAsString());
-
                     listTimezones(event,
                             names == null ? "discord_tags" : names.getAsString(),
                             false,
                             isPublic,
                             isPublic ? event.getGuildLocale() : event.getUserLocale());
-
-                    break;
-
-                case "timezone-dropdown":
-                    generateTimezoneDropdown(event);
-                    break;
-
-                case "detect-timezone":
-                    sendDetectTimezoneLink(event, locale);
-                    break;
-
-                case "timezone":
-                    defineUserTimezone(event, member, event.getOption("tz_name").getAsString(), locale);
-                    break;
-
-                case "remove-timezone":
-                    removeUserTimezone(event, member, locale);
-                    break;
-
-                case "toggle-times":
-                    toggleTimesInTimezoneRoles(event, member, locale);
-                    break;
-
-                case "discord-timestamp":
-                    giveDiscordTimestamp(event, member, event.getOption("date_time").getAsString(), locale);
-                    break;
-
-                case "time-for":
-                    giveTimeForOtherUser(event, member, event.getOption("member").getAsLong(), locale);
-                    break;
-
-                case "world-clock":
-                    giveTimeForOtherPlace(event, event.getMember(), event.getOption("place").getAsString(), locale);
-                    break;
+                }
+                case "timezone-dropdown" -> generateTimezoneDropdown(event);
+                case "detect-timezone" -> sendDetectTimezoneLink(event, locale);
+                case "timezone" -> defineUserTimezone(event, member, event.getOption("tz_name").getAsString(), locale);
+                case "remove-timezone" -> removeUserTimezone(event, member, locale);
+                case "toggle-times" -> toggleTimesInTimezoneRoles(event, member, locale);
+                case "discord-timestamp" ->
+                        giveDiscordTimestamp(event, member, event.getOption("date_time").getAsString(), locale);
+                case "time-for" -> giveTimeForOtherUser(event, member, event.getOption("member").getAsLong(), locale);
+                case "world-clock" ->
+                        giveTimeForOtherPlace(event, event.getMember(), event.getOption("place").getAsString(), locale);
             }
         }
     }
@@ -228,7 +204,7 @@ public class BotEventListener extends ListenerAdapter {
                             .startsWith(input.toLowerCase(Locale.ROOT));
                 })
                 .map(tz -> mapToChoice(tz, tz, locale))
-                .collect(Collectors.toList());
+                .toList();
 
         if (input.isEmpty()) {
             // we want to push for tz database timezones, so list them by default!
@@ -248,14 +224,14 @@ public class BotEventListener extends ListenerAdapter {
                     }
                     return mapToChoice(tzName, tz.getValue(), locale);
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         // look up conflicting timezone names, showing all possibilities
         List<Command.Choice> matchingTimezoneConflictNames = TIMEZONE_CONFLICTS.entrySet().stream()
                 .filter(tz -> tz.getKey().toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
                 .flatMap(tz -> tz.getValue().stream()
                         .map(tzValue -> mapToChoice(tzValue + " (" + tz.getKey() + ")", TIMEZONE_MAP.get(tzValue), locale)))
-                .collect(Collectors.toList());
+                .toList();
 
         List<Command.Choice> allChoices = new ArrayList<>(matchingTzDatabaseTimezones);
         allChoices.addAll(matchingTimezoneNames);
@@ -489,10 +465,14 @@ public class BotEventListener extends ListenerAdapter {
         Long timestamp = null;
         if (parsedDateTime == null) {
             respondPrivately(event, localizeMessage(locale,
-                    ":x: The date you gave could not be parsed!\nMake sure you followed the format `YYYY-MM-dd hh:mm:ss`. " +
-                            "For example: `2020-10-01 15:42:00`\nYou can omit part of the date (or omit it entirely if you want today), and the seconds if you don't need that.",
-                    ":x: Je n'ai pas compris la date que tu as donnée !\nAssure-toi que tu as suivi le format `YYYY-MM-dd hh:mm:ss`. " +
-                            "Par exemple : `2020-10-01 15:42:00`\nTu peux enlever une partie de la date (ou l'enlever complètement pour obtenir le _timestamp_ d'aujourd'hui) et les secondes si tu n'en as pas besoin."));
+                    """
+                            :x: The date you gave could not be parsed!
+                            Make sure you followed the format `YYYY-MM-dd hh:mm:ss`. For example: `2020-10-01 15:42:00`
+                            You can omit part of the date (or omit it entirely if you want today), and the seconds if you don't need that.""",
+                    """
+                            :x: Je n'ai pas compris la date que tu as donnée !
+                            Assure-toi que tu as suivi le format `YYYY-MM-dd hh:mm:ss`. Par exemple : `2020-10-01 15:42:00`
+                            Tu peux enlever une partie de la date (ou l'enlever complètement pour obtenir le _timestamp_ d'aujourd'hui) et les secondes si tu n'en as pas besoin."""));
         } else {
             timestamp = parsedDateTime.atZone(ZoneId.of(timezoneToUse)).toEpochSecond();
         }
@@ -800,14 +780,11 @@ public class BotEventListener extends ListenerAdapter {
     }
 
     private String getUserName(TimezoneBot.CachedMember member, String nameToUse) {
-        switch (nameToUse) {
-            case "nicknames":
-                return member.nickname;
-            case "both":
-                return member.nickname + " (" + member.discordTag + ")";
-            default:
-                return member.discordTag;
-        }
+        return switch (nameToUse) {
+            case "nicknames" -> member.nickname;
+            case "both" -> member.nickname + " (" + member.discordTag + ")";
+            default -> member.discordTag;
+        };
     }
 
     private String generateTimezonesList(Map<Integer, Set<String>> people, boolean forTextFile, DiscordLocale locale) {
@@ -994,9 +971,10 @@ public class BotEventListener extends ListenerAdapter {
                         ":x: Il est impossible d'avoir plus de 25 options ! Tu en as donné " + options.size() + "." + help));
             } else {
                 logger.debug("Posting options: {}", options);
-                slashCommandEvent.reply(messageParam != null ? messageParam.getAsString() : "**Pick a timezone role here!**\n" +
-                                "If your timezone does not match any of those, run the `/timezone [tz_name]` command.\n" +
-                                "To remove your timezone role, run the `/remove-timezone` command.")
+                slashCommandEvent.reply(messageParam != null ? messageParam.getAsString() : """
+                                **Pick a timezone role here!**
+                                If your timezone does not match any of those, run the `/timezone [tz_name]` command.
+                                To remove your timezone role, run the `/remove-timezone` command.""")
                         .addActionRow(StringSelectMenu.create("timezone-dropdown").addOptions(options).build())
                         .queue();
             }

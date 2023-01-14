@@ -4,7 +4,6 @@ import com.max480.randomstuff.backend.discord.timezonebot.BotEventListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
-import net.dv8tion.jda.api.exceptions.RateLimitedException;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
@@ -54,7 +53,7 @@ public class WorldClockHealthCheck {
         public void queue(@Nullable Consumer<? super InteractionHook> consumer, @Nullable Consumer<? super Throwable> consumer1) {
         }
 
-        public InteractionHook complete(boolean b) throws RateLimitedException {
+        public InteractionHook complete(boolean b) {
             return null;
         }
 

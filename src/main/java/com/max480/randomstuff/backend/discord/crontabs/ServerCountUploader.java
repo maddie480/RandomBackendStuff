@@ -47,7 +47,7 @@ public class ServerCountUploader {
         int customSlashCommandsServerCount = 0;
         Page<Blob> blobs = storage.list("max480-random-stuff.appspot.com",
                 Storage.BlobListOption.prefix("custom_slash_commands/"), Storage.BlobListOption.currentDirectory());
-        for (Blob b : blobs.iterateAll()) {
+        for (Blob ignored : blobs.iterateAll()) {
             customSlashCommandsServerCount++;
         }
 

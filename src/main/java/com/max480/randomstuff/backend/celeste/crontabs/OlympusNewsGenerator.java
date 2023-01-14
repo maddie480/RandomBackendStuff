@@ -31,10 +31,6 @@ public class OlympusNewsGenerator {
     private static Set<String> alreadyNotified = new HashSet<>();
     private static String latestNewsHash = "[first check]";
 
-    public static void main(String[] args) throws IOException {
-        refreshOlympusNews();
-    }
-
     public static void loadPreviouslyPostedNews() {
         try (Stream<String> lines = Files.lines(Paths.get("previous_olympus_news.txt"))) {
             alreadyNotified = lines.collect(Collectors.toCollection(HashSet::new));

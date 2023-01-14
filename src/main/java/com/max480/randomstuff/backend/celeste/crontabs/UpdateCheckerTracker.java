@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -43,6 +44,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public class UpdateCheckerTracker extends EventListener {
     private static class ModInfo implements Serializable {
+        @Serial
         private static final long serialVersionUID = -2184804878021343630L;
 
         public final String type;
@@ -494,22 +496,25 @@ public class UpdateCheckerTracker extends EventListener {
         try (ZipOutputStream zs = new ZipOutputStream(Files.newOutputStream(p))) {
             zs.setLevel(Deflater.BEST_COMPRESSION);
             Path pp = Paths.get(sourceDirPath);
-            if (!Files.walk(pp)
-                    .filter(path -> !Files.isDirectory(path))
-                    .allMatch(path -> {
-                        ZipEntry zipEntry = new ZipEntry(pp.relativize(path).toString());
-                        try {
-                            zs.putNextEntry(zipEntry);
-                            Files.copy(path, zs);
-                            zs.closeEntry();
-                            return true;
-                        } catch (IOException e) {
-                            log.error("Unable to zip a file", e);
-                            return false;
-                        }
-                    })) {
 
-                throw new IOException("Some files failed to zip!");
+            try (Stream<Path> walker = Files.walk(pp)) {
+                if (!walker
+                        .filter(path -> !Files.isDirectory(path))
+                        .allMatch(path -> {
+                            ZipEntry zipEntry = new ZipEntry(pp.relativize(path).toString());
+                            try {
+                                zs.putNextEntry(zipEntry);
+                                Files.copy(path, zs);
+                                zs.closeEntry();
+                                return true;
+                            } catch (IOException e) {
+                                log.error("Unable to zip a file", e);
+                                return false;
+                            }
+                        })) {
+
+                    throw new IOException("Some files failed to zip!");
+                }
             }
         }
     }

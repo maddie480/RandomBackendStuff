@@ -36,7 +36,7 @@ public class TwitterUpdateChecker {
 
     // those will be sent to the Quest server. the list of subscribers is managed externally by a bot.
     private static final List<String> THREADS_TO_QUEST = Collections.singletonList("JeuDeLaupok");
-    public static Set<String> patchNoteSubscribers = new HashSet<>();
+    public static final Set<String> patchNoteSubscribers = new HashSet<>();
 
     private static final Pattern twitterLinkAtEnd = Pattern.compile("^.*(https://t\\.co/[A-Za-z0-9]+)$", Pattern.DOTALL);
 
@@ -388,19 +388,15 @@ public class TwitterUpdateChecker {
             for (Object o : tweet.getJSONObject("extended_entities").getJSONArray("media")) {
                 JSONObject media = (JSONObject) o;
                 switch (media.getString("type")) {
-                    case "photo":
+                    case "photo" -> {
                         photoCount++;
-
                         if (!embeddedMedia) {
                             embed.put("image", ImmutableMap.of("url", media.getString("media_url_https")));
                             embeddedMedia = true;
                         }
-                        break;
-
-                    case "video":
-                    case "animated_gif":
+                    }
+                    case "video", "animated_gif" -> {
                         videoCount++;
-
                         if (!embeddedMedia) {
                             String videoUrl = getVideoUrlWithYoutubeDL("https://twitter.com/"
                                     + tweet.getJSONObject("user").getString("screen_name")
@@ -412,7 +408,7 @@ public class TwitterUpdateChecker {
                                 embeddedMedia = true;
                             }
                         }
-                        break;
+                    }
                 }
             }
         }

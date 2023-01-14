@@ -11,7 +11,6 @@ import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -255,7 +254,7 @@ public class TimezoneRoleUpdater implements Runnable {
         List<Long> serverUsers = TimezoneBot.userTimezones.stream()
                 .filter(s -> s.serverId == server.getIdLong())
                 .map(s -> s.userId)
-                .collect(Collectors.toList());
+                .toList();
 
         boolean usersDeleted = false;
 
@@ -279,9 +278,8 @@ public class TimezoneRoleUpdater implements Runnable {
      * - once a day, part of the cache should be deleted to check if the cached situation is still up-to-date
      *
      * @param usersDeleted whether users were deleted during the role updating part
-     * @throws IOException in case an error occurs when writing to disk
      */
-    private void housekeep(boolean usersDeleted) throws IOException {
+    private void housekeep(boolean usersDeleted) {
         // remove settings for users that left
         List<TimezoneBot.UserTimezone> toDelete = new ArrayList<>();
         for (TimezoneBot.UserTimezone userTimezone : TimezoneBot.userTimezones) {

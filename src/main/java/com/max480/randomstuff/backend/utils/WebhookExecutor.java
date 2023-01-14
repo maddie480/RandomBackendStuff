@@ -143,7 +143,7 @@ public class WebhookExecutor {
             writer.close();
         } else {
             // multipart request to send the JSON, and attachments
-            log.debug("Sending request to [{}]: {} with attachments [\"{}\"]", webhookUrl, request.toString(),
+            log.debug("Sending request to [{}]: {} with attachments [\"{}\"]", webhookUrl, request,
                     attachments.stream().map(File::getAbsolutePath).collect(Collectors.joining("\", \"")));
 
             HashMap<String, String> headers = new HashMap<>();

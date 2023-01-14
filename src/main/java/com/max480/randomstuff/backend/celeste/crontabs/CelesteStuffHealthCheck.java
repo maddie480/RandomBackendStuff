@@ -58,15 +58,9 @@ public class CelesteStuffHealthCheck {
                 JSONObject versionObj = (JSONObject) version;
 
                 switch (versionObj.getString("branch")) {
-                    case "dev":
-                        latestDev = Math.max(latestDev, versionObj.getInt("version"));
-                        break;
-                    case "beta":
-                        latestBeta = Math.max(latestBeta, versionObj.getInt("version"));
-                        break;
-                    case "stable":
-                        latestStable = Math.max(latestStable, versionObj.getInt("version"));
-                        break;
+                    case "dev" -> latestDev = Math.max(latestDev, versionObj.getInt("version"));
+                    case "beta" -> latestBeta = Math.max(latestBeta, versionObj.getInt("version"));
+                    case "stable" -> latestStable = Math.max(latestStable, versionObj.getInt("version"));
                 }
             }
         }
@@ -133,15 +127,10 @@ public class CelesteStuffHealthCheck {
                     && "succeeded".equals(versionObj.getString("result"))) {
 
                 switch (versionObj.getString("sourceBranch")) {
-                    case "refs/heads/main":
-                        latestMain = Math.max(latestMain, versionObj.getInt("id"));
-                        break;
-                    case "refs/heads/stable":
-                        latestStable = Math.max(latestStable, versionObj.getInt("id"));
-                        break;
-                    case "refs/heads/windows-init":
-                        latestWindowsInit = Math.max(latestWindowsInit, versionObj.getInt("id"));
-                        break;
+                    case "refs/heads/main" -> latestMain = Math.max(latestMain, versionObj.getInt("id"));
+                    case "refs/heads/stable" -> latestStable = Math.max(latestStable, versionObj.getInt("id"));
+                    case "refs/heads/windows-init" ->
+                            latestWindowsInit = Math.max(latestWindowsInit, versionObj.getInt("id"));
                 }
             }
         }
@@ -269,7 +258,7 @@ public class CelesteStuffHealthCheck {
                 .map(a -> "https://celestemodupdater.0x0a.de/banana-mirror/" + a.attr("href"))
                 .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/banana-mirror//"))
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
 
         List<String> everestUpdate;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml")) {
@@ -292,7 +281,7 @@ public class CelesteStuffHealthCheck {
                 .map(a -> "https://celestemodupdater.0x0a.de/banana-mirror-images/" + a.attr("href"))
                 .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/banana-mirror-images//"))
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
 
         List<String> modSearchDatabase;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml")) {
@@ -315,7 +304,7 @@ public class CelesteStuffHealthCheck {
                 .map(a -> "https://celestemodupdater.0x0a.de/rich-presence-icons/" + a.attr("href"))
                 .filter(item -> !item.equals("https://celestemodupdater.0x0a.de/rich-presence-icons//") && !item.equals("https://celestemodupdater.0x0a.de/rich-presence-icons/list.json"))
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
 
         List<String> richPresenceIconsLocal;
         try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
@@ -366,34 +355,36 @@ public class CelesteStuffHealthCheck {
     public static void checkGameBananaCategories() throws IOException {
         Process gamebananaChecker = new ProcessBuilder("/bin/bash", "-c", "./check_gb.sh").start();
         String result = IOUtils.toString(gamebananaChecker.getInputStream(), StandardCharsets.UTF_8);
-        if (!result.equals("App - NO\n" +
-                "Article - NO\n" +
-                "Blog - NO\n" +
-                "Club - NO\n" +
-                "Concept - NO\n" +
-                "Contest - NO\n" +
-                "Event - NO\n" +
-                "Idea - NO\n" +
-                "Jam - NO\n" +
-                "Mod - YES\n" +
-                "Model - YES\n" +
-                "News - NO\n" +
-                "Poll - NO\n" +
-                "PositionAvailable - NO\n" +
-                "Project - NO\n" +
-                "Question - NO\n" +
-                "Request - NO\n" +
-                "Review - NO\n" +
-                "Script - NO\n" +
-                "Sound - YES\n" +
-                "Spray - YES\n" +
-                "Studio - NO\n" +
-                "Thread - NO\n" +
-                "Tool - YES\n" +
-                "Tutorial - NO\n" +
-                "Ware - NO\n" +
-                "Wiki - NO\n" +
-                "Wip - YES\n")) {
+        if (!result.equals("""
+                App - NO
+                Article - NO
+                Blog - NO
+                Club - NO
+                Concept - NO
+                Contest - NO
+                Event - NO
+                Idea - NO
+                Jam - NO
+                Mod - YES
+                Model - YES
+                News - NO
+                Poll - NO
+                PositionAvailable - NO
+                Project - NO
+                Question - NO
+                Request - NO
+                Review - NO
+                Script - NO
+                Sound - YES
+                Spray - YES
+                Studio - NO
+                Thread - NO
+                Tool - YES
+                Tutorial - NO
+                Ware - NO
+                Wiki - NO
+                Wip - YES
+                """)) {
 
             log.warn("GB categories changed!");
             throw new IOException("GB categories changed! (or the script failed...)");
@@ -424,9 +415,10 @@ public class CelesteStuffHealthCheck {
 
         // categories list
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2"), UTF_8)
-                .contains("- categoryid: 6800\n" +
-                        "  formatted: Maps\n" +
-                        "  count: ")) {
+                .contains("""
+                        - categoryid: 6800
+                          formatted: Maps
+                          count:\s""")) {
 
             throw new IOException("Categories list API failed");
         }
@@ -485,9 +477,10 @@ public class CelesteStuffHealthCheck {
 
         // deprecated GameBanana categories API
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories"), UTF_8)
-                .contains("- itemtype: Tool\n" +
-                        "  formatted: Tools\n" +
-                        "  count: ")) {
+                .contains("""
+                        - itemtype: Tool
+                          formatted: Tools
+                          count:\s""")) {
 
             throw new IOException("Categories list API v1 failed");
         }
@@ -624,72 +617,73 @@ public class CelesteStuffHealthCheck {
     public static void everestYamlValidatorHealthCheck() throws IOException {
         // write the Winter Collab everest.yaml to a file.
         FileUtils.writeStringToFile(new File("/tmp/everest.yaml"),
-                "- Name: WinterCollab2021\n" +
-                        "  Version: 1.3.4\n" +
-                        "  DLL: \"Code/bin/Debug/WinterCollabHelper.dll\"\n" +
-                        "  Dependencies:\n" +
-                        "    - Name: Everest\n" +
-                        "      Version: 1.2707.0\n" +
-                        "    - Name: AdventureHelper\n" +
-                        "      Version: 1.5.1\n" +
-                        "    - Name: Anonhelper\n" +
-                        "      Version: 1.0.4\n" +
-                        "    - Name: BrokemiaHelper\n" +
-                        "      Version: 1.2.3\n" +
-                        "    - Name: CherryHelper\n" +
-                        "      Version: 1.6.7\n" +
-                        "    - Name: ColoredLights\n" +
-                        "      Version: 1.1.1\n" +
-                        "    - Name: CollabUtils2\n" +
-                        "      Version: 1.3.11\n" +
-                        "    - Name: CommunalHelper\n" +
-                        "      Version: 1.7.0\n" +
-                        "    - Name: ContortHelper\n" +
-                        "      Version: 1.5.4\n" +
-                        "    - Name: CrystallineHelper\n" +
-                        "      Version: 1.10.0\n" +
-                        "    - Name: DJMapHelper\n" +
-                        "      Version: 1.8.27\n" +
-                        "    - Name: ExtendedVariantMode\n" +
-                        "      Version: 0.19.11\n" +
-                        "    - Name: FactoryHelper\n" +
-                        "      Version: 1.2.4\n" +
-                        "    - Name: FancyTileEntities\n" +
-                        "      Version: 1.4.0\n" +
-                        "    - Name: FemtoHelper\n" +
-                        "      Version: 1.1.1\n" +
-                        "    - Name: FlaglinesAndSuch\n" +
-                        "      Version: 1.4.6\n" +
-                        "    - Name: FrostHelper\n" +
-                        "      Version: 1.22.4\n" +
-                        "    - Name: HonlyHelper\n" +
-                        "      Version: 1.3.2\n" +
-                        "    - Name: JackalHelper\n" +
-                        "      Version: 1.3.5\n" +
-                        "    - Name: LunaticHelper\n" +
-                        "      Version: 1.1.1\n" +
-                        "    - Name: MaxHelpingHand\n" +
-                        "      Version: 1.13.3\n" +
-                        "    - Name: memorialHelper\n" +
-                        "      Version: 1.0.3\n" +
-                        "    - Name: MoreDasheline\n" +
-                        "      Version: 1.6.3\n" +
-                        "    - Name: OutbackHelper\n" +
-                        "      Version: 1.4.0\n" +
-                        "    - Name: PandorasBox\n" +
-                        "      Version: 1.0.29\n" +
-                        "    - Name: Sardine7\n" +
-                        "      Version: 1.0.0\n" +
-                        "    - Name: ShroomHelper\n" +
-                        "      Version: 1.0.1\n" +
-                        "    - Name: TwigHelper\n" +
-                        "      Version: 1.1.5\n" +
-                        "    - Name: VivHelper\n" +
-                        "      Version: 1.4.1\n" +
-                        "    - Name: VortexHelper\n" +
-                        "      Version: 1.1.0\n" +
-                        "    - Name: WinterCollab2021Audio\n" +
-                        "      Version: 1.3.0", UTF_8);
+                """
+                        - Name: WinterCollab2021
+                          Version: 1.3.4
+                          DLL: "Code/bin/Debug/WinterCollabHelper.dll"
+                          Dependencies:
+                            - Name: Everest
+                              Version: 1.2707.0
+                            - Name: AdventureHelper
+                              Version: 1.5.1
+                            - Name: Anonhelper
+                              Version: 1.0.4
+                            - Name: BrokemiaHelper
+                              Version: 1.2.3
+                            - Name: CherryHelper
+                              Version: 1.6.7
+                            - Name: ColoredLights
+                              Version: 1.1.1
+                            - Name: CollabUtils2
+                              Version: 1.3.11
+                            - Name: CommunalHelper
+                              Version: 1.7.0
+                            - Name: ContortHelper
+                              Version: 1.5.4
+                            - Name: CrystallineHelper
+                              Version: 1.10.0
+                            - Name: DJMapHelper
+                              Version: 1.8.27
+                            - Name: ExtendedVariantMode
+                              Version: 0.19.11
+                            - Name: FactoryHelper
+                              Version: 1.2.4
+                            - Name: FancyTileEntities
+                              Version: 1.4.0
+                            - Name: FemtoHelper
+                              Version: 1.1.1
+                            - Name: FlaglinesAndSuch
+                              Version: 1.4.6
+                            - Name: FrostHelper
+                              Version: 1.22.4
+                            - Name: HonlyHelper
+                              Version: 1.3.2
+                            - Name: JackalHelper
+                              Version: 1.3.5
+                            - Name: LunaticHelper
+                              Version: 1.1.1
+                            - Name: MaxHelpingHand
+                              Version: 1.13.3
+                            - Name: memorialHelper
+                              Version: 1.0.3
+                            - Name: MoreDasheline
+                              Version: 1.6.3
+                            - Name: OutbackHelper
+                              Version: 1.4.0
+                            - Name: PandorasBox
+                              Version: 1.0.29
+                            - Name: Sardine7
+                              Version: 1.0.0
+                            - Name: ShroomHelper
+                              Version: 1.0.1
+                            - Name: TwigHelper
+                              Version: 1.1.5
+                            - Name: VivHelper
+                              Version: 1.4.1
+                            - Name: VortexHelper
+                              Version: 1.1.0
+                            - Name: WinterCollab2021Audio
+                              Version: 1.3.0""", UTF_8);
 
         { // HTML version
             // build a request to everest.yaml validator

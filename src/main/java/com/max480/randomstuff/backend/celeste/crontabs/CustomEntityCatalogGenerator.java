@@ -29,7 +29,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class CustomEntityCatalogGenerator {
     private static final Logger logger = LoggerFactory.getLogger(CustomEntityCatalogGenerator.class);
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException {
         CustomEntityCatalogGenerator gen = new CustomEntityCatalogGenerator();
         gen.reloadList();
 
@@ -42,18 +42,18 @@ public class CustomEntityCatalogGenerator {
     }
 
     public static class QueriedModInfo {
-        private String itemtype;
-        private int itemid;
+        private final String itemtype;
+        private final int itemid;
         private int categoryId;
         private String categoryName;
         private String modName;
         private String modEverestYamlId;
         private String latestVersion;
         private int dependentCount;
-        private Map<String, List<String>> entityList = new HashMap<>();
-        private Map<String, List<String>> triggerList = new HashMap<>();
-        private Map<String, List<String>> effectList = new HashMap<>();
-        private List<AbstractKeyValue<String, String>> documentationLinks = new ArrayList<>();
+        private final Map<String, List<String>> entityList = new HashMap<>();
+        private final Map<String, List<String>> triggerList = new HashMap<>();
+        private final Map<String, List<String>> effectList = new HashMap<>();
+        private final List<AbstractKeyValue<String, String>> documentationLinks = new ArrayList<>();
         private String fileId;
 
         private QueriedModInfo(String itemtype, int itemid) {
@@ -174,7 +174,7 @@ public class CustomEntityCatalogGenerator {
      *
      * @throws IOException If an error occurs while reading the database
      */
-    private void reloadList() throws IOException, InterruptedException {
+    private void reloadList() throws IOException {
         // download the custom entity catalog dictionary.
         {
             Map<String, String> tempdic = new HashMap<>();
@@ -182,7 +182,7 @@ public class CustomEntityCatalogGenerator {
                 tempdic = Arrays.stream(ConnectionUtils.toStringWithTimeout("https://raw.githubusercontent.com/max4805/RandomDiscordBots/main/modcatalogdictionary.txt", UTF_8).split("\n"))
                         .collect(Collectors.toMap(a -> a.substring(0, a.lastIndexOf("=")), a -> a.substring(a.lastIndexOf("=") + 1)));
             } catch (Exception e) {
-                logger.warn("Could not fetch dictionary for entity names: " + e.toString());
+                logger.warn("Could not fetch dictionary for entity names: " + e);
             }
             dictionary = tempdic;
             unusedDictionaryKeys = new HashSet<>(dictionary.keySet());
@@ -314,12 +314,16 @@ public class CustomEntityCatalogGenerator {
      */
     private static String formatGameBananaItemtype(String input) {
         // specific formatting for a few categories
-        if (input.equals("Gamefile")) {
-            return "Game file";
-        } else if (input.equals("Wip")) {
-            return "WiP";
-        } else if (input.equals("Gui")) {
-            return "GUI";
+        switch (input) {
+            case "Gamefile" -> {
+                return "Game file";
+            }
+            case "Wip" -> {
+                return "WiP";
+            }
+            case "Gui" -> {
+                return "GUI";
+            }
         }
 
         // apply the spaced pascal case from Everest

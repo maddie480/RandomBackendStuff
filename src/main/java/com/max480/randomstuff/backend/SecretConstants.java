@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class SecretConstants {
-    private static Logger logger = LoggerFactory.getLogger(SecretConstants.class);
+    private static final Logger logger = LoggerFactory.getLogger(SecretConstants.class);
 
     // specifies where the bot should publish errors, and who it should ping about them
     public static Long OWNER_ID = 0L;
