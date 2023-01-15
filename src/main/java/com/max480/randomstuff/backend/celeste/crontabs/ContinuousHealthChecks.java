@@ -111,7 +111,7 @@ public class ContinuousHealthChecks {
     private static boolean checkCelesteNetUDP() throws IOException {
         // first, check whether there was no UDP traffic in both directions for the last minute.
         for (String chart : Arrays.asList("CelesteNet_v2.udpDownlinkPpS", "CelesteNet_v2.udpUplinkPpS")) {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&gtime=60&group=sum")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&group=sum&points=1")) {
                 JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                 JSONArray data = resp.getJSONArray("data").getJSONArray(0);
                 if (data.getInt(1) != 0) {
@@ -121,7 +121,7 @@ public class ContinuousHealthChecks {
         }
 
         // if this is the case and there were 3 or more online players in the last minute, we got a problem!
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=CelesteNet_v2.online&after=-60&gtime=60&group=max")) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=CelesteNet_v2.online&after=-60&group=max&points=1")) {
             JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             JSONArray data = resp.getJSONArray("data").getJSONArray(0);
             return data.getInt(1) < 3;
