@@ -416,7 +416,8 @@ public class CelesteStuffHealthCheck {
         // categories list
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories"), UTF_8)
                 .contains("""
-                        - categoryid: 6800
+                        - itemtype: Mod
+                          categoryid: 6800
                           formatted: Maps
                           count:\s""")) {
 
