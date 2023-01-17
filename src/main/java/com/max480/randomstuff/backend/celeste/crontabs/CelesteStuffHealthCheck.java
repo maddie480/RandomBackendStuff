@@ -400,21 +400,21 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkOlympusAPIs() throws IOException {
         // search
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE&full=true"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE"), UTF_8)
                 .contains("\"Name\":\"Extended Variant Mode\"")) {
 
             throw new IOException("Extended Variant Mode search test failed");
         }
 
         // sorted list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&category=6800&page=1&full=true"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&category=6800&page=1"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Sorted list API test failed");
         }
 
         // categories list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories?version=2"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-categories"), UTF_8)
                 .contains("""
                         - categoryid: 6800
                           formatted: Maps
@@ -435,11 +435,6 @@ public class CelesteStuffHealthCheck {
                 .equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
 
             throw new IOException("Download from mirror test failed");
-        }
-
-        // Olympus News
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news"), UTF_8).contains("\"title\":")) {
-            throw new IOException("Olympus News test failed");
         }
 
         // Everest versions: check that latest dev is listed
@@ -485,54 +480,16 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Categories list API v1 failed");
         }
 
-        // deprecated GameBanana search API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE"), UTF_8)
-                .contains("itemid: 53650")) {
-
-            throw new IOException("Extended Variant Mode search test failed");
-        }
-
-        // deprecated GameBanana sorted list API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-list?sort=downloads&type=Tool&page=1"), UTF_8)
-                .contains("itemid: 6449")) { // Everest
-
-            throw new IOException("Sorted list API test failed");
-        }
-
-        // deprecated webp to png API
-        connection = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/webp-to-png?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp");
-        connection.setInstanceFollowRedirects(true);
-        connection.connect();
-        if (!DigestUtils.sha256Hex(IOUtils.toByteArray(connection.getInputStream())).equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
-            throw new IOException("WebP to PNG API test failed");
-        }
-        connection.disconnect();
-
-        // Banana Mirror image redirect
-        connection = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/banana-mirror-image?src=https://images.gamebanana.com/img/ss/mods/5b05ac2b4b6da.webp");
-        connection.setInstanceFollowRedirects(true);
-        connection.connect();
-        if (!DigestUtils.sha256Hex(IOUtils.toByteArray(connection.getInputStream())).equals("32887093611c0338d020b23496d33bdc10838185ab2bd31fa0b903da5b9ab7e7")) {
-            throw new IOException("Banana Mirror Image API test failed");
-        }
-        connection.disconnect();
-
         // mod search database API
         final String modSearchDatabase = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_search_database.yaml", UTF_8);
         if (!modSearchDatabase.contains("Name: The 2020 Celeste Spring Community Collab")) {
             throw new IOException("mod_search_database.yaml check failed");
         }
 
-        // file IDs list API
-        final String fileIds = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/file_ids.yaml", UTF_8);
-        if (!fileIds.contains("'484937'")) {
-            throw new IOException("file_ids.yaml check failed");
-        }
-
         // mod files database zip
         try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_files_database.zip"))) {
             Set<String> expectedFiles = new HashSet<>(Arrays.asList(
-                    "ahorn_vanilla.yaml", "list.yaml", "Mod/150813/info.yaml", "Mod/150813/484937.yaml", "Mod/53641/ahorn_506448.yaml"
+                    "ahorn_vanilla.yaml", "loenn_vanilla.yaml", "list.yaml", "Mod/150813/info.yaml", "Mod/150813/484937.yaml", "Mod/53641/ahorn_506448.yaml"
             ));
 
             ZipEntry entry;
@@ -549,18 +506,10 @@ public class CelesteStuffHealthCheck {
         final String modDependencyGraph = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml", UTF_8);
         if (!modDependencyGraph.contains("SpringCollab2020Audio:")
                 || !modDependencyGraph.contains("URL: https://gamebanana.com/mmdl/484937")
-                || !modDependencyGraph.contains("SpringCollab2020Audio: 1.0.0")) {
+                || !modDependencyGraph.contains("- Name: SpringCollab2020Audio")
+                || !modDependencyGraph.contains("  Version: 1.0.0")) {
 
             throw new IOException("mod_dependency_graph.yaml check failed");
-        }
-
-        final String modDependencyGraphEverest = ConnectionUtils.toStringWithTimeout("https://max480-random-stuff.appspot.com/celeste/mod_dependency_graph.yaml?format=everestyaml", UTF_8);
-        if (!modDependencyGraphEverest.contains("SpringCollab2020Audio:")
-                || !modDependencyGraphEverest.contains("URL: https://gamebanana.com/mmdl/484937")
-                || !modDependencyGraphEverest.contains("- Name: SpringCollab2020Audio")
-                || !modDependencyGraphEverest.contains("  Version: 1.0.0")) {
-
-            throw new IOException("mod_dependency_graph.yaml in everest.yaml format check failed");
         }
 
         // Update Checker status, widget version

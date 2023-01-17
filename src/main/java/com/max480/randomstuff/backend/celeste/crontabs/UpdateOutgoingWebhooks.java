@@ -12,7 +12,7 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Notifies other platforms about updates to the mod updater database, Olympus news or Everest versions.
+ * Notifies other platforms about updates to the mod updater database or Everest versions.
  * Run at the end of the update loop, every 15 minutes.
  */
 public class UpdateOutgoingWebhooks {
@@ -29,7 +29,7 @@ public class UpdateOutgoingWebhooks {
             return;
         }
 
-        // update China-accessible mirror of everest_update.yaml, mod_search_database.yaml, everest-versions and olympus-news
+        // update China-accessible mirror of everest_update.yaml, mod_search_database.yaml and everest-versions
         ConnectionUtils.runWithRetry(() -> {
             HttpURLConnection urlConn = ConnectionUtils.openConnectionWithTimeout(SecretConstants.CHINA_MIRROR_UPDATE_WEBHOOK);
             urlConn.setInstanceFollowRedirects(false);

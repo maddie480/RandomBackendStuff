@@ -22,14 +22,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * This class converts the Olympus news that are published on GitHub to JSON, and posts notifications
- * to Discord webhooks whenever a new one comes out.
+ * This class posts notifications to #celeste_news_network Discord webhooks whenever a new
+ * Olympus news entry comes out.
  */
-public class OlympusNewsGenerator {
-    private static final Logger log = LoggerFactory.getLogger(OlympusNewsGenerator.class);
+public class OlympusNewsUpdateChecker {
+    private static final Logger log = LoggerFactory.getLogger(OlympusNewsUpdateChecker.class);
 
     private static Set<String> alreadyNotified = new HashSet<>();
-    private static String latestNewsHash = "[first check]";
 
     public static void loadPreviouslyPostedNews() {
         try (Stream<String> lines = Files.lines(Paths.get("previous_olympus_news.txt"))) {
@@ -39,9 +38,9 @@ public class OlympusNewsGenerator {
         }
     }
 
-    public static void refreshOlympusNews() throws IOException {
-        // this is pretty much a port of what Olympus itself does.
-        log.debug("Refreshing Olympus news...");
+    public static void checkForUpdates() throws IOException {
+        // this is pretty much a port of what Olympus itself does to parse the news.
+        log.debug("Checking for Olympus News updates...");
 
         // list the Olympus news posts
         List<String> entries = new ArrayList<>();
@@ -56,8 +55,6 @@ public class OlympusNewsGenerator {
 
         // sort them by descending order
         entries.sort(Comparator.<String>naturalOrder().reversed());
-
-        JSONArray result = new JSONArray();
 
         for (String entryName : entries) {
             String data = ConnectionUtils.toStringWithTimeout("https://everestapi.github.io/olympusnews/" + entryName, StandardCharsets.UTF_8);
@@ -98,36 +95,12 @@ public class OlympusNewsGenerator {
             }
 
             log.debug("Parsed {} -> {}", entryName, dataParsed);
-            result.put(dataParsed);
 
+            // if we didn't encounter that file name before, it's time to post about it!
             if (!alreadyNotified.contains(entryName)) {
                 postToDiscord(dataParsed);
                 alreadyNotified.add(entryName);
             }
-        }
-
-        // update it if anything changed in it!
-        if (!DigestUtils.sha512Hex(result.toString()).equals(latestNewsHash)) {
-            log.info("Olympus news changed! {} -> {}", latestNewsHash, DigestUtils.sha512Hex(result.toString()));
-
-            // push to Cloud Storage
-            CloudStorageUtils.sendStringToCloudStorage(result.toString(), "olympus_news.json", "application/json");
-
-            // update the frontend cache
-            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/olympus-news-reload?key="
-                    + SecretConstants.RELOAD_SHARED_SECRET);
-            if (conn.getResponseCode() != 200) {
-                throw new IOException("Olympus News Reload API sent non 200 code: " + conn.getResponseCode());
-            }
-
-            WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
-                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
-                    "Everest Update Checker",
-                    ":sparkles: Olympus news were updated.");
-
-            UpdateOutgoingWebhooks.changesHappened();
-
-            latestNewsHash = DigestUtils.sha512Hex(result.toString());
         }
 
         FileUtils.writeStringToFile(new File("previous_olympus_news.txt"), String.join("\n", alreadyNotified), StandardCharsets.UTF_8);

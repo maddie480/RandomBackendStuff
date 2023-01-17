@@ -372,10 +372,8 @@ public class UpdateCheckerTracker extends EventListener {
             if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
                 log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
                 CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml");
-                CloudStorageUtils.sendToCloudStorage("uploads/moddependencygraph.yaml", "mod_dependency_graph.yaml", "text/yaml");
-
                 CloudStorageUtils.sendStringToCloudStorage(convertModDependencyGraphToEverestYamlFormat(),
-                        "mod_dependency_graph_everest.yaml", "text/yaml");
+                        "mod_dependency_graph.yaml", "text/yaml");
 
                 HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
                         + SecretConstants.RELOAD_SHARED_SECRET);
@@ -407,10 +405,8 @@ public class UpdateCheckerTracker extends EventListener {
             }
 
             if (!newFileIdsHash.equals(fileIdsSha256)) {
-                log.info("Reloading file_ids.yaml as hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
-                CloudStorageUtils.sendToCloudStorage("modfilesdatabase/file_ids.yaml", "file_ids.yaml", "text/yaml");
+                log.info("Reloading mod files database as file_ids.yaml hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
 
-                // if file_ids changed, it means the mod files database changed as well!
                 pack("modfilesdatabase", "/tmp/mod_files_database.zip");
                 CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip");
                 FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
