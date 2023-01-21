@@ -5,7 +5,6 @@ import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.JDA;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +13,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
-import java.text.DecimalFormat;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -26,13 +24,8 @@ public class TopGGCommunicator {
     private static final Logger logger = LoggerFactory.getLogger(TopGGCommunicator.class);
 
     private static int gamesBotScore = -1;
-    private static int gamesBotRatingCount = -1;
-
     private static int customSlashCommandsScore = -1;
-    private static int customSlashCommandsRatingCount = -1;
-
     private static int timezoneBotScore = -1;
-    private static int timezoneBotRatingCount = -1;
 
     /**
      * Refreshes the server counts once a day.
@@ -62,14 +55,6 @@ public class TopGGCommunicator {
                 "Custom Slash Commands", () -> customSlashCommandsScore, score -> customSlashCommandsScore = score);
         getAndUpdateBotScore(SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID, SecretConstants.TIMEZONE_BOT_LITE_TOP_GG_TOKEN, internalBotClient,
                 "Timezone Bot", () -> timezoneBotScore, score -> timezoneBotScore = score);
-
-        // check if we got new ratings (through more... unconventional means)
-        updateBotRatingCount(internalBotClient, SecretConstants.GAMES_BOT_CLIENT_ID,
-                "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score);
-        updateBotRatingCount(internalBotClient, SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID,
-                "Custom Slash Commands", () -> customSlashCommandsRatingCount, score -> customSlashCommandsRatingCount = score);
-        updateBotRatingCount(internalBotClient, SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID,
-                "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score);
     }
 
     private static void updateBotGuildCount(String botId, String botToken, String botName, int guildCount) throws IOException {
@@ -122,37 +107,5 @@ public class TopGGCommunicator {
                             + " (**" + monthlyPoints + "** point" + (monthlyPoints == 1 ? "" : "s") + " this month).").queue();
         }
         newCount.accept(points);
-    }
-
-    private static void updateBotRatingCount(JDA internalBotClient, String botId, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
-        ConnectionUtils.runWithRetry(() -> {
-            // there is a JSON schema belonging to a ... product in the page, and it has the ratings, so go get it.
-            JSONObject productMetadata = new JSONObject(Jsoup.connect("https://top.gg/fr/bot/" + botId).get()
-                    .select("script[type=\"application/ld+json\"]").html());
-
-            if (productMetadata.isNull("aggregateRating")) {
-                logger.debug("There is no rating for " + botName + " yet.");
-                newCount.accept(0);
-                return null;
-            }
-
-            // ratingCount is the amount of reviews, ratingValue is the rating out of 100.
-            JSONObject ratings = productMetadata.getJSONObject("aggregateRating");
-            int newRatingCount = ratings.getInt("ratingCount");
-            double score = ratings.getDouble("ratingValue");
-
-            logger.debug("Got the top.gg rating count for {}: {}", botName, newRatingCount);
-            if (oldCount.get() != -1 && newRatingCount != oldCount.get()) {
-                logger.info("Rating count for {} changed! {} => {}", botName, oldCount.get(), newRatingCount);
-                internalBotClient.getGuildById(SecretConstants.REPORT_SERVER_ID)
-                        .getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                        .sendMessage("We got a new rating for **" + botName + "**! We now have **" + newRatingCount + "** rating" + (score == 1 ? "" : "s") + "." +
-                                " The new medium rating is **" + new DecimalFormat("0.00").format(score / 20.) + "/5**.").queue();
-            }
-            newCount.accept(newRatingCount);
-
-            // fulfill method signature
-            return null;
-        });
     }
 }
