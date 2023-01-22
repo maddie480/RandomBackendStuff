@@ -948,8 +948,7 @@ public class CelesteStuffHealthCheck {
                 "https://max480-random-stuff.appspot.com/",
                 "https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/detect-timezone",
                 "https://max480-random-stuff.appspot.com/discord-bots/timezone-bot/timezone-dropdown-help",
-                "https://max480-random-stuff.appspot.com/discord-bots/terms-and-privacy",
-                "https://max480-random-stuff.appspot.com/estcequeckc.html"
+                "https://max480-random-stuff.appspot.com/discord-bots/terms-and-privacy"
         )) {
             log.debug("Checking response code of {}", url);
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
