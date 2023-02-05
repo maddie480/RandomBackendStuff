@@ -1,7 +1,6 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.max480.randomstuff.backend.SecretConstants;
-import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
@@ -14,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -206,10 +207,10 @@ public class EverestVersionLister {
         info.sort(Comparator.comparingInt(build -> -((int) build.get("version"))));
 
         // push to Cloud Storage
-        CloudStorageUtils.sendStringToCloudStorage(new JSONArray(info).toString(), "everest_version_list.json", "application/json");
+        Files.writeString(Paths.get("/shared/celeste/everest-versions.json"), new JSONArray(info).toString(), StandardCharsets.UTF_8);
 
         // update the frontend cache
-        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest-versions-reload?key="
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/everest-versions-reload?key="
                 + SecretConstants.RELOAD_SHARED_SECRET);
         if (conn.getResponseCode() != 200) {
             throw new IOException("Everest Versions Reload API sent non 200 code: " + conn.getResponseCode());

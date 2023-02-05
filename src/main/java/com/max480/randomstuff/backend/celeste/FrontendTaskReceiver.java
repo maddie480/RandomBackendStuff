@@ -1,17 +1,9 @@
 package com.max480.randomstuff.backend.celeste;
 
-import com.google.api.core.ApiService;
-import com.google.cloud.ReadChannel;
-import com.google.cloud.WriteChannel;
-import com.google.cloud.pubsub.v1.AckReplyConsumer;
-import com.google.cloud.pubsub.v1.MessageReceiver;
-import com.google.cloud.pubsub.v1.Subscriber;
-import com.google.cloud.storage.*;
-import com.google.pubsub.v1.ProjectSubscriptionName;
-import com.google.pubsub.v1.PubsubMessage;
 import com.max480.randomstuff.backend.discord.modstructureverifier.FontGenerator;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -19,12 +11,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -35,37 +28,52 @@ import java.util.List;
  */
 public class FrontendTaskReceiver {
     private static final Logger log = LoggerFactory.getLogger(FrontendTaskReceiver.class);
-    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
-
-    private static ApiService pubsub;
+    private static ServerSocket serverSocket = null;
 
     /**
      * Starts listening for pub/sub messages.
      */
     public static void start() {
-        ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of("max480-random-stuff", "backend-subscriber");
-        MessageReceiver receiver = FrontendTaskReceiver::messageReceived;
-        pubsub = Subscriber.newBuilder(subscriptionName, receiver).build().startAsync();
+        new Thread(() -> {
+            try {
+                serverSocket = new ServerSocket(4480);
+                while (serverSocket != null) {
+                    try (Socket connection = serverSocket.accept()) {
+                        messageReceived(IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8));
+                    } catch (Exception e) {
+                        log.warn("Error while handling socket message", e);
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Error while starting server socket", e);
+            }
+        }).start();
     }
 
     /**
      * Stops listening for pub/sub messages.
      */
     public static void stop() {
-        if (pubsub != null) {
-            pubsub.stopAsync().awaitTerminated();
-            pubsub = null;
+        if (serverSocket != null) {
+            ServerSocket ref = serverSocket;
+            serverSocket = null; // set it to null first because the thread is going to blow up, and serverSocket being null will break the loop
+
+            try {
+                ref.close();
+            } catch (IOException e) {
+                log.warn("Error while closing frontend task receiver socket", e);
+            }
         }
     }
 
     /**
      * Handles any incoming pub/sub messages.
      */
-    private static void messageReceived(PubsubMessage message, AckReplyConsumer consumer) {
-        consumer.ack();
+    private static void messageReceived(String requestBody) {
+        log.info("Message received on socket! {}", requestBody);
 
         try {
-            JSONObject o = new JSONObject(message.getData().toStringUtf8());
+            JSONObject o = new JSONObject(requestBody);
 
             switch (o.getString("taskType")) {
                 case "modStructureVerify" -> {
@@ -101,10 +109,10 @@ public class FrontendTaskReceiver {
 
         try {
             String taskName = fileName.substring(0, fileName.lastIndexOf("."));
-            downloadCloudStorageFileToTempFolderAndDeleteIt(fileName);
-            ModStructureVerifier.analyzeZipFileFromFrontend(new File("/tmp/" + fileName), assetFolderName, mapFolderName,
+            String grabbedFile = grabFileFromSharedStorage(fileName);
+            ModStructureVerifier.analyzeZipFileFromFrontend(new File(grabbedFile), assetFolderName, mapFolderName,
                     (message, files) -> sendResponse(taskName, message, files));
-        } catch (IOException | StorageException e) {
+        } catch (IOException e) {
             log.error("Could not handle mod structure verification asked by frontend!", e);
         }
     }
@@ -117,31 +125,23 @@ public class FrontendTaskReceiver {
 
         try {
             String taskName = fileName.substring(0, fileName.lastIndexOf("."));
-            downloadCloudStorageFileToTempFolderAndDeleteIt(fileName);
-            FontGenerator.generateFontFromFrontend(new File("/tmp/" + fileName), language,
+            String grabbedFile = grabFileFromSharedStorage(fileName);
+            FontGenerator.generateFontFromFrontend(new File(grabbedFile), language,
                     (message, files) -> sendResponse(taskName, message, files));
-        } catch (IOException | StorageException e) {
+        } catch (IOException e) {
             log.error("Could not handle font generation asked by frontend!", e);
         }
     }
 
     /**
-     * Downloads the file with the given name from the staging (temporary files) bucket to the /tmp folder with the same name,
-     * then deletes it from Cloud Storage.
+     * Moves a file from the shared storage (/shared/temp) and moves it to /tmp.
      */
-    private static void downloadCloudStorageFileToTempFolderAndDeleteIt(String fileName) throws IOException, StorageException {
-        log.debug("Downloading {} from Cloud Storage...", fileName);
+    private static String grabFileFromSharedStorage(String fileName) throws IOException {
+        String target = "/tmp/" + fileName.replace("/", "-");
 
-        BlobId blobId = BlobId.of("staging.max480-random-stuff.appspot.com", fileName);
-        try (ReadChannel reader = storage.reader(blobId); FileOutputStream writerStream = new FileOutputStream("/tmp/" + fileName); FileChannel writer = writerStream.getChannel()) {
-            ByteBuffer buffer = ByteBuffer.allocate(4 * 1024);
-            while (reader.read(buffer) > 0 || buffer.position() != 0) {
-                buffer.flip();
-                writer.write(buffer);
-                buffer.compact();
-            }
-        }
-        storage.delete(blobId);
+        log.debug("Grabbing {} from shared storage...", fileName);
+        Files.move(Paths.get("/shared/temp/" + fileName), Paths.get(target));
+        return target;
     }
 
     private static void sendResponse(String taskName, String message, List<File> files) {
@@ -150,39 +150,28 @@ public class FrontendTaskReceiver {
             object.put("taskName", taskName);
             object.put("responseText", message);
 
-            // send attachments to Cloud Storage and refer to it in the JSON
+            // send attachments to shared storage and refer to it in the JSON
             JSONArray attachments = new JSONArray();
             for (File f : files) {
-                log.debug("Sending file {} to Cloud Storage", f.getAbsolutePath());
-                String fileName = sendToCloudStorageAndGiveFileName(taskName, f);
+                log.debug("Sending file {} to shared storage", f.getAbsolutePath());
+                String fileName = copyToStorageAndGiveFileName(taskName, f);
                 attachments.put(fileName);
             }
             object.put("attachments", attachments);
 
             // write the JSON and send it to Cloud Storage
             log.debug("Sending JSON to Cloud Storage as {}: {}", taskName + ".json", object);
-            File json = new File("/tmp/" + taskName + ".json");
+            File json = new File("/tmp/" + taskName.replace("/", "-") + ".json");
             FileUtils.writeStringToFile(json, object.toString(), StandardCharsets.UTF_8);
-            sendToCloudStorageAndGiveFileName(taskName, json);
-            FileUtils.forceDelete(json);
+            copyToStorageAndGiveFileName(taskName, json);
         } catch (IOException e) {
             log.error("Cannot send response to frontend request to Google Cloud Storage!", e);
         }
     }
 
-    private static String sendToCloudStorageAndGiveFileName(String taskName, File file) throws IOException, StorageException {
-        BlobId blobId = BlobId.of("staging.max480-random-stuff.appspot.com", taskName + "-" + file.getName());
-        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/octet-stream").build();
-
-        try (FileInputStream readerStream = new FileInputStream(file); WriteChannel writer = storage.writer(blobInfo); FileChannel reader = readerStream.getChannel()) {
-            ByteBuffer buffer = ByteBuffer.allocate(4 * 1024);
-            while (reader.read(buffer) > 0 || buffer.position() != 0) {
-                buffer.flip();
-                writer.write(buffer);
-                buffer.compact();
-            }
-        }
-
-        return taskName + "-" + file.getName();
+    private static String copyToStorageAndGiveFileName(String taskName, File file) throws IOException {
+        Path target = Paths.get("/shared/temp/" + taskName + "-" + file.getName());
+        Files.move(file.toPath(), target);
+        return target.getFileName().toString();
     }
 }

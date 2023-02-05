@@ -1,25 +1,28 @@
 package com.max480.randomstuff.backend.discord.crontabs;
 
-import com.google.api.gax.paging.Page;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This class is run daily in order to clean up custom commands for servers that removed the integration.
@@ -27,27 +30,32 @@ import java.util.regex.Pattern;
 public class CustomSlashCommandsCleanup {
     private static final Logger log = LoggerFactory.getLogger(CustomSlashCommandsCleanup.class);
 
-    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
-    private static final Pattern blobNamePattern = Pattern.compile("^custom_slash_commands/(\\d+)/(.+)\\.json$");
+    private static final Pattern blobNamePattern = Pattern.compile("^/shared/discord-bots/custom-slash-commands/(\\d+)/(.+)\\.json$");
 
-    private static final String USER_AGENT = "DiscordBot (https://max480-random-stuff.appspot.com, 1.0)";
+    private static final String USER_AGENT = "DiscordBot (https://max480.ovh, 1.0)";
 
     public static void housekeep() throws IOException {
-        Map<Long, Set<String>> commandsPerGuild = new HashMap<>();
+        Map<Long, Set<String>> commandsPerGuild;
 
-        // 1. make a list of commands we think the servers have
-        Page<Blob> blobs = storage.list("max480-random-stuff.appspot.com", Storage.BlobListOption.prefix("custom_slash_commands/"));
+        try (Stream<Path> fileList = Files.walk(Paths.get("/shared/discord-bots/custom-slash-commands"))) {
+            commandsPerGuild = fileList
+                    .map(path -> blobNamePattern.matcher(path.toAbsolutePath().toString()))
+                    .filter(Matcher::matches)
+                    .collect(Collectors.toMap(
+                            // key = guild ID
+                            matcher -> Long.parseLong(matcher.group(1)),
 
-        for (Blob blob : blobs.iterateAll()) {
-            Matcher matcher = blobNamePattern.matcher(blob.getName());
-            if (matcher.matches()) {
-                long guildId = Long.parseLong(matcher.group(1));
-                String commandName = matcher.group(2);
+                            // value = list of command IDs, which we initialize with a singleton set
+                            matcher -> Collections.singleton(matcher.group(2)),
 
-                Set<String> list = commandsPerGuild.getOrDefault(guildId, new HashSet<>());
-                list.add(commandName);
-                commandsPerGuild.put(guildId, list);
-            }
+                            // merge of 2 values with the same keys = just merge the 2 sets
+                            (list1, list2) -> {
+                                Set<String> merged = new HashSet<>(list1);
+                                merged.addAll(list2);
+                                return merged;
+                            }
+                    ));
+
         }
 
         String token = authenticate();
@@ -60,11 +68,7 @@ public class CustomSlashCommandsCleanup {
             if (commands == null) {
                 // If we lost access to the server, clean it up entirely.
                 log.warn("Left server {} => removing all slash commands!", serverId);
-
-                for (String commandName : commandPerGuild.getValue()) {
-                    log.debug("Deleting custom_slash_commands/{}/{}.json", serverId, commandName);
-                    storage.delete("max480-random-stuff.appspot.com", "custom_slash_commands/" + serverId + "/" + commandName + ".json");
-                }
+                FileUtils.deleteDirectory(new File("/shared/discord-bots/custom-slash-commands/" + serverId));
             } else {
                 // If we still have access to the server, check that all commands we have still exist.
                 // This might not be the case if the bot was kicked then re-invited.
@@ -80,7 +84,13 @@ public class CustomSlashCommandsCleanup {
                     if (!found) {
                         log.warn("Command {} not found for {} => removing it!", commandName, serverId);
                         log.debug("Deleting custom_slash_commands/{}/{}.json", serverId, commandName);
-                        storage.delete("max480-random-stuff.appspot.com", "custom_slash_commands/" + serverId + "/" + commandName + ".json");
+                        Files.delete(Paths.get("/shared/discord-bots/custom-slash-commands/" + serverId + "/" + commandName + ".json"));
+
+                        // delete folder if it is now empty
+                        File commandFolder = new File("/shared/discord-bots/custom-slash-commands/" + serverId);
+                        if (commandFolder.list().length == 0) {
+                            FileUtils.deleteDirectory(commandFolder);
+                        }
                     }
                 }
             }

@@ -1,55 +1,40 @@
 package com.max480.randomstuff.backend.discord.crontabs;
 
-import com.google.api.gax.paging.Page;
-import com.google.cloud.logging.LogEntry;
-import com.google.cloud.logging.Logging;
-import com.google.cloud.logging.LoggingOptions;
-import com.google.cloud.logging.Payload;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableMap;
 import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
-import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * Uploads the server count for Timezone Bot, Mod Structure Verifier and Games Bot
- * to Google Cloud Storage, for display on the website.
+ * Uploads the server count for Timezone Bot, Mod Structure Verifier and Games Bot to the shared storage,
+ * for display on the website.
  * Run every day.
  */
 public class ServerCountUploader {
-    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
-
     private static final Logger logger = LoggerFactory.getLogger(ServerCountUploader.class);
-    private static final Logging logging = LoggingOptions.getDefaultInstance().toBuilder().setProjectId("max480-random-stuff").build().getService();
-
-    private static final Pattern guildIdGrabber = Pattern.compile(".*\"guild_id\": \"([0-9]+)\".*", Pattern.DOTALL);
 
     public static void run() throws IOException {
-        int gamesBotServerCount = getServerUsageOfSlashCommandBot("/discord/games-bot");
-        int timezoneBotServerCount = getServerUsageOfSlashCommandBot("/discord/timezone-bot");
+        int gamesBotServerCount = getServerUsageOfSlashCommandBot("Games Bot");
+        int timezoneBotServerCount = getServerUsageOfSlashCommandBot("Timezone Bot");
 
         // to know how many servers use the Custom Slash Commands bot, just list out how many guild ids have created custom commands!
-        int customSlashCommandsServerCount = 0;
-        Page<Blob> blobs = storage.list("max480-random-stuff.appspot.com",
-                Storage.BlobListOption.prefix("custom_slash_commands/"), Storage.BlobListOption.currentDirectory());
-        for (Blob ignored : blobs.iterateAll()) {
-            customSlashCommandsServerCount++;
-        }
+        int customSlashCommandsServerCount = new File("/shared/discord-bots/custom-slash-commands").list().length;
 
         // write a file with all counts in it and send it to Cloud Storage.
         try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
@@ -62,7 +47,7 @@ public class ServerCountUploader {
             ), os);
 
             String yamlData = os.toString(StandardCharsets.UTF_8);
-            CloudStorageUtils.sendStringToCloudStorage(yamlData, "bot_server_counts.yaml", "text/yaml");
+            Files.writeString(Paths.get("/shared/discord-bots/bot-server-counts.yaml"), yamlData, StandardCharsets.UTF_8);
             logger.info("Stats saved on Cloud Storage: {}", yamlData);
         }
 
@@ -72,34 +57,30 @@ public class ServerCountUploader {
     /**
      * Roughly estimates the server count of an interaction-based bot, by counting the amount of servers it was
      * used on in the last 30 days.
-     *
-     * @param botPath The interactions endpoint URL
-     * @return The amount of servers where the bot was used in the last 30 days
      */
-    private static int getServerUsageOfSlashCommandBot(String botPath) {
-        Set<String> guilds = new HashSet<>();
-        int logEntries = 0;
-
-        for (LogEntry logEntry : logging.listLogEntries(
-                Logging.EntryListOption.sortOrder(Logging.SortingField.TIMESTAMP, Logging.SortingOrder.DESCENDING),
-                Logging.EntryListOption.filter("protoPayload.resource=\"" + botPath + "\" and timestamp >= \"" + ZonedDateTime.now().minusDays(30).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) + "\""),
-                Logging.EntryListOption.pageSize(100)
-        ).iterateAll()) {
-
-            String data = logEntry.<Payload.ProtoPayload>getPayload().getData().getValue().toStringUtf8();
-
-            // what even is protobuf anyway, I'm just going to use a regex instead.
-            final Matcher matcher = guildIdGrabber.matcher(data);
-            if (matcher.matches()) {
-                guilds.add(matcher.group(1));
-            }
-
-            logEntries++;
-            if (logEntries % 100 == 0) {
-                logger.debug("{} log entries for {} processed, found {} server ids so far", logEntries, botPath, guilds.size());
-            }
+    private static int getServerUsageOfSlashCommandBot(String botName) {
+        Pattern m = Pattern.compile(".*Guild ([0-9]+) used the " + botName + "!.*");
+        try (Stream<Path> frontendLogs = Files.list(Paths.get("/logs"))) {
+            return (int) frontendLogs
+                    .filter(p -> p.getFileName().toString().endsWith(".jetty.log"))
+                    .map(p -> {
+                        try (Stream<String> lines = Files.lines(p)) {
+                            return lines
+                                    .map(m::matcher)
+                                    .filter(Matcher::matches)
+                                    .map(l -> Long.parseLong(l.group(1)))
+                                    .collect(Collectors.toList());
+                        } catch (IOException e) {
+                            logger.warn("Could not check backend log entries!", e);
+                            return Collections.<Long>emptyList();
+                        }
+                    })
+                    .flatMap(List::stream)
+                    .distinct()
+                    .count();
+        } catch (IOException e) {
+            logger.warn("Could not check backend log entries!", e);
+            return 0;
         }
-
-        return guilds.size();
     }
 }

@@ -58,7 +58,7 @@ public class ContinuousHealthChecks {
                                 "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // max480-random-stuff health check
-                        checkURL("https://max480-random-stuff.appspot.com/celeste/everest_update.yaml", "SpringCollab2020:",
+                        checkURL("https://max480.ovh/celeste/everest_update.yaml", "SpringCollab2020:",
                                 "max480's Random Stuff Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // GameBanana health checks

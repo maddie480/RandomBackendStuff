@@ -33,7 +33,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * This is pretty similar to the https://max480-random-stuff.appspot.com/celeste/font-generator service,
+ * This is pretty similar to the https://max480.ovh/celeste/font-generator service,
  * except it uses BMFont, the same tool that was used for vanilla, for more accuracy.
  * This needs to be done on the backend because BMFont is Windows-only but works through Wine,
  * and I can't really install Wine on Google App Engine...
@@ -77,7 +77,7 @@ public class FontGenerator {
             }
 
             // find out which characters already exist for the language
-            Set<Integer> existingCodes = getListOfExistingCodesFor(Paths.get("font_generator_data/vanilla/" + language + ".fnt"));
+            Set<Integer> existingCodes = getListOfExistingCodesFor(Paths.get("/app/static/font-generator-data/vanilla/" + language + ".fnt"));
 
             // take all characters that do not exist and jam them all into a single string
             final String missingCharacters = text.codePoints()
@@ -104,8 +104,8 @@ public class FontGenerator {
 
             // run BMFont to generate the font!
             if (message != null) message.addReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
-            new ProcessBuilder("/usr/bin/wine", "font_generator_data/bmfont.exe",
-                    "-c", toWindowsPath(Paths.get("font_generator_data/configs/" + language + ".bmfc")),
+            new ProcessBuilder("/usr/bin/wine", "/app/static/font-generator-data/bmfont.exe",
+                    "-c", toWindowsPath(Paths.get("/app/static/font-generator-data/configs/" + language + ".bmfc")),
                     "-t", toWindowsPath(textFile),
                     "-o", toWindowsPath(targetFile))
                     .inheritIO()

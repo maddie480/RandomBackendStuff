@@ -2,7 +2,6 @@ package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import com.max480.randomstuff.backend.SecretConstants;
-import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import net.dv8tion.jda.api.JDA;
@@ -19,6 +18,9 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -249,9 +251,11 @@ public class TwitterUpdateChecker {
      * and unsubscribes webhooks automatically if an UnknownWebhookException happens.
      */
     static void sendToCelesteNewsNetwork(SendToWebhookHandler handler) throws IOException {
+        Path saveFile = Paths.get("/shared/celeste/celeste-news-network-subscribers.json");
+
         // load webhook URLs from Cloud Storage
         List<String> webhookUrls;
-        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("celeste_news_network_subscribers.json")) {
+        try (InputStream is = Files.newInputStream(saveFile)) {
             webhookUrls = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
                     .stream()
                     .map(Object::toString)
@@ -281,7 +285,7 @@ public class TwitterUpdateChecker {
             }
 
             // save the deletion to Cloud Storage.
-            CloudStorageUtils.sendStringToCloudStorage(new JSONArray(webhookUrls).toString(), "celeste_news_network_subscribers.json", "application/json");
+            Files.writeString(saveFile, new JSONArray(webhookUrls).toString(), UTF_8);
         }
     }
 

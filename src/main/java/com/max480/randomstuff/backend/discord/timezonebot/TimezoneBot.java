@@ -1,7 +1,6 @@
 package com.max480.randomstuff.backend.discord.timezonebot;
 
 import com.max480.randomstuff.backend.SecretConstants;
-import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -10,7 +9,6 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.ErrorResponse;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
@@ -21,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
 import java.time.DateTimeException;
 import java.time.ZoneId;
@@ -161,8 +160,7 @@ public class TimezoneBot {
             os.writeObject(timezoneFullNames);
             os.writeObject(timezoneConflicts);
         }
-        CloudStorageUtils.sendToCloudStorage("/tmp/timezone_name_data.ser", "timezone_name_data.ser", "application/octet-stream");
-        FileUtils.forceDelete(new File("/tmp/timezone_name_data.ser"));
+        Files.move(Paths.get("/tmp/timezone_name_data.ser"), Paths.get("/shared/discord-bots/timezone-name-data.ser"), StandardCopyOption.REPLACE_EXISTING);
 
         // load the saved files (user settings, server settings, member cache).
         userTimezones = new ArrayList<>();

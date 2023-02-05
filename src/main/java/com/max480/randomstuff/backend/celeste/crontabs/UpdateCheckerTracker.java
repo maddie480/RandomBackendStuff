@@ -1,17 +1,14 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
-import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import com.max480.everest.updatechecker.EventListener;
 import com.max480.everest.updatechecker.Mod;
 import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
-import com.max480.randomstuff.backend.utils.CloudStorageUtils;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
@@ -24,6 +21,7 @@ import java.net.HttpURLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -75,7 +73,6 @@ public class UpdateCheckerTracker extends EventListener {
     private String everestUpdateSha256 = "[first check]";
     private String modSearchDatabaseSha256 = "[first check]";
     private String fileIdsSha256 = "[first check]";
-    private boolean luaCutscenesUpdated = false;
 
     private boolean currentUpdateIsFull = false;
     private long lastFullCheckTimestamp = 0L;
@@ -86,7 +83,7 @@ public class UpdateCheckerTracker extends EventListener {
 
     public UpdateCheckerTracker() {
         // read back the latest updates that happened before the tracker was started up.
-        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("update_checker_status.json")) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/updater/status.json"))) {
             JSONObject updateCheckerStatusData = new JSONObject(IOUtils.toString(is, UTF_8));
 
             lastFullCheckTimestamp = updateCheckerStatusData.getLong("lastFullCheckTimestamp");
@@ -162,11 +159,7 @@ public class UpdateCheckerTracker extends EventListener {
                     ":inbox_tray: <" + mod.getUrl() + ">");
         }
 
-        if (mod.getName().equals("LuaCutscenes")) {
-            luaCutscenesUpdated = true;
-        }
-
-        try (InputStream is = CloudStorageUtils.getCloudStorageInputStream("src_mod_update_notification_ids.json")) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/src-mod-update-notification-ids.json"))) {
             List<String> srcModIds = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
                     .stream()
                     .map(Object::toString)
@@ -179,7 +172,7 @@ public class UpdateCheckerTracker extends EventListener {
                 executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":information_source: Message sent to SRC staff:\n> " + message);
             }
 
-        } catch (IOException | StorageException e) {
+        } catch (IOException e) {
             log.error("Error while fetching SRC mod update notification ID list", e);
             executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Error while fetching SRC mod update notification ID list: " + e);
         }
@@ -371,11 +364,10 @@ public class UpdateCheckerTracker extends EventListener {
 
             if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
                 log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
-                CloudStorageUtils.sendToCloudStorage("uploads/everestupdate.yaml", "everest_update.yaml", "text/yaml");
-                CloudStorageUtils.sendStringToCloudStorage(convertModDependencyGraphToEverestYamlFormat(),
-                        "mod_dependency_graph.yaml", "text/yaml");
+                Files.copy(Paths.get("uploads/everestupdate.yaml"), Paths.get("/shared/celeste/updater/everest-update.yaml"), StandardCopyOption.REPLACE_EXISTING);
+                Files.writeString(Paths.get("/shared/celeste/updater/mod-dependency-graph.yaml"), convertModDependencyGraphToEverestYamlFormat(), UTF_8);
 
-                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/everest-update-reload?key="
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/everest-update-reload?key="
                         + SecretConstants.RELOAD_SHARED_SECRET);
                 if (conn.getResponseCode() != 200) {
                     throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
@@ -390,11 +382,11 @@ public class UpdateCheckerTracker extends EventListener {
             if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
                 log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
 
-                CloudStorageUtils.sendToCloudStorage("uploads/modsearchdatabase.yaml", "mod_search_database.yaml", "text/yaml");
+                Files.copy(Paths.get("uploads/modsearchdatabase.yaml"), Paths.get("/shared/celeste/updater/mod-search-database.yaml"), StandardCopyOption.REPLACE_EXISTING);
 
                 serializeModSearchDatabase();
 
-                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/celeste/gamebanana-search-reload?key="
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/gamebanana-search-reload?key="
                         + SecretConstants.RELOAD_SHARED_SECRET);
                 if (conn.getResponseCode() != 200) {
                     throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
@@ -408,25 +400,15 @@ public class UpdateCheckerTracker extends EventListener {
                 log.info("Reloading mod files database as file_ids.yaml hash changed: {} -> {}", fileIdsSha256, newFileIdsHash);
 
                 pack("modfilesdatabase", "/tmp/mod_files_database.zip");
-                CloudStorageUtils.sendToCloudStorage("/tmp/mod_files_database.zip", "mod_files_database.zip", "application/zip");
-                FileUtils.forceDelete(new File("/tmp/mod_files_database.zip"));
+                Files.move(Paths.get("/tmp/mod_files_database.zip"), Paths.get("/shared/celeste/updater/mod-files-database.zip"), StandardCopyOption.REPLACE_EXISTING);
 
                 fileIdsSha256 = newFileIdsHash;
-            }
-
-            if (luaCutscenesUpdated) {
-                // also update the Lua Cutscenes documentation mirror.
-                log.info("Re-uploading Lua Cutscenes docs!");
-                LuaCutscenesDocumentationUploader.updateLuaCutscenesDocumentation();
-                luaCutscenesUpdated = false;
-
-                executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":repeat: Lua Cutscenes documentation was updated.");
             }
 
             updateUpdateCheckerStatusInformation(System.currentTimeMillis() - postProcessingStart + timeTakenMilliseconds);
 
             lastEndOfCheckForUpdates = ZonedDateTime.now();
-        } catch (IOException | StorageException e) {
+        } catch (IOException e) {
             log.error("Error during a call to frontend to refresh databases", e);
             executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);
         }
@@ -487,7 +469,7 @@ public class UpdateCheckerTracker extends EventListener {
      * @param zipFilePath   The path to the destination zip
      * @throws IOException In case an error occurs while zipping the file
      */
-    private static void pack(String sourceDirPath, String zipFilePath) throws IOException {
+    public static void pack(String sourceDirPath, String zipFilePath) throws IOException {
         Path p = Files.createFile(Paths.get(zipFilePath));
         try (ZipOutputStream zs = new ZipOutputStream(Files.newOutputStream(p))) {
             zs.setLevel(Deflater.BEST_COMPRESSION);
@@ -542,8 +524,7 @@ public class UpdateCheckerTracker extends EventListener {
                 oos.writeObject(modDatabaseForSorting);
                 oos.writeObject(modCategories);
             }
-            CloudStorageUtils.sendToCloudStorage("/tmp/mod_search_database.ser", "mod_search_database.ser", "application/octet-stream");
-            new File("/tmp/mod_search_database.ser").delete();
+            Files.move(Paths.get("/tmp/mod_search_database.ser"), Paths.get("/shared/celeste/updater/mod-search-database.ser"), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
@@ -713,6 +694,6 @@ public class UpdateCheckerTracker extends EventListener {
         }
 
         log.info("Uploading new Update Checker status: {}", result);
-        CloudStorageUtils.sendStringToCloudStorage(result.toString(), "update_checker_status.json", "application/json");
+        Files.writeString(Paths.get("/shared/celeste/updater/status.json"), result.toString(), UTF_8);
     }
 }

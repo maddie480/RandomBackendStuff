@@ -1,9 +1,5 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
@@ -14,22 +10,23 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * A small script that is called daily in order to cache GameBanana API results for Arbitrary Mod App users.
  * It seems GameBanana is quite often not responsive, which makes calling those APIs in real time quite impractical...
  * <p>
- * Everything on the staging.max480-random-stuff.appspot.com bucket is removed 1 day after being added,
+ * Everything in the /shared/temp folder is removed 1 day after being added,
  * so no cleanup process is needed for mods that were removed from the Arbitrary Mod App.
  */
 public class ArbitraryModAppCacher {
-    private static final Storage storage = StorageOptions.newBuilder().setProjectId("max480-random-stuff").build().getService();
     private static final Logger logger = LoggerFactory.getLogger(ArbitraryModAppCacher.class);
 
     public static void refreshArbitraryModAppCache() throws IOException {
         JSONArray modList;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(
-                "https://max480-random-stuff.appspot.com/gamebanana/arbitrary-mod-app-modlist?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
+                "https://max480.ovh/gamebanana/arbitrary-mod-app-modlist?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
 
             modList = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
         }
@@ -48,12 +45,7 @@ public class ArbitraryModAppCacher {
                 }
             });
 
-            BlobId blobId = BlobId.of("staging.max480-random-stuff.appspot.com", "arbitrary-mod-app-cache/" + modId + ".json");
-            BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
-                    .setContentType("application/json")
-                    .setCacheControl("no-store")
-                    .build();
-            storage.create(blobInfo, modInfo);
+            Files.write(Paths.get("/shared/tmp/arbitrary-mod-app-cache/" + modId + ".json"), modInfo);
         }
 
         logger.info("Caching done!");

@@ -143,7 +143,7 @@ public class GameBananaAutomatedChecks {
 
                                     // invoke ilspycmd to decompile the mod.
                                     logger.debug("Decompiling DLL...");
-                                    Process p = new ProcessBuilder("/home/rsa-key-20181108/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start();
+                                    Process p = new ProcessBuilder("/home/debian/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start();
                                     String fullDecompile;
                                     try (InputStream is = p.getInputStream()) {
                                         fullDecompile = IOUtils.toString(is, StandardCharsets.UTF_8);
@@ -416,7 +416,7 @@ public class GameBananaAutomatedChecks {
                     }
 
                     logger.debug("Sending to validator");
-                    HttpPostMultipart submit = new HttpPostMultipart("https://max480-random-stuff.appspot.com/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+                    HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
                     submit.addFilePart("file", destination.toFile());
                     submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
