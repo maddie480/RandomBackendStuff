@@ -14,6 +14,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -30,7 +31,7 @@ public class ServiceMonitoringService {
     private static final Logger log = LoggerFactory.getLogger(ServiceMonitoringService.class);
 
     private static final Pattern frontendLogPattern = Pattern.compile(".*\\[(.* \\+0000)].*");
-    private static final DateTimeFormatter frontendDateFormat = DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss ZZZ");
+    private static final DateTimeFormatter frontendDateFormat = DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss ZZZ", Locale.ENGLISH);
 
     private static final Pattern frontendLogPatternStatusCode = Pattern.compile(".* ([0-9]{3}) [0-9].*");
 

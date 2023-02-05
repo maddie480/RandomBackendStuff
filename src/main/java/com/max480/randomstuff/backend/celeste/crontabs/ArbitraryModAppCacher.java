@@ -45,7 +45,7 @@ public class ArbitraryModAppCacher {
                 }
             });
 
-            Files.write(Paths.get("/shared/tmp/arbitrary-mod-app-cache/" + modId + ".json"), modInfo);
+            Files.write(Paths.get("/shared/temp/arbitrary-mod-app-cache/" + modId + ".json"), modInfo);
         }
 
         logger.info("Caching done!");
