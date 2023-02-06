@@ -439,7 +439,7 @@ public class CelesteStuffHealthCheck {
 
         // Everest versions: check that latest dev is listed
         int latestDev;
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
             latestDev = new JSONObject(IOUtils.toString(is, UTF_8)).getInt("dev");
         }
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/everest-versions"), UTF_8)
