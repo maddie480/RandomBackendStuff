@@ -474,7 +474,7 @@ public class TwitterUpdateChecker {
         try {
             // ./youtube-dl (actually yt-dlp) is downloaded daily from: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
             log.debug("Running ./youtube-dl --dump-single-json {} to get video URL for the tweet...", tweetUrl);
-            Process youtubeDl = new ProcessBuilder("./youtube-dl", "--dump-single-json", tweetUrl).start();
+            Process youtubeDl = new ProcessBuilder("/app/static/youtube-dl", "--dump-single-json", tweetUrl).start();
             try (InputStream is = youtubeDl.getInputStream()) {
                 JSONObject output = new JSONObject(IOUtils.toString(is, UTF_8));
 
