@@ -524,7 +524,7 @@ public class UpdateCheckerTracker extends EventListener {
                 oos.writeObject(modDatabaseForSorting);
                 oos.writeObject(modCategories);
             }
-            Files.move(Paths.get("/tmp/mod_search_database.ser"), Paths.get("/shared/celeste/updater/mod-search-database.ser"), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(Paths.get("/tmp/mod_search_database.ser"), Paths.get("/shared/celeste/mod-search-database.ser"), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
