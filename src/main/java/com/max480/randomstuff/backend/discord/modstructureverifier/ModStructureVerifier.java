@@ -712,11 +712,6 @@ public class ModStructureVerifier extends ListenerAdapter {
 
                     // send them out
                     sendResultToFrontend.accept(message, files);
-
-                    // delete the files we just created.
-                    for (File f : files) {
-                        FileUtils.forceDelete(f);
-                    }
                 }
             }
         } catch (Exception e) {
