@@ -12,10 +12,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,8 +24,8 @@ import java.util.stream.Stream;
  * This also prints out the amount of times the Timezone Bot and Games Bot were used.
  * This is called once a day and the result is posted as YAML in a private channel on Discord to monitor server activity.
  */
-public class ServiceMonitoringService {
-    private static final Logger log = LoggerFactory.getLogger(ServiceMonitoringService.class);
+public class UsageStatsService {
+    private static final Logger log = LoggerFactory.getLogger(UsageStatsService.class);
 
     private static final Pattern frontendLogPattern = Pattern.compile(".*\\[(.* \\+0000)].*");
     private static final DateTimeFormatter frontendDateFormat = DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss ZZZ", Locale.ENGLISH);
@@ -55,7 +52,7 @@ public class ServiceMonitoringService {
                         try (Stream<String> lines = Files.lines(p)) {
                             return (int) lines
                                     .filter(l -> l.contains("POST " + path))
-                                    .filter(ServiceMonitoringService::frontendLogIsLessThanOneDayOld)
+                                    .filter(UsageStatsService::frontendLogIsLessThanOneDayOld)
                                     .count();
                         } catch (IOException e) {
                             log.warn("Could not check frontend log entries!", e);
@@ -99,7 +96,7 @@ public class ServiceMonitoringService {
                     .map(p -> {
                         try (Stream<String> lines = Files.lines(p)) {
                             return lines
-                                    .filter(ServiceMonitoringService::frontendLogIsLessThanOneDayOld)
+                                    .filter(UsageStatsService::frontendLogIsLessThanOneDayOld)
                                     .map(l -> {
                                         Matcher m = frontendLogPatternStatusCode.matcher(l);
                                         if (!m.matches())
@@ -113,7 +110,7 @@ public class ServiceMonitoringService {
                         }
                     })
                     .flatMap(List::stream)
-                    .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+                    .collect(Collectors.groupingBy(Function.identity(), TreeMap::new, Collectors.counting()));
         } catch (IOException e) {
             log.warn("Could not check frontend log entries!", e);
             return Collections.emptyMap();
