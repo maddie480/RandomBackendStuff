@@ -1,11 +1,14 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
+import com.max480.everest.updatechecker.ModFilesDatabaseBuilder;
 import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.collections4.keyvalue.AbstractKeyValue;
 import org.apache.commons.collections4.keyvalue.DefaultKeyValue;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +21,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -359,6 +364,38 @@ public class CustomEntityCatalogGenerator {
             mods = YamlUtil.load(is);
         }
 
+        // get the stuff that ships with More Lönn Plugins
+        Set<String> mlpEntities = new HashSet<>();
+        Set<String> mlpTriggers = new HashSet<>();
+        Set<String> mlpEffects = new HashSet<>();
+
+        {
+            String downloadLink = (String) everestUpdateYaml.get("MoreLoennPlugins")
+                    .get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
+
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(downloadLink)) {
+                FileUtils.copyToFile(is, new File("/tmp/mlp.zip"));
+            }
+
+            try (ZipFile file = new ZipFile("/tmp/mlp.zip")) {
+                Enumeration<? extends ZipEntry> entries = file.entries();
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    if (!entry.isDirectory() && entry.getName().startsWith("Loenn/lang/") && entry.getName().endsWith(".lang")) {
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(entry), UTF_8))) {
+                            Triple<Set<String>, Set<String>, Set<String>> allStuff = ModFilesDatabaseBuilder.extractLoennEntities(Paths.get("/tmp/trash.yaml"), br);
+                            mlpEntities.addAll(allStuff.getLeft());
+                            mlpTriggers.addAll(allStuff.getMiddle());
+                            mlpEffects.addAll(allStuff.getRight());
+                            FileUtils.forceDelete(new File("/tmp/trash.yaml"));
+                        }
+                    }
+                }
+            }
+
+            FileUtils.forceDelete(new File("/tmp/mlp.zip"));
+        }
+
         for (String mod : mods) {
             // load this mod's info
             Map<String, Object> fileInfo;
@@ -375,6 +412,26 @@ public class CustomEntityCatalogGenerator {
                 if (getUpdateCheckerDatabaseEntry(everestUpdateYaml, file) != null) {
                     checkMapEditor("ahorn", mod, file, thisModInfo);
                     checkMapEditor("loenn", mod, file, thisModInfo);
+
+                    // More Lönn Plugins
+                    for (String entity : mlpEntities) {
+                        String formatted = formatName(entity);
+                        if (thisModInfo.entityList.containsKey(formatted)) {
+                            thisModInfo.entityList.get(formatted).add("mlp");
+                        }
+                    }
+                    for (String trigger : mlpTriggers) {
+                        String formatted = formatName(trigger);
+                        if (thisModInfo.triggerList.containsKey(formatted)) {
+                            thisModInfo.triggerList.get(formatted).add("mlp");
+                        }
+                    }
+                    for (String effect : mlpEffects) {
+                        String formatted = formatName(effect);
+                        if (thisModInfo.effectList.containsKey(formatted)) {
+                            thisModInfo.effectList.get(formatted).add("mlp");
+                        }
+                    }
 
                     // check if we found plugins!
                     if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
