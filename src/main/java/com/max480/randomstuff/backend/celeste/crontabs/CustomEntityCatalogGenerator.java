@@ -410,28 +410,8 @@ public class CustomEntityCatalogGenerator {
 
             for (String file : files) {
                 if (getUpdateCheckerDatabaseEntry(everestUpdateYaml, file) != null) {
-                    checkMapEditor("ahorn", mod, file, thisModInfo);
-                    checkMapEditor("loenn", mod, file, thisModInfo);
-
-                    // More Lönn Plugins
-                    for (String entity : mlpEntities) {
-                        String formatted = formatName(entity);
-                        if (thisModInfo.entityList.containsKey(formatted)) {
-                            thisModInfo.entityList.get(formatted).add("mlp");
-                        }
-                    }
-                    for (String trigger : mlpTriggers) {
-                        String formatted = formatName(trigger);
-                        if (thisModInfo.triggerList.containsKey(formatted)) {
-                            thisModInfo.triggerList.get(formatted).add("mlp");
-                        }
-                    }
-                    for (String effect : mlpEffects) {
-                        String formatted = formatName(effect);
-                        if (thisModInfo.effectList.containsKey(formatted)) {
-                            thisModInfo.effectList.get(formatted).add("mlp");
-                        }
-                    }
+                    checkMapEditor("ahorn", mod, file, thisModInfo, mlpEntities, mlpTriggers, mlpEffects);
+                    checkMapEditor("loenn", mod, file, thisModInfo, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
 
                     // check if we found plugins!
                     if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
@@ -449,7 +429,8 @@ public class CustomEntityCatalogGenerator {
     }
 
     /**
-     * Checks whethr the given mod has any map editor entities registered for it.
+     * Checks whether the given mod has any map editor entities registered for it.
+     * If the found entities are also found in More Lönn Plugins (mlp* parameters), an extra "mlp" tag will be added to the editor list.
      *
      * @param editor  The map editor to check
      * @param mod     The itemtype/itemid of the mod
@@ -457,7 +438,9 @@ public class CustomEntityCatalogGenerator {
      * @param modInfo The mod info to fill out with any map editor info we found
      * @throws IOException If an error occurs while reading the database
      */
-    private void checkMapEditor(String editor, String mod, String file, QueriedModInfo modInfo) throws IOException {
+    private void checkMapEditor(String editor, String mod, String file, QueriedModInfo modInfo,
+                                Set<String> mlpEntities, Set<String> mlpTriggers, Set<String> mlpEffects) throws IOException {
+
         if (new File("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml").exists()) {
             Map<String, List<String>> entityList;
             try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + editor + "_" + file + ".yaml")) {
@@ -471,6 +454,9 @@ public class CustomEntityCatalogGenerator {
                 } else {
                     modInfo.entityList.get(formatted).add(editor);
                 }
+                if (mlpEntities.contains(entity)) {
+                    modInfo.entityList.get(formatted).add("mlp");
+                }
             }
             for (String trigger : entityList.get("Triggers")) {
                 String formatted = formatName(trigger);
@@ -479,6 +465,9 @@ public class CustomEntityCatalogGenerator {
                 } else {
                     modInfo.triggerList.get(formatted).add(editor);
                 }
+                if (mlpTriggers.contains(trigger)) {
+                    modInfo.triggerList.get(formatted).add("mlp");
+                }
             }
             for (String effect : entityList.get("Effects")) {
                 String formatted = formatName(effect);
@@ -486,6 +475,9 @@ public class CustomEntityCatalogGenerator {
                     modInfo.effectList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
                     modInfo.effectList.get(formatted).add(editor);
+                }
+                if (mlpEffects.contains(effect)) {
+                    modInfo.effectList.get(formatted).add("mlp");
                 }
             }
         }
