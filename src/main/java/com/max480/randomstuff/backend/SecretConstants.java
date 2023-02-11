@@ -46,7 +46,6 @@ public class SecretConstants {
     // Server Manager bot credentials
     public static String SERVER_JANITOR_TOKEN = "";
     public static Long SUPPORT_SERVER_ID = 0L;
-    public static Long SUPPORT_SERVER_HIDE_ROLE_ID = 0L;
     public static List<Long> SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = Collections.emptyList();
 
 
@@ -131,7 +130,6 @@ public class SecretConstants {
 
         SERVER_JANITOR_TOKEN = secrets.getString("SERVER_JANITOR_TOKEN");
         SUPPORT_SERVER_ID = secrets.getLong("SUPPORT_SERVER_ID");
-        SUPPORT_SERVER_HIDE_ROLE_ID = secrets.getLong("SUPPORT_SERVER_HIDE_ROLE_ID");
         SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = getListOfLongs(secrets.getJSONArray("SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP"));
 
         GOOGLE_DRIVE_API_KEY = secrets.getString("GOOGLE_DRIVE_API_KEY");

@@ -24,9 +24,6 @@ public class ServerJanitorBot extends ListenerAdapter {
 
         Guild supportServer = jda.getGuildById(SecretConstants.SUPPORT_SERVER_ID);
 
-        supportServer.removeRoleFromMember(supportServer.getSelfMember(),
-                supportServer.getRoleById(SecretConstants.SUPPORT_SERVER_HIDE_ROLE_ID)).complete();
-
         for (long channelId : SecretConstants.SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP) {
             TextChannel channel = jda.getGuildById(SecretConstants.SUPPORT_SERVER_ID).getTextChannelById(channelId);
 
@@ -47,9 +44,6 @@ public class ServerJanitorBot extends ListenerAdapter {
                 channel.deleteMessageById(messageId).complete();
             }
         }
-
-        supportServer.addRoleToMember(supportServer.getSelfMember(),
-                supportServer.getRoleById(SecretConstants.SUPPORT_SERVER_HIDE_ROLE_ID)).complete();
 
         jda.shutdown();
     }
