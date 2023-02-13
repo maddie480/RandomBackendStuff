@@ -41,7 +41,6 @@ public class SecretConstants {
 
     // Mod Structure Verifier credentials
     public static String MOD_STRUCTURE_VERIFIER_TOKEN = "";
-    public static String STRAWBERRY_JAM_LOCATION = "";
 
     // Server Manager bot credentials
     public static String SERVER_JANITOR_TOKEN = "";
@@ -126,7 +125,6 @@ public class SecretConstants {
         TIMEZONE_BOT_LITE_TOP_GG_TOKEN = secrets.getString("TIMEZONE_BOT_LITE_TOP_GG_TOKEN");
 
         MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
-        STRAWBERRY_JAM_LOCATION = secrets.getString("STRAWBERRY_JAM_LOCATION");
 
         SERVER_JANITOR_TOKEN = secrets.getString("SERVER_JANITOR_TOKEN");
         SUPPORT_SERVER_ID = secrets.getLong("SUPPORT_SERVER_ID");

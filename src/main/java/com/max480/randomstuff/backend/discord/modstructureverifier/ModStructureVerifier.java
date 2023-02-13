@@ -176,14 +176,6 @@ public class ModStructureVerifier extends ListenerAdapter {
         logger.debug("Bot is currently in following guilds: {}", jda.getGuilds());
     }
 
-    // == delete when SJ is out -- start
-
-    public static void addEventListener(ListenerAdapter eventListener) {
-        jda.addEventListener(eventListener);
-    }
-
-    // == delete when SJ is out -- end
-
     /**
      * This is called from UpdateCheckerTracker when the database changes (or on startup),
      * in order to refresh the asset maps.
@@ -825,21 +817,6 @@ public class ModStructureVerifier extends ListenerAdapter {
                     checkMapEditorEntities("loenn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
                 }
             }
-
-            // == delete when SJ is out -- start
-
-            if (dep.equals("StrawberryJam2021")) {
-                // download and analyze the SJ2021 helper.
-                try (InputStream databaseStrawberryJam = ConnectionUtils.openStreamWithTimeout(SecretConstants.STRAWBERRY_JAM_LOCATION)) {
-                    String whereIsStrawberryJam = YamlUtil.<Map<String, Map<String, Object>>>load(databaseStrawberryJam)
-                            .get("StrawberryJam2021")
-                            .get("URL").toString();
-
-                    addStuffFromSJ2021(availableEntities, availableTriggers, availableModEffects, whereIsStrawberryJam, isHtml);
-                }
-            }
-
-            // == delete when SJ is out -- end
         }
 
         // extract the map bin.
@@ -1068,91 +1045,6 @@ public class ModStructureVerifier extends ListenerAdapter {
             throw new IOException(e);
         }
     }
-
-    // == delete when SJ is out -- start
-
-    private static void addStuffFromSJ2021(Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
-                                           String whereIsStrawberryJam, boolean isHtml) throws IOException {
-
-        List<String> ahornEntities = new LinkedList<>();
-        List<String> ahornTriggers = new LinkedList<>();
-        List<String> ahornEffects = new LinkedList<>();
-
-        File modZip = new File("mod-ahornscan-sj-" + System.currentTimeMillis() + ".zip");
-
-        // download file (pretending we are Firefox since Discord hates Java and responds 403 to it for some reason)
-        try (OutputStream os = new BufferedOutputStream(new FileOutputStream(modZip))) {
-            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(whereIsStrawberryJam);
-            connection.setDoInput(true);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0");
-            connection.connect();
-
-            try (InputStream is = connection.getInputStream()) {
-                IOUtils.copy(is, os);
-            }
-        }
-
-        // scan its contents, opening Ahorn plugin files
-        try (ZipFile zipFile = ZipFileWithAutoEncoding.open(modZip.getAbsolutePath())) {
-            final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
-            while (zipEntries.hasMoreElements()) {
-                ZipEntry entry = zipEntries.nextElement();
-                if (entry.getName().startsWith("Ahorn/") && entry.getName().endsWith(".jl")) {
-                    InputStream inputStream = zipFile.getInputStream(entry);
-                    extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, entry.getName(), inputStream);
-                }
-            }
-
-            logger.info("Found {} Ahorn entities, {} triggers, {} effects in SJ2021.",
-                    ahornEntities.size(), ahornTriggers.size(), ahornEffects.size());
-        } catch (IOException | IllegalArgumentException e) {
-            logger.error("Could not analyze Ahorn plugins from SJ2021", e);
-            throw new IOException(e);
-        }
-
-        // merge the result into available entities.
-        availableEntities.addAll(ahornEntities);
-        availableTriggers.addAll(ahornTriggers);
-        availableEffects.addAll(ahornEffects);
-
-        FileUtils.forceDelete(modZip);
-    }
-
-    // literal copy-paste from update checker code
-    private static void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
-                                             String file, InputStream inputStream) throws IOException {
-
-        Pattern mapdefMatcher = Pattern.compile(".*@mapdef [A-Za-z]+ \"([^\"]+)\".*");
-        Pattern pardefMatcher = Pattern.compile(".*Entity\\(\"([^\"]+)\".*");
-
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String entityID = null;
-
-                Matcher mapdefMatch = mapdefMatcher.matcher(line);
-                if (mapdefMatch.matches()) {
-                    entityID = mapdefMatch.group(1);
-                }
-                Matcher pardefMatch = pardefMatcher.matcher(line);
-                if (pardefMatch.matches()) {
-                    entityID = pardefMatch.group(1);
-                }
-
-                if (entityID != null) {
-                    if (file.startsWith("Ahorn/effects/")) {
-                        ahornEffects.add(entityID);
-                    } else if (file.startsWith("Ahorn/entities/")) {
-                        ahornEntities.add(entityID);
-                    } else if (file.startsWith("Ahorn/triggers/")) {
-                        ahornTriggers.add(entityID);
-                    }
-                }
-            }
-        }
-    }
-
-    // == delete when SJ is out -- end (also clean up secrets that are left unused)
 
     private static void parseProblematicPaths(List<String> problemList, Set<String> websiteProblemList,
                                               String websiteProblem, String problemLabel, List<String> paths, boolean isHtml) {
