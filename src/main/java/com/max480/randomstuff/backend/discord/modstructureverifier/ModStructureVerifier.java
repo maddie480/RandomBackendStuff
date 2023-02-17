@@ -953,16 +953,16 @@ public class ModStructureVerifier extends ListenerAdapter {
     private static Map<String, String> checkForMissingFonts(ZipFile modZip) throws IOException {
         Map<String, String> issues = new HashMap<>();
 
-        checkForMissingFonts(modZip, "renogare64", "Brazilian Portuguese", issues);
-        checkForMissingFonts(modZip, "renogare64", "English", issues);
-        checkForMissingFonts(modZip, "renogare64", "French", issues);
-        checkForMissingFonts(modZip, "renogare64", "German", issues);
-        checkForMissingFonts(modZip, "renogare64", "Italian", issues);
+        checkForMissingFonts(modZip, "renogare", "Brazilian Portuguese", issues);
+        checkForMissingFonts(modZip, "renogare", "English", issues);
+        checkForMissingFonts(modZip, "renogare", "French", issues);
+        checkForMissingFonts(modZip, "renogare", "German", issues);
+        checkForMissingFonts(modZip, "renogare", "Italian", issues);
         checkForMissingFonts(modZip, "japanese", "Japanese", issues);
         checkForMissingFonts(modZip, "korean", "Korean", issues);
         checkForMissingFonts(modZip, "russian", "Russian", issues);
         checkForMissingFonts(modZip, "chinese", "Simplified Chinese", issues);
-        checkForMissingFonts(modZip, "renogare64", "Spanish", issues);
+        checkForMissingFonts(modZip, "renogare", "Spanish", issues);
 
         return issues;
     }
@@ -985,7 +985,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             Set<Integer> existingCodePoints;
 
             // get which characters exist in vanilla.
-            // vanilla-fonts has the same contents as https://github.com/max4805/RandomStuffWebsite/tree/main/src/main/webapp/WEB-INF/classes/font-generator/vanilla
+            // vanilla-fonts has the same contents as https://github.com/max4805/RandomBackendStuff/tree/main/src/main/java/com/max480/randomstuff/backend/discord/modstructureverifier/font_generator_data/vanilla
             try (InputStream is = ModStructureVerifier.class.getResourceAsStream("/vanilla-fonts/" + languageName + ".fnt")) {
                 existingCodePoints = readFontFile(is);
                 logger.debug("Read {} code points from vanilla-fonts/{}.fnt", existingCodePoints.size(), languageName);
