@@ -133,6 +133,10 @@ public class WorldClockHealthCheck {
             return null;
         }
 
+        public ReplyCallbackAction setSuppressedNotifications(boolean b) {
+            return null;
+        }
+
         public ReplyCallbackAction setFiles(@Nullable Collection<? extends FileUpload> collection) {
             return null;
         }
