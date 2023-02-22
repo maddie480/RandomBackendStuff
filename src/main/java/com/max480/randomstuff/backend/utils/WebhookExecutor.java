@@ -41,6 +41,13 @@ public class WebhookExecutor {
     }
 
     /**
+     * Calls a Discord webhook without enabling mentions, with embeds and attachments.
+     */
+    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, List<File> attachments, List<Map<String, Object>> embeds) throws IOException {
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, attachments, embeds);
+    }
+
+    /**
      * Calls a Discord webhook without enabling mentions, with specific HTTP headers.
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, Map<String, String> httpHeaders)
