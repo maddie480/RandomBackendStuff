@@ -15,4 +15,11 @@
         <packageUrl regex="true">^pkg:maven/org\.json/json@.*$</packageUrl>
         <vulnerabilityName>CVE-2022-45688</vulnerabilityName>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+            Not really sure what the relation between this JSON-java vulnerability and Jackson is...
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-core@.*$</packageUrl>
+        <cve>CVE-2022-45688</cve>
+    </suppress>
 </suppressions>
