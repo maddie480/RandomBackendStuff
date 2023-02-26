@@ -10,16 +10,16 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
-            The vulnerability is about `XML.toJSONObject` which isn't used here
+            This CVE affects all versions of JSON-java up to and excluding 20220924... and the project depends on version 20220924
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.json/json@.*$</packageUrl>
-        <vulnerabilityName>CVE-2022-45688</vulnerabilityName>
+        <cve>CVE-2022-45688</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
-            Not really sure what the relation between this JSON-java vulnerability and Jackson is...
+            Jackson misidentified as JSON-java
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-core@.*$</packageUrl>
-        <cve>CVE-2022-45688</cve>
+        <cpe>cpe:/a:json-java_project:json-java</cpe>
     </suppress>
 </suppressions>
