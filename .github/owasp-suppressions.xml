@@ -15,11 +15,4 @@
         <packageUrl regex="true">^pkg:maven/org\.json/json@.*$</packageUrl>
         <cve>CVE-2022-45688</cve>
     </suppress>
-    <suppress>
-        <notes><![CDATA[
-            Jackson misidentified as JSON-java
-        ]]></notes>
-        <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-core@.*$</packageUrl>
-        <cpe>cpe:/a:json-java_project:json-java</cpe>
-    </suppress>
 </suppressions>
