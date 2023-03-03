@@ -101,7 +101,6 @@ spirialis/boostcaptrigger=Boost Cap Trigger
 spirialis/fixedlaunchspring=Fixed Launch Spring
 spirialis/fixedlaunchspringleft=Fixed Launch Spring Left
 spirialis/fixedlaunchspringright=Fixed Launch Spring Right
-spirialis/fixedspeedtrigger=Fixed Speed Trigger
 spirialis/waterfloatingobject=Water Floating Object
 Torchlight/Torchlight=Torch Follower
 vitellary/bloomstrengthtrigger=Bloom Strength Trigger
