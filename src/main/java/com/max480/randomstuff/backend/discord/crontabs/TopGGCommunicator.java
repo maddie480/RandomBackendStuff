@@ -2,6 +2,7 @@ package com.max480.randomstuff.backend.discord.crontabs;
 
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
+import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import net.dv8tion.jda.api.JDA;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
@@ -34,6 +35,9 @@ public class TopGGCommunicator {
     private static int timezoneBotScore = -1;
     private static int timezoneBotRatingCount = -1;
 
+    private static int triesLeft = 5;
+    private static int triesResetIn = 0;
+
     /**
      * Refreshes the server counts once a day.
      * The actual counting is done by {@link ServerCountUploader}, which then calls this method.
@@ -63,13 +67,43 @@ public class TopGGCommunicator {
         getAndUpdateBotScore(SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID, SecretConstants.TIMEZONE_BOT_LITE_TOP_GG_TOKEN, internalBotClient,
                 "Timezone Bot", () -> timezoneBotScore, score -> timezoneBotScore = score);
 
-        // check if we got new ratings (through more... unconventional means)
-        updateBotRatingCount(internalBotClient, SecretConstants.GAMES_BOT_CLIENT_ID,
-                "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score);
-        updateBotRatingCount(internalBotClient, SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID,
-                "Custom Slash Commands", () -> customSlashCommandsRatingCount, score -> customSlashCommandsRatingCount = score);
-        updateBotRatingCount(internalBotClient, SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID,
-                "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score);
+        if (triesLeft <= 0) {
+            triesResetIn--;
+            logger.debug("Stopped attempts at updating the votes for {} hour(s)", triesResetIn);
+
+            if (triesResetIn <= 0) {
+                logger.debug("Doing one more attempt!");
+                triesLeft = 1;
+            } else {
+                return;
+            }
+        }
+
+        try {
+            // check if we got new ratings (through more... unconventional means)
+            updateBotRatingCount(internalBotClient, SecretConstants.GAMES_BOT_CLIENT_ID,
+                    "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score);
+            updateBotRatingCount(internalBotClient, SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID,
+                    "Custom Slash Commands", () -> customSlashCommandsRatingCount, score -> customSlashCommandsRatingCount = score);
+            updateBotRatingCount(internalBotClient, SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID,
+                    "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score);
+
+            triesLeft = 5;
+        } catch (IOException e) {
+            logger.error("Could not fetch votes", e);
+            triesLeft--;
+
+            WebhookExecutor.executeWebhook(
+                    SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
+                    "Top.gg Communicator",
+                    ":warning: Error while fetching votes (" + triesLeft + (triesLeft == 1 ? " try" : " tries") + " left).\n" + e);
+
+            if (triesLeft <= 0) {
+                logger.debug("Stopping attempts at updating the votes for 24 hours");
+                triesResetIn = 24;
+            }
+        }
     }
 
     private static void updateBotGuildCount(String botId, String botToken, String botName, int guildCount) throws IOException {
