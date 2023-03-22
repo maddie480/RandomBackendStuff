@@ -230,12 +230,25 @@ public class GameBananaAutomatedChecks {
             mods = YamlUtil.load(is);
         }
 
+        // the new file list is built from scratch (only files that still exist are copied over from the previous list).
+        List<String> alreadyCheckedNew = new ArrayList<>();
+
+        // and we want to load the previous state to be sure we don't handle already handled mods.
+        List<String> alreadyCheckedOld;
+        try (InputStream is = new FileInputStream("already_checked_for_illegal_files.yaml")) {
+            alreadyCheckedOld = YamlUtil.load(is);
+        }
+
         for (String mod : mods) {
-            scanModFileListings(mod);
+            scanModFileListings(mod, alreadyCheckedOld, alreadyCheckedNew);
+        }
+
+        try (OutputStream os = new FileOutputStream("already_checked_for_illegal_files.yaml")) {
+            YamlUtil.dump(alreadyCheckedNew, os);
         }
     }
 
-    private static void scanModFileListings(String mod) throws IOException {
+    private static void scanModFileListings(String mod, List<String> alreadyCheckedOld, List<String> alreadyCheckedNew) throws IOException {
         // load file list for the mod
         String modName;
         List<String> files;
@@ -246,8 +259,11 @@ public class GameBananaAutomatedChecks {
         }
 
         for (String file : files) {
-            // check for forbidden files in any file more recent than Crowd Control (863667)
-            if (Integer.parseInt(file) > 863667) {
+            // check for forbidden files if not already done
+            alreadyCheckedNew.add(file);
+            if (!alreadyCheckedOld.contains(file)) {
+                logger.debug("Checking for illegal files in file {} of {}...", file, mod);
+
                 List<String> contents;
                 try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
                     contents = YamlUtil.load(is);
@@ -280,15 +296,31 @@ public class GameBananaAutomatedChecks {
             excludedFilesList = YamlUtil.load(is);
         }
 
+        // the new file list is built from scratch (only files that still exist are copied over from the previous list).
+        List<String> alreadyCheckedNew = new ArrayList<>();
+
+        // and we want to load the previous state to be sure we don't handle already handled mods.
+        List<String> alreadyCheckedOld;
+        try (InputStream is = new FileInputStream("already_checked_for_duplicates.yaml")) {
+            alreadyCheckedOld = YamlUtil.load(is);
+        }
+
         Set<Pair<String, String>> alreadyFoundConflicts = new HashSet<>();
 
         for (Map.Entry<String, String> excludedFilesListEntry : excludedFilesList.entrySet()) {
+            alreadyCheckedNew.add(excludedFilesListEntry.getKey());
+            if (alreadyCheckedOld.contains(excludedFilesListEntry.getKey())) {
+                continue;
+            }
+
             Matcher descriptionMatcher = gamebananaLinkRegex.matcher(excludedFilesListEntry.getValue());
             if (descriptionMatcher.matches()) {
                 String gbLink = descriptionMatcher.group(1);
 
                 String fileId1 = excludedFilesListEntry.getKey().substring("https://gamebanana.com/mmdl/".length());
                 String fileId2 = gbLink.substring("https://gamebanana.com/mmdl/".length());
+
+                logger.debug("Checking whether {} and {} belong to different mods...", fileId1, fileId2);
 
                 // this method is quite inefficient (we are reading files from disk in a loop),
                 // but RAM is more of a constraint than time here...
@@ -321,7 +353,13 @@ public class GameBananaAutomatedChecks {
                     alreadyFoundConflicts.add(Pair.of(mod1.getValue(), mod2.getValue()));
                     alreadyFoundConflicts.add(Pair.of(mod2.getValue(), mod1.getValue()));
                 }
+            } else {
+                logger.debug("No link found in description of excluded file list entry {} ('{}')", excludedFilesListEntry.getKey(), excludedFilesListEntry.getValue());
             }
+        }
+
+        try (OutputStream os = new FileOutputStream("already_checked_for_duplicates.yaml")) {
+            YamlUtil.dump(alreadyCheckedNew, os);
         }
     }
 
@@ -485,10 +523,21 @@ public class GameBananaAutomatedChecks {
             updaterDatabase = YamlUtil.load(is);
         }
 
+        List<String> oldAlreadyChecked;
+        List<String> newAlreadyChecked = new ArrayList<>();
+        try (InputStream is = new FileInputStream("already_checked_multiple_mods.yaml")) {
+            oldAlreadyChecked = YamlUtil.load(is);
+        }
+
         Set<String> filesWeAlreadyWarnedAbout = new HashSet<>();
 
         for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
             String url = modMap.getValue().get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL").toString();
+
+            newAlreadyChecked.add(url);
+            if (oldAlreadyChecked.contains(url)) {
+                continue;
+            }
 
             // if a URL is present twice, we are going to encounter it twice, but we still want to warn about it only once.
             if (filesWeAlreadyWarnedAbout.contains(url)) {
@@ -505,6 +554,8 @@ public class GameBananaAutomatedChecks {
                 }
             }
 
+            logger.debug("URL {} belongs to mod(s) {}", url, modNames);
+
             if (modNames.size() > 1) {
                 // we found a URL associated with 2 or more mods!
                 sendAlertToWebhook(":warning: Mods **" + String.join("**, **", modNames) + "** are all associated to file " + url + ".\n" +
@@ -513,6 +564,10 @@ public class GameBananaAutomatedChecks {
 
                 filesWeAlreadyWarnedAbout.add(url);
             }
+        }
+
+        try (OutputStream os = new FileOutputStream("already_checked_multiple_mods.yaml")) {
+            YamlUtil.dump(newAlreadyChecked, os);
         }
     }
 
@@ -587,9 +642,20 @@ public class GameBananaAutomatedChecks {
             page++;
         }
 
+        List<Integer> alreadyWarned;
+        try (InputStream is = new FileInputStream("already_warned_unapproved_cats_" + name + ".yaml")) {
+            alreadyWarned = YamlUtil.load(is);
+        }
+
         for (int category : categoriesThatExistButDont) {
-            sendAlertToWebhook(":warning: The category at <https://gamebanana.com/" + name.toLowerCase(Locale.ROOT) + "s/cats/" + category + "> does not seem to be approved by site admins!\n" +
-                    "This means it will not appear in the categories list (neither in Olympus nor on GameBanana itself).");
+            if (!alreadyWarned.contains(category)) {
+                sendAlertToWebhook(":warning: The category at <https://gamebanana.com/" + name.toLowerCase(Locale.ROOT) + "s/cats/" + category + "> does not seem to be approved by site admins!\n" +
+                        "This means it will not appear in the categories list (neither in Olympus nor on GameBanana itself).");
+            }
+        }
+
+        try (OutputStream os = new FileOutputStream("already_warned_unapproved_cats_" + name + ".yaml")) {
+            YamlUtil.dump(new ArrayList<>(categoriesThatExistButDont), os);
         }
     }
 
