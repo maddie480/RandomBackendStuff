@@ -889,6 +889,46 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
+     * Checks that the direct link service still works as it should, by using it with Helping Hand.
+     * Run daily.
+     */
+    public static void checkDirectLinkService() throws IOException {
+        int fileId;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/everest_update.yaml")) {
+            Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
+            fileId = (int) mapped.get("MaxHelpingHand").get("GameBananaFileId");
+        }
+
+        // search for MaxHelpingHand
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/direct-link-service");
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        try (OutputStream os = connection.getOutputStream()) {
+            IOUtils.write("modId=MaxHelpingHand", os, UTF_8);
+        }
+
+        String resultHtml;
+        try (InputStream is = connection.getInputStream()) {
+            resultHtml = IOUtils.toString(is, UTF_8);
+        }
+        if (!resultHtml.contains("https://max480.ovh/celeste/dl/maxhelpinghand") || !resultHtml.contains("https://max480.ovh/celeste/mirrordl/maxhelpinghand")) {
+            throw new IOException("Direct Link Service did not send the direct link!");
+        }
+
+        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/dl/maxhelpinghand");
+        connection.setInstanceFollowRedirects(false);
+        if (!("https://0x0a.de/twoclick?gamebanana.com/mmdl/" + fileId).equals(connection.getHeaderField("location"))) {
+            throw new IOException("Direct Link Service did not redirect to GameBanana correctly!");
+        }
+
+        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/mirrordl/maxhelpinghand");
+        connection.setInstanceFollowRedirects(false);
+        if (!("https://0x0a.de/twoclick?celestemodupdater.0x0a.de/banana-mirror/" + fileId + ".zip").equals(connection.getHeaderField("location"))) {
+            throw new IOException("Direct Link Service did not redirect to mirror correctly!");
+        }
+    }
+
+    /**
      * Checks that the page for speedrun.com update notification setup still displays properly.
      * Run daily.
      */
