@@ -904,24 +904,24 @@ public class CelesteStuffHealthCheck {
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         try (OutputStream os = connection.getOutputStream()) {
-            IOUtils.write("modId=MaxHelpingHand", os, UTF_8);
+            IOUtils.write("modId=MaxHelpingHand&twoclick=&mirror=", os, UTF_8);
         }
 
         String resultHtml;
         try (InputStream is = connection.getInputStream()) {
             resultHtml = IOUtils.toString(is, UTF_8);
         }
-        if (!resultHtml.contains("https://max480.ovh/celeste/dl/maxhelpinghand") || !resultHtml.contains("https://max480.ovh/celeste/mirrordl/maxhelpinghand")) {
+        if (!resultHtml.contains("https://max480.ovh/celeste/dl?id=MaxHelpingHand&amp;twoclick=1&amp;mirror=1")) {
             throw new IOException("Direct Link Service did not send the direct link!");
         }
 
-        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/dl/maxhelpinghand");
+        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1");
         connection.setInstanceFollowRedirects(false);
         if (!("https://0x0a.de/twoclick?gamebanana.com/mmdl/" + fileId).equals(connection.getHeaderField("location"))) {
             throw new IOException("Direct Link Service did not redirect to GameBanana correctly!");
         }
 
-        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/mirrordl/maxhelpinghand");
+        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1&mirror=1");
         connection.setInstanceFollowRedirects(false);
         if (!("https://0x0a.de/twoclick?celestemodupdater.0x0a.de/banana-mirror/" + fileId + ".zip").equals(connection.getHeaderField("location"))) {
             throw new IOException("Direct Link Service did not redirect to mirror correctly!");
