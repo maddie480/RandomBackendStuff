@@ -34,7 +34,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * A bunch of Celeste health check routines.
- * Those are run periodically, and if one throws an exception, an alert is sent to max480.
+ * Those are run periodically, and if one throws an exception, an alert is sent to Maddie.
  */
 public class CelesteStuffHealthCheck {
     private static final Logger log = LoggerFactory.getLogger(CelesteStuffHealthCheck.class);
@@ -225,7 +225,7 @@ public class CelesteStuffHealthCheck {
                 .format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH));
 
         log.debug("Loading custom entity catalog... (expecting date: {})", expectedRefreshDate);
-        if (!ConnectionUtils.toStringWithTimeout("https://max480.ovh/celeste/custom-entity-catalog", UTF_8)
+        if (!ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/custom-entity-catalog", UTF_8)
                 .contains(expectedRefreshDate)) {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog is not \"" + expectedRefreshDate + "\" :a:");
@@ -235,7 +235,7 @@ public class CelesteStuffHealthCheck {
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH));
 
         log.debug("Loading custom entity catalog JSON... (expecting date: {})", expectedRefreshDate);
-        if (!ConnectionUtils.toStringWithTimeout("https://max480.ovh/celeste/custom-entity-catalog.json", UTF_8)
+        if (!ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/custom-entity-catalog.json", UTF_8)
                 .contains(expectedRefreshDate)) {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog JSON is not \"" + expectedRefreshDate + "\" :a:");
@@ -260,7 +260,7 @@ public class CelesteStuffHealthCheck {
                 .toList();
 
         List<String> everestUpdate;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/everest_update.yaml")) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
             Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
             everestUpdate = mapped.values()
                     .stream()
@@ -283,7 +283,7 @@ public class CelesteStuffHealthCheck {
                 .toList();
 
         List<String> modSearchDatabase;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/mod_search_database.yaml")) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
             List<Map<String, Object>> mapped = YamlUtil.load(is);
             modSearchDatabase = mapped.stream()
                     .map(item -> (List<String>) item.get("MirroredScreenshots"))
@@ -399,21 +399,21 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkOlympusAPIs() throws IOException {
         // search
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-search?q=EXTENDED+VARIANT+MODE"), UTF_8)
                 .contains("\"Name\":\"Extended Variant Mode\"")) {
 
             throw new IOException("Extended Variant Mode search test failed");
         }
 
         // sorted list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/gamebanana-list?sort=downloads&category=6800&page=1"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-list?sort=downloads&category=6800&page=1"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Sorted list API test failed");
         }
 
         // categories list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/gamebanana-categories"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-categories"), UTF_8)
                 .contains("""
                         - itemtype: Mod
                           categoryid: 6800
@@ -424,7 +424,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // featured mods list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/gamebanana-featured"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-featured"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Featured mods list API failed");
@@ -442,7 +442,7 @@ public class CelesteStuffHealthCheck {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
             latestDev = new JSONObject(IOUtils.toString(is, UTF_8)).getInt("dev");
         }
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/everest-versions"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest-versions"), UTF_8)
                 .contains("\"version\":" + latestDev)) {
 
             throw new IOException("Everest versions test failed");
@@ -455,7 +455,7 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkSmallerGameBananaAPIs() throws IOException {
         // "random Celeste map" button
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/random-map");
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/random-map");
         connection.setInstanceFollowRedirects(true);
         connection.connect();
         if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("Celeste")) {
@@ -464,14 +464,14 @@ public class CelesteStuffHealthCheck {
         connection.disconnect();
 
         // GameBanana info API (used by file searcher only)
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/gamebanana-info?itemtype=Mod&itemid=53650"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-info?itemtype=Mod&itemid=53650"), UTF_8)
                 .contains("\"Name\":\"Extended Variant Mode\"")) {
 
             throw new IOException("Extended Variant Mode info check failed");
         }
 
         // deprecated GameBanana categories API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/gamebanana-categories"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-categories"), UTF_8)
                 .contains("""
                         - itemtype: Tool
                           formatted: Tools
@@ -481,13 +481,13 @@ public class CelesteStuffHealthCheck {
         }
 
         // mod search database API
-        final String modSearchDatabase = ConnectionUtils.toStringWithTimeout("https://max480.ovh/celeste/mod_search_database.yaml", UTF_8);
+        final String modSearchDatabase = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml", UTF_8);
         if (!modSearchDatabase.contains("Name: The 2020 Celeste Spring Community Collab")) {
             throw new IOException("mod_search_database.yaml check failed");
         }
 
         // mod files database zip
-        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/mod_files_database.zip"))) {
+        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_files_database.zip"))) {
             Set<String> expectedFiles = new HashSet<>(Arrays.asList(
                     "ahorn_vanilla.yaml", "loenn_vanilla.yaml", "list.yaml", "Mod/150813/info.yaml", "Mod/150813/484937.yaml", "Mod/53641/ahorn_506448.yaml"
             ));
@@ -503,7 +503,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // mod_dependency_graph.yaml
-        final String modDependencyGraph = ConnectionUtils.toStringWithTimeout("https://max480.ovh/celeste/mod_dependency_graph.yaml", UTF_8);
+        final String modDependencyGraph = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/mod_dependency_graph.yaml", UTF_8);
         if (!modDependencyGraph.contains("SpringCollab2020Audio:")
                 || !modDependencyGraph.contains("URL: https://gamebanana.com/mmdl/484937")
                 || !modDependencyGraph.contains("- Name: SpringCollab2020Audio")
@@ -513,13 +513,13 @@ public class CelesteStuffHealthCheck {
         }
 
         // Update Checker status, widget version
-        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout("https://max480.ovh/celeste/update-checker-status?widget=true", UTF_8);
+        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/update-checker-status?widget=true", UTF_8);
         if (!updateCheckerStatus.contains("<span class=\"GreenColor\">Up</span>")) {
             throw new IOException("Update checker is not OK according to status widget!");
         }
 
         // GameBanana "JSON to RSS feed" API
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/gamebanana/rss-feed?_aCategoryRowIds[]=5081&_sOrderBy=_tsDateAdded,ASC&_nPerpage=10"), UTF_8)
                 .contains("<title>Outcast Outback Helper</title>")) {
 
             throw new IOException("RSS feed by category API failed");
@@ -535,7 +535,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Checking Update Checker");
 
         // everest_update.yaml responds
-        final String everestUpdate = ConnectionUtils.toStringWithTimeout("https://max480.ovh/celeste/everest_update.yaml", UTF_8);
+        final String everestUpdate = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml", UTF_8);
         if (!everestUpdate.contains("SpringCollab2020Audio:") || !everestUpdate.contains("URL: https://gamebanana.com/mmdl/484937")) {
             throw new IOException("everest_update.yaml check failed");
         }
@@ -547,7 +547,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // the status page says everything is fine
-        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout("https://max480.ovh/celeste/update-checker-status", UTF_8);
+        final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/update-checker-status", UTF_8);
         if (!updateCheckerStatus.contains("The update checker is up and running!")) {
             throw new IOException("Update checker is not OK according to status page!");
         }
@@ -636,7 +636,7 @@ public class CelesteStuffHealthCheck {
 
         { // HTML version
             // build a request to everest.yaml validator
-            HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+            HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
             submit.addFilePart("file", new File("/tmp/everest.yaml"));
             submit.addFormField("outputFormat", "html");
             HttpURLConnection result = submit.finish();
@@ -651,7 +651,7 @@ public class CelesteStuffHealthCheck {
 
         { // JSON version
             // build a request to everest.yaml validator
-            HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+            HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
             submit.addFilePart("file", new File("/tmp/everest.yaml"));
             submit.addFormField("outputFormat", "json");
             HttpURLConnection result = submit.finish();
@@ -691,7 +691,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Sending libgdx request to font generator...");
 
         // build a request to font generator
-        HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
+        HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
         submit.addFormField("fontFileName", "collabutils2_japanese_healthcheck");
         submit.addFormField("font", "japanese");
         submit.addFormField("method", "libgdx");
@@ -728,7 +728,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Sending request to BMFont font generator...");
 
         // build a request to font generator
-        HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
+        HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
         submit.addFormField("font", "japanese");
         submit.addFormField("method", "bmfont");
         submit.addFilePart("dialogFile", new File("/tmp/Japanese.txt"));
@@ -790,7 +790,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Sending Tornado Valley to mod structure verifier...");
 
         // build a request to mod structure verifier
-        HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/mod-structure-verifier", "UTF-8", new HashMap<>());
+        HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/mod-structure-verifier", "UTF-8", new HashMap<>());
         submit.addFilePart("zipFile", new File("/tmp/tornado.zip"));
         HttpURLConnection result = submit.finish();
 
@@ -799,8 +799,8 @@ public class CelesteStuffHealthCheck {
 
         String url;
         try (InputStream is = result.getInputStream()) {
-            // the response is a URL relative to max480.ovh.
-            url = "https://max480.ovh" + IOUtils.toString(is, UTF_8);
+            // the response is a URL relative to maddie480.ovh.
+            url = "https://maddie480.ovh" + IOUtils.toString(is, UTF_8);
         }
         log.debug("Mod structure verifier task tracker URL: {}, checking result in 15 seconds", url);
 
@@ -833,7 +833,7 @@ public class CelesteStuffHealthCheck {
                 if ("Maps/Meowsmith/1/TornadoValleyConcept.bin".equals(entry.getName())) {
                     log.debug("Found map bin, sending...");
 
-                    HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/bin-to-json");
+                    HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/bin-to-json");
                     connection.setRequestMethod("POST");
                     connection.setDoOutput(true);
 
@@ -862,7 +862,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Checking File Searcher...");
 
         // run the search
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/file-search?" +
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/file-search?" +
                 "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
 
             log.debug("Response to first request: {}", IOUtils.toString(is, UTF_8));
@@ -876,7 +876,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // check the result of the search
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/file-search?" +
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/file-search?" +
                 "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
 
             String result = IOUtils.toString(is, UTF_8);
@@ -894,13 +894,13 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkDirectLinkService() throws IOException {
         int fileId;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/everest_update.yaml")) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
             Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
             fileId = (int) mapped.get("MaxHelpingHand").get("GameBananaFileId");
         }
 
         // search for MaxHelpingHand
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/direct-link-service");
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/direct-link-service");
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         try (OutputStream os = connection.getOutputStream()) {
@@ -911,17 +911,17 @@ public class CelesteStuffHealthCheck {
         try (InputStream is = connection.getInputStream()) {
             resultHtml = IOUtils.toString(is, UTF_8);
         }
-        if (!resultHtml.contains("https://max480.ovh/celeste/dl?id=MaxHelpingHand&amp;twoclick=1&amp;mirror=1")) {
+        if (!resultHtml.contains("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand&amp;twoclick=1&amp;mirror=1")) {
             throw new IOException("Direct Link Service did not send the direct link!");
         }
 
-        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1");
+        connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1");
         connection.setInstanceFollowRedirects(false);
         if (!("https://0x0a.de/twoclick?gamebanana.com/mmdl/" + fileId).equals(connection.getHeaderField("location"))) {
             throw new IOException("Direct Link Service did not redirect to GameBanana correctly!");
         }
 
-        connection = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1&mirror=1");
+        connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1&mirror=1");
         connection.setInstanceFollowRedirects(false);
         if (!("https://0x0a.de/twoclick?celestemodupdater.0x0a.de/banana-mirror/" + fileId + ".zip").equals(connection.getHeaderField("location"))) {
             throw new IOException("Direct Link Service did not redirect to mirror correctly!");
@@ -933,7 +933,7 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkSrcModUpdateNotificationsPage() throws IOException {
-        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/src-mod-update-notifications?key="
+        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/src-mod-update-notifications?key="
                 + SecretConstants.SRC_MOD_UPDATE_NOTIFICATIONS_KEY), UTF_8);
         if (!contents.contains("SpringCollab2020")
                 || !contents.contains("The 2020 Celeste Spring Community Collab")
@@ -948,7 +948,7 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkDiscordBotsPage() throws IOException {
-        Document soup = Jsoup.connect("https://max480.ovh/discord-bots").get();
+        Document soup = Jsoup.connect("https://maddie480.ovh/discord-bots").get();
 
         String expected;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/discord-bots/bot-server-counts.yaml"))) {
@@ -966,7 +966,7 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkCelesteNewsNetworkSubscriptionService() throws IOException {
-        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://max480.ovh/celeste/news-network-subscription"), UTF_8);
+        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/news-network-subscription"), UTF_8);
 
         String expected;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/celeste-news-network-subscribers.json"))) {
@@ -985,10 +985,10 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkStaticPages() throws IOException {
         for (String url : Arrays.asList(
-                "https://max480.ovh/",
-                "https://max480.ovh/discord-bots/timezone-bot/detect-timezone",
-                "https://max480.ovh/discord-bots/timezone-bot/timezone-dropdown-help",
-                "https://max480.ovh/discord-bots/terms-and-privacy"
+                "https://maddie480.ovh/",
+                "https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone",
+                "https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help",
+                "https://maddie480.ovh/discord-bots/terms-and-privacy"
         )) {
             log.debug("Checking response code of {}", url);
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);

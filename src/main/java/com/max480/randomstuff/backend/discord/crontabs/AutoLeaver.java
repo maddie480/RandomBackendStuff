@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 /**
- * Since all invites for Games Bot, Custom Slash Commands and Timezone Bot without roles (on max480.ovh or top.gg) do not include
+ * Since all invites for Games Bot, Custom Slash Commands and Timezone Bot without roles (on maddie480.ovh or top.gg) do not include
  * the "bot" scope, those bots should not be invited in guilds, only their slash commands, unless the users alter the invite URL themselves.
  * <p>
  * To avoid any risk of reaching 76 servers and being asked for verification for a bot that isn't used (even if that's VERY unlikely to happen),

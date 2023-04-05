@@ -26,7 +26,7 @@ public class ArbitraryModAppCacher {
     public static void refreshArbitraryModAppCache() throws IOException {
         JSONArray modList;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(
-                "https://max480.ovh/gamebanana/arbitrary-mod-app-modlist?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
+                "https://maddie480.ovh/gamebanana/arbitrary-mod-app-modlist?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
 
             modList = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
         }

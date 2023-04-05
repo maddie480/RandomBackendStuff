@@ -33,7 +33,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * This class is intended to be run periodically to check mods on GameBanana for issues.
- * In max480's bot setup, all public methods are run every day.
+ * In Maddie's bot setup, all public methods are run every day.
  */
 public class GameBananaAutomatedChecks {
     private static final Logger logger = LoggerFactory.getLogger(GameBananaAutomatedChecks.class);
@@ -454,7 +454,7 @@ public class GameBananaAutomatedChecks {
                     }
 
                     logger.debug("Sending to validator");
-                    HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+                    HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
                     submit.addFilePart("file", destination.toFile());
                     submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
@@ -560,7 +560,7 @@ public class GameBananaAutomatedChecks {
                 // we found a URL associated with 2 or more mods!
                 sendAlertToWebhook(":warning: Mods **" + String.join("**, **", modNames) + "** are all associated to file " + url + ".\n" +
                         "This means this file contains multiple mods, which can cause weirdness when it gets updated (multiple entries for the same file appearing in the updater).\n" +
-                        "If having multiple mods cannot be avoided, one of them should be updater-blacklisted by max480.");
+                        "If having multiple mods cannot be avoided, one of them should be updater-blacklisted by Maddie.");
 
                 filesWeAlreadyWarnedAbout.add(url);
             }

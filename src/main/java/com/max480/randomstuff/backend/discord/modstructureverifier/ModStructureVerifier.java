@@ -479,7 +479,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     FileUtils.copyToFile(is, new File(dir + "/everest.yaml"));
 
                     // build a request to everest.yaml validator
-                    HttpPostMultipart submit = new HttpPostMultipart("https://max480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+                    HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
                     submit.addFilePart("file", new File(dir + "/everest.yaml"));
                     submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
@@ -488,15 +488,15 @@ public class ModStructureVerifier extends ListenerAdapter {
                     JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
                     if (!resultBody.has("modInfo")) {
                         problemList.add(pickFormat(isHtml,
-                                "Your everest.yaml seems to have problems, send it to <a href=\"https://max480.ovh/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> for more details",
-                                "Your everest.yaml seems to have problems, send it to <https://max480.ovh/celeste/everest-yaml-validator> for more details"));
+                                "Your everest.yaml seems to have problems, send it to <a href=\"https://maddie480.ovh/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> for more details",
+                                "Your everest.yaml seems to have problems, send it to <https://maddie480.ovh/celeste/everest-yaml-validator> for more details"));
                         websiteProblemList.add("yamlinvalid");
                     } else if (resultBody.getJSONArray("modInfo").length() > 1) {
                         problemList.add(pickFormat(isHtml,
                                 "Your everest.yaml declares multiple mods, you usually don't want to do this unless you know what you are doing \uD83E\uDD14 " +
-                                        "Send it to <a href=\"https://max480.ovh/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> if you want to check which mods it is declaring.",
+                                        "Send it to <a href=\"https://maddie480.ovh/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> if you want to check which mods it is declaring.",
                                 "Your everest.yaml declares multiple mods, you usually don't want to do this unless you know what you are doing :thinking: " +
-                                        "Send it to <https://max480.ovh/celeste/everest-yaml-validator> if you want to check which mods it is declaring."));
+                                        "Send it to <https://maddie480.ovh/celeste/everest-yaml-validator> if you want to check which mods it is declaring."));
                         websiteProblemList.add("multiyaml");
                     } else {
                         // grab the mod name and dependency names given by the validator so that we don't have to do that ourselves later!
@@ -538,7 +538,7 @@ public class ModStructureVerifier extends ListenerAdapter {
 
                 problemList.add(pickFormat(isHtml,
                         "You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
-                                " If you want to be able to use them, use <a href=\"https://max480.ovh/celeste/font-generator\" target=\"_blank\">the Font Generator</a>" +
+                                " If you want to be able to use them, use <a href=\"https://maddie480.ovh/celeste/font-generator\" target=\"_blank\">the Font Generator</a>" +
                                 " to add them to the game.",
                         "You use characters that are missing from the game's font in some of your dialog files. " + attachmentMessage +
                                 " If you want to be able to use them, you can use this bot's `--generate-font [language]` command to add them to the game."));
@@ -570,11 +570,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                 String url = null;
                 if (!websiteProblemList.isEmpty()) {
                     if (hasNameScan) {
-                        url = "https://max480.ovh/celeste/mod-structure-verifier-help?collabName=" + expectedCollabAssetPrefix
+                        url = "https://maddie480.ovh/celeste/mod-structure-verifier-help?collabName=" + expectedCollabAssetPrefix
                                 + (!expectedCollabAssetPrefix.equals(expectedCollabMapsPrefix) ? "&collabMapName=" + expectedCollabMapsPrefix : "")
                                 + "&" + String.join("&", websiteProblemList);
                     } else {
-                        url = "https://max480.ovh/celeste/mod-structure-verifier-help?" + String.join("&", websiteProblemList);
+                        url = "https://maddie480.ovh/celeste/mod-structure-verifier-help?" + String.join("&", websiteProblemList);
                     }
                 }
 
@@ -985,7 +985,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             Set<Integer> existingCodePoints;
 
             // get which characters exist in vanilla.
-            // vanilla-fonts has the same contents as https://github.com/max4805/RandomBackendStuff/tree/main/src/main/java/com/max480/randomstuff/backend/discord/modstructureverifier/font_generator_data/vanilla
+            // vanilla-fonts has the same contents as https://github.com/maddie480/RandomBackendStuff/tree/main/src/main/java/com/max480/randomstuff/backend/discord/modstructureverifier/font_generator_data/vanilla
             try (InputStream is = ModStructureVerifier.class.getResourceAsStream("/vanilla-fonts/" + languageName + ".fnt")) {
                 existingCodePoints = readFontFile(is);
                 logger.debug("Read {} code points from vanilla-fonts/{}.fnt", existingCodePoints.size(), languageName);
@@ -1238,7 +1238,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                                 ":thinking: = your zip is being analyzed, please wait...\n" +
                                 ":ok_hand: = your zip passed inspection with no issues!\n" +
                                 ":x: = there are issues with your zip, you should get pinged about it in <#" + responseChannels.get(event.getChannel().getIdLong()) + ">.\n" +
-                                ":bomb: = the bot exploded! max480 will look into that soon.").queue();
+                                ":bomb: = the bot exploded! Maddie will look into that soon.").queue();
             } else {
                 event.getChannel().sendMessage(":x: The bot is not set up to scan zips sent to this channel.").queue();
             }

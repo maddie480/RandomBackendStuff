@@ -210,7 +210,7 @@ public class EverestVersionLister {
         Files.writeString(Paths.get("/shared/celeste/everest-versions.json"), new JSONArray(info).toString(), StandardCharsets.UTF_8);
 
         // update the frontend cache
-        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/everest-versions-reload?key="
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/everest-versions-reload?key="
                 + SecretConstants.RELOAD_SHARED_SECRET);
         if (conn.getResponseCode() != 200) {
             throw new IOException("Everest Versions Reload API sent non 200 code: " + conn.getResponseCode());

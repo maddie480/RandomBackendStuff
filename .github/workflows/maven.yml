@@ -42,7 +42,7 @@ jobs:
     - name: Build with Maven
       run: |
         # Bring in the update checker and install it
-        git clone https://github.com/max4805/EverestUpdateCheckerServer.git
+        git clone https://github.com/maddie480/EverestUpdateCheckerServer.git
         cd EverestUpdateCheckerServer
         mvn install
         cd ..

@@ -32,7 +32,7 @@ public class CustomSlashCommandsCleanup {
 
     private static final Pattern blobNamePattern = Pattern.compile("^/shared/discord-bots/custom-slash-commands/(\\d+)/(.+)\\.json$");
 
-    private static final String USER_AGENT = "DiscordBot (https://max480.ovh, 1.0)";
+    private static final String USER_AGENT = "DiscordBot (https://maddie480.ovh, 1.0)";
 
     public static void housekeep() throws IOException {
         Map<Long, Set<String>> commandsPerGuild;

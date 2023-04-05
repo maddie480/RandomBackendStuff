@@ -64,7 +64,7 @@ public class SecretConstants {
     // hooks to call in case of issues with 0x0a.de
     public static List<String> JADE_PLATFORM_HEALTHCHECK_HOOKS;
 
-    // hooks to call in case of issues with platforms other than 0x0a.de (namely GameBanana, Update Checker and max480-random-stuff)
+    // hooks to call in case of issues with platforms other than 0x0a.de (namely GameBanana, Update Checker and maddie480.ovh)
     public static List<String> NON_JADE_PLATFORM_HEALTHCHECK_HOOKS;
 
     // hook to call for speedrun.com update notifications

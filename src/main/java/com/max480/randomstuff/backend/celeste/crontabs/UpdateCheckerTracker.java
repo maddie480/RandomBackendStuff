@@ -367,7 +367,7 @@ public class UpdateCheckerTracker extends EventListener {
                 Files.copy(Paths.get("uploads/everestupdate.yaml"), Paths.get("/shared/celeste/updater/everest-update.yaml"), StandardCopyOption.REPLACE_EXISTING);
                 Files.writeString(Paths.get("/shared/celeste/updater/mod-dependency-graph.yaml"), convertModDependencyGraphToEverestYamlFormat(), UTF_8);
 
-                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/everest-update-reload?key="
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/everest-update-reload?key="
                         + SecretConstants.RELOAD_SHARED_SECRET);
                 if (conn.getResponseCode() != 200) {
                     throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
@@ -386,7 +386,7 @@ public class UpdateCheckerTracker extends EventListener {
 
                 serializeModSearchDatabase();
 
-                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://max480.ovh/celeste/gamebanana-search-reload?key="
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/gamebanana-search-reload?key="
                         + SecretConstants.RELOAD_SHARED_SECRET);
                 if (conn.getResponseCode() != 200) {
                     throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());

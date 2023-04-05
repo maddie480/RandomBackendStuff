@@ -269,8 +269,8 @@ public class BotEventListener extends ListenerAdapter {
      */
     private static void sendDetectTimezoneLink(IReplyCallback event, DiscordLocale locale) {
         respondPrivately(event, localizeMessage(locale,
-                "To figure out your timezone, visit <https://max480.ovh/discord-bots/timezone-bot/detect-timezone>.",
-                "Pour déterminer ton fuseau horaire, consulte <https://max480.ovh/discord-bots/timezone-bot/detect-timezone>."));
+                "To figure out your timezone, visit <https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone>.",
+                "Pour déterminer ton fuseau horaire, consulte <https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone>."));
     }
 
     /**
@@ -330,9 +330,9 @@ public class BotEventListener extends ListenerAdapter {
             } else {
                 respondPrivately(event, localizeMessage(locale,
                         ":x: The given timezone was not recognized.\n" +
-                                "To figure out your timezone, visit <https://max480.ovh/discord-bots/timezone-bot/detect-timezone>.",
+                                "To figure out your timezone, visit <https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone>.",
                         ":x: Le fuseau horaire que tu as donné n'a pas été reconnu.\n" +
-                                "Pour déterminer ton fuseau horaire, consulte <https://max480.ovh/discord-bots/timezone-bot/detect-timezone>."));
+                                "Pour déterminer ton fuseau horaire, consulte <https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone>."));
             }
         }
     }
@@ -596,7 +596,7 @@ public class BotEventListener extends ListenerAdapter {
                     "q=" + URLEncoder.encode(place, StandardCharsets.UTF_8) +
                     "&accept-language=" + (locale == DiscordLocale.FRENCH ? "fr" : "en") +
                     "&limit=1&format=jsonv2");
-            osm.setRequestProperty("User-Agent", "TimezoneBot/1.0 (+https://max480.ovh/discord-bots#timezone-bot)");
+            osm.setRequestProperty("User-Agent", "TimezoneBot/1.0 (+https://maddie480.ovh/discord-bots#timezone-bot)");
 
             JSONArray osmResults;
             try (InputStream is = osm.getInputStream()) {
@@ -893,14 +893,14 @@ public class BotEventListener extends ListenerAdapter {
         OptionMapping messageParam = slashCommandEvent.getOption("message");
 
         final String help = localizeMessage(locale,
-                "\n\nIf you need help, check this page for syntax and examples: <https://max480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>",
-                "\n\nSi tu as besoin d'aide, consulte cette page pour avoir des explications et des exemples : <https://max480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>");
+                "\n\nIf you need help, check this page for syntax and examples: <https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>",
+                "\n\nSi tu as besoin d'aide, consulte cette page pour avoir des explications et des exemples : <https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>");
 
         if (optionsParam != null) {
             if (optionsParam.getAsString().toLowerCase(Locale.ROOT).equals("help")) {
                 respondPrivately(slashCommandEvent, localizeMessage(locale,
-                        "Check this page for syntax and examples: <https://max480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>",
-                        "Consulte cette page pour avoir des explications et des exemples : <https://max480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>"));
+                        "Check this page for syntax and examples: <https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>",
+                        "Consulte cette page pour avoir des explications et des exemples : <https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help>"));
                 return;
             }
 

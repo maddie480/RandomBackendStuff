@@ -33,7 +33,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * This is pretty similar to the https://max480.ovh/celeste/font-generator service,
+ * This is pretty similar to the https://maddie480.ovh/celeste/font-generator service,
  * except it uses BMFont, the same tool that was used for vanilla, for more accuracy.
  * This needs to be done on the backend because BMFont is Windows-only but works through Wine,
  * and I can't really install Wine on Google App Engine...

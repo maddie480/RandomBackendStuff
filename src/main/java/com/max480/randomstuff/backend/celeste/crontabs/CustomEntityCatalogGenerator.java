@@ -29,7 +29,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 /**
  * This class generates a JSON file containing all information necessary for the Custom Entity Catalog.
  * This should be run once a day, in the same working directory as the update checker bot.
- * In max480's bot setup, it is run every day.
+ * In Maddie's bot setup, it is run every day.
  */
 public class CustomEntityCatalogGenerator {
     private static final Logger logger = LoggerFactory.getLogger(CustomEntityCatalogGenerator.class);

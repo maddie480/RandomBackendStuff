@@ -57,9 +57,9 @@ public class ContinuousHealthChecks {
                         checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
                                 "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                        // max480-random-stuff health check
-                        checkURL("https://max480.ovh/celeste/everest_update.yaml", "SpringCollab2020:",
-                                "max480's Random Stuff Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        // maddie480.ovh health check
+                        checkURL("https://maddie480.ovh/celeste/everest_update.yaml", "SpringCollab2020:",
+                                "Maddie's Random Stuff Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // GameBanana health checks
                         checkURL("https://gamebanana.com/games/6460", "Celeste",
