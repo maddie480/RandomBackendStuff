@@ -21,7 +21,9 @@ public class AutoLeaver {
     private static final Logger logger = LoggerFactory.getLogger(AutoLeaver.class);
 
     public static void main(String[] args) throws InterruptedException {
-        for (String token : Arrays.asList(SecretConstants.GAMES_BOT_TOKEN, SecretConstants.CUSTOM_SLASH_COMMANDS_TOKEN, SecretConstants.TIMEZONE_BOT_LITE_TOKEN)) {
+        for (String token : Arrays.asList(SecretConstants.GAMES_BOT_TOKEN, SecretConstants.CUSTOM_SLASH_COMMANDS_TOKEN,
+                SecretConstants.TIMEZONE_BOT_LITE_TOKEN, SecretConstants.BANANABOT_TOKEN)) {
+
             final JDA jda = JDABuilder.createLight(token, Collections.emptyList()).build().awaitReady();
 
             for (Guild guild : jda.getGuilds()) {

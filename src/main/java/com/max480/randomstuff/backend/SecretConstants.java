@@ -34,6 +34,9 @@ public class SecretConstants {
     public static String TIMEZONE_BOT_LITE_TOKEN;
     public static String TIMEZONE_BOT_LITE_TOP_GG_TOKEN;
 
+    // Token for the BananaBot user that shouldn't be used
+    public static String BANANABOT_TOKEN;
+
     // Mod Structure Verifier credentials
     public static String MOD_STRUCTURE_VERIFIER_TOKEN;
 
@@ -106,6 +109,8 @@ public class SecretConstants {
         TIMEZONE_BOT_LITE_CLIENT_ID = secrets.getString("TIMEZONE_BOT_LITE_CLIENT_ID");
         TIMEZONE_BOT_LITE_TOKEN = secrets.getString("TIMEZONE_BOT_LITE_TOKEN");
         TIMEZONE_BOT_LITE_TOP_GG_TOKEN = secrets.getString("TIMEZONE_BOT_LITE_TOP_GG_TOKEN");
+
+        BANANABOT_TOKEN = secrets.getString("BANANABOT_TOKEN");
 
         MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
 

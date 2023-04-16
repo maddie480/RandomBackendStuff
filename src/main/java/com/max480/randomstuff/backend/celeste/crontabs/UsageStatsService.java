@@ -40,7 +40,8 @@ public class UsageStatsService {
                 "customSlashCommandsUsage", countFrontendLogEntries("/discord/custom-slash-commands"),
                 "gamesBotUsage", countFrontendLogEntries("/discord/games-bot"),
                 "timezoneBotLiteUsage", countFrontendLogEntries("/discord/timezone-bot"),
-                "timezoneBotFullUsage", countTimezoneBotInvocationCount()
+                "timezoneBotFullUsage", countTimezoneBotInvocationCount(),
+                "bananaBotUsage", countFrontendLogEntries("/discord/bananabot")
         );
     }
 
