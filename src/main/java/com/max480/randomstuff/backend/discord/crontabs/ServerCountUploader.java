@@ -32,6 +32,7 @@ public class ServerCountUploader {
     public static void run() throws IOException {
         int gamesBotServerCount = getServerUsageOfSlashCommandBot("Games Bot");
         int timezoneBotServerCount = getServerUsageOfSlashCommandBot("Timezone Bot");
+        int bananaBotServerCount = getServerUsageOfSlashCommandBot("BananaBot");
 
         // to know how many servers use the Custom Slash Commands bot, just list out how many guild ids have created custom commands!
         int customSlashCommandsServerCount = new File("/shared/discord-bots/custom-slash-commands").list().length;
@@ -43,7 +44,8 @@ public class ServerCountUploader {
                     "TimezoneBotFull", TimezoneBot.getServerCount(),
                     "ModStructureVerifier", ModStructureVerifier.getServerCount(),
                     "GamesBot", gamesBotServerCount,
-                    "CustomSlashCommands", customSlashCommandsServerCount
+                    "CustomSlashCommands", customSlashCommandsServerCount,
+                    "BananaBot", bananaBotServerCount
             ), os);
 
             String yamlData = os.toString(StandardCharsets.UTF_8);
