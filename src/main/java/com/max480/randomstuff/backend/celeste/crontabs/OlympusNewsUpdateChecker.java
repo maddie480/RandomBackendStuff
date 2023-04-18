@@ -2,7 +2,6 @@ package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import com.max480.everest.updatechecker.YamlUtil;
-import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.FileUtils;
@@ -129,12 +128,6 @@ public class OlympusNewsUpdateChecker {
         }
 
         embed.put("color", 3878218);
-
-        WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
-                "https://avatars.githubusercontent.com/u/36135162",
-                "Olympus News",
-                "",
-                Collections.singletonList(embed));
 
         TwitterUpdateChecker.sendToCelesteNewsNetwork(webhookUrl -> WebhookExecutor.executeWebhook(webhookUrl,
                 "https://avatars.githubusercontent.com/u/36135162",

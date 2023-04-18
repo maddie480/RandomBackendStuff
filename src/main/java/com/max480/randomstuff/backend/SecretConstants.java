@@ -73,10 +73,8 @@ public class SecretConstants {
     // hook to call for speedrun.com update notifications
     public static String SRC_UPDATE_CHECKER_HOOK;
 
-    // Twitter bot settings
-    public static String PERSONAL_TWITTER_WEBHOOK_URL;
-    public static Long QUEST_UPDATE_CHANNEL;
-    public static String TWITTER_BASIC_AUTH;
+    // a webhook I'm using for personal notifications
+    public static String PERSONAL_NOTIFICATION_WEBHOOK_URL;
 
     // header used to authenticate with the GitHub API
     public static String GITHUB_BASIC_AUTH;
@@ -132,9 +130,7 @@ public class SecretConstants {
 
         SRC_UPDATE_CHECKER_HOOK = secrets.getString("SRC_UPDATE_CHECKER_HOOK");
 
-        PERSONAL_TWITTER_WEBHOOK_URL = secrets.getString("PERSONAL_TWITTER_WEBHOOK_URL");
-        QUEST_UPDATE_CHANNEL = secrets.getLong("QUEST_UPDATE_CHANNEL");
-        TWITTER_BASIC_AUTH = secrets.getString("TWITTER_BASIC_AUTH");
+        PERSONAL_NOTIFICATION_WEBHOOK_URL = secrets.getString("PERSONAL_NOTIFICATION_WEBHOOK_URL");
 
         GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
 

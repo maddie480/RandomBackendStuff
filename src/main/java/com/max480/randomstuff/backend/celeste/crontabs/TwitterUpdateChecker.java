@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableMap;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
-import net.dv8tion.jda.api.JDA;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -17,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,22 +31,15 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class TwitterUpdateChecker {
     private static final Logger log = LoggerFactory.getLogger(TwitterUpdateChecker.class);
 
-    // those will be sent to #celeste_news_network.
-    private static final List<String> THREADS_TO_WEBHOOK = Arrays.asList("celeste_game", "EverestAPI");
-
-    // those will be sent to the Quest server. the list of subscribers is managed externally by a bot.
-    private static final List<String> THREADS_TO_QUEST = Collections.singletonList("JeuDeLaupok");
-    public static final Set<String> patchNoteSubscribers = new HashSet<>();
-
     private static final Pattern twitterLinkAtEnd = Pattern.compile("^.*(https://t\\.co/[A-Za-z0-9]+)$", Pattern.DOTALL);
 
-    private static final Map<String, Set<String>> previousTweets = new HashMap<>();
+    private static final Set<String> previousTweets = new HashSet<>();
 
     public static String serviceMessage = null;
 
-    public static void runCheckForUpdates(JDA botClient) throws Exception {
+    public static void runCheckForUpdates() throws Exception {
         try {
-            checkForUpdates(botClient);
+            checkForUpdates();
             serviceMessage = null;
         } catch (Exception e) {
             log.error("Error while checking new tweets", e);
@@ -62,99 +53,32 @@ public class TwitterUpdateChecker {
      * Ran on bot startup.
      */
     public static void loadFile() {
-        String[] files = new File(".").list(
-                (dir, name) -> name.startsWith("previous_twitter_messages_") && name.endsWith(".txt"));
-
-        for (String file : files) {
-            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-                String twitterFeedName = file.substring("previous_twitter_messages_".length(), file.length() - ".txt".length());
-                Set<String> previous = new HashSet<>();
-
-                String s;
-                while ((s = br.readLine()) != null) {
-                    previous.add(s);
-                }
-
-                previousTweets.put(twitterFeedName, previous);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /**
-     * Checks for new tweets and notifies about any updates.
-     * Ran every 15 minutes.
-     *
-     * @throws IOException In case of issues when fetching tweets or notifying about them
-     */
-    private static void checkForUpdates(JDA botClient) throws IOException {
-        String token = authenticateTwitter();
-
-        // all subscribed feeds are listed in a text file.
-        try (BufferedReader br = new BufferedReader(new FileReader("followed_twitter_feeds.txt"))) {
+        try (BufferedReader br = new BufferedReader(new FileReader("previous_twitter_messages_celeste_game.txt"))) {
             String s;
             while ((s = br.readLine()) != null) {
-                checkForUpdates(token, s, botClient);
+                previousTweets.add(s);
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     /**
-     * Authenticates with Twitter using client credentials.
-     *
-     * @return The access token
-     * @throws IOException In case an error occurs when connecting
+     * Checks for updates on the celeste_game feed.
      */
-    private static String authenticateTwitter() throws IOException {
-        HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://api.twitter.com/oauth2/token");
+    private static void checkForUpdates() throws IOException {
+        log.debug("Checking for updates on feed celeste_game");
 
-        connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.TWITTER_BASIC_AUTH);
-        connAuth.setRequestMethod("POST");
-        connAuth.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
-        connAuth.setDoInput(true);
-        connAuth.setDoOutput(true);
-
-        connAuth.getOutputStream().write("grant_type=client_credentials".getBytes());
-        connAuth.getOutputStream().close();
-
-        JSONObject answer = new JSONObject(IOUtils.toString(connAuth.getInputStream(), UTF_8));
-        connAuth.getInputStream().close();
-
-        if (connAuth.getResponseCode() != 200 || !(answer.getString("token_type")).equals("bearer")) {
-            throw new IOException("Could not authenticate to Twitter");
+        JSONArray answer;
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/celeste-game-twitter-raw.json"))) {
+            answer = new JSONArray(IOUtils.toString(is, UTF_8));
         }
-
-        return answer.getString("access_token");
-    }
-
-    /**
-     * Checks for updates on a specific Twitter feed.
-     *
-     * @param token The access token
-     * @param feed  The feed to check
-     * @throws IOException In case of issues when fetching tweets or notifying about them
-     */
-    private static void checkForUpdates(String token, String feed, JDA botClient) throws IOException {
-        log.debug("Checking for updates on feed " + feed);
-
-        boolean firstRun = !previousTweets.containsKey(feed);
-        Set<String> tweetsAlreadyNotified = previousTweets.getOrDefault(feed, new HashSet<>());
-
-        HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name="
-                + URLEncoder.encode(feed, UTF_8) + "&count=50&include_rts=1&exclude_replies=1&tweet_mode=extended");
-
-        connAuth.setRequestProperty("Authorization", "Bearer " + token);
-        connAuth.setRequestMethod("GET");
-        connAuth.setDoInput(true);
-
-        JSONArray answer = new JSONArray(IOUtils.toString(connAuth.getInputStream(), UTF_8));
 
         for (int i = answer.length() - 1; i >= 0; i--) {
             JSONObject tweet = answer.getJSONObject(i);
             String id = tweet.getString("id_str");
 
-            if (!tweetsAlreadyNotified.contains(id)) {
+            if (!previousTweets.contains(id)) {
                 boolean recentSelfRetweet = false;
                 if (tweet.has("retweeted_status") && tweet.getJSONObject("user").getLong("id") == tweet.getJSONObject("retweeted_status").getJSONObject("user").getLong("id")) {
                     // account retweeted itself! do not repost the tweet if the original tweet was less than a week before.
@@ -173,11 +97,11 @@ public class TwitterUpdateChecker {
                     recentSelfRetweet = (retweetDate - originalTweetDate) < 604800;
                 }
 
-                if (!firstRun && !recentSelfRetweet) {
+                if (!recentSelfRetweet && (!tweet.has("in_reply_to_user_id_str") || "".equals(tweet.getString("in_reply_to_user_id_str")))) {
                     log.info("New tweet with id " + id);
 
                     // Get all the info we need about the tweet
-                    String link = "https://twitter.com/" + feed + "/status/" + id;
+                    String link = "https://twitter.com/celeste_game/status/" + id;
                     long date = OffsetDateTime.parse(tweet.getString("created_at"), DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH)).toEpochSecond();
                     String profilePictureUrl = tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", "");
                     String username = tweet.getJSONObject("user").getString("name");
@@ -203,38 +127,23 @@ public class TwitterUpdateChecker {
                     // Try to determine if the urls in the tweet have embeds.
                     final List<String> linksInTweet = detectLinksInTweet(tweet);
 
-                    // post it to the personal Twitter channel
-                    postTweetToWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL, date, link, profilePictureUrl, username, embed, videoUrl, linksInTweet);
-
-                    if (THREADS_TO_WEBHOOK.contains(feed)) {
-                        sendToCelesteNewsNetwork(webhookUrl -> postTweetToWebhook(webhookUrl, date, link, profilePictureUrl, username, embed, finalVideoUrl, linksInTweet));
-                    }
-
-                    if (THREADS_TO_QUEST.contains(feed)) {
-                        // post it to the Quest server, pinging every subscriber in the process
-                        // (there is a bot running there, BotClient.getInstance() gets the JDA client for it)
-                        botClient.getTextChannelById(SecretConstants.QUEST_UPDATE_CHANNEL)
-                                .sendMessage("<@" + String.join("> <@", patchNoteSubscribers) + ">\n" +
-                                        "Nouveau tweet de @" + feed + "\n" +
-                                        ":arrow_right: " + link + (linksInTweet.isEmpty() ? "" : "\nLiens : " + String.join(", ", linksInTweet)))
-                                .queue();
-                    }
+                    // post it to all webhooks following #celeste_news_network
+                    sendToCelesteNewsNetwork(webhookUrl -> postTweetToWebhook(webhookUrl, date, link, profilePictureUrl, username, embed, finalVideoUrl, linksInTweet));
 
                     if (videoFile != null) {
                         videoFile.delete();
                     }
                 } else {
-                    log.info("New tweet with id " + id + ", but this is a self-retweet of a tweet from less than a week before, or this is the first run.");
+                    log.info("New tweet with id " + id + ", but this is a self-retweet of a tweet from less than a week before, or it is a reply tweet.");
                 }
             }
-            tweetsAlreadyNotified.add(id);
+
+            previousTweets.add(id);
         }
 
-        previousTweets.put(feed, tweetsAlreadyNotified);
-
         // write the list of tweets that were already encountered
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter("previous_twitter_messages_" + feed + ".txt"))) {
-            for (String bl : tweetsAlreadyNotified) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter("previous_twitter_messages_celeste_game.txt"))) {
+            for (String bl : previousTweets) {
                 bw.write(bl + "\n");
             }
         }
@@ -276,7 +185,7 @@ public class TwitterUpdateChecker {
         if (!goneWebhooks.isEmpty()) {
             // some webhooks were deleted! notify the owner about it.
             for (String goneWebhook : goneWebhooks) {
-                WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_TWITTER_WEBHOOK_URL,
+                WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
                         "https://cdn.discordapp.com/attachments/445236692136230943/945779742462865478/2021_Twitter_logo_-_blue.png",
                         "Twitter Bot",
                         ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook);
