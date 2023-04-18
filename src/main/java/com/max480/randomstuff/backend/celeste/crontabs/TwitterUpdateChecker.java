@@ -67,7 +67,7 @@ public class TwitterUpdateChecker {
      * Checks for updates on the celeste_game feed.
      */
     private static void checkForUpdates() throws IOException {
-        log.debug("Checking for updates on feed celeste_game");
+        log.debug("Checking for updates on Twitter feeds");
 
         JSONArray answer;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/celeste-game-twitter-raw.json"))) {
@@ -101,7 +101,7 @@ public class TwitterUpdateChecker {
                     log.info("New tweet with id " + id);
 
                     // Get all the info we need about the tweet
-                    String link = "https://twitter.com/celeste_game/status/" + id;
+                    String link = "https://twitter.com/" + tweet.getJSONObject("user").getString("screen_name") + "/status/" + id;
                     long date = OffsetDateTime.parse(tweet.getString("created_at"), DateTimeFormatter.ofPattern("E MMM dd HH:mm:ss Z yyyy", Locale.ENGLISH)).toEpochSecond();
                     String profilePictureUrl = tweet.getJSONObject("user").getString("profile_image_url_https").replace("_normal", "");
                     String username = tweet.getJSONObject("user").getString("name");
