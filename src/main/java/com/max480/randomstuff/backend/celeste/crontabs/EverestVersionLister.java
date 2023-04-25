@@ -39,21 +39,15 @@ public class EverestVersionLister {
      * Run every 15 minutes.
      */
     public static void checkEverestVersions() throws IOException {
-        // get the latest Azure builds
-        List<Integer> currentAzureBuilds;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
-            currentAzureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
-                    .toList().stream()
-                    .map(version -> (int) ((Map<String, Object>) version).get("id"))
-                    .collect(Collectors.toList());
-        }
-
-        // temporarily add Azure beta builds
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
-            currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
-                    .toList().stream()
-                    .map(version -> (int) ((Map<String, Object>) version).get("id"))
-                    .toList());
+        // get the latest Azure builds for dev, beta and core branches
+        List<Integer> currentAzureBuilds = new ArrayList<>();
+        for (String branch : Arrays.asList("dev", "beta", "core")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
+                currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
+                        .toList().stream()
+                        .map(version -> (int) ((Map<String, Object>) version).get("id"))
+                        .collect(Collectors.toList()));
+            }
         }
 
         // get the latest GitHub release names
@@ -78,9 +72,10 @@ public class EverestVersionLister {
     }
 
     private static void updateEverestVersions() throws IOException {
-        List<Map<String, Object>> info = new ArrayList<>();
+        List<Map<String, Object>> infoNoNative = new ArrayList<>();
+        List<Map<String, Object>> infoWithNative = new ArrayList<>();
 
-        // === GitHub Releases: for Beta and Stable
+        // === GitHub Releases: for stable builds
 
         {
             JSONArray gitHubReleases;
@@ -118,15 +113,16 @@ public class EverestVersionLister {
                     }
                 }
 
-                info.add(entry);
+                infoNoNative.add(entry);
+                infoWithNative.add(entry);
             }
         }
 
-        // === Azure: for dev builds
+        // === Azure: for dev, beta and core builds
 
-        {
+        for (String branch : Arrays.asList("dev", "beta", "core")) {
             JSONObject azureBuilds;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
                 azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             }
 
@@ -135,7 +131,7 @@ public class EverestVersionLister {
                 JSONObject build = (JSONObject) b;
 
                 // most of the fields can be determined straight from the build number
-                entry.put("branch", "dev");
+                entry.put("branch", branch);
                 entry.put("date", build.getString("finishTime"));
                 entry.put("version", build.getInt("id") + 700);
                 entry.put("mainDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=main&api-version=5.0&%24format=zip");
@@ -143,7 +139,7 @@ public class EverestVersionLister {
                 entry.put("olympusBuildDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=olympus-build&api-version=5.0&%24format=zip");
 
                 // only look for an author and description for commit-related builds, not manual ones
-                if (build.getString("reason").equals("individualCI")) {
+                if (!"beta".equals(branch) && build.getString("reason").equals("individualCI")) {
                     Matcher pullRequestMatcher = PULL_REQUEST_MERGE.matcher(build.getJSONObject("triggerInfo").getString("ci.message"));
                     if (pullRequestMatcher.matches()) {
                         // take the author and name from the pull request
@@ -175,39 +171,20 @@ public class EverestVersionLister {
                     }
                 }
 
-                info.add(entry);
-            }
-        }
-
-
-        // === Azure: for beta builds (TEMPORARY, without commit descriptions)
-
-        {
-            JSONObject azureBuilds;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/beta&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
-                azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
-            }
-
-            for (Object b : azureBuilds.getJSONArray("value")) {
-                Map<String, Object> entry = new HashMap<>();
-                JSONObject build = (JSONObject) b;
-
-                entry.put("branch", "beta");
-                entry.put("date", build.getString("finishTime"));
-                entry.put("version", build.getInt("id") + 700);
-                entry.put("mainDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=main&api-version=5.0&%24format=zip");
-                entry.put("olympusMetaDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=olympus-meta&api-version=5.0&%24format=zip");
-                entry.put("olympusBuildDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=olympus-build&api-version=5.0&%24format=zip");
-
-                info.add(entry);
+                if (!"core".equals(branch)) {
+                    infoNoNative.add(entry);
+                }
+                infoWithNative.add(entry);
             }
         }
 
         // sort the versions by descending number
-        info.sort(Comparator.comparingInt(build -> -((int) build.get("version"))));
+        infoNoNative.sort(Comparator.comparingInt(build -> -((int) build.get("version"))));
+        infoWithNative.sort(Comparator.comparingInt(build -> -((int) build.get("version"))));
 
         // push to Cloud Storage
-        Files.writeString(Paths.get("/shared/celeste/everest-versions.json"), new JSONArray(info).toString(), StandardCharsets.UTF_8);
+        Files.writeString(Paths.get("/shared/celeste/everest-versions.json"), new JSONArray(infoNoNative).toString(), StandardCharsets.UTF_8);
+        Files.writeString(Paths.get("/shared/celeste/everest-versions-with-native.json"), new JSONArray(infoWithNative).toString(), StandardCharsets.UTF_8);
 
         // update the frontend cache
         HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/everest-versions-reload?key="
