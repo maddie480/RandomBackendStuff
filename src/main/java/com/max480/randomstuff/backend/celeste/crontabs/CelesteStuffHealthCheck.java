@@ -49,14 +49,16 @@ public class CelesteStuffHealthCheck {
         int latestStable = -1;
         int latestBeta = -1;
         int latestDev = -1;
+        int latestCore = -1;
 
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
             JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
 
                 switch (versionObj.getString("branch")) {
+                    case "core" -> latestCore = Math.max(latestCore, versionObj.getInt("version"));
                     case "dev" -> latestDev = Math.max(latestDev, versionObj.getInt("version"));
                     case "beta" -> latestBeta = Math.max(latestBeta, versionObj.getInt("version"));
                     case "stable" -> latestStable = Math.max(latestStable, versionObj.getInt("version"));
@@ -76,6 +78,10 @@ public class CelesteStuffHealthCheck {
             throw new IOException("There is no Everest dev version :a:");
         }
         log.debug("Latest Everest dev version: " + latestDev);
+        if (latestCore == -1) {
+            throw new IOException("There is no Everest core version :a:");
+        }
+        log.debug("Latest Everest core version: " + latestCore);
 
         // check the last version we sent an SRC notification for.
         int savedLatestEverest = Integer.parseInt(FileUtils.readFileToString(new File("latest_everest.txt"), UTF_8));
@@ -99,13 +105,15 @@ public class CelesteStuffHealthCheck {
         Files.writeString(Paths.get("/shared/celeste/latest-everest-versions.json"), new JSONObject(ImmutableMap.of(
                 "stable", latestStable,
                 "beta", latestBeta,
-                "dev", latestDev
+                "dev", latestDev,
+                "core", latestCore
         )).toString());
 
         if (daily) {
             checkEverestVersionExists(latestStable);
             checkEverestVersionExists(latestBeta);
             checkEverestVersionExists(latestDev);
+            checkEverestVersionExists(latestCore);
         }
     }
 
