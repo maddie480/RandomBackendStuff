@@ -1,5 +1,6 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
+import com.google.common.collect.ImmutableMap;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
@@ -194,10 +195,14 @@ public class EverestVersionLister {
         }
 
         // notify on Discord
-        WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
-                "Everest Update Checker",
-                ":sparkles: Everest versions were updated.");
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            WebhookExecutor.executeWebhook(webhook,
+                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "Everest Update Checker",
+                    ":sparkles: Everest versions were updated. Latest Everest version is now **" + infoWithNative.get(0).get("version") + "** (" + infoWithNative.get(0).get("branch") + ")"
+                            + (infoWithNative.get(0).containsKey("description") ? ": `" + infoWithNative.get(0).get("description") + "` by " + infoWithNative.get(0).get("author") + "." : "."),
+                    ImmutableMap.of("X-Everest-Log", "true"));
+        }
 
         UpdateOutgoingWebhooks.changesHappened();
     }
