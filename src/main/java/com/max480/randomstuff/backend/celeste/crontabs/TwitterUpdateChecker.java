@@ -235,7 +235,7 @@ public class TwitterUpdateChecker {
         if (videoUrl != null) {
             boolean videoSent = false;
             File video = new File("/tmp/tweet_video" + getFileExtension(videoUrl));
-            if (video.exists() && video.length() <= 8 * 1024 * 1024) {
+            if (video.exists() && video.length() <= 25 * 1024 * 1024) {
                 // post the video as a file, to avoid having to post a long link
                 try {
                     WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Video:", false, Collections.singletonList(video));
@@ -405,8 +405,8 @@ public class TwitterUpdateChecker {
                             long contentLength = Long.parseLong(connection.getHeaderField("Content-Length"));
                             log.debug("File size for video at {}: {}", url, contentLength);
 
-                            // the "best" video is the biggest one that still fits within the 8 MB size limit.
-                            if (contentLength > filesize && contentLength <= 8 * 1024 * 1024) {
+                            // the "best" video is the biggest one that still fits within the 25 MB size limit.
+                            if (contentLength > filesize && contentLength <= 25 * 1024 * 1024) {
                                 bestUrl = url;
                                 filesize = contentLength;
                             }
