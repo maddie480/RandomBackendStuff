@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.discord.modstructureverifier;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.ModFilesDatabaseBuilder;
 import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.everest.updatechecker.ZipFileWithAutoEncoding;
 import com.max480.randomstuff.backend.SecretConstants;
@@ -27,6 +28,7 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
@@ -46,6 +48,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -785,7 +788,6 @@ public class ModStructureVerifier extends ListenerAdapter {
 
         for (String dep : dependencies) {
             if (databaseContents.containsKey(dep)) { // to exclude Everest
-
                 String depUrl = (String) databaseContents.get(dep).get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
                 if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
                     // instead of downloading the file, let's grab its contents from the mod files database left by the update checker.
@@ -815,6 +817,21 @@ public class ModStructureVerifier extends ListenerAdapter {
                     // is there a file for Ahorn and Lönn entities as well?
                     checkMapEditorEntities("ahorn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
                     checkMapEditorEntities("loenn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
+                }
+            } else if (SecretConstants.LOENN_ENTITIES_FROM_GITHUB.containsKey(dep)) {
+                // this is a helper from some GitHub repository! read the Lönn plugins it might have.
+                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(SecretConstants.LOENN_ENTITIES_FROM_GITHUB.get(dep));
+                connection.setRequestProperty("Accept", "application/vnd.github.v3.raw");
+                connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
+
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), UTF_8))) {
+                    Path trashFile = Paths.get("/tmp/trash_file");
+                    Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntities(trashFile, br);
+                    Files.delete(trashFile);
+
+                    availableEntities.addAll(entities.getLeft());
+                    availableTriggers.addAll(entities.getMiddle());
+                    availableModEffects.addAll(entities.getRight());
                 }
             }
         }

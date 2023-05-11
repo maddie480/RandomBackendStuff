@@ -4,7 +4,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SecretConstants {
     // specifies where the bot should publish errors, and who it should ping about them
@@ -39,6 +41,10 @@ public class SecretConstants {
 
     // Mod Structure Verifier credentials
     public static String MOD_STRUCTURE_VERIFIER_TOKEN;
+
+    // Links to helpers from GitHub that should be taken into account by the Mod Structure Verifier (everest.yaml name => path to Lönn lang file)
+    public static Map<String, String> LOENN_ENTITIES_FROM_GITHUB;
+    public static List<String> EVEREST_YAMLS_FROM_GITHUB;
 
     // Server Manager bot credentials
     public static String SERVER_JANITOR_TOKEN;
@@ -112,6 +118,9 @@ public class SecretConstants {
 
         MOD_STRUCTURE_VERIFIER_TOKEN = secrets.getString("MOD_STRUCTURE_VERIFIER_TOKEN");
 
+        LOENN_ENTITIES_FROM_GITHUB = getMapOfStrings(secrets.getJSONObject("LOENN_ENTITIES_FROM_GITHUB"));
+        EVEREST_YAMLS_FROM_GITHUB = getListOfStrings(secrets.getJSONArray("EVEREST_YAMLS_FROM_GITHUB"));
+
         SERVER_JANITOR_TOKEN = secrets.getString("SERVER_JANITOR_TOKEN");
         SUPPORT_SERVER_ID = secrets.getLong("SUPPORT_SERVER_ID");
         SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = getListOfLongs(secrets.getJSONArray("SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP"));
@@ -149,6 +158,14 @@ public class SecretConstants {
         List<Long> result = new ArrayList<>();
         for (int i = 0; i < array.length(); i++) {
             result.add(array.getLong(i));
+        }
+        return result;
+    }
+
+    private static Map<String, String> getMapOfStrings(JSONObject object) {
+        Map<String, String> result = new HashMap<>();
+        for (String key : object.keySet()) {
+            result.put(key, object.getString(key));
         }
         return result;
     }
