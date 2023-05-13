@@ -374,10 +374,12 @@ public class ModStructureVerifier extends ListenerAdapter {
 
                 // asset paths being Assets/ (lua cutscenes), Graphics/Atlases/, Graphics/ColorGrading/ and Tutorials/
                 // should match: Graphics/Atlases/[anything]/collabname/[anything]/[anything]
+                // (except for emoji, that should be in Graphics/Atlases/Gui/emoji/collabname_[anything]_[anything])
                 parseProblematicPaths(problemList, websiteProblemList, "assets", "You have assets that are at the wrong place, please move them", fileListing.stream()
                         .filter(entry -> entry.startsWith("Assets/") || entry.startsWith("Graphics/ColorGrading/")
                                 || entry.startsWith("Graphics/Atlases/") || entry.startsWith("Tutorials/"))
-                        .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabAssetPrefix + "/.+/.+$"))
+                        .filter(entry -> !entry.matches("^(Assets|Graphics/Atlases|Graphics/ColorGrading|Tutorials)(/.+)?/" + expectedCollabAssetPrefix + "/.+/.+$")
+                                && !entry.matches("^Graphics/Atlases/Gui/emoji/" + expectedCollabAssetPrefix + "_.+_.+$"))
                         .collect(Collectors.toList()), isHtml);
 
                 logger.debug("Scanning invalid XML paths...");
@@ -1319,6 +1321,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             collabMapsName = collabMapPrefixes.get(channelId);
         }
         return "- files in `Assets/`, `Graphics/Atlases/`, `Graphics/ColorGrading/` and `Tutorials/` should have this path: `[basePath]/" + collabAssetsName + "/[subfolder]/[anything]`\n" +
+                "- since they cannot be in subfolders, emojis should be in `Graphics/Atlases/Gui/emoji/" + collabAssetsName + "_[anything]_[anything].png` instead\n" +
                 "- XMLs in `Graphics/` should match: `Graphics/" + collabAssetsName + "xmls/[subfolder]/[anything].xml`\n" +
                 "- there should be exactly 1 file in the `Maps` folder, and its path should match: `Maps/" + collabMapsName + "/[subfolder]/[anything].bin`\n" +
                 "- if there is an `English.txt`, dialog IDs should match: `" + collabAssetsName + "_[anything]_[anything]`" +
