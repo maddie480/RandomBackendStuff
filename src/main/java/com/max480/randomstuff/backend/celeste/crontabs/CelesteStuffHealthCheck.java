@@ -1005,4 +1005,32 @@ public class CelesteStuffHealthCheck {
             }
         }
     }
+
+    /**
+     * Checks that the collab list still renders correctly, and shows at least the Crossover Collab.
+     * Run daily.
+     */
+    public static void checkCollabList() throws IOException {
+        log.debug("Checking collab list...");
+        String contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/collab-contest-list"), UTF_8);
+        if (!contents.contains("Crossover Collab")) {
+            throw new IOException("Collab list does not show Crossover Collab!");
+        }
+
+        String key = "";
+        for (String s : new File("/shared/celeste/collab-list").list()) {
+            try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/collab-list/" + s))) {
+                JSONObject o = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                if ("Crossover Collab".equals(o.getString("name"))) {
+                    key = s.substring(0, s.length() - 5);
+                }
+            }
+        }
+
+        log.debug("Checking collab editor with key {}...", key);
+        contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/collab-contest-editor?key=" + key), UTF_8);
+        if (!contents.contains("Crossover Collab")) {
+            throw new IOException("Collab editor does not show Crossover Collab!");
+        }
+    }
 }
