@@ -601,7 +601,14 @@ public class UpdateCheckerTracker extends EventListener {
 
         log.info("Mod Structure Verifier entity maps now contain {} assets, {} entities, {} triggers and {} effects.",
                 assets.size(), entities.size(), triggers.size(), effects.size());
+    }
 
+    /**
+     * Updates version numbers of helpers that are hosted on GitHub, in order to make them available for the
+     * Mod Structure Verifier.
+     * Run hourly.
+     */
+    public static void updatePrivateHelpersFromGitHub() throws IOException {
         // load version numbers from private helpers hosted on GitHub, and store them in a file for the everest.yaml validator.
         Map<String, String> extraYamls = new HashMap<>();
 
@@ -619,6 +626,7 @@ public class UpdateCheckerTracker extends EventListener {
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/everest-yamls-from-github.json"))) {
             IOUtils.write(new JSONObject(extraYamls).toString(), os, UTF_8);
         }
+        log.info("Updated everest.yamls from GitHub with: {}", extraYamls);
     }
 
     private static Map<String, String> getEntityMap(String type) throws IOException {
