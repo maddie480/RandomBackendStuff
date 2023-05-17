@@ -137,7 +137,6 @@ public class WebhookExecutor {
 
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0");
 
             for (Map.Entry<String, String> header : httpHeaders.entrySet()) {
                 connection.setRequestProperty(header.getKey(), header.getValue());
@@ -154,7 +153,6 @@ public class WebhookExecutor {
                     attachments.stream().map(File::getAbsolutePath).collect(Collectors.joining("\", \"")));
 
             HashMap<String, String> headers = new HashMap<>();
-            headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0");
             headers.putAll(httpHeaders);
             HttpPostMultipart multipart = new HttpPostMultipart(webhookUrl + "?wait=true", "UTF-8", headers);
 

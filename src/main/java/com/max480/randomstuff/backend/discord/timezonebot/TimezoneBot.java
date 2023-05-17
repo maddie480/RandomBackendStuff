@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.discord.timezonebot;
 
 import com.max480.randomstuff.backend.SecretConstants;
+import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -11,7 +12,6 @@ import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,7 +109,7 @@ public class TimezoneBot {
         Map<String, List<String>> timezoneConflicts = new HashMap<>();
 
         // populate the timezones!
-        for (Element elt : Jsoup.connect("https://www.timeanddate.com/time/zones/").get().select("#tz-abb tbody tr")) {
+        for (Element elt : ConnectionUtils.jsoupGetWithRetry("https://www.timeanddate.com/time/zones/").select("#tz-abb tbody tr")) {
             String name = elt.select("td:first-child").text().trim();
             String fullName = elt.select("td:nth-child(2)").first().ownText().trim();
             String offset = elt.select("td:last-child").text().trim().replace(" ", "");

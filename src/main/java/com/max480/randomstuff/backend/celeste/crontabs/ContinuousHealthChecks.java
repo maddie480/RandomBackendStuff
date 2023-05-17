@@ -15,8 +15,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -92,10 +91,10 @@ public class ContinuousHealthChecks {
 
     private static void checkURL(String url, String content, String serviceName, List<String> webhookUrls) {
         checkHealth(() -> {
-            URLConnection con = new URL(url).openConnection();
+            HttpURLConnection con = ConnectionUtils.openConnectionWithTimeout(url);
             con.setConnectTimeout(5000);
             con.setReadTimeout(10000);
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.connectionToInputStream(con)))) {
                 String s;
                 while ((s = br.readLine()) != null) {
                     if (s.contains(content)) {

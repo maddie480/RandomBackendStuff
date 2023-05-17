@@ -599,7 +599,7 @@ public class BotEventListener extends ListenerAdapter {
             osm.setRequestProperty("User-Agent", "TimezoneBot/1.0 (+https://maddie480.ovh/discord-bots#timezone-bot)");
 
             JSONArray osmResults;
-            try (InputStream is = osm.getInputStream()) {
+            try (InputStream is = ConnectionUtils.connectionToInputStream(osm)) {
                 osmResults = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
             }
 

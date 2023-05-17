@@ -210,6 +210,6 @@ public class EverestVersionLister {
     private static InputStream authenticatedGitHubRequest(String url) throws IOException {
         HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout(url);
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
-        return connAuth.getInputStream();
+        return ConnectionUtils.connectionToInputStream(connAuth);
     }
 }

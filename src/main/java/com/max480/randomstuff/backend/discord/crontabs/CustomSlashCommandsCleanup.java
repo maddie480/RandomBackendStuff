@@ -104,7 +104,7 @@ public class CustomSlashCommandsCleanup {
         connection.setRequestProperty("User-Agent", USER_AGENT);
 
         if (connection.getResponseCode() == 200) {
-            try (InputStream is = connection.getInputStream()) {
+            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
                 return new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
             }
         } else {
@@ -146,7 +146,7 @@ public class CustomSlashCommandsCleanup {
             IOUtils.write("grant_type=client_credentials&scope=applications.commands.update", os, StandardCharsets.UTF_8);
         }
 
-        try (InputStream is = connection.getInputStream()) {
+        try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
             String response = IOUtils.toString(is, StandardCharsets.UTF_8);
             JSONObject o = new JSONObject(response);
             return o.getString("access_token");

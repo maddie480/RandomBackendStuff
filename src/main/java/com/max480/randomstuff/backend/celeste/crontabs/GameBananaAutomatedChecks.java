@@ -459,7 +459,7 @@ public class GameBananaAutomatedChecks {
                     submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
 
-                    JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
+                    JSONObject resultBody = new JSONObject(IOUtils.toString(ConnectionUtils.connectionToInputStream(result), StandardCharsets.UTF_8));
                     logger.debug("Checking result");
                     if (resultBody.has("parseError")) {
                         sendAlertToWebhook(":warning: The mod called **" + modName + "** has an everest.yaml file with invalid syntax:\n```\n"

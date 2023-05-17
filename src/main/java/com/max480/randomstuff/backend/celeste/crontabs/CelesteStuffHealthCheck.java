@@ -11,7 +11,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -259,7 +258,7 @@ public class CelesteStuffHealthCheck {
         log.debug("Checking Banana Mirror contents...");
 
         // === zips referenced in everest_update.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror/
-        List<String> bananaMirror = Jsoup.connect("https://celestemodupdater.0x0a.de/banana-mirror/").get()
+        List<String> bananaMirror = ConnectionUtils.jsoupGetWithRetry("https://celestemodupdater.0x0a.de/banana-mirror/")
                 .select("td.indexcolname a")
                 .stream()
                 .map(a -> "https://celestemodupdater.0x0a.de/banana-mirror/" + a.attr("href"))
@@ -282,7 +281,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror-images/
-        List<String> bananaMirrorImages = Jsoup.connect("https://celestemodupdater.0x0a.de/banana-mirror-images/").get()
+        List<String> bananaMirrorImages = ConnectionUtils.jsoupGetWithRetry("https://celestemodupdater.0x0a.de/banana-mirror-images/")
                 .select("td.indexcolname a")
                 .stream()
                 .map(a -> "https://celestemodupdater.0x0a.de/banana-mirror-images/" + a.attr("href"))
@@ -305,7 +304,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // === Rich Presence icons we saved locally should be present at https://celestemodupdater.0x0a.de/rich-presence-icons/
-        List<String> richPresenceIcons = Jsoup.connect("https://celestemodupdater.0x0a.de/rich-presence-icons/").get()
+        List<String> richPresenceIcons = ConnectionUtils.jsoupGetWithRetry("https://celestemodupdater.0x0a.de/rich-presence-icons/")
                 .select("td.indexcolname a")
                 .stream()
                 .map(a -> "https://celestemodupdater.0x0a.de/rich-presence-icons/" + a.attr("href"))
@@ -466,7 +465,7 @@ public class CelesteStuffHealthCheck {
         HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/random-map");
         connection.setInstanceFollowRedirects(true);
         connection.connect();
-        if (!IOUtils.toString(connection.getInputStream(), UTF_8).contains("Celeste")) {
+        if (!IOUtils.toString(ConnectionUtils.connectionToInputStream(connection), UTF_8).contains("Celeste")) {
             throw new IOException("Didn't get redirected to a random Celeste map!");
         }
         connection.disconnect();
@@ -650,7 +649,7 @@ public class CelesteStuffHealthCheck {
             HttpURLConnection result = submit.finish();
 
             // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
-            String resultBody = IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8);
+            String resultBody = IOUtils.toString(ConnectionUtils.connectionToInputStream(result), StandardCharsets.UTF_8);
             if (!resultBody.contains("Your everest.yaml file seems valid!")
                     || !resultBody.contains("WinterCollab2021Audio") || !resultBody.contains("VivHelper") || !resultBody.contains("1.4.1")) {
                 throw new IOException("everest.yaml validator gave unexpected output for Winter Collab yaml file");
@@ -665,7 +664,7 @@ public class CelesteStuffHealthCheck {
             HttpURLConnection result = submit.finish();
 
             // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
-            JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
+            JSONObject resultBody = new JSONObject(IOUtils.toString(ConnectionUtils.connectionToInputStream(result), StandardCharsets.UTF_8));
             boolean found = false;
             for (Object dependency : resultBody.getJSONArray("modInfo").getJSONObject(0).getJSONArray("Dependencies")) {
                 JSONObject dep = (JSONObject) dependency;
@@ -710,7 +709,7 @@ public class CelesteStuffHealthCheck {
         new File("/tmp/Japanese.txt").delete();
 
         // read the response as a zip file
-        try (ZipInputStream zip = new ZipInputStream(result.getInputStream())) {
+        try (ZipInputStream zip = new ZipInputStream(ConnectionUtils.connectionToInputStream(result))) {
             if (!zip.getNextEntry().getName().equals("japanese.fnt")
                     || !zip.getNextEntry().getName().equals("collabutils2_japanese_healthcheck.png")
                     || zip.getNextEntry() != null) {
@@ -806,7 +805,7 @@ public class CelesteStuffHealthCheck {
         new File("/tmp/tornado.zip").delete();
 
         String url;
-        try (InputStream is = result.getInputStream()) {
+        try (InputStream is = ConnectionUtils.connectionToInputStream(result)) {
             // the response is a URL relative to maddie480.ovh.
             url = "https://maddie480.ovh" + IOUtils.toString(is, UTF_8);
         }
@@ -849,7 +848,7 @@ public class CelesteStuffHealthCheck {
                         log.debug("Transferred {} bytes", IOUtils.copy(zis, os));
                     }
 
-                    try (InputStream response = connection.getInputStream()) {
+                    try (InputStream response = ConnectionUtils.connectionToInputStream(connection)) {
                         if (!IOUtils.toString(response, UTF_8).contains("\"texture\":\"9-core/fossil_b.png\"")) {
                             throw new IOException("bin-to-json response didn't have the expected content!");
                         }
@@ -916,7 +915,7 @@ public class CelesteStuffHealthCheck {
         }
 
         String resultHtml;
-        try (InputStream is = connection.getInputStream()) {
+        try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
             resultHtml = IOUtils.toString(is, UTF_8);
         }
         if (!resultHtml.contains("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand&amp;twoclick=1&amp;mirror=1")) {
@@ -956,7 +955,7 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkDiscordBotsPage() throws IOException {
-        Document soup = Jsoup.connect("https://maddie480.ovh/discord-bots").get();
+        Document soup = ConnectionUtils.jsoupGetWithRetry("https://maddie480.ovh/discord-bots");
 
         String expected;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/discord-bots/bot-server-counts.yaml"))) {

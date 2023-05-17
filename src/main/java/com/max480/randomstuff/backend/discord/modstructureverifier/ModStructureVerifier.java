@@ -490,7 +490,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     HttpURLConnection result = submit.finish();
 
                     // read the response from everest.yaml validator
-                    JSONObject resultBody = new JSONObject(IOUtils.toString(result.getInputStream(), StandardCharsets.UTF_8));
+                    JSONObject resultBody = new JSONObject(IOUtils.toString(ConnectionUtils.connectionToInputStream(result), StandardCharsets.UTF_8));
                     if (!resultBody.has("modInfo")) {
                         problemList.add(pickFormat(isHtml,
                                 "Your everest.yaml seems to have problems, send it to <a href=\"https://maddie480.ovh/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> for more details",
@@ -826,7 +826,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 connection.setRequestProperty("Accept", "application/vnd.github.v3.raw");
                 connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
 
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), UTF_8))) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.connectionToInputStream(connection), UTF_8))) {
                     Path trashFile = Paths.get("/tmp/trash_file");
                     Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntities(trashFile, br);
                     Files.delete(trashFile);

@@ -6,7 +6,6 @@ import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import net.dv8tion.jda.api.JDA;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,7 +135,7 @@ public class TopGGCommunicator {
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://top.gg/api/bots/" + botId);
             connection.setRequestProperty("Authorization", botToken);
 
-            try (InputStream is = connection.getInputStream()) {
+            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
                 JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
                 updateBotScore(internalBotClient, response.getInt("points"), response.getInt("monthlyPoints"), botName, oldCount, newCount);
             }
@@ -161,7 +160,7 @@ public class TopGGCommunicator {
     private static void updateBotRatingCount(JDA internalBotClient, String botId, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
             // there is a JSON schema belonging to a ... product in the page, and it has the ratings, so go get it.
-            JSONObject productMetadata = new JSONObject(Jsoup.connect("https://top.gg/fr/bot/" + botId).get()
+            JSONObject productMetadata = new JSONObject(ConnectionUtils.jsoupGetWithRetry("https://top.gg/fr/bot/" + botId)
                     .select("script[type=\"application/ld+json\"]").html());
 
             if (productMetadata.isNull("aggregateRating")) {

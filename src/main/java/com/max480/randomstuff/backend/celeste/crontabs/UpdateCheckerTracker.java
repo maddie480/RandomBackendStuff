@@ -617,7 +617,7 @@ public class UpdateCheckerTracker extends EventListener {
             connection.setRequestProperty("Accept", "application/vnd.github.v3.raw");
             connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
 
-            try (InputStream is = connection.getInputStream()) {
+            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
                 List<Map<String, Object>> contents = YamlUtil.load(is);
                 extraYamls.put((String) contents.get(0).get("Name"), (String) contents.get(0).get("Version"));
             }

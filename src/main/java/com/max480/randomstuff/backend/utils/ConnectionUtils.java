@@ -2,15 +2,19 @@ package com.max480.randomstuff.backend.utils;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOSupplier;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
+import java.util.zip.GZIPInputStream;
 
 public final class ConnectionUtils {
     private static final Logger logger = LoggerFactory.getLogger(ConnectionUtils.class);
@@ -24,10 +28,36 @@ public final class ConnectionUtils {
      * @throws IOException If an exception occured while trying to connect
      */
     public static HttpURLConnection openConnectionWithTimeout(String url) throws IOException {
-        URLConnection con = new URL(url).openConnection();
+        URLConnection con;
+
+        try {
+            con = new URI(url).toURL().openConnection();
+        } catch (URISyntaxException e) {
+            throw new IOException(e);
+        }
+
+        con.setRequestProperty("User-Agent", "Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)");
+        con.setRequestProperty("Accept-Encoding", "gzip");
+
         con.setConnectTimeout(10000);
         con.setReadTimeout(30000);
+
         return (HttpURLConnection) con;
+    }
+
+    /**
+     * Turns an HTTP connection into an input stream, going through gzip decoding if necessary.
+     *
+     * @param con The connection
+     * @return An input stream that reads from the connection
+     * @throws IOException If an exception occured while trying to connect
+     */
+    public static InputStream connectionToInputStream(HttpURLConnection con) throws IOException {
+        InputStream is = con.getInputStream();
+        if ("gzip".equals(con.getContentEncoding())) {
+            return new GZIPInputStream(is);
+        }
+        return is;
     }
 
     /**
@@ -39,8 +69,9 @@ public final class ConnectionUtils {
      * @throws IOException If an exception occured while trying to connect
      */
     public static InputStream openStreamWithTimeout(String url) throws IOException {
-        return openConnectionWithTimeout(url).getInputStream();
+        return connectionToInputStream(openConnectionWithTimeout(url));
     }
+
 
     /**
      * Opens a connection to the given URL with a timeout, and returns all its contents as a string.
@@ -92,5 +123,18 @@ public final class ConnectionUtils {
 
         // 3rd try: this time, if it crashes, let it crash
         return task.get();
+    }
+
+    /**
+     * Retrieves an HTML page with Jsoup, including retries if the request fails.
+     *
+     * @param url The URL to get
+     * @return The HTML Document obtained from the URL
+     * @throws IOException If an exception occurred three times while reading the contents
+     */
+    public static Document jsoupGetWithRetry(String url) throws IOException {
+        return runWithRetry(() -> Jsoup.connect(url)
+                .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
+                .get());
     }
 }
