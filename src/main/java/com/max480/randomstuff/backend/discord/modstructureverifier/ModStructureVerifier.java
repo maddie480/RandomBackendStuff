@@ -558,7 +558,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     sendResultToFrontend.accept("✅ <b>No issue was found with your zip!</b>", Collections.emptyList());
                 }
 
-                if (attachment != null && event != null) {
+                if (attachment != null && event != null && channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_EMBED_LINKS, Permission.MESSAGE_SEND)) {
                     // post an embed to the 2-click installer.
                     EmbedBuilder embedBuilder = new EmbedBuilder()
                             .setTitle("Install " + yamlName, "https://0x0a.de/twoclick?" + attachment.getUrl())
