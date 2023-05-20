@@ -36,7 +36,7 @@ public class FrontendTaskReceiver {
     public static void start() {
         new Thread(() -> {
             try {
-                serverSocket = new ServerSocket(4480);
+                serverSocket = new ServerSocket(44480);
                 while (serverSocket != null) {
                     try (Socket connection = serverSocket.accept()) {
                         messageReceived(IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8));
