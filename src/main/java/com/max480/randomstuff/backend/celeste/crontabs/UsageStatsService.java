@@ -47,8 +47,9 @@ public class UsageStatsService {
      * This method is invoked hourly and dumps some weekly statistics that can then be displayed on the website.
      */
     public static void writeWeeklyStatisticsToFile() throws IOException {
+        Map<String, Object> stats = UsageStatsService.getStatistics(7);
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/weekly-stats.yaml"))) {
-            YamlUtil.dump(UsageStatsService.getStatistics(7), os);
+            YamlUtil.dump(stats, os);
         }
     }
 
