@@ -18,7 +18,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.*;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
@@ -56,14 +59,14 @@ public class UsageStatsService {
     public static Map<String, Object> getStatistics(int days) throws IOException {
         return ImmutableMap.of(
                 "responseCountPerCode", getResponseCountByStatus(days),
+                "githubActionsPerRepository", countGitHubActionsPerRepository(days),
+                "gitlabActionsCount", countGitLabActions(days),
                 "customSlashCommandsUsage", countFrontendLogEntries("/discord/custom-slash-commands", days),
                 "gamesBotUsage", countFrontendLogEntries("/discord/games-bot", days),
                 "timezoneBotLiteUsage", countFrontendLogEntries("/discord/timezone-bot", days),
                 "timezoneBotFullUsage", countBackendLogEntries(l -> l.contains(".BotEventListener") && l.contains("New command: "), days),
                 "modStructureVerifierUsage", countBackendLogEntries(l -> l.contains(".ModStructureVerifier") && l.contains("Collab assets folder = "), days),
-                "bananaBotUsage", countFrontendLogEntries("/discord/bananabot", days),
-                "githubActionsPerRepository", countGitHubActionsPerRepository(days),
-                "calculatedAt", Instant.now().toEpochMilli()
+                "bananaBotUsage", countFrontendLogEntries("/discord/bananabot", days)
         );
     }
 
@@ -177,6 +180,36 @@ public class UsageStatsService {
                     int count = result.getOrDefault(repoName, 0);
                     result.put(repoName, count + 1);
                 }
+            }
+
+            page++;
+        }
+    }
+
+    private static int countGitLabActions(int days) throws IOException {
+        int count = 0;
+        int page = 1;
+
+        while (true) {
+            int curPage = page;
+            JSONArray events = ConnectionUtils.runWithRetry(() -> {
+                HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://gitlab.com/api/v4/events?page=" + curPage);
+                connAuth.setRequestProperty("Private-Token", SecretConstants.GITLAB_ACCESS_TOKEN);
+
+                try (InputStream is = ConnectionUtils.connectionToInputStream(connAuth)) {
+                    return new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+                }
+            });
+
+            for (Object o : events) {
+                JSONObject item = (JSONObject) o;
+
+                OffsetDateTime createdAt = OffsetDateTime.parse(item.getString("created_at"), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                if (createdAt.isBefore(OffsetDateTime.now().minusDays(days))) {
+                    return count;
+                }
+
+                count++;
             }
 
             page++;
