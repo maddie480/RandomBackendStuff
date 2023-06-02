@@ -14,4 +14,11 @@
         <packageUrl regex="true">^pkg:maven/org\.json/json@.*$</packageUrl>
         <cve>CVE-2022-45688</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+            Guava 32.0.0 is supposed to fix this very CVE, so I'm handling this as a false flag for now
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.google\.guava/guava@.*$</packageUrl>
+        <vulnerabilityName>CVE-2023-2976</vulnerabilityName>
+    </suppress>
 </suppressions>
