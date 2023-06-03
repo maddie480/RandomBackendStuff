@@ -61,10 +61,10 @@ public class BinToJSON {
             }
             recursiveConvert(bin, root, stringLookupTable, true);
 
-            logger.info("Converted input to JSON in " + (System.currentTimeMillis() - startTime) + " ms");
+            logger.info("Converted input to JSON in {} ms", System.currentTimeMillis() - startTime);
             return root;
         } catch (Exception e) {
-            logger.warn("Could not convert BIN to JSON! " + e);
+            logger.warn("Could not convert BIN to JSON!", e);
             return null;
         }
     }
@@ -120,7 +120,20 @@ public class BinToJSON {
             switch (attributeValueType) {
                 case Boolean -> obj = bin.readBoolean();
                 case Byte -> obj = bin.readUnsignedByte();
-                case Float -> obj = EndianUtils.readSwappedFloat(bin);
+                case Float -> {
+                    float value = EndianUtils.readSwappedFloat(bin);
+
+                    // map special float values to strings, since JSON cannot handle them
+                    if (value == Float.POSITIVE_INFINITY) {
+                        obj = "+Infinity";
+                    } else if (value == Float.NEGATIVE_INFINITY) {
+                        obj = "-Infinity";
+                    } else if (Float.isNaN(value)) {
+                        obj = "NaN";
+                    } else {
+                        obj = value;
+                    }
+                }
                 case Integer -> obj = EndianUtils.readSwappedInteger(bin);
                 case LengthEncodedString -> {
                     short length = EndianUtils.readSwappedShort(bin);
