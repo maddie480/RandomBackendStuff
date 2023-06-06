@@ -321,7 +321,7 @@ public class TimezoneBot {
                 });
     }
 
-    private String getUsernameTransitionAware(User user) {
+    private static String getUsernameTransitionAware(User user) {
         // new usernames are indicated with a #0000 discriminator, that is supposed to be invisible.
         if ("0000".equals(user.getDiscriminator())) {
             return user.getName();
