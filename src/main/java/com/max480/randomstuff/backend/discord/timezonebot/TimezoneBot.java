@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.ErrorResponse;
@@ -297,7 +298,7 @@ public class TimezoneBot {
                         CachedMember cached = new CachedMember(
                                 g.getIdLong(),
                                 memberId,
-                                m.getUser().getName() + "#" + m.getUser().getDiscriminator(),
+                                getUsernameTransitionAware(m.getUser()),
                                 m.getEffectiveName(),
                                 m.getRoles().stream()
                                         .map(Role::getIdLong)
@@ -318,6 +319,15 @@ public class TimezoneBot {
                         throw error;
                     }
                 });
+    }
+
+    private String getUsernameTransitionAware(User user) {
+        // new usernames are indicated with a #0000 discriminator, that is supposed to be invisible.
+        if ("0000".equals(user.getDiscriminator())) {
+            return user.getName();
+        } else {
+            return user.getName() + "#" + user.getDiscriminator();
+        }
     }
 
     /**
