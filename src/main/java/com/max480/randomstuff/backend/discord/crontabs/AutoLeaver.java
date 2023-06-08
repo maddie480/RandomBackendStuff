@@ -4,11 +4,13 @@ import com.max480.randomstuff.backend.SecretConstants;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.internal.utils.IOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Since all invites for Games Bot, Custom Slash Commands and Timezone Bot without roles (on maddie480.ovh or top.gg) do not include
@@ -24,7 +26,9 @@ public class AutoLeaver {
         for (String token : Arrays.asList(SecretConstants.GAMES_BOT_TOKEN, SecretConstants.CUSTOM_SLASH_COMMANDS_TOKEN,
                 SecretConstants.TIMEZONE_BOT_LITE_TOKEN, SecretConstants.BANANABOT_TOKEN)) {
 
-            final JDA jda = JDABuilder.createLight(token, Collections.emptyList()).build().awaitReady();
+            final JDA jda = JDABuilder.createLight(token, Collections.emptyList())
+                    .setHttpClientBuilder(IOUtil.newHttpClientBuilder().callTimeout(60, TimeUnit.SECONDS))
+                    .build().awaitReady();
 
             for (Guild guild : jda.getGuilds()) {
                 logger.warn("{} is leaving guild {}!", jda.getSelfUser(), guild);
