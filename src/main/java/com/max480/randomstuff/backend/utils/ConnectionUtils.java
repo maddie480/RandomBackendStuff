@@ -169,6 +169,8 @@ public final class ConnectionUtils {
                 if (failureHolder.result != null) {
                     if (failureHolder.result instanceof IOException ioException) {
                         throw ioException;
+                    } else if (failureHolder.result instanceof RuntimeException runtimeException) {
+                        throw runtimeException;
                     } else {
                         throw new RuntimeException(failureHolder.result);
                     }
