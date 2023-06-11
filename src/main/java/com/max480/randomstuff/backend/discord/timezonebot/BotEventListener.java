@@ -113,27 +113,29 @@ public class BotEventListener extends ListenerAdapter {
 
             logger.info("New command: /{} by member {}, options={}", event.getName(), member, event.getOptions());
 
-            switch (event.getName()) {
-                case "list-timezones" -> {
-                    OptionMapping visibility = event.getOption("visibility");
-                    OptionMapping names = event.getOption("names");
-                    boolean isPublic = visibility != null && "public".equals(visibility.getAsString());
-                    listTimezones(event,
-                            names == null ? "discord_tags" : names.getAsString(),
-                            false,
-                            isPublic,
-                            isPublic ? event.getGuildLocale() : event.getUserLocale());
+            try {
+                switch (event.getName()) {
+                    case "list-timezones" -> {
+                        OptionMapping visibility = event.getOption("visibility");
+                        OptionMapping names = event.getOption("names");
+                        boolean isPublic = visibility != null && "public".equals(visibility.getAsString());
+                        listTimezones(event,
+                                names == null ? "discord_tags" : names.getAsString(),
+                                false,
+                                isPublic,
+                                isPublic ? event.getGuildLocale() : event.getUserLocale());
+                    }
+                    case "timezone-dropdown" -> generateTimezoneDropdown(event);
+                    case "detect-timezone" -> sendDetectTimezoneLink(event, locale);
+                    case "timezone" -> defineUserTimezone(event, member, event.getOption("tz_name").getAsString(), locale);
+                    case "remove-timezone" -> removeUserTimezone(event, member, locale);
+                    case "toggle-times" -> toggleTimesInTimezoneRoles(event, member, locale);
+                    case "discord-timestamp" -> giveDiscordTimestamp(event, member, event.getOption("date_time").getAsString(), locale);
+                    case "time-for" -> giveTimeForOtherUser(event, member, event.getOption("member").getAsLong(), locale);
+                    case "world-clock" -> giveTimeForOtherPlace(event, event.getMember(), event.getOption("place").getAsString(), locale);
                 }
-                case "timezone-dropdown" -> generateTimezoneDropdown(event);
-                case "detect-timezone" -> sendDetectTimezoneLink(event, locale);
-                case "timezone" -> defineUserTimezone(event, member, event.getOption("tz_name").getAsString(), locale);
-                case "remove-timezone" -> removeUserTimezone(event, member, locale);
-                case "toggle-times" -> toggleTimesInTimezoneRoles(event, member, locale);
-                case "discord-timestamp" ->
-                        giveDiscordTimestamp(event, member, event.getOption("date_time").getAsString(), locale);
-                case "time-for" -> giveTimeForOtherUser(event, member, event.getOption("member").getAsLong(), locale);
-                case "world-clock" ->
-                        giveTimeForOtherPlace(event, event.getMember(), event.getOption("place").getAsString(), locale);
+            } catch (IOException e) {
+                logger.error("Uncaught IO exception occurred in Mod Structure Verifier! Probably a Discord timeout.", e);
             }
         }
     }
@@ -340,7 +342,7 @@ public class BotEventListener extends ListenerAdapter {
     /**
      * Handles the /remove-timezone command: takes off the timezone role and forgets about the user.
      */
-    private static void removeUserTimezone(IReplyCallback event, Member member, DiscordLocale locale) {
+    private static void removeUserTimezone(IReplyCallback event, Member member, DiscordLocale locale) throws IOException {
         // find the user's timezone.
         TimezoneBot.UserTimezone userTimezone = TimezoneBot.userTimezones.stream()
                 .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
@@ -364,7 +366,7 @@ public class BotEventListener extends ListenerAdapter {
                 if (TimezoneBot.getTimezoneOffsetRolesForGuild(server).containsValue(userRole.getIdLong())) {
                     logger.info("Removing timezone role {} from {}", userRole, member);
                     TimezoneBot.memberCache.remove(TimezoneBot.getMemberWithCache(server, member.getIdLong()));
-                    server.removeRoleFromMember(member, userRole).reason("User used /remove-timezone").complete();
+                    ConnectionUtils.completeWithTimeout(() -> server.removeRoleFromMember(member, userRole).reason("User used /remove-timezone"));
                 }
             }
 

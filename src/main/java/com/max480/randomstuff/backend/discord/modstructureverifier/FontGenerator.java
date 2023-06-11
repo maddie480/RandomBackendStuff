@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.discord.modstructureverifier;
 
 import com.max480.randomstuff.backend.SecretConstants;
+import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
@@ -144,14 +145,15 @@ public class FontGenerator {
                 }
             }
 
+            final Path tempDirectoryF = tempDirectory;
+
             // send the whole thing!
             if (channel != null && tempDirectory.resolve("font.zip").toFile().length() > 25 * 1024 * 1024) {
                 channel.sendMessage(":x: The resulting file is more than 25 MB in size. Did you try generating the entire font or what? :thinking: Anyway, this does not fit in a Discord attachment.").queue();
             } else if (stillMissingCharacters.isEmpty()) {
                 if (channel != null) {
-                    channel.sendMessage(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:")
-                            .addFiles(FileUpload.fromData(tempDirectory.resolve("font.zip").toFile()))
-                            .complete();
+                    ConnectionUtils.completeWithTimeout(() -> channel.sendMessage(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:")
+                            .addFiles(FileUpload.fromData(tempDirectoryF.resolve("font.zip").toFile())));
                 } else {
                     sendResultToFrontend.accept("✅ Here is the font you need to place in your <code>Mods/yourmod/Dialog/Fonts</code> folder:",
                             Collections.singletonList(tempDirectory.resolve("font.zip").toFile()));
@@ -160,13 +162,12 @@ public class FontGenerator {
                 FileUtils.writeStringToFile(tempDirectory.resolve("missing_characters.txt").toFile(), stillMissingCharacters, StandardCharsets.UTF_8);
 
                 if (channel != null) {
-                    channel.sendMessage(":warning: Some characters that are used in your file were not found in the font, you will find them in the attached text file.\n" +
+                    ConnectionUtils.completeWithTimeout(() -> channel.sendMessage(":warning: Some characters that are used in your file were not found in the font, you will find them in the attached text file.\n" +
                                     "Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder to fill in the remaining characters:")
                             .addFiles(
-                                    FileUpload.fromData(tempDirectory.resolve("font.zip").toFile()),
-                                    FileUpload.fromData(tempDirectory.resolve("missing_characters.txt").toFile())
-                            )
-                            .complete();
+                                    FileUpload.fromData(tempDirectoryF.resolve("font.zip").toFile()),
+                                    FileUpload.fromData(tempDirectoryF.resolve("missing_characters.txt").toFile())
+                            ));
                 } else {
                     sendResultToFrontend.accept("⚠ Some characters that are used in your file were not found in the font, you will find them in the file below.<br>" +
                                     "Here is the font you need to place in your <code>Mods/yourmod/Dialog/Fonts</code> folder to fill in the remaining characters:",

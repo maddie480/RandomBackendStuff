@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.discord.timezonebot;
 
 import com.max480.randomstuff.backend.SecretConstants;
+import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
@@ -11,6 +12,7 @@ import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -112,7 +114,7 @@ public class TimezoneRoleUpdater implements Runnable {
      * @param server The server to update
      * @return whether users were deleted or not
      */
-    private boolean updateTimezoneRolesInServer(Guild server) {
+    private boolean updateTimezoneRolesInServer(Guild server) throws IOException {
         boolean usersDeleted = false;
         final long guildId = server.getIdLong();
 
@@ -151,8 +153,9 @@ public class TimezoneRoleUpdater implements Runnable {
                     // we need to create a new timezone role for this user.
                     // it will be created with a throw-away name
                     logger.info("Creating role for timezone offset {}", offset);
-                    targetRole = server.createRole().setName("timezone role for " + offset).setPermissions(0L)
-                            .reason("User has non currently existing timezone " + offset).complete();
+                    targetRole = ConnectionUtils.completeWithTimeout(() -> server.createRole().setName("timezone role for " + offset).setPermissions(0L)
+                            .reason("User has non currently existing timezone " + offset));
+
                     existingRoles.add(targetRole);
                     timezoneOffsetRolesThisServer.put(offset, targetRole.getIdLong());
                 }
@@ -167,7 +170,7 @@ public class TimezoneRoleUpdater implements Runnable {
 
                         Member memberDiscord = getMemberForReal(member);
                         if (memberDiscord != null && serverRole != null && memberDiscord.getRoles().contains(serverRole)) {
-                            server.removeRoleFromMember(memberDiscord, serverRole).reason("Timezone of user changed to " + offset).complete();
+                            ConnectionUtils.completeWithTimeout(() -> server.removeRoleFromMember(memberDiscord, serverRole).reason("Timezone of user changed to " + offset));
                         } else {
                             logger.warn("Member left, does not have the role, or the role is gone!");
                         }
@@ -322,7 +325,7 @@ public class TimezoneRoleUpdater implements Runnable {
      */
     private Member getMemberForReal(TimezoneBot.CachedMember member) {
         try {
-            return TimezoneBot.jda.getGuildById(member.serverId).retrieveMemberById(member.memberId).complete();
+            return ConnectionUtils.completeWithTimeout(() -> TimezoneBot.jda.getGuildById(member.serverId).retrieveMemberById(member.memberId));
         } catch (ErrorResponseException error) {
             if (error.getErrorResponse() == ErrorResponse.UNKNOWN_MEMBER) {
                 // Unknown Member error: this is to be expected if a member left the server.
@@ -332,6 +335,8 @@ public class TimezoneRoleUpdater implements Runnable {
 
             // unexpected error
             throw error;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

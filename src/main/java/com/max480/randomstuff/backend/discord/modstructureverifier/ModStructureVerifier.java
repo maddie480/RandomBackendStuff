@@ -26,7 +26,6 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
-import net.dv8tion.jda.internal.utils.IOUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Triple;
@@ -55,7 +54,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -146,7 +144,6 @@ public class ModStructureVerifier extends ListenerAdapter {
         // start up the bot.
         jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)
                 .addEventListeners(new ModStructureVerifier())
-                .setHttpClientBuilder(IOUtil.newHttpClientBuilder().callTimeout(60, TimeUnit.SECONDS))
                 .build().awaitReady();
 
         int serverCount = jda.getGuilds().size();
@@ -232,35 +229,39 @@ public class ModStructureVerifier extends ListenerAdapter {
             parseAdminCommand(event);
         }
 
-        if (event.getMessage().getContentRaw().startsWith("--generate-font ")) {
-            if (event.getMessage().getAttachments().isEmpty()) {
-                event.getChannel().sendMessage(":x: Send a text file in order to generate a font for it!").queue();
-            } else {
-                event.getMessage().getAttachments().get(0).getProxy().downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
-                        .thenAcceptAsync(file -> FontGenerator.generateFontFromDiscord(file, event.getMessage().getContentRaw().substring("--generate-font ".length()), event.getChannel(), event.getMessage()));
+        try {
+            if (event.getMessage().getContentRaw().startsWith("--generate-font ")) {
+                if (event.getMessage().getAttachments().isEmpty()) {
+                    event.getChannel().sendMessage(":x: Send a text file in order to generate a font for it!").queue();
+                } else {
+                    event.getMessage().getAttachments().get(0).getProxy().downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
+                            .thenAcceptAsync(file -> FontGenerator.generateFontFromDiscord(file, event.getMessage().getContentRaw().substring("--generate-font ".length()), event.getChannel(), event.getMessage()));
+                }
+            } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
+                // a --verify command was sent in a channel where people are allowed to send --verify commands, hmm...
+                // there should be 3 parts (so 2 parameters including --verify itself), with all 2 being alphanumeric.
+                String[] settings = event.getMessage().getContentRaw().split(" ", 4);
+                if (settings.length >= 3 && settings[1].matches("[A-Za-z0-9]+") && settings[2].matches("[A-Za-z0-9]+")) {
+                    scanMapFromMessage(event, settings[1], settings[2], freeResponseChannels.get(event.getChannel().getIdLong()));
+                } else {
+                    // print help if one of the parameters is invalid.
+                    event.getChannel().sendMessage("Usage: `--verify [assets folder name] [maps folder name]`\n" +
+                            "`[assets folder name]` and `[maps folder name]` should be alphanumeric.").queue();
+                }
+            } else if (noNameResponseChannels.containsKey(event.getChannel().getIdLong())) {
+                // message was sent in a no-name channel! scan it with null names.
+                scanMapFromMessage(event, null, null, noNameResponseChannels.get(event.getChannel().getIdLong()));
+
+            } else if (responseChannels.containsKey(event.getChannel().getIdLong())) {
+                // message was sent in a watched channel...
+
+                final String expectedCollabAssetPrefix = collabAssetPrefixes.get(event.getChannel().getIdLong());
+                final String expectedCollabMapPrefix = collabMapPrefixes.get(event.getChannel().getIdLong());
+
+                scanMapFromMessage(event, expectedCollabAssetPrefix, expectedCollabMapPrefix, responseChannels.get(event.getChannel().getIdLong()));
             }
-        } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
-            // a --verify command was sent in a channel where people are allowed to send --verify commands, hmm...
-            // there should be 3 parts (so 2 parameters including --verify itself), with all 2 being alphanumeric.
-            String[] settings = event.getMessage().getContentRaw().split(" ", 4);
-            if (settings.length >= 3 && settings[1].matches("[A-Za-z0-9]+") && settings[2].matches("[A-Za-z0-9]+")) {
-                scanMapFromMessage(event, settings[1], settings[2], freeResponseChannels.get(event.getChannel().getIdLong()));
-            } else {
-                // print help if one of the parameters is invalid.
-                event.getChannel().sendMessage("Usage: `--verify [assets folder name] [maps folder name]`\n" +
-                        "`[assets folder name]` and `[maps folder name]` should be alphanumeric.").queue();
-            }
-        } else if (noNameResponseChannels.containsKey(event.getChannel().getIdLong())) {
-            // message was sent in a no-name channel! scan it with null names.
-            scanMapFromMessage(event, null, null, noNameResponseChannels.get(event.getChannel().getIdLong()));
-
-        } else if (responseChannels.containsKey(event.getChannel().getIdLong())) {
-            // message was sent in a watched channel...
-
-            final String expectedCollabAssetPrefix = collabAssetPrefixes.get(event.getChannel().getIdLong());
-            final String expectedCollabMapPrefix = collabMapPrefixes.get(event.getChannel().getIdLong());
-
-            scanMapFromMessage(event, expectedCollabAssetPrefix, expectedCollabMapPrefix, responseChannels.get(event.getChannel().getIdLong()));
+        } catch (IOException e) {
+            logger.error("Uncaught IO exception occurred in Mod Structure Verifier! Probably a Discord timeout.", e);
         }
     }
 
@@ -272,12 +273,12 @@ public class ModStructureVerifier extends ListenerAdapter {
      * @param expectedCollabMapPrefix   The prefix for maps to check in the structure
      * @param responseChannelId         The channel where all problems with the map will be sent
      */
-    private void scanMapFromMessage(@NotNull MessageReceivedEvent event, String expectedCollabAssetPrefix, String expectedCollabMapPrefix, long responseChannelId) {
+    private void scanMapFromMessage(@NotNull MessageReceivedEvent event, String expectedCollabAssetPrefix, String expectedCollabMapPrefix, long responseChannelId) throws IOException {
         for (Message.Attachment attachment : event.getMessage().getAttachments()) {
             if (attachment.getFileName().toLowerCase(Locale.ROOT).endsWith(".zip")) {
                 // this is a zip attachment! analyze it.
 
-                event.getMessage().addReaction(Emoji.fromUnicode("\uD83E\uDD14")).complete(); // :thinking:
+                ConnectionUtils.completeWithTimeout(() -> event.getMessage().addReaction(Emoji.fromUnicode("\uD83E\uDD14"))); // :thinking:
 
                 logger.info("{} sent a file named {} in {} that we should analyze!", event.getMember(), attachment.getFileName(), event.getChannel());
                 attachment.getProxy().downloadToFile(new File("/tmp/modstructurepolice_" + System.currentTimeMillis() + ".zip"))
@@ -300,7 +301,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         if (googleDriveId != null) {
             logger.info("{} sent a Google Drive file with id {} in {} that we should analyze!", event.getMember(), googleDriveId, event.getChannel());
 
-            event.getMessage().addReaction(Emoji.fromUnicode("\uD83E\uDD14")).complete(); // :thinking:
+            ConnectionUtils.completeWithTimeout(() -> event.getMessage().addReaction(Emoji.fromUnicode("\uD83E\uDD14"))); // :thinking:
 
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://www.googleapis.com/drive/v3/files/" + googleDriveId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media")) {
                 // download the file through the Google Drive API and analyze it.
