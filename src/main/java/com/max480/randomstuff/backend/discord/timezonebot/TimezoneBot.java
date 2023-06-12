@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.ErrorResponse;
+import net.dv8tion.jda.internal.utils.IOUtil;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.nodes.Element;
@@ -25,6 +26,7 @@ import java.text.DecimalFormat;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -181,6 +183,7 @@ public class TimezoneBot {
         // start up the bot.
         jda = JDABuilder.createLight(SecretConstants.TIMEZONE_BOT_TOKEN, Collections.emptyList())
                 .addEventListeners(new BotEventListener(timezoneMap, timezoneFullNames, timezoneConflicts))
+                .setHttpClientBuilder(IOUtil.newHttpClientBuilder().callTimeout(60, TimeUnit.SECONDS))
                 .build().awaitReady();
 
         // do some cleanup, in case we were kicked from a server while offline.
@@ -292,7 +295,7 @@ public class TimezoneBot {
                         Map<Integer, Long> timezoneRoles = getTimezoneOffsetRolesForGuild(g);
 
                         // download the user
-                        Member m = ConnectionUtils.completeWithTimeout(() -> g.retrieveMemberById(memberId));
+                        Member m = g.retrieveMemberById(memberId).complete();
 
                         // build the cache entry, only keeping roles that correspond to timezones
                         CachedMember cached = new CachedMember(
@@ -317,8 +320,6 @@ public class TimezoneBot {
 
                         // unexpected error
                         throw error;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
                     }
                 });
     }

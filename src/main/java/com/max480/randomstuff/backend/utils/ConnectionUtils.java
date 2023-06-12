@@ -1,6 +1,5 @@
 package com.max480.randomstuff.backend.utils;
 
-import net.dv8tion.jda.api.requests.RestAction;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOSupplier;
 import org.jsoup.Jsoup;
@@ -15,9 +14,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
 
 public final class ConnectionUtils {
@@ -140,43 +136,5 @@ public final class ConnectionUtils {
         return runWithRetry(() -> Jsoup.connect(url)
                 .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
                 .get());
-    }
-
-    private static class ResultHolder<T> {
-        public T result;
-    }
-
-    public static <T> T completeWithTimeout(Supplier<RestAction<T>> actionProvider) throws IOException {
-        return runWithRetry(() -> {
-            final ResultHolder<T> resultHolder = new ResultHolder<>();
-            final ResultHolder<Throwable> failureHolder = new ResultHolder<>();
-            Semaphore mutex = new Semaphore(0);
-
-            actionProvider.get().queue(
-                    result -> {
-                        resultHolder.result = result;
-                        mutex.release();
-                    },
-                    failure -> {
-                        failureHolder.result = failure;
-                        mutex.release();
-                    });
-
-            try {
-                if (!mutex.tryAcquire(30, TimeUnit.SECONDS)) {
-                    throw new IOException("RestAction didn't finish in time!");
-                }
-                if (failureHolder.result != null) {
-                    if (failureHolder.result instanceof IOException ioException) {
-                        throw ioException;
-                    } else {
-                        throw new RuntimeException(failureHolder.result);
-                    }
-                }
-                return resultHolder.result;
-            } catch (InterruptedException e) {
-                throw new IOException(e);
-            }
-        });
     }
 }
