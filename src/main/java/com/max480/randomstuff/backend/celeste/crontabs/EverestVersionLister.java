@@ -114,6 +114,8 @@ public class EverestVersionLister {
                     }
                 }
 
+                entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload")));
+
                 infoNoNative.add(entry);
                 infoWithNative.add(entry);
             }
@@ -172,6 +174,8 @@ public class EverestVersionLister {
                     }
                 }
 
+                entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload")));
+
                 if (!"core".equals(branch)) {
                     infoNoNative.add(entry);
                 }
@@ -199,7 +203,8 @@ public class EverestVersionLister {
             WebhookExecutor.executeWebhook(webhook,
                     "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
                     "Everest Update Checker",
-                    ":sparkles: Everest versions were updated. Latest Everest version is now **" + infoWithNative.get(0).get("version") + "** (" + infoWithNative.get(0).get("branch") + ")"
+                    ":sparkles: Everest versions were updated. There are now **" + infoWithNative.size() + "** versions on record.\n" +
+                            "Latest Everest version is **" + infoWithNative.get(0).get("version") + "** (" + infoWithNative.get(0).get("branch") + ")"
                             + (infoWithNative.get(0).containsKey("description") ? ": `" + infoWithNative.get(0).get("description") + "` by " + infoWithNative.get(0).get("author") + "." : "."),
                     ImmutableMap.of("X-Everest-Log", "true"));
         }
@@ -211,5 +216,31 @@ public class EverestVersionLister {
         HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout(url);
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
         return ConnectionUtils.connectionToInputStream(connAuth);
+    }
+
+    /**
+     * Gets a file size by downloading it twice.
+     * This is useful for Azure, since it does not tell file sizes through response headers.
+     */
+    private static long getFileSize(String url) throws IOException {
+        long[] size = new long[2];
+
+        for (int i = 0; i < 2; i++) {
+            byte[] buffer = new byte[4096];
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+                while (true) {
+                    int read = is.read(buffer);
+                    if (read == -1) break;
+                    size[i] += read;
+                }
+            }
+        }
+
+        if (size[0] == size[1]) {
+            log.debug("Size of file {} is {} bytes", url, size[0]);
+            return size[0];
+        }
+
+        throw new IOException("Got different sizes for " + url + ": " + size[0] + " and " + size[1] + "!");
     }
 }
