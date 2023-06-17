@@ -43,7 +43,7 @@ public class EverestVersionLister {
         // get the latest Azure builds for dev, beta and core branches
         List<Integer> currentAzureBuilds = new ArrayList<>();
         for (String branch : Arrays.asList("dev", "beta", "core")) {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
                 currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
                         .toList().stream()
                         .map(version -> (int) ((Map<String, Object>) version).get("id"))
@@ -125,7 +125,7 @@ public class EverestVersionLister {
 
         for (String branch : Arrays.asList("dev", "beta", "core")) {
             JSONObject azureBuilds;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultsFilter=succeeded&api-version=5.0")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
                 azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             }
 
