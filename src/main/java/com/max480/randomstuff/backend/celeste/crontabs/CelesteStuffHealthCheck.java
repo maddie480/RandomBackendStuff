@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.everest.updatechecker.DatabaseUpdater;
 import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -27,6 +28,7 @@ import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -897,13 +899,17 @@ public class CelesteStuffHealthCheck {
 
     /**
      * Checks that the direct link service still works as it should, by using it with Helping Hand.
+     * Also checks that the bundle download service works by downloading The Secret of Celeste Mountain (by Xaphan).
      * Run daily.
      */
     public static void checkDirectLinkService() throws IOException {
+        String socmHash, xaphanHelperHash;
         int fileId;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
             Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
             fileId = (int) mapped.get("MaxHelpingHand").get("GameBananaFileId");
+            socmHash = ((List<String>) mapped.get("TheSecretOfCelesteMountain").get("xxHash")).get(0);
+            xaphanHelperHash = ((List<String>) mapped.get("XaphanHelper").get("xxHash")).get(0);
         }
 
         // search for MaxHelpingHand
@@ -933,6 +939,54 @@ public class CelesteStuffHealthCheck {
         if (!("https://0x0a.de/twoclick?celestemodupdater.0x0a.de/banana-mirror/" + fileId + ".zip").equals(connection.getHeaderField("location"))) {
             throw new IOException("Direct Link Service did not redirect to mirror correctly!");
         }
+
+        connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/bundle-download?id=MaxHelpingHand");
+        connection.setInstanceFollowRedirects(false);
+        if (!("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand").equals(connection.getHeaderField("location"))) {
+            throw new IOException("Bundle Download service didn't redirect to Direct Link Service correctly!");
+        }
+
+        // search for bundle download of SoCM
+        connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/direct-link-service");
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        try (OutputStream os = connection.getOutputStream()) {
+            IOUtils.write("modId=TheSecretOfCelesteMountain&bundle=", os, UTF_8);
+        }
+        try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
+            resultHtml = IOUtils.toString(is, UTF_8);
+        }
+        if (!resultHtml.contains("https://maddie480.ovh/celeste/bundle-download?id=TheSecretOfCelesteMountain")) {
+            throw new IOException("Direct Link Service did not send the bundle link!");
+        }
+
+        // bundle download of Secret of Celeste Mountain
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/bundle-download?id=TheSecretOfCelesteMountain");
+             OutputStream os = Files.newOutputStream(Paths.get("/tmp/socm.zip"))) {
+
+            IOUtils.copy(is, os);
+        }
+
+        try (ZipFile f = new ZipFile("/tmp/socm.zip")) {
+            List<String> files = f.stream().map(ZipEntry::getName).sorted().toList();
+            if (!Arrays.asList("TheSecretOfCelesteMountain.zip", "XaphanHelper.zip").equals(files)) {
+                throw new IOException("SoCM Bundle didn't contain the expected files!");
+            }
+
+            String actualSocmHash, actualXaphanHelperHash;
+            try (InputStream is = f.getInputStream(f.getEntry("TheSecretOfCelesteMountain.zip"))) {
+                actualSocmHash = DatabaseUpdater.computeXXHash(is);
+            }
+            try (InputStream is = f.getInputStream(f.getEntry("XaphanHelper.zip"))) {
+                actualXaphanHelperHash = DatabaseUpdater.computeXXHash(is);
+            }
+
+            if (!actualSocmHash.equals(socmHash) || !actualXaphanHelperHash.equals(xaphanHelperHash)) {
+                throw new IOException("SoCM Bundle files are corrupted!");
+            }
+        }
+
+        FileUtils.forceDelete(new File("/tmp/socm.zip"));
     }
 
     /**
