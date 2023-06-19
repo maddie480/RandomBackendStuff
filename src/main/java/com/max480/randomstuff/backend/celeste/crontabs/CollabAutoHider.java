@@ -51,14 +51,25 @@ public class CollabAutoHider {
                     IOUtils.write(json.toString(), os, StandardCharsets.UTF_8);
                 }
 
-                WebhookExecutor.executeWebhook(
-                        SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                        "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
-                        "Collab and Contest List",
-                        ":warning: The collab or contest located at <https://maddie480.ovh/celeste/collab-contest-editor?key="
-                                + jsonPath.getFileName().toString().replace(".json", "") + "> was automatically hidden, " +
-                                "since it was not updated in the last 30 days.");
+                sendAlertToWebhook(jsonPath, "automatically hidden, since it was active and not updated in the last 30 days");
+
+            } else if ("hidden".equals(json.getString("status"))
+                    && updatedAt.isBefore(Instant.now().minus(180, ChronoUnit.DAYS))) {
+
+                log.warn("Collab has been hidden for 6 months!");
+                Files.delete(jsonPath);
+
+                sendAlertToWebhook(jsonPath, "deleted, since it was hidden and not updated for the last 6 months");
             }
         }
+    }
+
+    private static void sendAlertToWebhook(Path jsonPath, String action) throws IOException {
+        WebhookExecutor.executeWebhook(
+                SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
+                "Collab and Contest List",
+                ":warning: The collab or contest located at <https://maddie480.ovh/celeste/collab-contest-editor?key="
+                        + jsonPath.getFileName().toString().replace(".json", "") + "> was " + action + ".");
     }
 }
