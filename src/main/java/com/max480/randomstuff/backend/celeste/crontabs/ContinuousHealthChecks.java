@@ -1,6 +1,7 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import com.max480.randomstuff.backend.CrontabRunner;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
@@ -68,7 +69,9 @@ public class ContinuousHealthChecks {
                         checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
                                 "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                        // backend check: this one posts to a private hook, since 99% of the time no-one cares or notices when it goes down. :p
+                        // backend checks: those post to a private hook, since 99% of the time no-one cares or notices when it goes down. :p
+                        checkHealth(() -> System.currentTimeMillis() - CrontabRunner.getLastRun() < 1_800_000L,
+                                "Crontab Run Loop", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                         checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < 1_800_000L,
                                 "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                     } catch (Exception e) {

@@ -35,15 +35,11 @@ public class TwitterUpdateChecker {
 
     private static final Set<String> previousTweets = new HashSet<>();
 
-    public static String serviceMessage = null;
-
     public static void runCheckForUpdates() throws Exception {
         try {
             checkForUpdates();
-            serviceMessage = null;
         } catch (Exception e) {
             log.error("Error while checking new tweets", e);
-            serviceMessage = "⚠ Could not reach Twitter";
             throw e;
         }
     }

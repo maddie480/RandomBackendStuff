@@ -3,7 +3,6 @@ package com.max480.randomstuff.backend.discord.crontabs;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
-import net.dv8tion.jda.api.JDA;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -55,15 +54,15 @@ public class TopGGCommunicator {
      * Checks for new votes and comments and notifies the bot owner if there are any.
      * Called once an hour.
      *
-     * @param internalBotClient A private bot instance used to post the notifications
+     * @param messagePoster A method used to post private notification messages
      */
-    public static void refreshVotes(JDA internalBotClient) throws IOException {
+    public static void refreshVotes(Consumer<String> messagePoster) throws IOException {
         // check if we got new upvotes through the API
-        getAndUpdateBotScore(SecretConstants.GAMES_BOT_CLIENT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, internalBotClient,
+        getAndUpdateBotScore(SecretConstants.GAMES_BOT_CLIENT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, messagePoster,
                 "Games Bot", () -> gamesBotScore, score -> gamesBotScore = score);
-        getAndUpdateBotScore(SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID, SecretConstants.CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN, internalBotClient,
+        getAndUpdateBotScore(SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID, SecretConstants.CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN, messagePoster,
                 "Custom Slash Commands", () -> customSlashCommandsScore, score -> customSlashCommandsScore = score);
-        getAndUpdateBotScore(SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID, SecretConstants.TIMEZONE_BOT_LITE_TOP_GG_TOKEN, internalBotClient,
+        getAndUpdateBotScore(SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID, SecretConstants.TIMEZONE_BOT_LITE_TOP_GG_TOKEN, messagePoster,
                 "Timezone Bot", () -> timezoneBotScore, score -> timezoneBotScore = score);
 
         if (triesLeft <= 0) {
@@ -80,11 +79,11 @@ public class TopGGCommunicator {
 
         try {
             // check if we got new ratings (through more... unconventional means)
-            updateBotRatingCount(internalBotClient, SecretConstants.GAMES_BOT_CLIENT_ID,
+            updateBotRatingCount(messagePoster, SecretConstants.GAMES_BOT_CLIENT_ID,
                     "Games Bot", () -> gamesBotRatingCount, score -> gamesBotRatingCount = score);
-            updateBotRatingCount(internalBotClient, SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID,
+            updateBotRatingCount(messagePoster, SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID,
                     "Custom Slash Commands", () -> customSlashCommandsRatingCount, score -> customSlashCommandsRatingCount = score);
-            updateBotRatingCount(internalBotClient, SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID,
+            updateBotRatingCount(messagePoster, SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID,
                     "Timezone Bot", () -> timezoneBotRatingCount, score -> timezoneBotRatingCount = score);
 
             triesLeft = 5;
@@ -130,14 +129,14 @@ public class TopGGCommunicator {
         });
     }
 
-    private static void getAndUpdateBotScore(String botId, String botToken, JDA internalBotClient, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
+    private static void getAndUpdateBotScore(String botId, String botToken, Consumer<String> messagePoster, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://top.gg/api/bots/" + botId);
             connection.setRequestProperty("Authorization", botToken);
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
                 JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
-                updateBotScore(internalBotClient, response.getInt("points"), response.getInt("monthlyPoints"), botName, oldCount, newCount);
+                updateBotScore(messagePoster, response.getInt("points"), response.getInt("monthlyPoints"), botName, oldCount, newCount);
             }
 
             // fulfill method signature
@@ -145,19 +144,17 @@ public class TopGGCommunicator {
         });
     }
 
-    private static void updateBotScore(JDA internalBotClient, int points, int monthlyPoints, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
+    private static void updateBotScore(Consumer<String> messagePoster, int points, int monthlyPoints, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
         logger.debug("Got the top.gg score for {}: {}", botName, points);
         if (oldCount.get() != -1 && points != oldCount.get()) {
             logger.info("Score changed for {}! {} => {}", botName, oldCount.get(), points);
-            internalBotClient.getGuildById(SecretConstants.REPORT_SERVER_ID)
-                    .getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                    .sendMessage("The score for **" + botName + "** evolved! We now have **" + points + "** point" + (points == 1 ? "" : "s")
-                            + " (**" + monthlyPoints + "** point" + (monthlyPoints == 1 ? "" : "s") + " this month).").queue();
+            messagePoster.accept("The score for **" + botName + "** evolved! We now have **" + points + "** point" + (points == 1 ? "" : "s")
+                    + " (**" + monthlyPoints + "** point" + (monthlyPoints == 1 ? "" : "s") + " this month).");
         }
         newCount.accept(points);
     }
 
-    private static void updateBotRatingCount(JDA internalBotClient, String botId, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
+    private static void updateBotRatingCount(Consumer<String> messagePoster, String botId, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
             // there is a JSON schema belonging to a ... product in the page, and it has the ratings, so go get it.
             JSONObject productMetadata = new JSONObject(ConnectionUtils.jsoupGetWithRetry("https://top.gg/fr/bot/" + botId)
@@ -177,10 +174,8 @@ public class TopGGCommunicator {
             logger.debug("Got the top.gg rating count for {}: {}", botName, newRatingCount);
             if (oldCount.get() != -1 && newRatingCount != oldCount.get()) {
                 logger.info("Rating count for {} changed! {} => {}", botName, oldCount.get(), newRatingCount);
-                internalBotClient.getGuildById(SecretConstants.REPORT_SERVER_ID)
-                        .getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                        .sendMessage("We got a new rating for **" + botName + "**! We now have **" + newRatingCount + "** rating" + (score == 1 ? "" : "s") + "." +
-                                " The new medium rating is **" + new DecimalFormat("0.00").format(score / 20.) + "/5**.").queue();
+                messagePoster.accept("We got a new rating for **" + botName + "**! We now have **" + newRatingCount + "** rating" + (score == 1 ? "" : "s") + "." +
+                        " The new medium rating is **" + new DecimalFormat("0.00").format(score / 20.) + "/5**.");
             }
             newCount.accept(newRatingCount);
 
