@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 public class TimezoneRoleUpdater implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(TimezoneRoleUpdater.class);
 
+    private static long lastRunDate = System.currentTimeMillis();
+
     private static ZonedDateTime lastRoleUpdateDate = null;
     private static boolean forceUpdate = false;
 
@@ -33,6 +35,10 @@ public class TimezoneRoleUpdater implements Runnable {
      */
     static void forceUpdate() {
         forceUpdate = true;
+    }
+
+    public static long getLastRunDate() {
+        return lastRunDate;
     }
 
     /**
@@ -83,6 +89,8 @@ public class TimezoneRoleUpdater implements Runnable {
                     logger.error("Alerting failed", e2);
                 }
             }
+
+            lastRunDate = System.currentTimeMillis();
 
             try {
                 logger.debug("Done! Sleeping.");

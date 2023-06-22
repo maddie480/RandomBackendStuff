@@ -3,6 +3,7 @@ package com.max480.randomstuff.backend.celeste.crontabs;
 import com.google.common.collect.ImmutableMap;
 import com.max480.randomstuff.backend.CrontabRunner;
 import com.max480.randomstuff.backend.SecretConstants;
+import com.max480.randomstuff.backend.discord.timezonebot.TimezoneRoleUpdater;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
@@ -20,6 +21,7 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * This class checks the health of multiple platforms (the website, the bot, the mirror and GameBanana)
@@ -69,11 +71,13 @@ public class ContinuousHealthChecks {
                         checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
                                 "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                        // backend checks: those post to a private hook, since 99% of the time no-one cares or notices when it goes down. :p
-                        checkHealth(() -> System.currentTimeMillis() - CrontabRunner.getLastRun() < 1_800_000L,
-                                "Crontab Run Loop", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
-                        checkHealth(() -> System.currentTimeMillis() - lastBotAliveTime < 1_800_000L,
-                                "Random Stuff Backend", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
+                        // backend checks: notify privately and restart if those go down.
+                        checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - CrontabRunner.getLastRun() < 1_800_000L,
+                                "Public Crontab Runner");
+                        checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - lastBotAliveTime < 1_800_000L,
+                                "Private Crontab Runner");
+                        checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - TimezoneRoleUpdater.getLastRunDate() < 1_800_000L,
+                                "Timezone Role Updater");
                     } catch (Exception e) {
                         // this shouldn't happen, unless we cannot communicate with Discord.
                         logger.error("Uncaught exception happened during health check!", e);
@@ -178,6 +182,15 @@ public class ContinuousHealthChecks {
 
         servicesHealth.put(serviceName, currentHealth);
         servicesStatus.put(serviceName, currentStatus);
+    }
+
+    private static void checkHealthWithEmergencyRestart(Supplier<Boolean> healthCheck, String serviceName) {
+        if (!healthCheck.get()) {
+            executeWebhookSafe(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: **" + serviceName + "** is down! Initiating emergency restart.");
+
+            // this should be enough for Docker's restart: on_failure to restart the service.
+            System.exit(1);
+        }
     }
 
     private static void executeWebhookSafe(String webhookUrl, String body) {
