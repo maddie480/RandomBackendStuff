@@ -3,7 +3,6 @@ package com.max480.randomstuff.backend.discord.serverjanitor;
 import com.max480.randomstuff.backend.SecretConstants;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -21,8 +20,6 @@ public class ServerJanitorBot extends ListenerAdapter {
         JDA jda = JDABuilder.create(SecretConstants.SERVER_JANITOR_TOKEN, GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new ServerJanitorBot())
                 .build().awaitReady();
-
-        Guild supportServer = jda.getGuildById(SecretConstants.SUPPORT_SERVER_ID);
 
         for (long channelId : SecretConstants.SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP) {
             TextChannel channel = jda.getGuildById(SecretConstants.SUPPORT_SERVER_ID).getTextChannelById(channelId);

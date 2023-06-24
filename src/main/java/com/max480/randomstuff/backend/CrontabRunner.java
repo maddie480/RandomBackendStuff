@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -78,7 +79,6 @@ public class CrontabRunner {
             GameBananaAutomatedChecks.checkUnapprovedCategories();
 
             // update tasks
-            ServerJanitorBot.main(null);
             AutoLeaver.main(null);
             CustomSlashCommandsCleanup.housekeep();
             ServerCountUploader.run();
@@ -107,6 +107,11 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkCollabList();
             CelesteStuffHealthCheck.checkCustomEntityCatalog();
             checkArbitraryModApp();
+
+            // server cleanup task that only runs on Saturdays
+            if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.SATURDAY) {
+                ServerJanitorBot.main(null);
+            }
         });
     }
 
