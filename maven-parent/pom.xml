@@ -103,7 +103,7 @@
             <dependency>
                 <groupId>com.max480.everest.updatechecker</groupId>
                 <artifactId>update-checker</artifactId>
-                <version>0.4.8</version>
+                <version>0.4.9</version>
             </dependency>
 
             <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
