@@ -38,10 +38,12 @@ public class CollabAutoHider {
             }
 
             Instant updatedAt = Files.getLastModifiedTime(jsonPath).toInstant();
-            log.debug("Collab/Contest {} stored at {} is {}, and was last updated on {}", json.get("name"), jsonPath.getFileName(),
-                    json.get("status"), updatedAt.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            String status = json.getString("status");
 
-            if (Arrays.asList("in-progress", "paused").contains(json.getString("status"))
+            log.debug("Collab/Contest {} stored at {} is {}, and was last updated on {}", json.get("name"), jsonPath.getFileName(),
+                    status, updatedAt.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+
+            if (Arrays.asList("in-progress", "paused").contains(status)
                     && updatedAt.isBefore(Instant.now().minus(30, ChronoUnit.DAYS))) {
 
                 log.warn("Collab has expired!");
@@ -51,15 +53,17 @@ public class CollabAutoHider {
                     IOUtils.write(json.toString(), os, StandardCharsets.UTF_8);
                 }
 
-                sendAlertToWebhook(jsonPath, "automatically hidden, since it was active and not updated in the last 30 days");
+                sendAlertToWebhook(jsonPath, "automatically hidden, since it was " + status
+                        + " and not updated in the last 30 days");
 
-            } else if ("hidden".equals(json.getString("status"))
+            } else if (Arrays.asList("hidden", "cancelled").contains(status)
                     && updatedAt.isBefore(Instant.now().minus(180, ChronoUnit.DAYS))) {
 
-                log.warn("Collab has been hidden for 6 months!");
+                log.warn("Collab has been {} for 6 months!", status);
                 Files.delete(jsonPath);
 
-                sendAlertToWebhook(jsonPath, "deleted, since it was hidden and not updated for the last 6 months");
+                sendAlertToWebhook(jsonPath, "deleted, since it was " + status
+                        + " and not updated for the last 6 months");
             }
         }
     }
