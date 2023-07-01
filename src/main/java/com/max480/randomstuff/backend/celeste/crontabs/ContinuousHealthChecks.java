@@ -34,7 +34,7 @@ public class ContinuousHealthChecks {
     private static final Map<String, Integer> servicesHealth = new HashMap<>();
     private static final Map<String, Boolean> servicesStatus = new HashMap<>();
 
-    private static long lastBotAliveTime = 0;
+    private static long lastBotAliveTime = System.currentTimeMillis();
 
     // called by the bot main loop to signify it's in fact online and running
     public static void botIsAlive() {
