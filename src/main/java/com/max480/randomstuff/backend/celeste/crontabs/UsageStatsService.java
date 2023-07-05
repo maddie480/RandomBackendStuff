@@ -18,11 +18,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -74,7 +72,10 @@ public class UsageStatsService {
         try (Stream<Path> frontendLogs = Files.list(Paths.get("/logs"))) {
             return frontendLogs
                     .filter(p -> p.getFileName().toString().endsWith(".request.log"))
+                    .filter(p -> fileWasModifiedInLast(p, days))
                     .mapToInt(p -> {
+                        log.debug("Counting instances of {} in last {} day(s) in file {}...", path, days, p.getFileName());
+
                         try (Stream<String> lines = Files.lines(p)) {
                             return (int) lines
                                     .filter(l -> l.contains("POST " + path))
@@ -96,7 +97,10 @@ public class UsageStatsService {
         try (Stream<Path> backendLogs = Files.list(Paths.get("/logs"))) {
             return backendLogs
                     .filter(p -> p.getFileName().toString().endsWith(".backend.log"))
+                    .filter(p -> fileWasModifiedInLast(p, days))
                     .mapToInt(p -> {
+                        log.debug("Counting lines matching filter in last {} day(s) in file {}...", days, p.getFileName());
+
                         try (Stream<String> lines = Files.lines(p)) {
                             return (int) lines
                                     .filter(filter)
@@ -112,6 +116,16 @@ public class UsageStatsService {
         } catch (IOException e) {
             log.warn("Could not check backend log entries!", e);
             return 0;
+        }
+    }
+
+    private static boolean fileWasModifiedInLast(Path file, int days) {
+        try {
+            return Files.getLastModifiedTime(file).toInstant()
+                    .isAfter(Instant.now().minus(days, ChronoUnit.DAYS));
+        } catch (IOException e) {
+            log.warn("Could not read file last modified time!", e);
+            return true;
         }
     }
 
