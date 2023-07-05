@@ -335,12 +335,12 @@ public class TwitterUpdateChecker {
             try {
                 HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(link);
                 connection.setInstanceFollowRedirects(false);
-
-                String tweetLink = "https://twitter.com/" + tweet.getJSONObject("user").getString("screen_name") + "/status/" + tweet.getString("id_str");
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)");
 
                 if (connection.getResponseCode() == 301
                         && connection.getHeaderField("Location") != null
-                        && connection.getHeaderField("Location").startsWith(tweetLink)) {
+                        && connection.getHeaderField("Location").startsWith("https://twitter.com/")
+                        && connection.getHeaderField("Location").endsWith("/status/" + tweet.getString("id_str"))) {
 
                     textContent = textContent.substring(0, textContent.length() - link.length()).trim();
                 }
