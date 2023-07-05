@@ -340,7 +340,7 @@ public class TwitterUpdateChecker {
                 if (connection.getResponseCode() == 301
                         && connection.getHeaderField("Location") != null
                         && connection.getHeaderField("Location").startsWith("https://twitter.com/")
-                        && connection.getHeaderField("Location").endsWith("/status/" + tweet.getString("id_str"))) {
+                        && connection.getHeaderField("Location").contains("/status/" + tweet.getString("id_str"))) {
 
                     textContent = textContent.substring(0, textContent.length() - link.length()).trim();
                 }
