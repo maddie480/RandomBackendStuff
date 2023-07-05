@@ -133,7 +133,10 @@ public class UsageStatsService {
         try (Stream<Path> frontendLogs = Files.list(Paths.get("/logs"))) {
             return frontendLogs
                     .filter(p -> p.getFileName().toString().endsWith(".request.log"))
+                    .filter(p -> fileWasModifiedInLast(p, days))
                     .map(p -> {
+                        log.debug("Counting responses by status code in last {} day(s) in file {}...", days, p.getFileName());
+
                         try (Stream<String> lines = Files.lines(p)) {
                             return lines
                                     .filter(l -> frontendLogIsRecentEnough(l, days))
@@ -171,6 +174,8 @@ public class UsageStatsService {
         int page = 1;
 
         while (true) {
+            log.debug("Getting GitHub actions page {}...", page);
+
             int curPage = page;
             JSONArray events = ConnectionUtils.runWithRetry(() -> {
                 HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://api.github.com/users/maddie480/events?page=" + curPage);
@@ -205,6 +210,8 @@ public class UsageStatsService {
         int page = 1;
 
         while (true) {
+            log.debug("Getting GitLab actions page {}...", page);
+
             int curPage = page;
             JSONArray events = ConnectionUtils.runWithRetry(() -> {
                 HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://gitlab.com/api/v4/events?page=" + curPage);
