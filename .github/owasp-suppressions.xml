@@ -7,7 +7,7 @@
         <packageUrl regex="true">^pkg:maven/org\.json/json@.*$</packageUrl>
         <cve>CVE-2022-45688</cve>
     </suppress>
-    <suppress until="2023-07-08Z">
+    <suppress until="2023-07-15Z">
         <notes><![CDATA[
             This CVE is heavily disputed / called a false flag, ignoring it for now
         ]]></notes>

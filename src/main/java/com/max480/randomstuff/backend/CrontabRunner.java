@@ -1,5 +1,7 @@
 package com.max480.randomstuff.backend;
 
+import com.max480.everest.updatechecker.YamlUtil;
+import com.max480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import com.max480.randomstuff.backend.celeste.crontabs.*;
 import com.max480.randomstuff.backend.discord.crontabs.*;
 import com.max480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
@@ -9,11 +11,14 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
+import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -28,6 +33,24 @@ public class CrontabRunner {
     private static long lastRun = System.currentTimeMillis();
 
     public static void main(String[] args) {
+        // start the health checks
+        ContinuousHealthChecks.startChecking();
+
+        // start communication channel with the frontend
+        FrontendTaskReceiver.start();
+
+        // load #celeste_news_network state from disk
+        MastodonUpdateChecker.loadFile();
+        OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
+
+        // load update checker config from secret constants
+        ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
+        Map<String, Object> config = YamlUtil.load(is);
+        com.max480.everest.updatechecker.Main.serverConfig = new com.max480.everest.updatechecker.ServerConfig(config);
+
+        // register update checker tracker
+        com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
+
         while (true) {
             ZonedDateTime startTime = ZonedDateTime.now();
 
@@ -137,7 +160,7 @@ public class CrontabRunner {
 
     private static void run15MinuteProcesses() {
         runProcessAndAlertOnException("15-minute processes", () -> {
-            TwitterUpdateChecker.runCheckForUpdates();
+            MastodonUpdateChecker.checkForUpdates();
             OlympusNewsUpdateChecker.checkForUpdates();
             EverestVersionLister.checkEverestVersions();
         });

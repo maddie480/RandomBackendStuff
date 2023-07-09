@@ -129,7 +129,7 @@ public class OlympusNewsUpdateChecker {
 
         embed.put("color", 3878218);
 
-        TwitterUpdateChecker.sendToCelesteNewsNetwork(webhookUrl -> WebhookExecutor.executeWebhook(webhookUrl,
+        MastodonUpdateChecker.sendToCelesteNewsNetwork(webhookUrl -> WebhookExecutor.executeWebhook(webhookUrl,
                 "https://avatars.githubusercontent.com/u/36135162",
                 "Olympus News",
                 "",

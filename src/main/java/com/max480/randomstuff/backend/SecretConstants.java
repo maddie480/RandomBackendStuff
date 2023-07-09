@@ -51,6 +51,8 @@ public class SecretConstants {
     public static Long SUPPORT_SERVER_ID;
     public static List<Long> SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP;
 
+    // Raw content of the update_checker_config.yaml to pass to the Everest Update Checker
+    public static String UPDATE_CHECKER_CONFIG;
 
     // API key allowing to download stuff from Google Drive
     public static String GOOGLE_DRIVE_API_KEY;
@@ -127,6 +129,8 @@ public class SecretConstants {
         SERVER_JANITOR_TOKEN = secrets.getString("SERVER_JANITOR_TOKEN");
         SUPPORT_SERVER_ID = secrets.getLong("SUPPORT_SERVER_ID");
         SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = getListOfLongs(secrets.getJSONArray("SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP"));
+
+        UPDATE_CHECKER_CONFIG = secrets.getString("UPDATE_CHECKER_CONFIG");
 
         GOOGLE_DRIVE_API_KEY = secrets.getString("GOOGLE_DRIVE_API_KEY");
 
