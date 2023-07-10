@@ -130,11 +130,6 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkCollabList();
             CelesteStuffHealthCheck.checkCustomEntityCatalog();
             checkArbitraryModApp();
-
-            // server cleanup task that only runs on Saturdays
-            if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.SATURDAY) {
-                ServerJanitorBot.main(null);
-            }
         });
     }
 

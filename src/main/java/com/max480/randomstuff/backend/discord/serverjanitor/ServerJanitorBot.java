@@ -13,6 +13,9 @@ import org.slf4j.LoggerFactory;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+/**
+ * This bot is run once a day to clean up old messages (> 1 month) in a few private channels on the support server.
+ */
 public class ServerJanitorBot extends ListenerAdapter {
     private static final Logger log = LoggerFactory.getLogger(ServerJanitorBot.class);
 
@@ -43,5 +46,6 @@ public class ServerJanitorBot extends ListenerAdapter {
         }
 
         jda.shutdown();
+        jda.awaitShutdown();
     }
 }
