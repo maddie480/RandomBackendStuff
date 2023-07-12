@@ -194,81 +194,83 @@ public class CustomEntityCatalogGenerator {
 
         modInfo = new ArrayList<>();
 
-        // get the update checker database.
-        Map<String, Map<String, Object>> everestUpdateYaml;
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            everestUpdateYaml = YamlUtil.load(is);
-        }
-
-        refreshList(everestUpdateYaml);
-
-        // mod name -> (link name, link)
-        Map<String, Map<String, String>> documentationLinks = new HashMap<>();
-
-        // get the documentation links on the Everest wiki.
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/wiki/EverestAPI/Resources/Mapping/Helper-Manuals.md")))) {
-
-            // we're expecting - [label](link)
-            Pattern linkPattern = Pattern.compile("^- \\[(.*)]\\((.*)\\)$");
-
-            String sectionName = null;
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("## ")) {
-                    // we met a section name (mod name): ModName (alias), trim ## and the alias + trim extra spaces.
-                    sectionName = line.substring(3).trim();
-                    if (sectionName.contains("(")) {
-                        sectionName = sectionName.substring(0, sectionName.indexOf("(")).trim();
-                    }
-                } else if (sectionName != null) {
-                    Matcher match = linkPattern.matcher(line.trim());
-                    if (match.matches()) {
-                        // this is a documentation link, store it.
-                        Map<String, String> links = documentationLinks.getOrDefault(sectionName, new LinkedHashMap<>());
-                        links.put(match.group(1), match.group(2));
-                        documentationLinks.put(sectionName, links);
-                    } else {
-                        // we ran past the links!
-                        sectionName = null;
-                    }
-                }
-            }
-        }
-
-        // get the dependency graph.
-        Map<String, Map<String, Object>> dependencyGraphYaml;
-        try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
-            dependencyGraphYaml = YamlUtil.load(is);
-        }
-
-        for (QueriedModInfo info : new HashSet<>(modInfo)) {
-            // find the mod name based on GameBanana file URL.
-            Map.Entry<String, Map<String, Object>> updateCheckerDatabaseEntry = getUpdateCheckerDatabaseEntry(everestUpdateYaml, info.fileId);
-
-            // if found, attach any docs to it.
-            if (updateCheckerDatabaseEntry != null && documentationLinks.containsKey(updateCheckerDatabaseEntry.getKey())) {
-                Map<String, String> links = documentationLinks.get(updateCheckerDatabaseEntry.getKey());
-                for (Map.Entry<String, String> link : links.entrySet()) {
-                    info.documentationLinks.add(new DefaultKeyValue<>(link.getKey(), link.getValue()));
-                }
+        {
+            // get the update checker database.
+            Map<String, Map<String, Object>> everestUpdateYaml;
+            try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+                everestUpdateYaml = YamlUtil.load(is);
             }
 
-            if (updateCheckerDatabaseEntry != null) {
-                info.modEverestYamlId = updateCheckerDatabaseEntry.getKey();
-                info.latestVersion = updateCheckerDatabaseEntry.getValue().get("Version").toString();
-            }
+            refreshList(everestUpdateYaml);
 
-            // count dependents using the dependency graph.
-            int dependents = 0;
-            if (updateCheckerDatabaseEntry != null) {
-                for (Map<String, Object> dependencyGraphEntry : dependencyGraphYaml.values()) {
-                    if (((Map<String, Object>) dependencyGraphEntry.get("Dependencies")).containsKey(updateCheckerDatabaseEntry.getKey())) {
-                        dependents++;
+            // mod name -> (link name, link)
+            Map<String, Map<String, String>> documentationLinks = new HashMap<>();
+
+            // get the documentation links on the Everest wiki.
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/wiki/EverestAPI/Resources/Mapping/Helper-Manuals.md")))) {
+
+                // we're expecting - [label](link)
+                Pattern linkPattern = Pattern.compile("^- \\[(.*)]\\((.*)\\)$");
+
+                String sectionName = null;
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("## ")) {
+                        // we met a section name (mod name): ModName (alias), trim ## and the alias + trim extra spaces.
+                        sectionName = line.substring(3).trim();
+                        if (sectionName.contains("(")) {
+                            sectionName = sectionName.substring(0, sectionName.indexOf("(")).trim();
+                        }
+                    } else if (sectionName != null) {
+                        Matcher match = linkPattern.matcher(line.trim());
+                        if (match.matches()) {
+                            // this is a documentation link, store it.
+                            Map<String, String> links = documentationLinks.getOrDefault(sectionName, new LinkedHashMap<>());
+                            links.put(match.group(1), match.group(2));
+                            documentationLinks.put(sectionName, links);
+                        } else {
+                            // we ran past the links!
+                            sectionName = null;
+                        }
                     }
                 }
             }
-            info.dependentCount = dependents;
+
+            // get the dependency graph.
+            Map<String, Map<String, Object>> dependencyGraphYaml;
+            try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
+                dependencyGraphYaml = YamlUtil.load(is);
+            }
+
+            for (QueriedModInfo info : new HashSet<>(modInfo)) {
+                // find the mod name based on GameBanana file URL.
+                Map.Entry<String, Map<String, Object>> updateCheckerDatabaseEntry = getUpdateCheckerDatabaseEntry(everestUpdateYaml, info.fileId);
+
+                // if found, attach any docs to it.
+                if (updateCheckerDatabaseEntry != null && documentationLinks.containsKey(updateCheckerDatabaseEntry.getKey())) {
+                    Map<String, String> links = documentationLinks.get(updateCheckerDatabaseEntry.getKey());
+                    for (Map.Entry<String, String> link : links.entrySet()) {
+                        info.documentationLinks.add(new DefaultKeyValue<>(link.getKey(), link.getValue()));
+                    }
+                }
+
+                if (updateCheckerDatabaseEntry != null) {
+                    info.modEverestYamlId = updateCheckerDatabaseEntry.getKey();
+                    info.latestVersion = updateCheckerDatabaseEntry.getValue().get("Version").toString();
+                }
+
+                // count dependents using the dependency graph.
+                int dependents = 0;
+                if (updateCheckerDatabaseEntry != null) {
+                    for (Map<String, Object> dependencyGraphEntry : dependencyGraphYaml.values()) {
+                        if (((Map<String, Object>) dependencyGraphEntry.get("Dependencies")).containsKey(updateCheckerDatabaseEntry.getKey())) {
+                            dependents++;
+                        }
+                    }
+                }
+                info.dependentCount = dependents;
+            }
         }
 
         // sort the list by ascending name.
