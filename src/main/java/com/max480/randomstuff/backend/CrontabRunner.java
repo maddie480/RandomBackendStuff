@@ -123,6 +123,7 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkCelesteNewsNetworkSubscriptionService();
             CelesteStuffHealthCheck.checkCollabList();
             CelesteStuffHealthCheck.checkCustomEntityCatalog();
+            CelesteStuffHealthCheck.checkOlympusNews();
             checkArbitraryModApp();
         });
     }

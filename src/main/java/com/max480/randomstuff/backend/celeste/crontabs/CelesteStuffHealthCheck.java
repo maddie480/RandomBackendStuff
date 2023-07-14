@@ -10,6 +10,7 @@ import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.nodes.Document;
@@ -1084,6 +1085,60 @@ public class CelesteStuffHealthCheck {
         contents = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/collab-contest-editor?key=" + key), UTF_8);
         if (!contents.contains("Crossover Collab")) {
             throw new IOException("Collab editor does not show Crossover Collab!");
+        }
+    }
+
+    /**
+     * Checks that the latest Olympus news on Olympus also shows up on the website, by grabbing its title.
+     * Run daily.
+     */
+    public static void checkOlympusNews() throws IOException {
+        log.debug("Searching for an Olympus news entry to work with...");
+
+        // list the Olympus news posts
+        List<String> entries = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.openStreamWithTimeout("https://everestapi.github.io/olympusnews/index.txt")))) {
+            String s;
+            while ((s = br.readLine()) != null) {
+                if (s.endsWith(".md")) {
+                    entries.add(s);
+                }
+            }
+        }
+
+        // sort them by descending order
+        entries.sort(Comparator.<String>naturalOrder().reversed());
+
+        // find one that has a title!
+        String title = null;
+
+        for (String entryName : entries) {
+            String data = ConnectionUtils.toStringWithTimeout("https://everestapi.github.io/olympusnews/" + entryName, StandardCharsets.UTF_8);
+
+            // split between data, preview and full text
+            String yaml = data.split("\n---\n", 2)[0];
+            Map<String, String> yamlParsed;
+            try (ByteArrayInputStream is = new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))) {
+                yamlParsed = YamlUtil.load(is);
+            }
+
+            if (yamlParsed.containsKey("title")) {
+                title = yamlParsed.get("title");
+                break;
+            }
+        }
+
+        title = StringEscapeUtils.escapeHtml4(title);
+
+        log.debug("Checking that {} is present on the Olympus News page...", title);
+
+        String siteContent;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/olympus-news")) {
+            siteContent = IOUtils.toString(is, UTF_8);
+        }
+
+        if (!siteContent.contains(title)) {
+            throw new IOException("Olympus News was not found on the page!");
         }
     }
 }
