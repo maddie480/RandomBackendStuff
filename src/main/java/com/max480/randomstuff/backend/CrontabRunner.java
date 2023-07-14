@@ -4,7 +4,6 @@ import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import com.max480.randomstuff.backend.celeste.crontabs.*;
 import com.max480.randomstuff.backend.discord.crontabs.*;
-import com.max480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
@@ -16,7 +15,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
-import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
@@ -60,10 +58,6 @@ public class CrontabRunner {
 
             if (startTime.getMinute() == 0) {
                 runHourlyProcesses();
-            }
-
-            if (startTime.getMinute() % 15 == 0) {
-                run15MinuteProcesses();
             }
 
             if (startTime.getMinute() % 2 == 0) {
@@ -144,6 +138,8 @@ public class CrontabRunner {
             TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log"));
             TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook);
             UsageStatsService.writeWeeklyStatisticsToFile();
+            MastodonUpdateChecker.checkForUpdates();
+            OlympusNewsUpdateChecker.checkForUpdates();
 
             // health checks
             CelesteStuffHealthCheck.updateCheckerHealthCheck();
@@ -153,16 +149,10 @@ public class CrontabRunner {
         });
     }
 
-    private static void run15MinuteProcesses() {
-        runProcessAndAlertOnException("15-minute processes", () -> {
-            MastodonUpdateChecker.checkForUpdates();
-            OlympusNewsUpdateChecker.checkForUpdates();
-            EverestVersionLister.checkEverestVersions();
-        });
-    }
-
     private static void runUpdater() {
         runProcessAndAlertOnException("Everest Update Checker", () -> {
+            EverestVersionLister.checkEverestVersions();
+
             com.max480.everest.updatechecker.Main.updateDatabase(fullUpdateCheck);
             fullUpdateCheck = false;
 
