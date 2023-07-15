@@ -49,12 +49,14 @@ public class CrontabRunner {
         // register update checker tracker
         com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
 
+        if (args != null && args.length > 0 && args[0].equals("--daily")) {
+            runDailyProcesses();
+            sendMessageToWebhook(":white_check_mark: Daily processes completed!");
+            return;
+        }
+
         while (true) {
             ZonedDateTime startTime = ZonedDateTime.now();
-
-            if (startTime.getHour() == 18 && startTime.getMinute() == 0) {
-                runDailyProcesses();
-            }
 
             if (startTime.getMinute() == 0) {
                 runHourlyProcesses();
