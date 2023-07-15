@@ -222,7 +222,18 @@ public class TimezoneBot {
     }
 
     public static int getServerCount() {
-        return jda.getGuilds().size();
+        try {
+            JDA jda = JDABuilder.createLight(SecretConstants.TIMEZONE_BOT_TOKEN, Collections.emptyList())
+                    .build().awaitReady();
+
+            int serverCount = jda.getGuilds().size();
+
+            jda.shutdown();
+
+            return serverCount;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

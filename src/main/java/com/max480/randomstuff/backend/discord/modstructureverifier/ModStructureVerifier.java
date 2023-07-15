@@ -195,7 +195,18 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     public static int getServerCount() {
-        return jda.getGuilds().size();
+        try {
+            JDA jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, Collections.emptyList())
+                    .build().awaitReady();
+
+            int serverCount = jda.getGuilds().size();
+
+            jda.shutdown();
+
+            return serverCount;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // let the owner know when the bot joins or leaves servers
