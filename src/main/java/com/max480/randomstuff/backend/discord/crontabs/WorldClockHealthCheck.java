@@ -257,7 +257,7 @@ public class WorldClockHealthCheck {
 
 
         // timezone autocomplete health check (checks if fetching from timeanddate.com still works)
-        List<Command.Choice> choices = BotEventListener.INSTANCE.suggestTimezones("cest", DiscordLocale.ENGLISH_US);
+        List<Command.Choice> choices = new BotEventListener().suggestTimezones("cest", DiscordLocale.ENGLISH_US);
 
         ZonedDateTime nowInZone = ZonedDateTime.now(ZoneId.of("UTC+2"));
         format = DateTimeFormatter.ofPattern("h:mma", Locale.ENGLISH);

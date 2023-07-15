@@ -1,7 +1,6 @@
 package com.max480.randomstuff.backend.discord.timezonebot;
 
 import com.max480.randomstuff.backend.SecretConstants;
-import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -13,17 +12,13 @@ import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
-import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
-import java.time.DateTimeException;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -105,64 +100,6 @@ public class TimezoneBot {
     private static final String SAVE_FILE_NAME = "user_timezones.csv";
 
     public static void main(String[] args) throws Exception {
-        Map<String, String> timezoneMap = new HashMap<>();
-        Map<String, String> timezoneFullNames = new HashMap<>();
-        Map<String, List<String>> timezoneConflicts = new HashMap<>();
-
-        // populate the timezones!
-        for (Element elt : ConnectionUtils.jsoupGetWithRetry("https://www.timeanddate.com/time/zones/").select("#tz-abb tbody tr")) {
-            String name = elt.select("td:first-child").text().trim();
-            String fullName = elt.select("td:nth-child(2)").first().ownText().trim();
-            String offset = elt.select("td:last-child").text().trim().replace(" ", "");
-
-            // UTC+8:45 => UTC+08:45
-            if (offset.matches("UTC[+-][0-9]:[0-9]{2}")) {
-                offset = offset.replace("+", "+0").replace("-", "-0");
-            }
-
-            try {
-                ZoneId.of(offset);
-            } catch (DateTimeException e) {
-                // the timezone ended up invalid: skip it.
-                logger.info("Time zone offset {} is invalid", offset);
-                continue;
-            }
-
-            timezoneMap.put(fullName, offset);
-            if (!timezoneConflicts.containsKey(name)) {
-                // there is no conflict (yet): add to the valid timezone map.
-                timezoneMap.put(name, offset);
-                timezoneFullNames.put(name, fullName);
-                timezoneConflicts.put(name, new ArrayList<>(Collections.singletonList(fullName)));
-            } else {
-                timezoneConflicts.get(name).add(fullName);
-                timezoneFullNames.remove(name);
-
-                if (timezoneMap.containsKey(name) && !timezoneMap.get(name).equals(offset)) {
-                    // there is a conflict and the offsets are different! remove it.
-                    timezoneMap.remove(name);
-                }
-            }
-        }
-
-        // filter out conflicts that aren't conflicts.
-        Map<String, List<String>> actualConflicts = new HashMap<>();
-        for (Map.Entry<String, List<String>> conflict : timezoneConflicts.entrySet()) {
-            if (!timezoneMap.containsKey(conflict.getKey())) {
-                actualConflicts.put(conflict.getKey(), conflict.getValue());
-            }
-        }
-        timezoneConflicts = actualConflicts;
-
-        logger.info("Time zone offsets: {}, time zone full names: {}, zone conflicts: {}", timezoneMap, timezoneFullNames, timezoneConflicts);
-
-        try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream("/tmp/timezone_name_data.ser"))) {
-            os.writeObject(timezoneMap);
-            os.writeObject(timezoneFullNames);
-            os.writeObject(timezoneConflicts);
-        }
-        Files.move(Paths.get("/tmp/timezone_name_data.ser"), Paths.get("/shared/discord-bots/timezone-name-data.ser"), StandardCopyOption.REPLACE_EXISTING);
-
         // load the saved files (user settings, server settings, member cache).
         userTimezones = new ArrayList<>();
         if (new File(SAVE_FILE_NAME).exists()) {
@@ -180,7 +117,7 @@ public class TimezoneBot {
 
         // start up the bot.
         jda = JDABuilder.createLight(SecretConstants.TIMEZONE_BOT_TOKEN, Collections.emptyList())
-                .addEventListeners(new BotEventListener(timezoneMap, timezoneFullNames, timezoneConflicts))
+                .addEventListeners(new BotEventListener())
                 .build().awaitReady();
 
         // do some cleanup, in case we were kicked from a server while offline.
