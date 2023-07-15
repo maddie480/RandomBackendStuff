@@ -7,9 +7,9 @@
         <packageUrl regex="true">^pkg:maven/org\.json/json@.*$</packageUrl>
         <cve>CVE-2022-45688</cve>
     </suppress>
-    <suppress until="2023-07-15Z">
+    <suppress>
         <notes><![CDATA[
-            This CVE is heavily disputed / called a false flag, ignoring it for now
+            This CVE is heavily disputed / called a false flag, ignoring it
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-databind@.*$</packageUrl>
         <cve>CVE-2023-35116</cve>

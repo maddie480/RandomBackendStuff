@@ -31,6 +31,17 @@ public class CrontabRunner {
     private static long lastRun = System.currentTimeMillis();
 
     public static void main(String[] args) {
+        // load update checker config from secret constants
+        ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
+        Map<String, Object> config = YamlUtil.load(is);
+        com.max480.everest.updatechecker.Main.serverConfig = new com.max480.everest.updatechecker.ServerConfig(config);
+
+        if (args != null && args.length > 0 && args[0].equals("--daily")) {
+            runDailyProcesses();
+            sendMessageToWebhook(":white_check_mark: Daily processes completed!");
+            return;
+        }
+
         // start the health checks
         ContinuousHealthChecks.startChecking();
 
@@ -41,19 +52,8 @@ public class CrontabRunner {
         MastodonUpdateChecker.loadFile();
         OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
 
-        // load update checker config from secret constants
-        ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
-        Map<String, Object> config = YamlUtil.load(is);
-        com.max480.everest.updatechecker.Main.serverConfig = new com.max480.everest.updatechecker.ServerConfig(config);
-
         // register update checker tracker
         com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
-
-        if (args != null && args.length > 0 && args[0].equals("--daily")) {
-            runDailyProcesses();
-            sendMessageToWebhook(":white_check_mark: Daily processes completed!");
-            return;
-        }
 
         while (true) {
             ZonedDateTime startTime = ZonedDateTime.now();
