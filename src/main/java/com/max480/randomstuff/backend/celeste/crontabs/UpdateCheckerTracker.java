@@ -97,21 +97,19 @@ public class UpdateCheckerTracker extends EventListener {
             }
 
             log.debug("Read latest updates entries: {}", latestUpdates);
+
+            Path updateCheckerTrackerState = Paths.get("update_checker_tracker_state.ser");
+
+            // load state
+            if (Files.exists(updateCheckerTrackerState)) {
+                try (ObjectInputStream is = new ObjectInputStream(Files.newInputStream(updateCheckerTrackerState))) {
+                    everestUpdateSha256 = is.readUTF();
+                    modSearchDatabaseSha256 = is.readUTF();
+                    fileIdsSha256 = is.readUTF();
+                }
+            }
         } catch (IOException e) {
             log.error("Could not initialize Update Checker Tracker!", e);
-        }
-
-        Path updateCheckerTrackerState = Paths.get("update_checker_tracker_state.ser");
-
-        // load state
-        if (Files.exists(updateCheckerTrackerState)) {
-            try (ObjectInputStream is = new ObjectInputStream(Files.newInputStream(updateCheckerTrackerState))) {
-                everestUpdateSha256 = is.readUTF();
-                modSearchDatabaseSha256 = is.readUTF();
-                fileIdsSha256 = is.readUTF();
-            } catch(ClassNotFoundException e) {
-                throw new IOException(e);
-            }
         }
     }
 
