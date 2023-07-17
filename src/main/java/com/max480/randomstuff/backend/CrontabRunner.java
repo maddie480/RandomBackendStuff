@@ -48,7 +48,6 @@ public class CrontabRunner {
             OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
 
             runHourlyProcesses();
-            sendMessageToWebhook(":white_check_mark: Hourly processes completed!");
             return;
         }
 
@@ -58,7 +57,6 @@ public class CrontabRunner {
 
             boolean full = arg.equals("--updater-full");
             runUpdater(full);
-            if (full) sendMessageToWebhook(":white_check_mark: Full update check completed!");
             return;
         }
 
