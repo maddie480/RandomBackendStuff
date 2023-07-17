@@ -136,7 +136,7 @@ public class FrontendTaskReceiver {
     }
 
     private static void handleUpdateModStructureVerifierMapsRequest() {
-        log.info("Frontend asked us to update mod structure verifier maps!", fileName, language);
+        log.info("Frontend asked us to update mod structure verifier maps!");
 
         try {
             UpdateCheckerTracker.updateModStructureVerifierMaps();

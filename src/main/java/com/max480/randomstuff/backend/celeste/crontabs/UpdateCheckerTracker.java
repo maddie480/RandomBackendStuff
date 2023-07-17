@@ -18,6 +18,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -391,7 +393,7 @@ public class UpdateCheckerTracker extends EventListener {
                 try (Socket socket = new Socket()) {
                     socket.connect(new InetSocketAddress("127.0.1.1", 44480));
                     try (OutputStream os = socket.getOutputStream()) {
-                        IOUtils.write(message.toString(), os, StandardCharsets.UTF_8);
+                        IOUtils.write(message.toString(), os, UTF_8);
                     }
                 }
 

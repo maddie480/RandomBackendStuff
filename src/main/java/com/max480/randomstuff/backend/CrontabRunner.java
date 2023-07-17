@@ -54,7 +54,7 @@ public class CrontabRunner {
 
         if (arg.equals("--updater") || arg.equals("--updater-full")) {
             File lockFile = new File("updater_lock");
-            if (lockFile.exists) {
+            if (lockFile.exists()) {
                 logger.debug("Updater already running!");
                 return;
             }
