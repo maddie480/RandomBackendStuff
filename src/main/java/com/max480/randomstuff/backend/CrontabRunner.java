@@ -13,11 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -56,8 +58,29 @@ public class CrontabRunner {
             // register update checker tracker
             com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
 
+            Path lockFile = Paths.get("updater_lock");
+            if (Files.exists(lockFile)) {
+                logger.warn("Updater already running!");
+                return;
+            }
+
+            try {
+                Files.createFile(lockFile);
+            } catch (IOException e) {
+                logger.error("Could not lock updater", e);
+                sendMessageToWebhook(":x: Could not lock updater: " + e);
+            }
+
             boolean full = arg.equals("--updater-full");
             runUpdater(full);
+
+            try {
+                Files.delete(lockFile);
+            } catch (IOException e) {
+                logger.error("Could not unlock updater", e);
+                sendMessageToWebhook(":x: Could not unlock updater: " + e);
+            }
+
             return;
         }
 
@@ -143,18 +166,9 @@ public class CrontabRunner {
 
     private static void runUpdater(boolean fullUpdateCheck) {
         runProcessAndAlertOnException("Everest Update Checker", () -> {
-            File lockFile = new File("updater_lock");
-            if (lockFile.exists()) {
-                logger.warn("Updater already running!");
-                return;
-            }
-            lockFile.createNewFile();
-
             EverestVersionLister.checkEverestVersions();
             com.max480.everest.updatechecker.Main.updateDatabase(fullUpdateCheck);
             UpdateOutgoingWebhooks.notifyUpdate();
-
-            lockFile.delete();
         });
     }
 
