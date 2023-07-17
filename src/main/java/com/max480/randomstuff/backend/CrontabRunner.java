@@ -56,7 +56,9 @@ public class CrontabRunner {
             // register update checker tracker
             com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
 
-            runUpdater(arg.equals("--updater-full"));
+            boolean full = arg.equals("--updater-full");
+            runUpdater(full);
+            if (full) sendMessageToWebhook(":white_check_mark: Full update check completed!");
             return;
         }
 
