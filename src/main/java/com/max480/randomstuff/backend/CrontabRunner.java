@@ -53,18 +53,10 @@ public class CrontabRunner {
         }
 
         if (arg.equals("--updater") || arg.equals("--updater-full")) {
-            File lockFile = new File("updater_lock");
-            if (lockFile.exists()) {
-                logger.debug("Updater already running!");
-                return;
-            }
-            lockFile.createNewFile();
-
             // register update checker tracker
             com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
 
             runUpdater(arg.equals("--updater-full"));
-            lockFile.delete();
             return;
         }
 
@@ -141,9 +133,18 @@ public class CrontabRunner {
 
     private static void runUpdater(boolean fullUpdateCheck) {
         runProcessAndAlertOnException("Everest Update Checker", () -> {
+            File lockFile = new File("updater_lock");
+            if (lockFile.exists()) {
+                logger.warn("Updater already running!");
+                return;
+            }
+            lockFile.createNewFile();
+
             EverestVersionLister.checkEverestVersions();
             com.max480.everest.updatechecker.Main.updateDatabase(fullUpdateCheck);
             UpdateOutgoingWebhooks.notifyUpdate();
+
+            lockFile.delete();
         });
     }
 
