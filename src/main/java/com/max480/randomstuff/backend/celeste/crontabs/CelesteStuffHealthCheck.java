@@ -556,16 +556,10 @@ public class CelesteStuffHealthCheck {
             throw new IOException("everest_update.yaml on disk and on Cloud Storage don't match!");
         }
 
-        // the status page says everything is fine
+        // and the status page says everything is fine
         final String updateCheckerStatus = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/update-checker-status", UTF_8);
         if (!updateCheckerStatus.contains("The update checker is up and running!")) {
             throw new IOException("Update checker is not OK according to status page!");
-        }
-
-        // and the update checker server is not frozen
-        if (UpdateCheckerTracker.lastEndOfCheckForUpdates.isBefore(ZonedDateTime.now().minusMinutes(30))) {
-            throw new IOException("Update Checker did not end an update successfully since " +
-                    UpdateCheckerTracker.lastEndOfCheckForUpdates.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)));
         }
     }
 

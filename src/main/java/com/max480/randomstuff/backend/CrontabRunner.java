@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -27,18 +28,43 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class CrontabRunner {
     private static final Logger logger = LoggerFactory.getLogger(CrontabRunner.class);
 
-    private static boolean fullUpdateCheck = true;
-    private static long lastRun = System.currentTimeMillis();
-
     public static void main(String[] args) {
         // load update checker config from secret constants
         ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
         Map<String, Object> config = YamlUtil.load(is);
         com.max480.everest.updatechecker.Main.serverConfig = new com.max480.everest.updatechecker.ServerConfig(config);
 
-        if (args != null && args.length > 0 && args[0].equals("--daily")) {
+        String arg = args != null && args.length > 0 ? args[0] : "";
+
+        if (arg.equals("--daily")) {
             runDailyProcesses();
             sendMessageToWebhook(":white_check_mark: Daily processes completed!");
+            return;
+        }
+
+        if (arg.equals("--hourly")) {
+            // load #celeste_news_network state from disk
+            MastodonUpdateChecker.loadFile();
+            OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
+
+            runHourlyProcesses();
+            sendMessageToWebhook(":white_check_mark: Hourly processes completed!");
+            return;
+        }
+
+        if (arg.equals("--updater") || arg.equals("--updater-full")) {
+            File lockFile = new File("updater_lock");
+            if (lockFile.exists) {
+                logger.debug("Updater already running!");
+                return;
+            }
+            lockFile.createNewFile();
+
+            // register update checker tracker
+            com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
+
+            runUpdater(arg.equals("--updater-full"));
+            lockFile.delete();
             return;
         }
 
@@ -47,43 +73,6 @@ public class CrontabRunner {
 
         // start communication channel with the frontend
         FrontendTaskReceiver.start();
-
-        // load #celeste_news_network state from disk
-        MastodonUpdateChecker.loadFile();
-        OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
-
-        // register update checker tracker
-        com.max480.everest.updatechecker.EventListener.addEventListener(new UpdateCheckerTracker());
-
-        while (true) {
-            ZonedDateTime startTime = ZonedDateTime.now();
-
-            if (startTime.getMinute() == 0) {
-                runHourlyProcesses();
-            }
-
-            if (startTime.getMinute() % 2 == 0) {
-                runUpdater();
-            }
-
-            lastRun = System.currentTimeMillis();
-
-            try {
-                // wait until the start of the next minute (+ 50 ms)
-                Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
-                        + ZonedDateTime.now().getNano() / 1_000_000) + 50);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public static void forceFullUpdateCheck() {
-        fullUpdateCheck = true;
-    }
-
-    public static long getLastRun() {
-        return lastRun;
     }
 
     private static void runDailyProcesses() {
@@ -132,8 +121,6 @@ public class CrontabRunner {
 
     private static void runHourlyProcesses() {
         runProcessAndAlertOnException("Hourly processes", () -> {
-            forceFullUpdateCheck();
-
             // update tasks
             UpdateCheckerTracker.updatePrivateHelpersFromGitHub();
             CollabAutoHider.run();
@@ -152,13 +139,10 @@ public class CrontabRunner {
         });
     }
 
-    private static void runUpdater() {
+    private static void runUpdater(boolean fullUpdateCheck) {
         runProcessAndAlertOnException("Everest Update Checker", () -> {
             EverestVersionLister.checkEverestVersions();
-
             com.max480.everest.updatechecker.Main.updateDatabase(fullUpdateCheck);
-            fullUpdateCheck = false;
-
             UpdateOutgoingWebhooks.notifyUpdate();
         });
     }

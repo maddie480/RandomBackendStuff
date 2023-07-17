@@ -1,7 +1,6 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import com.max480.randomstuff.backend.CrontabRunner;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.discord.timezonebot.TimezoneRoleUpdater;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -55,13 +54,11 @@ public class ContinuousHealthChecks {
                         checkHealth(ContinuousHealthChecks::checkCelesteNetUDP,
                                 "CelesteNet UDP", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                        // Update Checker health check
-                        checkHealth(() -> System.currentTimeMillis() - UpdateCheckerTracker.lastEndOfCheckForUpdates.toInstant().toEpochMilli() < 1_800_000L /* 30m */,
-                                "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
-
-                        // maddie480.ovh health check
+                        // maddie480.ovh health checks
                         checkURL("https://maddie480.ovh/celeste/everest_update.yaml", "SpringCollab2020:",
                                 "Maddie's Random Stuff Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        checkURL("https://maddie480.ovh/celeste/update-checker-status.json", "\"up\":true",
+                                "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // GameBanana health checks
                         checkURL("https://gamebanana.com/games/6460", "Celeste",
@@ -72,8 +69,6 @@ public class ContinuousHealthChecks {
                                 "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // backend checks: notify privately and restart if those go down.
-                        checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - CrontabRunner.getLastRun() < 1_800_000L,
-                                "Public Crontab Runner");
                         checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - lastBotAliveTime < 1_800_000L,
                                 "Private Crontab Runner");
                         checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - TimezoneRoleUpdater.getLastRunDate() < 1_800_000L,

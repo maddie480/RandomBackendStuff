@@ -68,8 +68,6 @@ public class UpdateCheckerTracker extends EventListener {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateCheckerTracker.class);
 
-    protected static ZonedDateTime lastEndOfCheckForUpdates = ZonedDateTime.now();
-
     private String everestUpdateSha256 = "[first check]";
     private String modSearchDatabaseSha256 = "[first check]";
     private String fileIdsSha256 = "[first check]";
@@ -99,6 +97,19 @@ public class UpdateCheckerTracker extends EventListener {
             log.debug("Read latest updates entries: {}", latestUpdates);
         } catch (IOException e) {
             log.error("Could not initialize Update Checker Tracker!", e);
+        }
+
+        Path updateCheckerTrackerState = Paths.get("update_checker_tracker_state.ser");
+
+        // load state
+        if (Files.exists(updateCheckerTrackerState)) {
+            try (ObjectInputStream is = new ObjectInputStream(Files.newInputStream(updateCheckerTrackerState))) {
+                everestUpdateSha256 = is.readUTF();
+                modSearchDatabaseSha256 = is.readUTF();
+                fileIdsSha256 = is.readUTF();
+            } catch(ClassNotFoundException e) {
+                throw new IOException(e);
+            }
         }
     }
 
@@ -373,7 +384,16 @@ public class UpdateCheckerTracker extends EventListener {
                     throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
                 }
 
-                updateModStructureVerifierMaps();
+                // update Mod Structure Verifier maps, by calling the frontend task receiver
+                JSONObject message = new JSONObject();
+                message.put("taskType", "updateModStructureVerifierMaps");
+
+                try (Socket socket = new Socket()) {
+                    socket.connect(new InetSocketAddress("127.0.1.1", 44480));
+                    try (OutputStream os = socket.getOutputStream()) {
+                        IOUtils.write(message.toString(), os, StandardCharsets.UTF_8);
+                    }
+                }
 
                 everestUpdateSha256 = newEverestUpdateHash;
                 UpdateOutgoingWebhooks.changesHappened();
@@ -407,7 +427,12 @@ public class UpdateCheckerTracker extends EventListener {
 
             updateUpdateCheckerStatusInformation(System.currentTimeMillis() - postProcessingStart + timeTakenMilliseconds);
 
-            lastEndOfCheckForUpdates = ZonedDateTime.now();
+            // save state
+            try (ObjectOutputStream os = new ObjectOutputStream(Files.newOutputStream(Paths.get("update_checker_tracker_state.ser")))) {
+                os.writeUTF(everestUpdateSha256);
+                os.writeUTF(modSearchDatabaseSha256);
+                os.writeUTF(fileIdsSha256);
+            }
         } catch (IOException e) {
             log.error("Error during a call to frontend to refresh databases", e);
             executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);
@@ -581,7 +606,7 @@ public class UpdateCheckerTracker extends EventListener {
      * Updates the maps used by the Mod Structure Verifier to see in which mod each asset is.
      * Called on startup and each time everest_update.yaml is modified.
      */
-    private static void updateModStructureVerifierMaps() throws IOException {
+    public static void updateModStructureVerifierMaps() throws IOException {
         log.info("Updating Mod Structure Verifier entity maps...");
 
         Map<String, String> assets = getElementMap("", file -> {

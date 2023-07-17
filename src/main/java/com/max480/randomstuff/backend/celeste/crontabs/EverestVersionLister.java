@@ -12,9 +12,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -40,6 +42,18 @@ public class EverestVersionLister {
      * Run every 15 minutes.
      */
     public static void checkEverestVersions() throws IOException {
+        Path versionListStateFile = Paths.get("everest_version_list_state.ser");
+
+        // load state
+        if (Files.exists(versionListStateFile)) {
+            try (ObjectInputStream is = new ObjectInputStream(Files.newInputStream(versionListStateFile))) {
+                latestAzureBuilds = (List<Integer>) is.readObject();
+                latestGitHubReleases = (List<String>) is.readObject();
+            } catch(ClassNotFoundException e) {
+                throw new IOException(e);
+            }
+        }
+
         // get the latest Azure builds for dev, beta and core branches
         List<Integer> currentAzureBuilds = new ArrayList<>();
         for (String branch : Arrays.asList("dev", "beta", "core")) {
@@ -69,6 +83,12 @@ public class EverestVersionLister {
 
             latestAzureBuilds = currentAzureBuilds;
             latestGitHubReleases = currentGitHubReleases;
+        }
+
+        // save state
+        try (ObjectOutputStream os = new ObjectOutputStream(Files.newOutputStream(versionListStateFile))) {
+            os.writeObject(latestAzureBuilds);
+            os.writeObject(latestGitHubReleases);
         }
     }
 

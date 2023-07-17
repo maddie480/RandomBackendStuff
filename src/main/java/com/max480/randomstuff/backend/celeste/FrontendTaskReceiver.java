@@ -1,5 +1,6 @@
 package com.max480.randomstuff.backend.celeste;
 
+import com.max480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker;
 import com.max480.randomstuff.backend.discord.modstructureverifier.FontGenerator;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import org.apache.commons.io.FileUtils;
@@ -94,6 +95,7 @@ public class FrontendTaskReceiver {
                         log.error("Error while searching file for request {}", o, e);
                     }
                 }
+                case "updateModStructureVerifierMaps" -> handleUpdateModStructureVerifierMapsRequest();
                 default -> log.error("Received invalid task type {}!", o.getString("taskType"));
             }
         } catch (JSONException e) {
@@ -130,6 +132,16 @@ public class FrontendTaskReceiver {
                     (message, files) -> sendResponse(taskName, message, files));
         } catch (IOException e) {
             log.error("Could not handle font generation asked by frontend!", e);
+        }
+    }
+
+    private static void handleUpdateModStructureVerifierMapsRequest() {
+        log.info("Frontend asked us to update mod structure verifier maps!", fileName, language);
+
+        try {
+            UpdateCheckerTracker.updateModStructureVerifierMaps();
+        } catch (IOException e) {
+            log.error("Could not handle update mod structure verifier maps request!", e);
         }
     }
 
