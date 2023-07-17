@@ -4,6 +4,8 @@ import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import com.max480.randomstuff.backend.celeste.crontabs.*;
 import com.max480.randomstuff.backend.discord.crontabs.*;
+import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
+import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
@@ -16,7 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
-import java.time.ZonedDateTime;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -65,6 +66,15 @@ public class CrontabRunner {
 
         // start communication channel with the frontend
         FrontendTaskReceiver.start();
+
+        try {
+            // start the Timezone Bot and Mod Structure Verifier
+            TimezoneBot.main(null);
+            ModStructureVerifier.main(null);
+        } catch (Exception e) {
+            logger.error("Error while starting up the bots", e);
+            sendMessageToWebhook(":x: Could not start up the bots: " + e);
+        }
     }
 
     private static void runDailyProcesses() {
