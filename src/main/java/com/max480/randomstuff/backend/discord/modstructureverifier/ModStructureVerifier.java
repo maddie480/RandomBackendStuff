@@ -5,6 +5,7 @@ import com.max480.everest.updatechecker.ModFilesDatabaseBuilder;
 import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.everest.updatechecker.ZipFileWithAutoEncoding;
 import com.max480.randomstuff.backend.SecretConstants;
+import com.max480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.HttpPostMultipart;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -177,6 +178,9 @@ public class ModStructureVerifier extends ListenerAdapter {
         savePostedMessagesMap(null);
 
         logger.debug("Bot is currently in following guilds: {}", jda.getGuilds());
+
+        // fill in the asset => mod maps on startup
+        UpdateCheckerTracker.updateModStructureVerifierMaps();
     }
 
     /**
