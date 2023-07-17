@@ -82,21 +82,23 @@ public class UpdateCheckerTracker extends EventListener {
     private final List<Map<String, Object>> latestUpdates = new ArrayList<>();
 
     public UpdateCheckerTracker() {
-        // read back the latest updates that happened before the tracker was started up.
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/updater/status.json"))) {
-            JSONObject updateCheckerStatusData = new JSONObject(IOUtils.toString(is, UTF_8));
+        try {
+            // read back the latest updates that happened before the tracker was started up.
+            try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/updater/status.json"))) {
+                JSONObject updateCheckerStatusData = new JSONObject(IOUtils.toString(is, UTF_8));
 
-            lastFullCheckTimestamp = updateCheckerStatusData.getLong("lastFullCheckTimestamp");
-            lastIncrementalCheckTimestamp = updateCheckerStatusData.getLong("lastIncrementalCheckTimestamp");
-            lastFullCheckDuration = updateCheckerStatusData.getLong("lastFullCheckDuration");
-            lastIncrementalCheckDuration = updateCheckerStatusData.getLong("lastIncrementalCheckDuration");
+                lastFullCheckTimestamp = updateCheckerStatusData.getLong("lastFullCheckTimestamp");
+                lastIncrementalCheckTimestamp = updateCheckerStatusData.getLong("lastIncrementalCheckTimestamp");
+                lastFullCheckDuration = updateCheckerStatusData.getLong("lastFullCheckDuration");
+                lastIncrementalCheckDuration = updateCheckerStatusData.getLong("lastIncrementalCheckDuration");
 
-            for (Object o : updateCheckerStatusData.getJSONArray("latestUpdatesEntries")) {
-                JSONObject latestUpdatesEntry = (JSONObject) o;
-                latestUpdates.add(latestUpdatesEntry.toMap());
+                for (Object o : updateCheckerStatusData.getJSONArray("latestUpdatesEntries")) {
+                    JSONObject latestUpdatesEntry = (JSONObject) o;
+                    latestUpdates.add(latestUpdatesEntry.toMap());
+                }
+
+                log.debug("Read latest updates entries: {}", latestUpdates);
             }
-
-            log.debug("Read latest updates entries: {}", latestUpdates);
 
             Path updateCheckerTrackerState = Paths.get("update_checker_tracker_state.ser");
 
