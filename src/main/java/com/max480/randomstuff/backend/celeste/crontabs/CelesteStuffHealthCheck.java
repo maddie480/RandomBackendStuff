@@ -746,10 +746,10 @@ public class CelesteStuffHealthCheck {
         }
 
         String url = result.getURL().toString();
-        log.debug("Font generator task tracker URL: {}, checking result in 30 seconds", url);
+        log.debug("Font generator task tracker URL: {}, checking result in 60 seconds", url);
 
         try {
-            Thread.sleep(30000);
+            Thread.sleep(60000);
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
@@ -806,10 +806,10 @@ public class CelesteStuffHealthCheck {
             // the response is a URL relative to maddie480.ovh.
             url = "https://maddie480.ovh" + IOUtils.toString(is, UTF_8);
         }
-        log.debug("Mod structure verifier task tracker URL: {}, checking result in 15 seconds", url);
+        log.debug("Mod structure verifier task tracker URL: {}, checking result in 60 seconds", url);
 
         try {
-            Thread.sleep(15000);
+            Thread.sleep(60000);
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
@@ -874,7 +874,7 @@ public class CelesteStuffHealthCheck {
 
         // leave time for the search to be done
         try {
-            Thread.sleep(15000);
+            Thread.sleep(60000);
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
