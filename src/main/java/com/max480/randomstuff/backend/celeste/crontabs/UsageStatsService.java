@@ -96,7 +96,7 @@ public class UsageStatsService {
     private static int countBackendLogEntries(Predicate<String> filter, int days) {
         try (Stream<Path> backendLogs = Files.list(Paths.get("/logs"))) {
             return backendLogs
-                    .filter(p -> p.getFileName().toString().endsWith(".backend.log"))
+                    .filter(p -> p.getFileName().toString().endsWith("_out.backend.log"))
                     .filter(p -> fileWasModifiedInLast(p, days))
                     .mapToInt(p -> {
                         log.debug("Counting lines matching filter in last {} day(s) in file {}...", days, p.getFileName());
