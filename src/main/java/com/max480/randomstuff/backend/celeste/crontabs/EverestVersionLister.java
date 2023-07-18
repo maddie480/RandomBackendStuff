@@ -23,6 +23,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * This class lists all Everest versions, making calls to GitHub and Azure APIs as required.
@@ -50,7 +52,7 @@ public class EverestVersionLister {
             try (ObjectInputStream is = new ObjectInputStream(Files.newInputStream(versionListStateFile))) {
                 latestAzureBuilds = (List<Integer>) is.readObject();
                 latestGitHubReleases = (List<String>) is.readObject();
-            } catch(ClassNotFoundException e) {
+            } catch (ClassNotFoundException e) {
                 throw new IOException(e);
             }
         }
@@ -137,7 +139,10 @@ public class EverestVersionLister {
 
                 entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload")));
 
-                infoNoNative.add(entry);
+                boolean isNative = isNative((String) entry.get("olympusBuildDownload"));
+                entry.put("isNative", isNative);
+
+                if (!isNative) infoNoNative.add(entry);
                 infoWithNative.add(entry);
             }
         }
@@ -197,9 +202,10 @@ public class EverestVersionLister {
 
                 entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload")));
 
-                if (!"core".equals(branch)) {
-                    infoNoNative.add(entry);
-                }
+                boolean isNative = isNative((String) entry.get("olympusBuildDownload"));
+                entry.put("isNative", isNative);
+
+                if (!isNative) infoNoNative.add(entry);
                 infoWithNative.add(entry);
             }
         }
@@ -263,5 +269,30 @@ public class EverestVersionLister {
         }
 
         throw new IOException("Got different sizes for " + url + ": " + size[0] + " and " + size[1] + "!");
+    }
+
+    /**
+     * Checks whether the Olympus build at the given URL is a native build,
+     * by checking if it contains MiniInstaller.exe.
+     */
+    private static boolean isNative(String url) throws IOException {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url);
+             ZipInputStream outerZip = new ZipInputStream(is)) {
+
+            // seek to the inner zip, which is the only flat file there is in the outer zip
+            while (outerZip.getNextEntry().isDirectory()) ;
+
+            try (ZipInputStream innerZip = new ZipInputStream(outerZip)) {
+                // check if there is MiniInstaller.exe in there. If there is, the build is not native.
+                ZipEntry entry;
+                while ((entry = innerZip.getNextEntry()) != null) {
+                    if (entry.getName().equals("MiniInstaller.exe")) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
     }
 }
