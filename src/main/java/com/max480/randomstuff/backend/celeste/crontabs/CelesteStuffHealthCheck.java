@@ -1105,6 +1105,7 @@ public class CelesteStuffHealthCheck {
 
         // find one that has a title!
         String title = null;
+        String slug = null;
 
         for (String entryName : entries) {
             String data = ConnectionUtils.toStringWithTimeout("https://everestapi.github.io/olympusnews/" + entryName, StandardCharsets.UTF_8);
@@ -1118,20 +1119,34 @@ public class CelesteStuffHealthCheck {
 
             if (yamlParsed.containsKey("title")) {
                 title = yamlParsed.get("title");
+                slug = entryName.substring(0, entryName.length() - 3);
                 break;
             }
         }
 
         title = StringEscapeUtils.escapeHtml4(title);
 
-        log.debug("Checking that {} is present on the Olympus News page...", title);
+        log.debug("Checking that {} with title {} is present on the Olympus News page...", slug, title);
 
         String siteContent;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/olympus-news")) {
             siteContent = IOUtils.toString(is, UTF_8);
         }
-
         if (!siteContent.contains(title)) {
+            throw new IOException("Olympus News was not found on the page!");
+        }
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/olympus-news.json")) {
+            siteContent = IOUtils.toString(is, UTF_8);
+        }
+        if (!siteContent.contains(slug)) {
+            throw new IOException("Olympus News was not found on the page!");
+        }
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/olympus-news.xml")) {
+            siteContent = IOUtils.toString(is, UTF_8);
+        }
+        if (!siteContent.contains(slug)) {
             throw new IOException("Olympus News was not found on the page!");
         }
     }
