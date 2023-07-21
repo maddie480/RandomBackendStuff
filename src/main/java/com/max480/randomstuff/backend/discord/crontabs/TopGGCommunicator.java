@@ -7,11 +7,12 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -47,6 +48,17 @@ public class TopGGCommunicator {
      * @param messagePoster A method used to post private notification messages
      */
     public static void refreshVotes(Consumer<String> messagePoster) throws IOException {
+        Path stateFile = Paths.get("top_gg_communicator_state.ser");
+
+        // load state
+        if (Files.exists(stateFile)) {
+            try (ObjectInputStream is = new ObjectInputStream(Files.newInputStream(stateFile))) {
+                gamesBotScore = is.readInt();
+                customSlashCommandsScore = is.readInt();
+                timezoneBotScore = is.readInt();
+            }
+        }
+
         // check if we got new upvotes through the API
         getAndUpdateBotScore(SecretConstants.GAMES_BOT_CLIENT_ID, SecretConstants.GAMES_BOT_TOP_GG_TOKEN, messagePoster,
                 "Games Bot", () -> gamesBotScore, score -> gamesBotScore = score);
@@ -54,6 +66,13 @@ public class TopGGCommunicator {
                 "Custom Slash Commands", () -> customSlashCommandsScore, score -> customSlashCommandsScore = score);
         getAndUpdateBotScore(SecretConstants.TIMEZONE_BOT_LITE_CLIENT_ID, SecretConstants.TIMEZONE_BOT_LITE_TOP_GG_TOKEN, messagePoster,
                 "Timezone Bot", () -> timezoneBotScore, score -> timezoneBotScore = score);
+
+        // save state
+        try (ObjectOutputStream os = new ObjectOutputStream(Files.newOutputStream(stateFile))) {
+            os.writeInt(gamesBotScore);
+            os.writeInt(customSlashCommandsScore);
+            os.writeInt(timezoneBotScore);
+        }
     }
 
     private static void updateBotGuildCount(String botId, String botToken, String botName, int guildCount) throws IOException {
