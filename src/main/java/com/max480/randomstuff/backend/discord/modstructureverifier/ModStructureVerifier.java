@@ -804,7 +804,22 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
 
         for (String dep : dependencies) {
-            if (databaseContents.containsKey(dep)) { // to exclude Everest
+            if (SecretConstants.LOENN_ENTITIES_FROM_GITHUB.containsKey(dep)) {
+                // this is a helper from some GitHub repository! read the Lönn plugins it might have.
+                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(SecretConstants.LOENN_ENTITIES_FROM_GITHUB.get(dep));
+                connection.setRequestProperty("Accept", "application/vnd.github.v3.raw");
+                connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
+
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.connectionToInputStream(connection), UTF_8))) {
+                    Path trashFile = Paths.get("/tmp/trash_file");
+                    Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntities(trashFile, br);
+                    Files.delete(trashFile);
+
+                    availableEntities.addAll(entities.getLeft());
+                    availableTriggers.addAll(entities.getMiddle());
+                    availableModEffects.addAll(entities.getRight());
+                }
+            } else if (databaseContents.containsKey(dep)) { // to exclude Everest
                 String depUrl = (String) databaseContents.get(dep).get(com.max480.everest.updatechecker.Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
                 if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
                     // instead of downloading the file, let's grab its contents from the mod files database left by the update checker.
@@ -834,21 +849,6 @@ public class ModStructureVerifier extends ListenerAdapter {
                     // is there a file for Ahorn and Lönn entities as well?
                     checkMapEditorEntities("ahorn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
                     checkMapEditorEntities("loenn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
-                }
-            } else if (SecretConstants.LOENN_ENTITIES_FROM_GITHUB.containsKey(dep)) {
-                // this is a helper from some GitHub repository! read the Lönn plugins it might have.
-                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(SecretConstants.LOENN_ENTITIES_FROM_GITHUB.get(dep));
-                connection.setRequestProperty("Accept", "application/vnd.github.v3.raw");
-                connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
-
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.connectionToInputStream(connection), UTF_8))) {
-                    Path trashFile = Paths.get("/tmp/trash_file");
-                    Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntities(trashFile, br);
-                    Files.delete(trashFile);
-
-                    availableEntities.addAll(entities.getLeft());
-                    availableTriggers.addAll(entities.getMiddle());
-                    availableModEffects.addAll(entities.getRight());
                 }
             }
         }
