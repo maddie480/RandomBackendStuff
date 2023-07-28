@@ -19,10 +19,23 @@
             <groupId>com.max480.everest.updatechecker</groupId>
             <artifactId>update-checker</artifactId>
         </dependency>
+
+        <!-- Force-update okio to fix vulnerability on transitive dependency for JDA -->
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+        </dependency>
+
+        <!-- Force-update kotlin-stdlib to align versions (1.6 and 1.8 going by transitive dependencies) -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib-jdk8</artifactId>
         </dependency>
+
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
@@ -43,7 +56,6 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
-
     </dependencies>
 
     <build>
