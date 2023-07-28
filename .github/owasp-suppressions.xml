@@ -14,4 +14,12 @@
         <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-databind@.*$</packageUrl>
         <cve>CVE-2023-35116</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+            This vulnerability only affects Brotli support when it is brought in with the okhttp-brotli dependency,
+            which is not present on this project
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.squareup\.okhttp3/okhttp@.*$</packageUrl>
+        <cve>CVE-2023-3782</cve>
+    </suppress>
 </suppressions>
