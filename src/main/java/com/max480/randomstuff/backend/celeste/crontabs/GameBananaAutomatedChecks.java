@@ -395,7 +395,7 @@ public class GameBananaAutomatedChecks {
                 }
             });
         } catch (IOException e) {
-            logger.error("Cannot get whether {} is linked to {}, so we will assume it is not.", mod, e);
+            logger.error("Cannot get whether {} is linked to {}, so we will assume it is not.", mod, wip, e);
             return false;
         }
     }
@@ -417,6 +417,45 @@ public class GameBananaAutomatedChecks {
         }
 
         return null;
+    }
+
+    public static void checkDuplicateModIdsCaseInsensitive() throws IOException {
+        Path alreadyReportedStorage = Paths.get("already_reported_duplicates.yaml");
+
+        List<List<String>> oldDuplicateList;
+        List<List<String>> newDuplicateList = new ArrayList<>();
+        try (InputStream is = Files.newInputStream(alreadyReportedStorage)) {
+            oldDuplicateList = YamlUtil.load(is);
+        }
+
+        Map<String, Map<String, Object>> everestUpdate;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
+            everestUpdate = YamlUtil.load(is);
+        }
+
+        for (String name1 : everestUpdate.keySet()) {
+            for (String name2 : everestUpdate.keySet()) {
+                if (!name1.equals(name2) && name1.equalsIgnoreCase(name2)) {
+                    // :landeline: those are case-insensitive duplicates!
+                    List<String> pair = new ArrayList<>(Arrays.asList(name1, name2));
+                    pair.sort(Comparator.naturalOrder());
+
+                    if (!oldDuplicateList.contains(pair) && !newDuplicateList.contains(pair)) {
+                        sendAlertToWebhook(":warning: Mods " +
+                                "https://gamebanana.com/" + everestUpdate.get(name1).get("GameBananaType").toString().toLowerCase() + "s/" + everestUpdate.get(name1).get("GameBananaId") +
+                                " (**" + name1 + "**) and " +
+                                "https://gamebanana.com/" + everestUpdate.get(name2).get("GameBananaType").toString().toLowerCase() + "s/" + everestUpdate.get(name2).get("GameBananaId") +
+                                " (**" + name2 + "**) have the same mod ID with different cases.\nThis will cause them to overwrite each other when downloading both on Windows!"
+                        );
+                    }
+                    newDuplicateList.add(pair);
+                }
+            }
+        }
+
+        try (OutputStream os = Files.newOutputStream(alreadyReportedStorage)) {
+            YamlUtil.dump(newDuplicateList, os);
+        }
     }
 
     public static void checkAllModsWithEverestYamlValidator() throws IOException {

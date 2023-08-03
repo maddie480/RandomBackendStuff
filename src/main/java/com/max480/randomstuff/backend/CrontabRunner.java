@@ -110,6 +110,7 @@ public class CrontabRunner {
             GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator();
             GameBananaAutomatedChecks.checkPngFilesArePngFiles();
             GameBananaAutomatedChecks.checkUnapprovedCategories();
+            GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive();
 
             // update tasks
             AutoLeaver.main(null);
