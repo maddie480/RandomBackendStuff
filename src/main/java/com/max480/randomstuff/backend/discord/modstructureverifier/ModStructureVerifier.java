@@ -769,9 +769,9 @@ public class ModStructureVerifier extends ListenerAdapter {
                 String path = (String) o;
 
                 if (path.startsWith("Graphics/Atlases/Gameplay/decals")) {
-                    availableDecals.add(path.substring(25, path.length() - 4).toLowerCase(Locale.ROOT));
+                    availableDecals.add(path.substring(26, path.length() - 4).toLowerCase(Locale.ROOT));
                 } else if (path.startsWith("Graphics/Atlases/Gameplay/bgs")) {
-                    availableStylegrounds.add(path.substring(25, path.length() - 4).toLowerCase(Locale.ROOT));
+                    availableStylegrounds.add(path.substring(26, path.length() - 4).toLowerCase(Locale.ROOT));
                 }
             }
         }
@@ -890,7 +890,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 IOUtils.copy(is, os);
             }
 
-            try (InputStream is = conn.getInputStream()) {
+            try (InputStream is = ConnectionUtils.connectionToInputStream(conn)) {
                 binAsJSON = new JSONObject(IOUtils.toString(is, UTF_8));
             }
         } catch (IOException e) {
