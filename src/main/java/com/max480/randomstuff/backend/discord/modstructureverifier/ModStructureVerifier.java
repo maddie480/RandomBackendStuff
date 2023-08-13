@@ -860,14 +860,29 @@ public class ModStructureVerifier extends ListenerAdapter {
             FileUtils.copyToFile(is, tempBin);
         }
 
-        // convert it to JSON
+        // convert it to JSON using the frontend BIN-to-JSON service
         JSONObject binAsJSON = null;
-        logger.debug("Reading {} as JSON...", tempBin.getAbsolutePath());
-        try (InputStream is = new FileInputStream(tempBin)) {
-            binAsJSON = BinToJSON.toJsonDocument(is);
+
+        try {
+            logger.debug("Reading {} as JSON...", tempBin.getAbsolutePath());
+
+            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/bin-to-json");
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+
+            try (InputStream is = Files.newInputStream(tempBin.toPath());
+                 OutputStream os = conn.getOutputStream()) {
+
+                IOUtils.copy(is, os);
+            }
+
+            try (InputStream is = conn.getInputStream()) {
+                binAsJSON = new JSONObject(IOUtils.toString(is, UTF_8));
+            }
         } catch (IOException e) {
             logger.error("Something bad happened while reading the map bin!", e);
         }
+
         tempBin.delete();
 
         String mapPathEsc = formatProblematicThing(isHtml, mapPath);
