@@ -32,6 +32,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -760,8 +761,21 @@ public class ModStructureVerifier extends ListenerAdapter {
                                                    List<String> fileListing, ZipFile zipFile, String mapPath, List<String> dependencies, boolean isHtml) throws IOException {
 
         // first, let's collect what is available to us with vanilla, the map's assets, and the dependencies.
-        Set<String> availableDecals = VanillaDatabase.allVanillaDecals.stream().map(a -> a.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-        Set<String> availableStylegrounds = VanillaDatabase.allVanillaStylegrounds.stream().map(a -> a.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+        Set<String> availableDecals = new HashSet<>();
+        Set<String> availableStylegrounds = new HashSet<>();
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/vanilla-graphics-dump/list.json")) {
+            for (Object o : new JSONArray(IOUtils.toString(is, UTF_8))) {
+                String path = (String) o;
+
+                if (path.startsWith("Graphics/Atlases/Gameplay/decals")) {
+                    availableDecals.add(path.substring(25, path.length() - 4).toLowerCase(Locale.ROOT));
+                } else if (path.startsWith("Graphics/Atlases/Gameplay/bgs")) {
+                    availableStylegrounds.add(path.substring(25, path.length() - 4).toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
         Set<String> availableEntities;
         Set<String> availableTriggers;
 
