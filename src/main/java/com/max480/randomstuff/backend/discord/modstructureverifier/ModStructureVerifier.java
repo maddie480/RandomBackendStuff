@@ -1048,8 +1048,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             Set<Integer> existingCodePoints;
 
             // get which characters exist in vanilla.
-            // vanilla-fonts has the same contents as https://github.com/maddie480/RandomBackendStuff/tree/main/src/main/java/com/max480/randomstuff/backend/discord/modstructureverifier/font_generator_data/vanilla
-            try (InputStream is = ModStructureVerifier.class.getResourceAsStream("/vanilla-fonts/" + languageName + ".fnt")) {
+            try (InputStream is = Files.newInputStream(Paths.get("/app/static/font-generator-data/vanilla/" + languageName + ".fnt"))) {
                 existingCodePoints = readFontFile(is);
                 logger.debug("Read {} code points from vanilla-fonts/{}.fnt", existingCodePoints.size(), languageName);
             }
