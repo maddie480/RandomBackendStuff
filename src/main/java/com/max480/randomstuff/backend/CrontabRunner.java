@@ -5,6 +5,7 @@ import com.max480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import com.max480.randomstuff.backend.celeste.crontabs.*;
 import com.max480.randomstuff.backend.discord.crontabs.*;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
+import com.max480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
@@ -12,14 +13,14 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -84,6 +85,15 @@ public class CrontabRunner {
             return;
         }
 
+        // redirect logs to a file
+        try {
+            String date = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            System.setOut(new PrintStream(args[0] + File.separator + date + "_out.backend.log"));
+            System.setErr(new PrintStream(args[0] + File.separator + date + "_err.backend.log"));
+        } catch (FileNotFoundException e) {
+            logger.error("Could not redirect trace to log file", e);
+        }
+
         // start the health checks
         ContinuousHealthChecks.startChecking();
 
@@ -118,6 +128,7 @@ public class CrontabRunner {
             ServerCountUploader.run();
             ArbitraryModAppCacher.refreshArbitraryModAppCache();
             CustomEntityCatalogGenerator.main(null);
+            ServerJanitorBot.main(null);
             housekeepArbitraryModApp();
 
             // health checks

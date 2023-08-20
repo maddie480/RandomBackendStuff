@@ -19,7 +19,10 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -32,13 +35,6 @@ public class ContinuousHealthChecks {
 
     private static final Map<String, Integer> servicesHealth = new HashMap<>();
     private static final Map<String, Boolean> servicesStatus = new HashMap<>();
-
-    private static long lastBotAliveTime = System.currentTimeMillis();
-
-    // called by the bot main loop to signify it's in fact online and running
-    public static void botIsAlive() {
-        lastBotAliveTime = System.currentTimeMillis();
-    }
 
     public static void startChecking() {
         new Thread("Continuous Health Checks") {
@@ -68,9 +64,7 @@ public class ContinuousHealthChecks {
                         checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
                                 "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
-                        // backend checks: notify privately and restart if those go down.
-                        checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - lastBotAliveTime < 1_800_000L,
-                                "Private Crontab Runner");
+                        // backend check: notify privately and restart if it goes down.
                         checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - TimezoneRoleUpdater.getLastRunDate() < 1_800_000L,
                                 "Timezone Role Updater");
                     } catch (Exception e) {
