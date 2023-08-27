@@ -126,11 +126,15 @@ public class WebhookExecutor {
         }
 
         HttpURLConnection connection;
+
+        // concatenate the "wait=true" query param
+        webhookUrl += (webhookUrl.contains("?") ? "&" : "?") + "wait=true";
+
         if (attachments.isEmpty()) {
             // webhook with no attachment: pure JSON
             log.debug("Sending request to [{}]: {}", webhookUrl, request);
 
-            connection = ConnectionUtils.openConnectionWithTimeout(webhookUrl + "?wait=true");
+            connection = ConnectionUtils.openConnectionWithTimeout(webhookUrl);
 
             connection.setDoInput(true);
             connection.setDoOutput(true);
@@ -154,7 +158,7 @@ public class WebhookExecutor {
 
             HashMap<String, String> headers = new HashMap<>();
             headers.putAll(httpHeaders);
-            HttpPostMultipart multipart = new HttpPostMultipart(webhookUrl + "?wait=true", "UTF-8", headers);
+            HttpPostMultipart multipart = new HttpPostMultipart(webhookUrl, "UTF-8", headers);
 
             multipart.addFormField("payload_json", request.toString());
             int index = 0;
