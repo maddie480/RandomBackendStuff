@@ -1,0 +1,62 @@
+services:
+  frontend:
+    image: max480/random-stuff-frontend
+    hostname: frontend
+    network_mode: host
+    restart: on-failure
+    environment:
+      SECRET_CONSTANTS: |
+        {
+          "GAMES_BOT_CLIENT_ID": "[TODO]",
+          "GAMES_BOT_PUBLIC_KEY": "[TODO]",
+
+          "CUSTOM_SLASH_COMMANDS_CLIENT_ID": "[TODO]",
+          "CUSTOM_SLASH_COMMANDS_CLIENT_SECRET": "[TODO]",
+          "CUSTOM_SLASH_COMMANDS_PUBLIC_KEY": "[TODO]",
+
+          "TIMEZONE_BOT_CLIENT_ID": "[TODO]",
+          "TIMEZONE_BOT_PUBLIC_KEY": "[TODO]",
+          "TIMEZONEDB_API_KEY": "[TODO]",
+
+          "BANANABOT_PUBLIC_KEY": "[TODO]",
+
+          "OLYMPUS_NEWS_MANAGER_CLIENT_ID": "[TODO]",
+          "OLYMPUS_NEWS_MANAGER_PUBLIC_KEY": "[TODO]",
+
+          "RELOAD_SHARED_SECRET": "[TODO]",
+
+          "SRC_MOD_LIST_KEY": "[TODO]",
+
+          "RSS_AGGREGATOR_SECRET": "[TODO]",
+
+          "SECURE_STORAGE_WRITE_BASIC_AUTH": "[TODO]",
+          "SECURE_STORAGE_READ_BASIC_AUTH": "[TODO]",
+
+          "GITHUB_SSH_KNOWN_HOSTS": "[TODO]",
+          "GITHUB_SSH_PUBLIC_KEY": "[TODO]",
+          "GITHUB_SSH_PRIVATE_KEY": "[TODO]"
+        }
+    volumes:
+      - /home/debian/shared:/shared
+      - /home/debian/logs:/var/lib/jetty/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "0.4"
+          memory: 384M
+
+  backend:
+    image: max480/random-stuff-backend
+    hostname: backend
+    network_mode: host
+    restart: on-failure
+    env_file: secret_constants
+    volumes:
+      - /home/debian/backend:/backend
+      - /home/debian/shared:/shared
+      - /home/debian/logs:/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "0.4"
+          memory: 448M

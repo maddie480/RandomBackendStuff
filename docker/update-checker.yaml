@@ -1,0 +1,14 @@
+services:
+  update-checker:
+    image: max480/random-stuff-backend
+    network_mode: host
+    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/CrontabRunner --updater/' /app/run_bot.sh && /app/run_bot.sh"]
+    env_file: secret_constants
+    volumes:
+      - /home/debian/backend:/backend
+      - /home/debian/shared:/shared
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 256M
