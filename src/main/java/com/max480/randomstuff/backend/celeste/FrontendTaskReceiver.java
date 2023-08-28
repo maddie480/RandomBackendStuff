@@ -29,16 +29,14 @@ import java.util.List;
  */
 public class FrontendTaskReceiver {
     private static final Logger log = LoggerFactory.getLogger(FrontendTaskReceiver.class);
-    private static ServerSocket serverSocket = null;
 
     /**
      * Starts listening for pub/sub messages.
      */
     public static void start() {
         new Thread(() -> {
-            try {
-                serverSocket = new ServerSocket(44480);
-                while (serverSocket != null) {
+            try (ServerSocket serverSocket = new ServerSocket(44480)) {
+                while (true) {
                     try (Socket connection = serverSocket.accept()) {
                         messageReceived(IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8));
                     } catch (Exception e) {
@@ -49,22 +47,6 @@ public class FrontendTaskReceiver {
                 log.error("Error while starting server socket", e);
             }
         }).start();
-    }
-
-    /**
-     * Stops listening for pub/sub messages.
-     */
-    public static void stop() {
-        if (serverSocket != null) {
-            ServerSocket ref = serverSocket;
-            serverSocket = null; // set it to null first because the thread is going to blow up, and serverSocket being null will break the loop
-
-            try {
-                ref.close();
-            } catch (IOException e) {
-                log.warn("Error while closing frontend task receiver socket", e);
-            }
-        }
     }
 
     /**
@@ -85,6 +67,8 @@ public class FrontendTaskReceiver {
                             withPathsCheck ? o.getString("assetFolderName") : null);
                 }
                 case "fontGenerate" -> handleFontGenerateRequest(o.getString("fileName"), o.getString("language"));
+                case "customFontGenerate" -> handleCustomFontGenerateRequest(o.getString("textFileName"),
+                        o.getString("fontFileName"), o.getString("resultFontFileName"));
                 case "fileSearch" -> {
                     try {
                         ModFileSearcher.findAllModsByFile(
@@ -132,6 +116,23 @@ public class FrontendTaskReceiver {
                     (message, files) -> sendResponse(taskName, message, files));
         } catch (IOException e) {
             log.error("Could not handle font generation asked by frontend!", e);
+        }
+    }
+
+    /**
+     * Handles requests to generate a Celeste custom font using the Font Generator.
+     */
+    private static void handleCustomFontGenerateRequest(String textFileName, String fontFileName, String resultFontFileName) {
+        log.info("Frontend asked us to generate custom font {} from text {} and font {}!", resultFontFileName, textFileName, fontFileName);
+
+        try {
+            String taskName = textFileName.substring(0, textFileName.lastIndexOf("."));
+            String textFile = grabFileFromSharedStorage(textFileName);
+            String fontFile = grabFileFromSharedStorage(fontFileName);
+            FontGenerator.generateCustomFontFromFrontend(new File(textFile), new File(fontFile), resultFontFileName,
+                    (message, files) -> sendResponse(taskName, message, files));
+        } catch (IOException e) {
+            log.error("Could not handle custom font generation asked by frontend!", e);
         }
     }
 

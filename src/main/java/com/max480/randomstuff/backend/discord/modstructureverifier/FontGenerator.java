@@ -5,8 +5,10 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.utils.FileUpload;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.function.IORunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -17,19 +19,20 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.awt.*;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -42,15 +45,87 @@ public class FontGenerator {
     private static final Logger logger = LoggerFactory.getLogger(FontGenerator.class);
 
     public static void generateFontFromDiscord(File inputFile, String language, MessageChannel channel, Message message) {
-        generateFont(inputFile, language, channel, message, null);
+        generateFont(inputFile, language, channel, null, null, 0, message, null);
+        tryDeleteFile(inputFile.toPath());
     }
 
     public static void generateFontFromFrontend(File inputFile, String language, BiConsumer<String, List<File>> sendResultToFrontend) {
-        generateFont(inputFile, language, null, null, sendResultToFrontend);
+        generateFont(inputFile, language, null, null, null, 0, null, sendResultToFrontend);
+        tryDeleteFile(inputFile.toPath());
     }
 
-    private static void generateFont(File inputFile, String language, MessageChannel channel, Message message, BiConsumer<String, List<File>> sendResultToFrontend) {
-        logger.info("{} asked to generate a font in channel {} for language {}!", message == null ? "[FRONTEND]" : message.getMember(), channel, language);
+    public static void generateCustomFontFromFrontend(File textFile, File fontFile, String fontFileName, BiConsumer<String, List<File>> sendResultToFrontend) {
+        String fontName;
+
+        try {
+            fontName = Font.createFont(Font.TRUETYPE_FONT, fontFile).getFontName();
+            logger.debug("The custom font at {} is called {}", fontFile, fontName);
+        } catch (FontFormatException | IOException e) {
+            logger.error("Custom font could not be parsed!", e);
+            sendResultToFrontend.accept("❌ <b>The given custom font could not be read!</b> Make sure it is valid.", Collections.emptyList());
+            tryDeleteFile(textFile.toPath());
+            tryDeleteFile(fontFile.toPath());
+            return;
+        }
+
+        logger.debug("Generating reference non-existing font...");
+
+        generateFont(textFile, fontFileName, null, new File("/tmp/nonexisting"), "nonexisting", 0, null,
+                (sampleResult, sampleFiles) -> interceptErrors(sampleResult, sampleFiles, sendResultToFrontend, () -> {
+
+                    Set<String> shaSums = getShaSumsOfPngs(sampleFiles);
+                    for (File f : sampleFiles) tryDeleteFile(f.toPath());
+
+                    AtomicBoolean shouldContinue = new AtomicBoolean(true);
+
+                    for (int i = 0; i < 10 && shouldContinue.get(); i++) {
+                        logger.debug("Generating font with charSet={}...", i);
+                        shouldContinue.set(false);
+
+                        generateFont(textFile, fontFileName, null, fontFile, fontName, i, null,
+                                (result, files) -> interceptErrors(result, files, sendResultToFrontend, () -> {
+
+                                    Set<String> newShaSums = getShaSumsOfPngs(files);
+                                    if (newShaSums.equals(shaSums)) {
+                                        // the new font we generated matches the non-existing one, so just delete it and try another value
+                                        for (File f : files) tryDeleteFile(f.toPath());
+                                        shouldContinue.set(true);
+                                    } else {
+                                        // the new font actually has content! send it as a result.
+                                        sendResultToFrontend.accept(result, files);
+                                        shouldContinue.set(false);
+                                    }
+                                }));
+                    }
+
+                    if (shouldContinue.get()) {
+                        throw new IOException("No appropriate charSet was found!");
+                    }
+                }));
+
+        tryDeleteFile(textFile.toPath());
+        tryDeleteFile(fontFile.toPath());
+    }
+
+
+    private static void interceptErrors(String result, List<File> files, BiConsumer<String, List<File>> onFailure, IORunnable onSuccess) {
+        if (result.startsWith("❌")) {
+            // underlying task has failed, pass the failure around
+            onFailure.accept(result, files);
+        } else {
+            try {
+                onSuccess.run();
+            } catch (IOException e) {
+                // task failed, so turn the result into an unhandled failure
+                logger.error("Failed generating the reference non-existing font!", e);
+                onFailure.accept("❌ An error occurred while generating the font file!", Collections.emptyList());
+            }
+        }
+    }
+
+    private static void generateFont(File inputFile, String language, MessageChannel channel, File customFontFile, String customFontName, int charSetIndex,
+                                     Message message, BiConsumer<String, List<File>> sendResultToFrontend) {
+        logger.info("{} asked to generate a font in channel {} for language {}, font path {}!", message == null ? "[FRONTEND]" : message.getMember(), channel, language, customFontFile);
 
         Consumer<String> sendSimpleResponse = (messageToSend) -> {
             if (channel == null) {
@@ -66,18 +141,22 @@ public class FontGenerator {
 
         try {
             String text = FileUtils.readFileToString(inputFile, StandardCharsets.UTF_8);
-            Files.delete(inputFile.toPath());
 
-            if (!Arrays.asList("chinese", "japanese", "korean", "renogare", "russian").contains(language)) {
+            if (customFontFile == null && !Arrays.asList("chinese", "japanese", "korean", "renogare", "russian").contains(language)) {
                 sendSimpleResponse.accept(pickFormat(isHtml,
                         "❌ The language should be one of the following: <code>chinese</code>, <code>japanese</code>, <code>korean</code>, <code>renogare</code> or <code>russian</code>.",
                         ":x: The language should be one of the following: `chinese`, `japanese`, `korean`, `renogare` or `russian`."));
-                cleanup(inputFile, null);
                 return;
             }
 
-            // find out which characters already exist for the language
-            Set<Integer> existingCodes = getListOfExistingCodesFor(Paths.get("/app/static/font-generator-data/vanilla/" + language + ".fnt"));
+            Set<Integer> existingCodes;
+            if (customFontFile != null) {
+                // custom fonts start from a blank page
+                existingCodes = new HashSet<>();
+            } else {
+                // find out which characters already exist for the language
+                existingCodes = getListOfExistingCodesFor(Paths.get("/app/static/font-generator-data/vanilla/" + language + ".fnt"));
+            }
 
             // take all characters that do not exist and jam them all into a single string
             final String missingCharacters = text.codePoints()
@@ -92,7 +171,6 @@ public class FontGenerator {
                 sendSimpleResponse.accept(pickFormat(isHtml,
                         "✅ <b>All the characters in your dialog file are already present in the vanilla font!</b> You have nothing to do.",
                         ":white_check_mark: **All the characters in your dialog file are already present in the vanilla font!** You have nothing to do."));
-                cleanup(inputFile, null);
                 return;
             }
 
@@ -102,18 +180,42 @@ public class FontGenerator {
             Path targetFile = tempDirectory.resolve(language + "_generated_" + System.currentTimeMillis() + ".fnt");
             FileUtils.writeStringToFile(textFile.toFile(), "\ufeff" + missingCharacters, StandardCharsets.UTF_8);
 
+            Path fontConfig;
+            if (customFontFile != null) {
+                // temporarily create a font config file referencing our custom font, copying from Renogare
+                fontConfig = Paths.get("/tmp/custom_font_" + System.currentTimeMillis() + ".bmfc");
+                try (InputStream is = Files.newInputStream(Paths.get("/app/static/font-generator-data/configs/renogare.bmfc"));
+                     OutputStream os = Files.newOutputStream(fontConfig)) {
+
+                    String contents = IOUtils.toString(is, StandardCharsets.UTF_8);
+                    contents = contents
+                            .replace("..\\fonts\\Renogare.otf", toWindowsPath(customFontFile.toPath()))
+                            .replace("Renogare", customFontName)
+                            .replace("charSet=0", "charSet=" + charSetIndex);
+                    IOUtils.write(contents, os, StandardCharsets.UTF_8);
+                }
+            } else {
+                // read one of the static font configs that ship with the game
+                fontConfig = Paths.get("/app/static/font-generator-data/configs/" + language + ".bmfc");
+            }
+
             // run BMFont to generate the font!
             if (message != null) message.addReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
             new ProcessBuilder("/usr/bin/wine", "/app/static/font-generator-data/bmfont.exe",
-                    "-c", toWindowsPath(Paths.get("/app/static/font-generator-data/configs/" + language + ".bmfc")),
+                    "-c", toWindowsPath(fontConfig),
                     "-t", toWindowsPath(textFile),
                     "-o", toWindowsPath(targetFile))
                     .inheritIO()
                     .start().waitFor();
             if (message != null) message.removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
 
+            if (customFontFile != null) {
+                // delete the temporary font file
+                Files.delete(fontConfig);
+            }
+
             if (!Files.exists(targetFile)) {
-                cleanup(inputFile, tempDirectory);
+                tryDeleteDirectory(tempDirectory);
                 throw new IOException("No font file was generated at all!");
             }
 
@@ -124,12 +226,18 @@ public class FontGenerator {
                     .mapToObj(c -> new String(new int[]{c}, 0, 1))
                     .collect(Collectors.joining());
 
-            if (generatedCodes.size() == 0) {
+            if (generatedCodes.isEmpty()) {
                 // heyyyy, BMFont generated no character at all, what's this?
-                sendSimpleResponse.accept(pickFormat(isHtml,
-                        "❌ <b>All characters are missing from the font!</b> Make sure you picked the right language.",
-                        ":x: **All characters are missing from the font!** Make sure you picked the right language."));
-                cleanup(inputFile, tempDirectory);
+                if (customFontFile != null) {
+                    sendSimpleResponse.accept(pickFormat(isHtml,
+                            "❌ <b>All characters are missing from the font!</b> Make sure you sent a valid font file.",
+                            ":x: **All characters are missing from the font!** Make sure you sent a valid font file."));
+                } else {
+                    sendSimpleResponse.accept(pickFormat(isHtml,
+                            "❌ <b>All characters are missing from the font!</b> Make sure you picked the right language.",
+                            ":x: **All characters are missing from the font!** Make sure you picked the right language."));
+                }
+                tryDeleteDirectory(tempDirectory);
                 return;
             }
 
@@ -183,7 +291,7 @@ public class FontGenerator {
             }
         }
 
-        cleanup(inputFile, tempDirectory);
+        tryDeleteDirectory(tempDirectory);
     }
 
     private static String toWindowsPath(Path path) {
@@ -192,14 +300,26 @@ public class FontGenerator {
         return "Z:" + path.toAbsolutePath().toString().replace("/", "\\");
     }
 
-    private static void cleanup(File inputFile, Path tempDirectory) {
-        inputFile.delete();
+    private static void tryDeleteDirectory(Path directory) {
+        if (directory != null) {
+            logger.debug("Deleting directory {}...", directory.toAbsolutePath());
 
-        if (tempDirectory != null) {
             try {
-                FileUtils.deleteDirectory(tempDirectory.toFile());
+                FileUtils.deleteDirectory(directory.toFile());
             } catch (IOException e) {
-                logger.error("Failed deleting the temp directory for font generation!", e);
+                logger.error("Failed deleting directory " + directory.toAbsolutePath() + "!", e);
+            }
+        }
+    }
+
+    private static void tryDeleteFile(Path file) {
+        if (file != null && Files.isRegularFile(file)) {
+            logger.debug("Deleting file {}...", file.toAbsolutePath());
+
+            try {
+                Files.delete(file);
+            } catch (IOException e) {
+                logger.error("Failed deleting file" + file.toAbsolutePath() + "!", e);
             }
         }
     }
@@ -226,5 +346,25 @@ public class FontGenerator {
 
     private static String pickFormat(boolean isHtml, String html, String md) {
         return isHtml ? html : md;
+    }
+
+    private static Set<String> getShaSumsOfPngs(List<File> files) throws IOException {
+        Set<String> shaSums = new HashSet<>();
+
+        for (File f : files) {
+            if (f.getName().endsWith(".zip")) {
+                try (ZipInputStream is = new ZipInputStream(new FileInputStream(f))) {
+                    ZipEntry e;
+                    while ((e = is.getNextEntry()) != null) {
+                        if (e.getName().endsWith(".png")) {
+                            shaSums.add(DigestUtils.sha512Hex(is));
+                        }
+                    }
+                }
+            }
+        }
+
+        logger.debug("Found sha512 sums: {}", shaSums);
+        return shaSums;
     }
 }

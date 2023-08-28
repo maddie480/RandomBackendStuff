@@ -20,7 +20,8 @@ COPY --chown=debian:debian static /app/static
 
 RUN cd /app/static && \
   chmod -c u+x /app/run_bot.sh *.sh && \
-  dotnet tool install -g ilspycmd
+  dotnet tool install -g ilspycmd && \
+  wine cmd /c echo success
 
 VOLUME /logs
 VOLUME /backend
