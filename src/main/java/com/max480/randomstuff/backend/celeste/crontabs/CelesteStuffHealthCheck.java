@@ -21,6 +21,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -690,43 +691,6 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
-     * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation, using libgdx.
-     * Run daily.
-     */
-    public static void checkFontGeneratorLibGdx() throws IOException {
-        log.debug("Downloading sample dialog file...");
-
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/Japanese.txt");
-             OutputStream os = new FileOutputStream("/tmp/Japanese.txt")) {
-
-            IOUtils.copy(is, os);
-        }
-
-        log.debug("Sending libgdx request to font generator...");
-
-        // build a request to font generator
-        HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
-        submit.addFormField("fontFileName", "collabutils2_japanese_healthcheck");
-        submit.addFormField("font", "japanese");
-        submit.addFormField("method", "libgdx");
-        submit.addFilePart("dialogFile", new File("/tmp/Japanese.txt"));
-        HttpURLConnection result = submit.finish();
-
-        // delete the temp file
-        new File("/tmp/Japanese.txt").delete();
-
-        // read the response as a zip file
-        try (ZipInputStream zip = new ZipInputStream(ConnectionUtils.connectionToInputStream(result))) {
-            if (!zip.getNextEntry().getName().equals("japanese.fnt")
-                    || !zip.getNextEntry().getName().equals("collabutils2_japanese_healthcheck.png")
-                    || zip.getNextEntry() != null) {
-
-                throw new IOException("Font generator ZIP had unexpected contents!");
-            }
-        }
-    }
-
-    /**
      * Checks that the font generator works by sending it the Collab Utils 2 Japanese translation, using BMFont.
      * Run daily.
      */
@@ -739,12 +703,11 @@ public class CelesteStuffHealthCheck {
             IOUtils.copy(is, os);
         }
 
-        log.debug("Sending request to BMFont font generator...");
+        log.debug("Sending request to font generator...");
 
         // build a request to font generator
         HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
         submit.addFormField("font", "japanese");
-        submit.addFormField("method", "bmfont");
         submit.addFilePart("dialogFile", new File("/tmp/Japanese.txt"));
         HttpURLConnection result = submit.finish();
 
@@ -778,6 +741,80 @@ public class CelesteStuffHealthCheck {
             for (int i = 0; i < 2; i++) {
                 ZipEntry entry = zip.getNextEntry();
                 if (entry == null || (!entry.getName().equals("japanese.fnt") && !entry.getName().startsWith("japanese_generated_"))) {
+                    throw new IOException("Font generator ZIP had unexpected contents!");
+                }
+            }
+
+            if (zip.getNextEntry() != null) {
+                throw new IOException("Font generator ZIP had unexpected contents!");
+            }
+        }
+    }
+
+    /**
+     * Checks that the font generator works by sending it the Collab Utils 2 English text file, using BMFont.
+     * Run daily.
+     */
+    public static void checkFontGeneratorBMFontCustom() throws IOException {
+        log.debug("Downloading sample dialog file...");
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/EverestAPI/CelesteCollabUtils2/master/Dialog/English.txt");
+             OutputStream os = new FileOutputStream("/tmp/English.txt")) {
+
+            IOUtils.copy(is, os);
+        }
+
+        log.debug("Downloading sample font...");
+
+        // download a test font
+        Path customFont = Paths.get("/tmp/yes.ttf");
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://cdn.discordapp.com/attachments/445236692136230943/1145708558177009745/Commodore-64-v6.3.TTF");
+             OutputStream os = Files.newOutputStream(customFont)) {
+
+            IOUtils.copy(is, os);
+        }
+
+        log.debug("Sending request to custom font generator...");
+
+        // build a request to font generator
+        HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
+        submit.addFormField("font", "custom");
+        submit.addFilePart("dialogFile", new File("/tmp/English.txt"));
+        submit.addFilePart("fontFile", customFont.toFile());
+        submit.addFormField("fontFileName", "celeste_stuff_health_check");
+        HttpURLConnection result = submit.finish();
+
+        // delete the temp files
+        Files.delete(customFont);
+        new File("/tmp/English.txt").delete();
+
+        if (result.getResponseCode() != 200) {
+            throw new IOException("Font generator responded with HTTP code " + result.getResponseCode());
+        }
+
+        String url = result.getURL().toString();
+        log.debug("Font generator task tracker URL: {}, checking result in 60 seconds", url);
+
+        try {
+            Thread.sleep(60000);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
+
+        log.debug("Loading result page: {}", url);
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+            String response = IOUtils.toString(is, UTF_8);
+            if (!response.contains("Here is the font you need to place")) {
+                throw new IOException("Font generator result page does not indicate success!");
+            }
+        }
+
+        // read the response as a zip file
+        log.debug("Loading generated font file: {}/download/0", url);
+        try (ZipInputStream zip = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(url + "/download/0"))) {
+            for (int i = 0; i < 4; i++) {
+                ZipEntry entry = zip.getNextEntry();
+                if (entry == null || (!entry.getName().equals("celeste_stuff_health_check.fnt") && !entry.getName().startsWith("celeste_stuff_health_check_generated_"))) {
                     throw new IOException("Font generator ZIP had unexpected contents!");
                 }
             }

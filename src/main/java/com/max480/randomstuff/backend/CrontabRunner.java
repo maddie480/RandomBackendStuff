@@ -136,8 +136,8 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkEverestExists(true);
             CelesteStuffHealthCheck.checkOlympusExists(true);
             CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch();
-            CelesteStuffHealthCheck.checkFontGeneratorLibGdx();
             CelesteStuffHealthCheck.checkFontGeneratorBMFont();
+            CelesteStuffHealthCheck.checkFontGeneratorBMFontCustom();
             CelesteStuffHealthCheck.checkModStructureVerifier();
             CelesteStuffHealthCheck.checkMapTreeViewer();
             CelesteStuffHealthCheck.checkFileSearcher();
