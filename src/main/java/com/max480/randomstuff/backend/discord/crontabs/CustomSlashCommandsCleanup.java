@@ -108,10 +108,8 @@ public class CustomSlashCommandsCleanup {
                 return new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
             }
         } else {
-            try (InputStream is = connection.getErrorStream()) {
-                String s = IOUtils.toString(is, StandardCharsets.UTF_8);
-                log.warn("Error {}: {}", connection.getResponseCode(), s);
-                JSONObject error = new JSONObject(s);
+            try (InputStream is = getErrorStream(connection)) {
+                JSONObject error = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
 
                 if (error.has("retry_after")) {
                     try {
@@ -153,5 +151,13 @@ public class CustomSlashCommandsCleanup {
             JSONObject o = new JSONObject(response);
             return o.getString("access_token");
         }
+    }
+
+    private static InputStream getErrorStream(HttpURLConnection con) throws IOException {
+        InputStream is = con.getErrorStream();
+        if ("gzip".equals(con.getContentEncoding())) {
+            return new GZIPInputStream(is);
+        }
+        return is;
     }
 }
