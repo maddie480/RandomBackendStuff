@@ -109,7 +109,9 @@ public class CustomSlashCommandsCleanup {
             }
         } else {
             try (InputStream is = connection.getErrorStream()) {
-                JSONObject error = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                String s = IOUtils.toString(is, StandardCharsets.UTF_8);
+                log.warn("Error {}: {}", connection.getResponseCode(), s);
+                JSONObject error = new JSONObject(s);
 
                 if (error.has("retry_after")) {
                     try {
