@@ -10,6 +10,8 @@ import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
+import org.json.JSONObject;
+import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,6 +155,7 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkCustomEntityCatalog();
             CelesteStuffHealthCheck.checkOlympusNews();
             checkArbitraryModApp();
+            checkRadioLNJ();
         });
     }
 
@@ -199,6 +202,50 @@ public class CrontabRunner {
             if (!result.contains("Jungle Helper") || !result.contains("Collab Utils 2")) {
                 throw new IOException("Did not find expected contents in arbitrary mod app!");
             }
+        }
+    }
+
+    private static void checkRadioLNJ() throws IOException {
+        logger.debug("Starting Radio LNJ health check");
+
+        int elementCount;
+
+        try {
+            elementCount = Integer.parseInt(Jsoup.connect("https://maddie480.ovh/radio-lnj")
+                    .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
+                    .get()
+                    .select(".header b")
+                    .get(0).text());
+        } catch (NumberFormatException e) {
+            throw new IOException("Did not find the amount of songs where it was expected!");
+        }
+
+        logger.debug("Page says there are {} items in the playlist, retrieving it", elementCount);
+
+        JSONObject playlist;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/radio-lnj/playlist.json")) {
+            playlist = new JSONObject(IOUtils.toString(is, UTF_8));
+        }
+
+        if (playlist.getJSONArray("playlist").length() != elementCount) {
+            throw new IOException("Amount of elements in playlist is wrong!");
+        }
+
+        if (playlist.getInt("seek") > playlist.getJSONArray("playlist").getJSONObject(0).getInt("duration")) {
+            throw new IOException("Seek exceeded first song duration!");
+        }
+
+        String url = "https://maddie480.ovh" + playlist.getJSONArray("playlist").getJSONObject(0).getString("path");
+        logger.debug("Downloading head of playlist at {}", url);
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+            long size = IOUtils.consume(is);
+
+            if (size < 1) {
+                throw new IOException("First song in playlist is empty!");
+            }
+
+            logger.debug("Head of playlist is {} bytes", size);
         }
     }
 
