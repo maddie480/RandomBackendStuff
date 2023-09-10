@@ -10,6 +10,7 @@ import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
@@ -233,6 +234,14 @@ public class CrontabRunner {
 
         if (playlist.getInt("seek") > playlist.getJSONArray("playlist").getJSONObject(0).getInt("duration")) {
             throw new IOException("Seek exceeded first song duration!");
+        }
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/radio-lnj/playlist")) {
+            if (!IOUtils.toString(is, UTF_8).contains(StringEscapeUtils.escapeHtml4(
+                    playlist.getJSONArray("playlist").getJSONObject(0).getString("trackName")))) {
+
+                throw new IOException("Playlist page does not show head of playlist!");
+            }
         }
 
         String url = "https://maddie480.ovh" + playlist.getJSONArray("playlist").getJSONObject(0).getString("path");
