@@ -124,22 +124,21 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkOlympusExists(boolean daily) throws IOException {
         JSONObject object = new JSONObject(ConnectionUtils.toStringWithTimeout("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds", UTF_8));
-        JSONArray versionList = object.getJSONArray("value");
         int latestStable = -1;
         int latestMain = -1;
         int latestWindowsInit = -1;
-        for (Object version : versionList) {
-            JSONObject versionObj = (JSONObject) version;
-            String reason = versionObj.getString("reason");
-            if (Arrays.asList("manual", "individualCI").contains(reason)
-                    && "completed".equals(versionObj.getString("status"))
-                    && "succeeded".equals(versionObj.getString("result"))) {
 
-                switch (versionObj.getString("sourceBranch")) {
-                    case "refs/heads/main" -> latestMain = Math.max(latestMain, versionObj.getInt("id"));
-                    case "refs/heads/stable" -> latestStable = Math.max(latestStable, versionObj.getInt("id"));
-                    case "refs/heads/windows-init" ->
-                            latestWindowsInit = Math.max(latestWindowsInit, versionObj.getInt("id"));
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
+            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+
+            for (Object version : versionList) {
+                JSONObject versionObj = (JSONObject) version;
+
+                switch (versionObj.getString("branch")) {
+                    case "windows-init" ->
+                            latestWindowsInit = Math.max(latestWindowsInit, versionObj.getInt("version"));
+                    case "main" -> latestMain = Math.max(latestMain, versionObj.getInt("version"));
+                    case "stable" -> latestStable = Math.max(latestStable, versionObj.getInt("version"));
                 }
             }
         }
@@ -158,15 +157,9 @@ public class CelesteStuffHealthCheck {
         log.debug("Latest Olympus windows-init version: " + latestWindowsInit);
 
         if (daily) {
-            checkOlympusVersionExists(latestStable, "windows.main");
-            checkOlympusVersionExists(latestStable, "macos.main");
-            checkOlympusVersionExists(latestStable, "linux.main");
-            checkOlympusVersionExists(latestMain, "windows.main");
-            checkOlympusVersionExists(latestMain, "macos.main");
-            checkOlympusVersionExists(latestMain, "linux.main");
-            checkOlympusVersionExists(latestWindowsInit, "windows.main");
-            checkOlympusVersionExists(latestWindowsInit, "macos.main");
-            checkOlympusVersionExists(latestWindowsInit, "linux.main");
+            checkOlympusVersionExists(latestMain);
+            checkOlympusVersionExists(latestStable);
+            checkOlympusVersionExists(latestWindowsInit);
         }
     }
 
@@ -192,10 +185,20 @@ public class CelesteStuffHealthCheck {
     /**
      * Checks that an Olympus artifact is downloadable.
      */
-    private static void checkOlympusVersionExists(int version, String artifactName) throws IOException {
-        log.debug("Downloading Olympus version {}, artifact {}...", version, artifactName);
+    private static void checkOlympusVersionExists(int versionNumber) throws IOException {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
+            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
 
-        checkExists("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds/" + version + "/artifacts?artifactName=" + artifactName + "&api-version=5.0&%24format=zip");
+            for (Object version : versionList) {
+                JSONObject versionObj = (JSONObject) version;
+
+                if (versionObj.getInt("version") == versionNumber) {
+                    checkExists(versionObj.getString("windowsDownload"));
+                    checkExists(versionObj.getString("macDownload"));
+                    checkExists(versionObj.getString("linuxDownload"));
+                }
+            }
+        }
     }
 
     /**
@@ -467,6 +470,15 @@ public class CelesteStuffHealthCheck {
                 .contains("\"version\":" + latestDev)) {
 
             throw new IOException("Everest versions test failed");
+        }
+
+        // Olympus versions: check that the expected file is sent out
+        try (InputStream i1 = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"));
+             InputStream i2 = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/olympus-versions")) {
+
+            if (!IOUtils.toString(i1, UTF_8).equals(IOUtils.toString(i2, UTF_8))) {
+                throw new IOException("Olympus versions test failed");
+            }
         }
     }
 

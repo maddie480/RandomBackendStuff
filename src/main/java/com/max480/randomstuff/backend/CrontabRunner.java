@@ -183,6 +183,7 @@ public class CrontabRunner {
     private static void runUpdater(boolean fullUpdateCheck) {
         runProcessAndAlertOnException("Everest Update Checker", () -> {
             EverestVersionLister.checkEverestVersions();
+            OlympusVersionLister.checkOlympusVersions();
             com.max480.everest.updatechecker.Main.updateDatabase(fullUpdateCheck);
             UpdateOutgoingWebhooks.notifyUpdate();
         });
