@@ -123,10 +123,9 @@ public class CelesteStuffHealthCheck {
      * Checks that every Olympus branch has a version and that we can download it for all 3 supported operating systems.
      */
     public static void checkOlympusExists(boolean daily) throws IOException {
-        JSONObject object = new JSONObject(ConnectionUtils.toStringWithTimeout("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds", UTF_8));
-        int latestStable = -1;
-        int latestMain = -1;
-        int latestWindowsInit = -1;
+        String latestStable = "";
+        String latestMain = "";
+        String latestWindowsInit = "";
 
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
             JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
@@ -136,31 +135,35 @@ public class CelesteStuffHealthCheck {
 
                 switch (versionObj.getString("branch")) {
                     case "windows-init" ->
-                            latestWindowsInit = Math.max(latestWindowsInit, versionObj.getInt("version"));
-                    case "main" -> latestMain = Math.max(latestMain, versionObj.getInt("version"));
-                    case "stable" -> latestStable = Math.max(latestStable, versionObj.getInt("version"));
+                            latestWindowsInit = maxString(latestWindowsInit, versionObj.getString("version"));
+                    case "main" -> latestMain = maxString(latestMain, versionObj.getString("version"));
+                    case "stable" -> latestStable = maxString(latestStable, versionObj.getString("version"));
                 }
             }
         }
 
-        if (latestStable == -1) {
+        if (latestStable.isEmpty()) {
             throw new IOException("There is no Olympus stable version :a:");
         }
         log.debug("Latest Olympus stable version: " + latestStable);
-        if (latestMain == -1) {
+        if (latestMain.isEmpty()) {
             throw new IOException("There is no Olympus dev version :a:");
         }
         log.debug("Latest Olympus dev version: " + latestMain);
-        if (latestWindowsInit == -1) {
+        if (latestWindowsInit.isEmpty()) {
             throw new IOException("There is no Olympus windows-init version :a:");
         }
         log.debug("Latest Olympus windows-init version: " + latestWindowsInit);
 
         if (daily) {
-            checkOlympusVersionExists(latestMain);
-            checkOlympusVersionExists(latestStable);
-            checkOlympusVersionExists(latestWindowsInit);
+            checkOlympusVersionExists("main");
+            checkOlympusVersionExists("stable");
+            checkOlympusVersionExists("windows-init");
         }
+    }
+
+    private static String maxString(String a, String b) {
+        return a.compareTo(b) > 0 ? a : b;
     }
 
     /**
@@ -185,17 +188,18 @@ public class CelesteStuffHealthCheck {
     /**
      * Checks that an Olympus artifact is downloadable.
      */
-    private static void checkOlympusVersionExists(int versionNumber) throws IOException {
+    private static void checkOlympusVersionExists(String branch) throws IOException {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
             JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
 
-                if (versionObj.getInt("version") == versionNumber) {
+                if (branch.equals(versionObj.getString("branch"))) {
                     checkExists(versionObj.getString("windowsDownload"));
                     checkExists(versionObj.getString("macDownload"));
                     checkExists(versionObj.getString("linuxDownload"));
+                    break;
                 }
             }
         }
@@ -472,6 +476,13 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Everest versions test failed");
         }
 
+        // Everest versions: check that we are getting redirected to latest dev
+        HttpURLConnection redirectConnection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/download-everest?branch=dev");
+        redirectConnection.setInstanceFollowRedirects(false);
+        if (redirectConnection.getResponseCode() != 302 || !redirectConnection.getHeaderField("Location").contains((latestDev - 700) + "")) {
+            throw new IOException("Everest redirect test failed");
+        }
+
         // Olympus versions: check that the expected file is sent out
         try (InputStream i1 = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"));
              InputStream i2 = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/olympus-versions")) {
@@ -479,6 +490,26 @@ public class CelesteStuffHealthCheck {
             if (!IOUtils.toString(i1, UTF_8).equals(IOUtils.toString(i2, UTF_8))) {
                 throw new IOException("Olympus versions test failed");
             }
+        }
+
+        // Olympus redirect: check that we are redirected to latest stable
+        String latestStableLink = null;
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
+            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+
+            for (Object version : versionList) {
+                JSONObject versionObj = (JSONObject) version;
+                if ("stable".equals(versionObj.getString("branch"))) {
+                    latestStableLink = versionObj.getString("windowsDownload");
+                    break;
+                }
+            }
+        }
+
+        redirectConnection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/download-olympus?branch=stable&platform=windows");
+        redirectConnection.setInstanceFollowRedirects(false);
+        if (redirectConnection.getResponseCode() != 302 || !redirectConnection.getHeaderField("Location").equals(latestStableLink)) {
+            throw new IOException("Olympus redirect test failed");
         }
     }
 
