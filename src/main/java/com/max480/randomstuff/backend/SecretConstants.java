@@ -93,6 +93,10 @@ public class SecretConstants {
     // URL used to update the China-accessible mirror of updater files
     public static String CHINA_MIRROR_UPDATE_WEBHOOK;
 
+    // Twitch credentials
+    public static String TWITCH_CLIENT_ID;
+    public static String TWITCH_CLIENT_SECRET;
+
     static {
         // The SECRET_CONSTANTS environment variable has all secrets, in JSON format.
         String environment = System.getenv("SECRET_CONSTANTS");
@@ -152,6 +156,9 @@ public class SecretConstants {
         GITLAB_ACCESS_TOKEN = secrets.getString("GITLAB_ACCESS_TOKEN");
 
         CHINA_MIRROR_UPDATE_WEBHOOK = secrets.getString("CHINA_MIRROR_UPDATE_WEBHOOK");
+
+        TWITCH_CLIENT_ID = secrets.getString("TWITCH_CLIENT_ID");
+        TWITCH_CLIENT_SECRET = secrets.getString("TWITCH_CLIENT_SECRET");
     }
 
     private static List<String> getListOfStrings(JSONArray array) {
