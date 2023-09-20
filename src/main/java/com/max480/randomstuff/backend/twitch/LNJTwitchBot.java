@@ -111,7 +111,7 @@ public class LNJTwitchBot {
                 .build();
 
         chat.joinChannel(CHANNEL_NAME);
-        chat.sendMessage(CHANNEL_NAME, "Le bot est prêt !");
+        chat.sendMessage(CHANNEL_NAME, "Je suis prêt !");
 
         TwitchHelix helix = TwitchHelixBuilder.builder().build();
         chat.getEventManager().onEvent(ChannelMessageEvent.class, event -> handleChatMessage(event, chat, helix, accessToken));
@@ -121,7 +121,7 @@ public class LNJTwitchBot {
                 Thread.sleep(21_600_000L); // 6 hours
 
                 logger.info("We expired, exit!");
-                chat.sendMessage(CHANNEL_NAME, "Le bot s'arrête. Bonne soirée !");
+                chat.sendMessage(CHANNEL_NAME, "Je me déconnecte. Bonne soirée !");
                 Thread.sleep(5000);
                 System.exit(0);
             } catch (InterruptedException e) {
