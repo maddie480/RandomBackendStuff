@@ -176,9 +176,9 @@ public class CrontabRunner {
 
             // health checks
             CelesteStuffHealthCheck.updateCheckerHealthCheck();
-            CelesteStuffHealthCheck.checkOlympusAPIs();
             CelesteStuffHealthCheck.checkEverestExists(false);
             CelesteStuffHealthCheck.checkOlympusExists(false);
+            CelesteStuffHealthCheck.checkOlympusAPIs();
         });
     }
 
