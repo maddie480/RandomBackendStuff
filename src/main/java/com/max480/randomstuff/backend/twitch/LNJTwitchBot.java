@@ -21,8 +21,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.time.ZonedDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * A small Twitch bot that listens to the chat of a specific channel, and that can respond to 2 commands:
@@ -38,10 +43,59 @@ public class LNJTwitchBot {
     private static long lastClipAt = 0;
     private static boolean rateLimitMessageSent = false;
 
-    private static final Map<String, String> pollNames = new HashMap<>();
-    private static final Map<String, Map<String, String>> pollChoicesWithCase = new HashMap<>();
-    private static final Map<String, Set<String>> keywordToPoll = new HashMap<>();
-    private static final Map<String, Map<String, String>> whoVotedForWhat = new HashMap<>();
+    private static final Path lnjPollPath = Paths.get("/shared/lnj-poll.json");
+
+    private static class LNJPoll {
+        private final long id;
+        private final String name;
+        private final Map<String, String> answersWithCase;
+        private final Map<String, String> answersByUser;
+
+        public LNJPoll(String name, Set<String> answers) {
+            this.id = System.currentTimeMillis();
+            this.name = name;
+            this.answersWithCase = new HashMap<>();
+            for (String answer : answers) {
+                this.answersWithCase.put(answer.toLowerCase(), answer);
+            }
+            this.answersByUser = new HashMap<>();
+        }
+
+        public LNJPoll(JSONObject json) {
+            id = json.getLong("id");
+            name = json.getString("name");
+            answersWithCase = toMap(json.getJSONObject("answersWithCase"));
+            answersByUser = toMap(json.getJSONObject("answersByUser"));
+        }
+
+        private static Map<String, String> toMap(JSONObject json) {
+            Map<String, String> result = new HashMap<>();
+            for (String key : json.keySet()) {
+                result.put(key, json.getString(key));
+            }
+            return result;
+        }
+
+        public JSONObject toJson() {
+            JSONObject o = new JSONObject();
+            o.put("id", id);
+            o.put("name", name);
+            o.put("answersWithCase", answersWithCase);
+            o.put("answersByUser", answersByUser);
+            return o;
+        }
+
+        public boolean voteFor(String userId, String vote) {
+            vote = vote.toLowerCase();
+
+            if (answersWithCase.containsKey(vote)) {
+                answersByUser.put(userId, vote);
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
 
     public static void main(String[] args) throws IOException {
         // use the refresh token to get a new access token
@@ -91,12 +145,14 @@ public class LNJTwitchBot {
 
         String accessToken;
         String refreshToken;
+        int expiresIn;
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
             JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             accessToken = response.getString("access_token");
             refreshToken = response.getString("refresh_token");
-            logger.debug("Got a new token that expires in {} seconds!", response.getInt("expires_in"));
+            expiresIn = response.getInt("expires_in");
+            logger.debug("Got a new token that expires in {} seconds ({})!", expiresIn, ZonedDateTime.now().plusSeconds(expiresIn));
         }
 
         if (Files.exists(authorizationCode)) {
@@ -118,11 +174,7 @@ public class LNJTwitchBot {
 
         new Thread(() -> {
             try {
-                Thread.sleep(21_600_000L); // 6 hours
-
-                logger.info("We expired, exit!");
-                chat.sendMessage(CHANNEL_NAME, "Je me déconnecte. Bonne soirée !");
-                Thread.sleep(5000);
+                Thread.sleep(expiresIn * 1000L);
                 System.exit(0);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -133,6 +185,14 @@ public class LNJTwitchBot {
     }
 
     private static void handleChatMessage(ChannelMessageEvent event, TwitchChat chat, TwitchHelix helix, String accessToken) {
+        LNJPoll poll;
+        try (InputStream is = Files.newInputStream(lnjPollPath)) {
+            poll = new LNJPoll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)));
+        } catch (IOException e) {
+            logger.error("Could not load LNJ Poll", e);
+            return;
+        }
+
         if (event.getMessage().trim().equals("!clip")) {
             logger.debug("Received a !clip command from " + event.getMessageEvent().getUserName());
 
@@ -170,38 +230,23 @@ public class LNJTwitchBot {
                 // we need at least a question and an answer!
                 respond(event, chat, "Tu dois au moins préciser une question et une réponse ! Par exemple : !poll \"à quoi on joue ce soir ?\" \"pizza dude\" \"geopolitical simulator\" freelancer");
             } else {
-                String uuid = UUID.randomUUID().toString();
                 String title = command.get(1);
+                Set<String> choices = command.stream().skip(2).collect(Collectors.toSet());
 
-                Map<String, String> choices = new HashMap<>();
-                for (int i = 2; i < command.size(); i++) {
-                    choices.put(command.get(i).toLowerCase(), command.get(i));
+                try (OutputStream os = Files.newOutputStream(lnjPollPath)) {
+                    IOUtils.write(new LNJPoll(title, choices).toJson().toString(), os, StandardCharsets.UTF_8);
+                } catch (IOException e) {
+                    logger.error("Could not save new LNJ Poll", e);
+                    return;
                 }
 
-                pollNames.put(uuid, title);
-                pollChoicesWithCase.put(uuid, choices);
-                for (int i = 2; i < command.size(); i++) {
-                    String choice = command.get(i).toLowerCase();
-                    Set<String> pollUuids = keywordToPoll.getOrDefault(choice, new HashSet<>());
-                    pollUuids.add(uuid);
-                    keywordToPoll.put(choice, pollUuids);
-                }
-                whoVotedForWhat.put(uuid, new HashMap<>());
-
-                logger.debug("Registered the new poll {} \"{}\". pollNames={}, pollChoicesWithCase={}, keywordToPoll={}", uuid, title,
-                        pollNames, pollChoicesWithCase, keywordToPoll);
-                writePollToDisk(uuid);
-
-                respond(event, chat, "Sondage créé ! Tu peux suivre les résultats sur : https://maddie480.ovh/twitch-polls/" + uuid);
+                respond(event, chat, "Sondage créé !");
             }
-        } else if (keywordToPoll.containsKey(event.getMessage().trim().toLowerCase())) {
-            String vote = event.getMessage().trim().toLowerCase();
-            String userId = event.getMessageEvent().getUserId();
-
-            for (String uuid : keywordToPoll.get(vote)) {
-                whoVotedForWhat.get(uuid).put(userId, vote);
-                logger.debug("Registered the new vote {} from {} for the poll {}. whoVotedForWhat={}", vote, userId, uuid, whoVotedForWhat);
-                writePollToDisk(uuid);
+        } else if (poll.voteFor(event.getMessageEvent().getUserId(), event.getMessage())) {
+            try (OutputStream os = Files.newOutputStream(lnjPollPath)) {
+                IOUtils.write(poll.toJson().toString(), os, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                logger.error("Could not save LNJ Poll vote", e);
             }
         }
     }
@@ -211,26 +256,5 @@ public class LNJTwitchBot {
                 messageId -> chat.sendMessage(CHANNEL_NAME, message, event.getNonce(), messageId),
                 () -> chat.sendMessage(CHANNEL_NAME, message)
         );
-    }
-
-    private static void writePollToDisk(String uuid) {
-        JSONObject poll = new JSONObject();
-        JSONObject answers = new JSONObject();
-
-        poll.put("title", pollNames.get(uuid));
-        poll.put("answers", answers);
-
-        for (Map.Entry<String, String> answer : pollChoicesWithCase.get(uuid).entrySet()) {
-            answers.put(answer.getValue(), whoVotedForWhat.get(uuid).values().stream()
-                    .filter(v -> v.equals(answer.getKey())).count());
-        }
-
-        logger.debug("Writing poll {} to disk:\n{}", uuid, poll.toString(2));
-
-        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/temp/lnj-polls/" + uuid + ".json"))) {
-            IOUtils.write(poll.toString(), os, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            logger.error("Could not save poll {}", uuid, e);
-        }
     }
 }
