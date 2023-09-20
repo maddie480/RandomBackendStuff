@@ -9,6 +9,7 @@ import com.github.twitch4j.helix.TwitchHelixBuilder;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -240,9 +241,13 @@ public class LNJTwitchBot {
                     return;
                 }
 
+                logger.debug("New poll created: \"{}\", with choices {}", title, choices);
                 respond(event, chat, "Sondage créé !");
             }
         } else if (poll.voteFor(event.getMessageEvent().getUserId(), event.getMessage())) {
+            logger.debug("New vote received on poll: {} (ID {}) voted {}", event.getMessageEvent().getUserName(),
+                    event.getMessageEvent().getUserId(), event.getMessage());
+
             try (OutputStream os = Files.newOutputStream(lnjPollPath)) {
                 IOUtils.write(poll.toJson().toString(), os, StandardCharsets.UTF_8);
             } catch (IOException e) {
@@ -256,5 +261,19 @@ public class LNJTwitchBot {
                 messageId -> chat.sendMessage(CHANNEL_NAME, message, event.getNonce(), messageId),
                 () -> chat.sendMessage(CHANNEL_NAME, message)
         );
+    }
+
+    public static void healthCheck() throws IOException {
+        String title;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/twitch-poll.json")) {
+            JSONObject o = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            title = o.getString("name");
+        }
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/twitch-poll")) {
+            if (!IOUtils.toString(is, StandardCharsets.UTF_8).contains(StringEscapeUtils.escapeHtml4(title))) {
+                throw new IOException("Poll title wasn't found on the page!");
+            }
+        }
     }
 }

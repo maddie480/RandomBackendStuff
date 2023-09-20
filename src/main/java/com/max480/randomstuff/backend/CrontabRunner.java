@@ -7,6 +7,7 @@ import com.max480.randomstuff.backend.discord.crontabs.*;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import com.max480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
+import com.max480.randomstuff.backend.twitch.LNJTwitchBot;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
@@ -157,6 +158,7 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkOlympusNews();
             checkArbitraryModApp();
             checkRadioLNJ();
+            LNJTwitchBot.healthCheck();
         });
     }
 
