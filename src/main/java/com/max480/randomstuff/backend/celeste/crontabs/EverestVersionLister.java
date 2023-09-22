@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -250,6 +251,9 @@ public class EverestVersionLister {
      * This is useful for Azure, since it does not tell file sizes through response headers.
      */
     private static long getFileSize(String url) throws IOException {
+        Optional<Long> calculated = getPreviouslyCalculatedValue("mainDownload", url, v -> v.getLong("mainFileSize"));
+        if (calculated.isPresent()) return calculated.get();
+
         long[] size = new long[2];
 
         for (int i = 0; i < 2; i++) {
@@ -276,6 +280,9 @@ public class EverestVersionLister {
      * by checking if it contains MiniInstaller.exe.
      */
     private static boolean isNative(String url) throws IOException {
+        Optional<Boolean> calculated = getPreviouslyCalculatedValue("olympusBuildDownload", url, v -> v.getBoolean("isNative"));
+        if (calculated.isPresent()) return calculated.get();
+
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(url);
              ZipInputStream outerZip = new ZipInputStream(is)) {
 
@@ -293,6 +300,26 @@ public class EverestVersionLister {
 
                 return true;
             }
+        }
+    }
+
+    /**
+     * Retrieves a previously calculated value from the existing Everest versions list file,
+     * since this is way faster than redownloading the Everest version to check its size or contents.
+     */
+    private static <T> Optional<T> getPreviouslyCalculatedValue(String fieldToMatch, String valueToMatch, Function<JSONObject, T> getter) throws IOException {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
+            JSONArray versions = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+
+            for (int i = 0; i < versions.length(); i++) {
+                JSONObject version = versions.getJSONObject(i);
+
+                if (valueToMatch.equals(version.getString(fieldToMatch))) {
+                    return Optional.of(getter.apply(version));
+                }
+            }
+
+            return Optional.empty();
         }
     }
 }
