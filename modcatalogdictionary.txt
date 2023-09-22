@@ -70,6 +70,7 @@ EmHelper/Switchtrigger=Switch Trigger
 ExtendedVariantMode/FloatExtendedVariantFadeTrigger=Extended Variant Fade Trigger
 ExtendedVariantMode/JumpRefill=Recover Jump Refill
 ExtendedVariantMode/TheoCrystal=Extended Variant Theo Crystal
+ExtendedVariantMode/VariantToggleController=Variant Flag Toggle Controller
 FancyTileEntities/FancyConditionBlock=LoadConditionBlock=Fancy Condition Block
 FrostHelper/WASDMovementTrigger=WASD Movement Trigger
 isaBag/dreamSpinFake=Dream Spinner Fake
