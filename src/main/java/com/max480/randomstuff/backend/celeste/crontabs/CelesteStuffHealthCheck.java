@@ -309,6 +309,7 @@ public class CelesteStuffHealthCheck {
                 modSearchDatabase = mapped.stream()
                         .map(item -> (List<String>) item.get("MirroredScreenshots"))
                         .flatMap(List::stream)
+                        .distinct()
                         .sorted()
                         .map(i -> i.replace("https://celestemodupdater.0x0a.de", mirror))
                         .collect(Collectors.toList());
