@@ -450,7 +450,7 @@ public class UpdateCheckerTracker extends EventListener {
     private static void executeWebhookAsUpdateChecker(String url, String message) {
         executeWebhook(url,
                 message,
-                "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                 "Everest Update Checker");
     }
 
@@ -463,7 +463,7 @@ public class UpdateCheckerTracker extends EventListener {
     private static void executeWebhookAsBananaWatch(String url, String message) {
         executeWebhook(url,
                 message,
-                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                 "Banana Watch");
     }
 

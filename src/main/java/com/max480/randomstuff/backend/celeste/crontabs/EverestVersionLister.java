@@ -229,7 +229,7 @@ public class EverestVersionLister {
         // notify on Discord
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
             WebhookExecutor.executeWebhook(webhook,
-                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
                     ":sparkles: Everest versions were updated. There are now **" + infoWithNative.size() + "** versions on record.\n" +
                             "Latest Everest version is **" + infoWithNative.get(0).get("version") + "** (" + infoWithNative.get(0).get("branch") + ")"

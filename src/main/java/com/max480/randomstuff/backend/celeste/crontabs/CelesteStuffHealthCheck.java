@@ -21,7 +21,6 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -91,11 +90,11 @@ public class CelesteStuffHealthCheck {
         if (savedLatestEverest < latestStable) {
             // a new stable version of Everest hit! send a notification to SRC staff.
             WebhookExecutor.executeWebhook(SecretConstants.SRC_UPDATE_CHECKER_HOOK,
-                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
                     "**A new Everest stable was just released!**\nThe latest stable version is now **" + latestStable + "**.");
             WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
                     ":information_source: Message sent to SRC staff:\n> **A new Everest stable was just released!**\n> The latest stable version is now **" + latestStable + "**.");
 
@@ -810,26 +809,17 @@ public class CelesteStuffHealthCheck {
 
         log.debug("Downloading sample font...");
 
-        // download a test font
-        Path customFont = Paths.get("/tmp/yes.ttf");
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://cdn.discordapp.com/attachments/445236692136230943/1145708558177009745/Commodore-64-v6.3.TTF");
-             OutputStream os = Files.newOutputStream(customFont)) {
-
-            IOUtils.copy(is, os);
-        }
-
         log.debug("Sending request to custom font generator...");
 
         // build a request to font generator
         HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/font-generator", "UTF-8", new HashMap<>());
         submit.addFormField("font", "custom");
         submit.addFilePart("dialogFile", new File("/tmp/English.txt"));
-        submit.addFilePart("fontFile", customFont.toFile());
+        submit.addFilePart("fontFile", new File("/app/static/font-healthcheck.ttf"));
         submit.addFormField("fontFileName", "celeste_stuff_health_check");
         HttpURLConnection result = submit.finish();
 
         // delete the temp files
-        Files.delete(customFont);
         new File("/tmp/English.txt").delete();
 
         if (result.getResponseCode() != 200) {

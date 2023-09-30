@@ -200,7 +200,7 @@ public class GameBananaAutomatedChecks {
 
                         // send an angry ping to the owner to have the mod manually checked
                         WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                                "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                                 "Banana Watch",
                                 "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
                                         ":arrow_right: https://gamebanana.com/" + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
@@ -778,7 +778,7 @@ public class GameBananaAutomatedChecks {
                         if (webhook.startsWith("https://discord.com/") && tempListFile.length() < 8_388_608L) {
                             // Discord webhook: send the file with attachment
                             WebhookExecutor.executeWebhook(webhook,
-                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                                     "Banana Watch",
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! You will find the list attached. " +
                                             "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl,
@@ -787,7 +787,7 @@ public class GameBananaAutomatedChecks {
                         } else {
                             // Discord-compatible webhook or file is too big(???): send the file with special header but without the attachment
                             WebhookExecutor.executeWebhook(webhook,
-                                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                                     "Banana Watch",
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! " +
                                             "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl,
@@ -828,7 +828,7 @@ public class GameBananaAutomatedChecks {
     private static void sendAlertToWebhook(String message) throws IOException {
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
             WebhookExecutor.executeWebhook(webhook,
-                    "https://cdn.discordapp.com/avatars/793432836912578570/0a3f716e15c8c3adca6c461c2d64553e.png?size=128",
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                     "Banana Watch",
                     message,
                     ImmutableMap.of("X-Everest-Log", "true"));

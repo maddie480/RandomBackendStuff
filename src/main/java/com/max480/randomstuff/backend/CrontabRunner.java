@@ -281,7 +281,7 @@ public class CrontabRunner {
         try {
             WebhookExecutor.executeWebhook(
                     SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                    "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/compute-engine.png",
                     "Crontab Runner",
                     message);
         } catch (IOException e) {

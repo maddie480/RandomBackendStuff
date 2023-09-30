@@ -241,7 +241,7 @@ public class MastodonUpdateChecker {
             // some webhooks were deleted! notify the owner about it.
             for (String goneWebhook : goneWebhooks) {
                 WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
-                        "https://cdn.discordapp.com/attachments/445236692136230943/1043241902645973064/Mastodon_logotype_simple_new_hue.svg.png",
+                        "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/mastodon.png",
                         "Mastodon Bot",
                         ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook);
 
@@ -387,7 +387,7 @@ public class MastodonUpdateChecker {
 
             Map<String, String> footerInfo = new HashMap<>();
             footerInfo.put("text", "Mastodon" + (footerText.isEmpty() ? "" : " • " + footerText));
-            footerInfo.put("icon_url", "https://cdn.discordapp.com/attachments/445236692136230943/1043241902645973064/Mastodon_logotype_simple_new_hue.svg.png");
+            footerInfo.put("icon_url", "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/mastodon.png");
             embed.put("footer", footerInfo);
             embed.put("timestamp", OffsetDateTime.parse(status.getString("created_at"), DateTimeFormatter.ISO_OFFSET_DATE_TIME).format(DateTimeFormatter.ISO_DATE_TIME));
         }

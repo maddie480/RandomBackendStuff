@@ -71,7 +71,7 @@ public class CollabAutoHider {
     private static void sendAlertToWebhook(Path jsonPath, String action) throws IOException {
         WebhookExecutor.executeWebhook(
                 SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                "https://cdn.discordapp.com/attachments/445236692136230943/921309225697804299/compute_engine.png",
+                "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/compute-engine.png",
                 "Collab and Contest List",
                 ":warning: The collab or contest located at <https://maddie480.ovh/celeste/collab-contest-editor?key="
                         + jsonPath.getFileName().toString().replace(".json", "") + "> was " + action + ".");

@@ -113,7 +113,7 @@ public class OlympusVersionLister {
         // notify on Discord
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
             WebhookExecutor.executeWebhook(webhook,
-                    "https://cdn.discordapp.com/attachments/445236692136230943/878508600509726730/unknown.png",
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
                     ":sparkles: Olympus versions were updated. There are now **" + info.size() + "** versions on record.\n" +
                             "Latest Olympus version is **" + info.get(0).get("version") + "** (" + info.get(0).get("branch") + "):\n" + info.get(0).get("changelog"),
