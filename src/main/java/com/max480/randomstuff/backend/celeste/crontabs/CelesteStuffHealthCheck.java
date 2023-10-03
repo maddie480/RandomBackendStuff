@@ -265,7 +265,7 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkBananaMirrorDatabaseMatch() throws IOException {
         for (String mirror : Arrays.asList("https://celestemodupdater.0x0a.de", "https://celestemodupdater-storage.0x0a.de",
-                "https://celestemodupdater-mirror.0x0a.de", "https://celestemodupdater-mirror.papyrus.0x0a.de")) {
+                "https://celestemodupdater-conductor.0x0a.de", "https://celestemodupdater-mirror.papyrus.0x0a.de")) {
 
             log.debug("Checking Banana Mirror contents ({})...", mirror);
 
@@ -318,8 +318,9 @@ public class CelesteStuffHealthCheck {
                 throw new IOException("Banana Mirror Images contents at " + mirror + " don't match the mod updater database");
             }
 
-            // this mirror doesn't have Rich Presence icons
-            if (mirror.equals("https://celestemodupdater-mirror.papyrus.0x0a.de")) {
+            // these mirrors don't have Rich Presence icons
+            if (Arrays.asList("https://celestemodupdater-conductor.0x0a.de",
+                    "https://celestemodupdater-mirror.papyrus.0x0a.de").contains(mirror)) {
                 continue;
             }
 
