@@ -3,7 +3,7 @@ FROM eclipse-temurin:20-jre
 ENV DEBIAN_FRONTEND=noninteractive TERM=xterm
 
 RUN apt-get update && \
-  apt-get install dotnet-sdk-7.0 wine -y && \
+  apt-get install dotnet-sdk-6.0 wine -y && \
   apt-get upgrade -y && \
   apt-get clean && \
   groupadd -g 1000 debian && \

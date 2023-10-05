@@ -121,6 +121,7 @@ public class GameBananaAutomatedChecks {
                         boolean yieldReturnIssue = false;
                         boolean intPtrIssue = false;
                         boolean readonlyStructIssue = false;
+                        boolean consoleWriteLine = false;
                         boolean dllEntryFoundInYaml = false;
 
                         // read "DLL" fields for each everest.yaml entry
@@ -143,24 +144,44 @@ public class GameBananaAutomatedChecks {
 
                                     // invoke ilspycmd to decompile the mod.
                                     logger.debug("Decompiling DLL...");
-                                    Process p = new ProcessBuilder("/home/debian/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start();
+                                    Process p = new ProcessBuilder("/home/debian/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll")
+                                            .redirectError(ProcessBuilder.Redirect.INHERIT)
+                                            .start();
+
                                     String fullDecompile;
                                     try (InputStream is = p.getInputStream()) {
                                         fullDecompile = IOUtils.toString(is, StandardCharsets.UTF_8);
                                     }
 
+                                    try {
+                                        p.waitFor();
+                                    } catch (InterruptedException e) {
+                                        throw new IOException(e);
+                                    }
+
+                                    if (p.exitValue() != 0) {
+                                        throw new IOException("ilspycmd returned exit code " + p.exitValue());
+                                    }
+
+                                    logger.debug("Decompiled {} lines of code",
+                                            fullDecompile.chars().filter(c -> c == '\n').count());
+
                                     // search for anything looking like yield return orig(self)
                                     if (fullDecompile.contains("yield return orig.Invoke")) {
                                         logger.warn("Mod {} uses yield return orig(self)!", modName);
                                         yieldReturnIssue = true;
-                                    } else if (fullDecompile.contains(".MethodHandle.GetFunctionPointer()")) {
+                                    }
+                                    if (fullDecompile.contains(".MethodHandle.GetFunctionPointer()")) {
                                         logger.warn("Mod {} might be using the IntPtr trick", modName);
                                         intPtrIssue = true;
-                                    } else if (fullDecompile.contains("readonly struct")) {
+                                    }
+                                    if (fullDecompile.contains("readonly struct")) {
                                         logger.warn("Mod {} might have a readonly struct", modName);
                                         readonlyStructIssue = true;
-                                    } else {
-                                        logger.info("No yield return orig(self) detected in mod {}", modName);
+                                    }
+                                    if (fullDecompile.contains("Console.WriteLine")) {
+                                        logger.warn("Mod {} contains Console.WriteLine", modName);
+                                        consoleWriteLine = true;
                                     }
 
                                     logger.debug("Deleting temporary DLL");
@@ -185,6 +206,12 @@ public class GameBananaAutomatedChecks {
 
                         if (readonlyStructIssue) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** is using a `readonly struct`!" +
+                                    " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
+                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                        }
+
+                        if (consoleWriteLine) {
+                            sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `Console.WriteLine`!" +
                                     " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
                                     + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
                         }
