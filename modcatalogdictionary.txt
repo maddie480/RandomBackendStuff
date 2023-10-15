@@ -81,6 +81,7 @@ JackalHelper/RevLava=Reverse Lava
 JackalHelper/RoundKevin2=Core Booster (Mirror)
 JackalHelper/RoundKevin=Core Booster
 JackalHelper/TracerRefill=Stopwatch Refill
+JungleHelper/EnforceSkinController=Skin Warning Controller
 JungleHelper/RemoteKevin=Slide Block
 JungleHelper/RemoteKevinRefill=Slide Block Refill
 JungleHelper/TheoStatue=Green Crystal
