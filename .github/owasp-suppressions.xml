@@ -9,6 +9,13 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
+            This CVE affects all versions of JSON-java up to and excluding 20230618... and the project depends on a higher version
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.json/json@.*$</packageUrl>
+       <cve>CVE-2023-5072</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
             This CVE is heavily disputed / called a false flag, ignoring it
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-databind@.*$</packageUrl>
