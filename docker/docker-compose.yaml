@@ -29,9 +29,6 @@ services:
 
           "RSS_AGGREGATOR_SECRET": "[TODO]",
 
-          "SECURE_STORAGE_WRITE_BASIC_AUTH": "[TODO]",
-          "SECURE_STORAGE_READ_BASIC_AUTH": "[TODO]",
-
           "GITHUB_SSH_KNOWN_HOSTS": "[TODO]",
           "GITHUB_SSH_PUBLIC_KEY": "[TODO]",
           "GITHUB_SSH_PRIVATE_KEY": "[TODO]"
