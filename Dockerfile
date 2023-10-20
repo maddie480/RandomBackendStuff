@@ -1,4 +1,4 @@
-FROM eclipse-temurin:20-jre
+FROM eclipse-temurin:21-jre
 
 ENV DEBIAN_FRONTEND=noninteractive TERM=xterm
 
