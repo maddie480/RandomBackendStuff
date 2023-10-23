@@ -64,7 +64,7 @@ public class ListModsCommand implements BotCommand {
 
             modList = new StringBuilder(modList.substring(0, modList.length() - 2));
 
-            modList.append("\n\nVous pouvez aussi voir les mods ici :arrow_right: https://quest-community-bot.appspot.com/mods");
+            modList.append("\n\nVous pouvez aussi voir les mods ici :arrow_right: https://maddie480.ovh/quest/mods");
 
             SplitUtil.split(modList.toString(), 2000, true, SplitUtil.Strategy.WHITESPACE, SplitUtil.Strategy.ANYWHERE)
                     .stream()
@@ -101,7 +101,7 @@ public class ListModsCommand implements BotCommand {
     }
 
     static List<Mod> getAllQuestMods() throws IOException {
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://quest-community-bot.appspot.com/quest-mod-manager/database.csv");
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/quest/quest-mod-manager/database.csv");
              BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
 
             List<Mod> result = new ArrayList<>();

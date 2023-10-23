@@ -1287,7 +1287,7 @@ public class PlagiatTatsumaki {
             if (new File("/app/static/quest/extra-game-backgrounds" + File.separator + URLEncoder.encode(game, StandardCharsets.UTF_8) + ".png").exists()) {
                 return new GameBackground(
                         URLEncoder.encode(game, StandardCharsets.UTF_8),
-                        "https://quest-community-bot.appspot.com/game_backgrounds/" + URLEncoder.encode(game, StandardCharsets.UTF_8) + ".png");
+                        "https://maddie480.ovh/quest/game_backgrounds/" + URLEncoder.encode(game, StandardCharsets.UTF_8) + ".png");
             } else {
                 MessageEmbed embed = GameDB.findGame(game);
                 if (embed != null && embed.getImage() != null) {
@@ -1361,7 +1361,7 @@ public class PlagiatTatsumaki {
         if (defaultGame == null &&
                 !boughtGameBackgrounds.getOrDefault(userId, new ArrayList<>()).contains("QUEST")) {
 
-            gameBackgrounds = "default;QUEST;https://quest-community-bot.appspot.com/game_backgrounds/QUEST.png\n" + gameBackgrounds;
+            gameBackgrounds = "default;QUEST;https://maddie480.ovh/quest/game_backgrounds/QUEST.png\n" + gameBackgrounds;
         }
 
         if (defaultGame != null && !boughtDefaultBg.get()) {
@@ -1382,7 +1382,7 @@ public class PlagiatTatsumaki {
         long token = generateTokenFor(channel.getJDA(), author.getIdLong());
         sendBackgroundsToCloudStorage();
 
-        channel.sendMessage("Voici la galerie des arrière-plans : https://quest-community-bot.appspot.com/backgrounds?token=" + token + "\n" +
+        channel.sendMessage("Voici la galerie des arrière-plans : https://maddie480.ovh/quest/backgrounds?token=" + token + "\n" +
                 "(Cette page indique aussi les arrière-plans que **tu** possèdes déjà.)").queue();
     }
 
@@ -1455,7 +1455,7 @@ public class PlagiatTatsumaki {
             logger.debug("Reading game background {} from file {}", name, fileNames[0]);
             return new GameBackground(
                     fileNames[0].substring(0, fileNames[0].length() - 4),
-                    "https://quest-community-bot.appspot.com/game_backgrounds/" + fileNames[0]);
+                    "https://maddie480.ovh/quest/game_backgrounds/" + fileNames[0]);
         }
 
         MessageEmbed resolved = GameDB.findGame(name, ignoreCase);

@@ -37,7 +37,7 @@ public class QuestSetupLinkCommand implements BotCommand {
 
     @Override
     public void runCommand(MessageReceivedEvent event, String[] parameters) {
-        event.getChannel().sendMessage("Tu peux télécharger Quest ici :arrow_right: https://quest-community-bot.appspot.com/download/Quest-setup.exe").queue();
+        event.getChannel().sendMessage("Tu peux télécharger Quest ici :arrow_right: https://maddie480.ovh/quest/download/Quest-setup.exe").queue();
     }
 
     @Override

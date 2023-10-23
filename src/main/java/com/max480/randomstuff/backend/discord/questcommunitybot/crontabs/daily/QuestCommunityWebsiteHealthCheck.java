@@ -13,14 +13,14 @@ public class QuestCommunityWebsiteHealthCheck {
     public static void run() throws IOException {
         logger.debug("Vérification du site de Quest Community Bot");
 
-        Document site = ConnectionUtils.jsoupGetWithRetry("https://quest-community-bot.appspot.com/mods");
+        Document site = ConnectionUtils.jsoupGetWithRetry("https://maddie480.ovh/quest/mods");
         int count = site.select("a.btn-success").size();
         logger.debug("Le site affiche {} mods", count);
         if (count == 0) {
             throw new IOException("Le site n'affiche aucun mod");
         }
 
-        site = ConnectionUtils.jsoupGetWithRetry("https://quest-community-bot.appspot.com/tools");
+        site = ConnectionUtils.jsoupGetWithRetry("https://maddie480.ovh/quest/tools");
         count = site.select("a.btn-success").size();
         logger.debug("Le site affiche {} outils", count);
         if (count == 0) {

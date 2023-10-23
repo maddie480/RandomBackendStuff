@@ -62,7 +62,7 @@ public class CommandsMovedFromWebsite {
             case "/tableflip" ->
                     "{\"response_type\": \"in_channel\", \"text\": \"(\\u256f\\u00b0\\u25a1\\u00b0\\uff09\\u256f\\ufe35 \\u253b\\u2501\\u253b\"}";
             case "/ckc" ->
-                    "{\"response_type\": \"in_channel\", \"text\": \"https://storage.googleapis.com/integ-de-covid/estcequeckc.html\"}";
+                    "{\"response_type\": \"in_channel\", \"text\": \"https://maddie480.ovh/static/estcequeckc.html\"}";
             default -> null;
         };
     }
@@ -532,7 +532,7 @@ public class CommandsMovedFromWebsite {
 
     private String commandRandomParrot() {
         try {
-            Map<String, String> parrots = ConnectionUtils.jsoupGetWithRetry("https://storage.googleapis.com/integ-de-covid/parrot-quick-importer-online.html")
+            Map<String, String> parrots = ConnectionUtils.jsoupGetWithRetry("https://maddie480.ovh/static/parrot-quick-importer-online.html")
                     .select(".target")
                     .stream()
                     .collect(Collectors.toMap(node -> node.attr("title"), node -> node.attr("data-target")));

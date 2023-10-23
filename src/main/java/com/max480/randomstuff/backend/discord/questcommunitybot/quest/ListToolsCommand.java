@@ -82,7 +82,7 @@ public class ListToolsCommand implements BotCommand {
 
             Queue<MessageCreateData> messages =
                     SplitUtil.split("Voici la liste des outils et logiciels de la communauté :\n" + builder + "\n" +
-                                            "Pour plus d'informations et les liens de téléchargement, cliquer sur une réaction, taper `!info_tool [nom]` ou visiter https://quest-community-bot.appspot.com/tools",
+                                            "Pour plus d'informations et les liens de téléchargement, cliquer sur une réaction, taper `!info_tool [nom]` ou visiter https://maddie480.ovh/quest/tools",
                                     2000, true, SplitUtil.Strategy.NEWLINE, SplitUtil.Strategy.ANYWHERE)
                             .stream()
                             .map(split -> new MessageCreateBuilder().setContent(split).build())

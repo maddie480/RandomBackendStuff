@@ -51,7 +51,7 @@ public class SlashCommandBotHealthCheck {
         }
 
         // testons le quick importer aussi
-        String parrotQuickImporter = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://storage.googleapis.com/integ-de-covid/parrot-quick-importer-online.html"), UTF_8);
+        String parrotQuickImporter = IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/static/parrot-quick-importer-online.html"), UTF_8);
         if (!parrotQuickImporter.contains("\"Explody Parrot\"") || !parrotQuickImporter.contains("\"Zscaler Parrot\"")) {
             throw new IOException("Parrot Quick Importer est par terre ! :a:");
         }
