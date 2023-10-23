@@ -13,7 +13,9 @@ public class PinUpdater {
                 .filter(pin -> "Todaybot".equals(pin.getAuthor().getName()))
                 .findFirst().orElseThrow();
 
-        todayBotPin.unpin().complete();
-        todayBotLatest.pin().complete();
+        if (todayBotPin.getIdLong() != todayBotLatest.getIdLong()) {
+            todayBotPin.unpin().complete();
+            todayBotLatest.pin().complete();
+        }
     }
 }
