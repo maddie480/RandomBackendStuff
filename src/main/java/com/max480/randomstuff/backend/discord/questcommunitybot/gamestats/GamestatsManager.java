@@ -42,9 +42,7 @@ public class GamestatsManager {
                 try {
                     updateStats(guild);
 
-                    if (ZonedDateTime.now().getMinute() == 0) {
-                        steamCommand.refreshSteamStats(guild.getJDA());
-
+                    if (ZonedDateTime.now().getHour() == 0) {
                         if (ZonedDateTime.now().getMinute() == 0) {
                             autoPurge();
                             wipeStats(DAILY);
@@ -57,6 +55,10 @@ public class GamestatsManager {
                                 wipeStats(MONTHLY);
                             }
                         }
+                    }
+
+                    if (ZonedDateTime.now().getMinute() == 0) {
+                        steamCommand.refreshSteamStats(guild.getJDA());
                     }
                 } catch (Exception e) {
                     log.error("Uncaught exception during gamestats refresh", e);
