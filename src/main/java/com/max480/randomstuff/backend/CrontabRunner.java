@@ -5,11 +5,18 @@ import com.max480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import com.max480.randomstuff.backend.celeste.crontabs.*;
 import com.max480.randomstuff.backend.discord.crontabs.*;
 import com.max480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
+import com.max480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
+import com.max480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
+import com.max480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.*;
 import com.max480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
+import com.max480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
 import com.max480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import com.max480.randomstuff.backend.twitch.LNJTwitchBot;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
 import com.max480.randomstuff.backend.utils.WebhookExecutor;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
@@ -108,6 +115,10 @@ public class CrontabRunner {
             // start the Timezone Bot and Mod Structure Verifier
             TimezoneBot.main(null);
             ModStructureVerifier.main(null);
+
+            // and those obscure bots as well
+            new QuestCommunityBot();
+            new SlashCommandBot().start();
         } catch (Exception e) {
             logger.error("Error while starting up the bots", e);
             sendMessageToWebhook(":x: Could not start up the bots: " + e);
@@ -159,6 +170,26 @@ public class CrontabRunner {
             checkArbitraryModApp();
             checkRadioLNJ();
             LNJTwitchBot.healthCheck();
+
+            // Quest Community Bot stuff
+            ChangeBGToRandom.run();
+            PurgePosts.run();
+            QuestCommunityWebsiteHealthCheck.run();
+            SlashCommandBotHealthCheck.checkSlashCommands();
+
+            JDA client = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN).build().awaitReady();
+
+            try {
+                StonkUpdateChecker.postTo(client.getTextChannelById(551822297573490749L));
+                PlatformBackup.run(client);
+
+                client.shutdown();
+            } catch (IOException e) {
+                client.shutdown();
+                throw e;
+            }
+
+            PrivateDiscordJanitor.runCleanup();
         });
     }
 
@@ -179,6 +210,29 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkEverestExists(false);
             CelesteStuffHealthCheck.checkOlympusExists(false);
             CelesteStuffHealthCheck.checkOlympusAPIs();
+
+            // Quest Community Bot stuff
+            JDA client = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN).build().awaitReady();
+
+            try {
+                TextChannel webhookHell = client.getTextChannelById(551822297573490749L);
+
+                BusUpdateChecker.runCheckForUpdates(webhookHell);
+                new ComicUpdateChecker().runCheckForUpdates(webhookHell);
+                RandomStuffPoster.run(webhookHell);
+                new TemperatureChecker().checkForUpdates(webhookHell);
+                PinUpdater.update(webhookHell);
+                new TwitchUpdateChecker().checkForUpdates(webhookHell);
+
+                JsonUpdateChecker checker = new JsonUpdateChecker();
+                checker.initialize();
+                checker.checkForUpdates(webhookHell);
+
+                client.shutdown();
+            } catch (IOException e) {
+                client.shutdown();
+                throw e;
+            }
         });
     }
 

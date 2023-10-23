@@ -496,7 +496,7 @@ public class UpdateCheckerTracker extends EventListener {
      * @param zipFilePath   The path to the destination zip
      * @throws IOException In case an error occurs while zipping the file
      */
-    public static void pack(String sourceDirPath, String zipFilePath) throws IOException {
+    private static void pack(String sourceDirPath, String zipFilePath) throws IOException {
         Path p = Files.createFile(Paths.get(zipFilePath));
         try (ZipOutputStream zs = new ZipOutputStream(Files.newOutputStream(p))) {
             zs.setLevel(Deflater.BEST_COMPRESSION);

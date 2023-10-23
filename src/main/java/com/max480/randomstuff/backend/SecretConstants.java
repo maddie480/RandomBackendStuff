@@ -97,6 +97,32 @@ public class SecretConstants {
     public static String TWITCH_CLIENT_ID;
     public static String TWITCH_CLIENT_SECRET;
 
+    // Quest Community Bot secrets
+    public static String QUEST_COMMUNITY_BOT_TOKEN;
+    public static long QUEST_COMMUNITY_SERVER_ID;
+    public static long LEVELING_NOTIFICATION_CHANNEL;
+    public static String YOUTUBE_API_KEY;
+    public static Map<String, String> YOUTUBE_PRESELECTED_PLAYLISTS;
+    public static String GOOGLE_CUSTOM_SEARCH_API_KEY;
+    public static String STEAM_WEB_API_KEY;
+
+    // Slash Command Bot secrets
+    public static String SLASH_COMMAND_BOT_TOKEN;
+    public static Map<String, String> SLASH_COMMAND_TO_TOKEN;
+    public static Map<String, String> PEOPLE_TO_DISCORD_IDS;
+    public static String EXPLOIT_PLANNING_URL;
+
+    // Quest Community Bot crontabs
+    public static String JSON_URL;
+    public static String JSON_BASIC_AUTH;
+    public static String BUS_URL;
+    public static String STONK_URL;
+    public static Map<String, String> COMIC_URLS;
+    public static String WEATHER_WARNING_DOMAIN;
+    public static String WEATHER_PLACE;
+    public static List<String> SLASH_COMMAND_BOT_HEALTHCHECKS;
+    public static List<String> RANDOM_SOURCES;
+
     static {
         // The SECRET_CONSTANTS environment variable has all secrets, in JSON format.
         String environment = System.getenv("SECRET_CONSTANTS");
@@ -159,6 +185,29 @@ public class SecretConstants {
 
         TWITCH_CLIENT_ID = secrets.getString("TWITCH_CLIENT_ID");
         TWITCH_CLIENT_SECRET = secrets.getString("TWITCH_CLIENT_SECRET");
+
+        QUEST_COMMUNITY_BOT_TOKEN = secrets.getString("QUEST_COMMUNITY_BOT_TOKEN");
+        QUEST_COMMUNITY_SERVER_ID = secrets.getLong("QUEST_COMMUNITY_SERVER_ID");
+        LEVELING_NOTIFICATION_CHANNEL = secrets.getLong("LEVELING_NOTIFICATION_CHANNEL");
+        YOUTUBE_API_KEY = secrets.getString("YOUTUBE_API_KEY");
+        YOUTUBE_PRESELECTED_PLAYLISTS = getMapOfStrings(secrets.getJSONObject("YOUTUBE_PRESELECTED_PLAYLISTS"));
+        GOOGLE_CUSTOM_SEARCH_API_KEY = secrets.getString("GOOGLE_CUSTOM_SEARCH_API_KEY");
+        STEAM_WEB_API_KEY = secrets.getString("STEAM_WEB_API_KEY");
+
+        SLASH_COMMAND_BOT_TOKEN = secrets.getString("SLASH_COMMAND_BOT_TOKEN");
+        SLASH_COMMAND_TO_TOKEN = getMapOfStrings(secrets.getJSONObject("SLASH_COMMAND_TO_TOKEN"));
+        PEOPLE_TO_DISCORD_IDS = getMapOfStrings(secrets.getJSONObject("PEOPLE_TO_DISCORD_IDS"));
+        EXPLOIT_PLANNING_URL = secrets.getString("EXPLOIT_PLANNING_URL");
+
+        JSON_URL = secrets.getString("JSON_URL");
+        JSON_BASIC_AUTH = secrets.getString("JSON_BASIC_AUTH");
+        BUS_URL = secrets.getString("BUS_URL");
+        STONK_URL = secrets.getString("STONK_URL");
+        COMIC_URLS = getMapOfStrings(secrets.getJSONObject("COMIC_URLS"));
+        WEATHER_WARNING_DOMAIN = secrets.getString("WEATHER_WARNING_DOMAIN");
+        WEATHER_PLACE = secrets.getString("WEATHER_PLACE");
+        SLASH_COMMAND_BOT_HEALTHCHECKS = getListOfStrings(secrets.getJSONArray("SLASH_COMMAND_BOT_HEALTHCHECKS"));
+        RANDOM_SOURCES = getListOfStrings(secrets.getJSONArray("RANDOM_SOURCES"));
     }
 
     private static List<String> getListOfStrings(JSONArray array) {

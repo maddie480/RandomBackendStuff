@@ -47,11 +47,6 @@ jobs:
         mvn install
         cd ..
 
-        # Build the parent POM
-        cd maven-parent
-        mvn install
-        cd ..
-
         # Build the project
         mvn -B verify --file pom.xml
 
