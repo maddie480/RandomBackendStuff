@@ -48,7 +48,6 @@ public class PrivateDiscordJanitor {
         }
 
         logger.info("Finished!");
-        System.exit(0);
     }
 
     private void run() {
