@@ -42,7 +42,7 @@ public class GamestatsManager {
                 try {
                     updateStats(guild);
 
-                    if (ZonedDateTime.now().getHour() == 0) {
+                    if (ZonedDateTime.now().getMinute() == 0) {
                         steamCommand.refreshSteamStats(guild.getJDA());
 
                         if (ZonedDateTime.now().getMinute() == 0) {
