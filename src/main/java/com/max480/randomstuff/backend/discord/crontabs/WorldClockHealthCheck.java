@@ -4,13 +4,18 @@ import com.max480.randomstuff.backend.discord.timezonebot.BotEventListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.InteractionType;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -18,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -178,6 +184,18 @@ public class WorldClockHealthCheck {
             return null;
         }
 
+        @NotNull
+        @Override
+        public ReplyCallbackAction deferReply(boolean ephemeral) {
+            return IReplyCallback.super.deferReply(ephemeral);
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction reply(@NotNull MessageCreateData message) {
+            return IReplyCallback.super.reply(message);
+        }
+
         public InteractionHook getHook() {
             return null;
         }
@@ -186,12 +204,29 @@ public class WorldClockHealthCheck {
             return 0;
         }
 
+        @NotNull
+        @Override
+        public InteractionType getType() {
+            return IReplyCallback.super.getType();
+        }
+
         public String getToken() {
             return null;
         }
 
         public Guild getGuild() {
             return null;
+        }
+
+        @Override
+        public boolean isFromGuild() {
+            return IReplyCallback.super.isFromGuild();
+        }
+
+        @NotNull
+        @Override
+        public ChannelType getChannelType() {
+            return IReplyCallback.super.getChannelType();
         }
 
         public User getUser() {
@@ -210,16 +245,100 @@ public class WorldClockHealthCheck {
             return null;
         }
 
+        @Override
+        public long getChannelIdLong() {
+            return 0;
+        }
+
+        @Nullable
+        @Override
+        public String getChannelId() {
+            return IReplyCallback.super.getChannelId();
+        }
+
+        @NotNull
+        @Override
+        public GuildChannel getGuildChannel() {
+            return IReplyCallback.super.getGuildChannel();
+        }
+
+        @NotNull
+        @Override
+        public MessageChannel getMessageChannel() {
+            return IReplyCallback.super.getMessageChannel();
+        }
+
         public DiscordLocale getUserLocale() {
             return null;
+        }
+
+        @NotNull
+        @Override
+        public DiscordLocale getGuildLocale() {
+            return IReplyCallback.super.getGuildLocale();
         }
 
         public JDA getJDA() {
             return null;
         }
 
+        @NotNull
+        @Override
+        public String getId() {
+            return IReplyCallback.super.getId();
+        }
+
         public long getIdLong() {
             return 0;
+        }
+
+        @NotNull
+        @Override
+        public OffsetDateTime getTimeCreated() {
+            return IReplyCallback.super.getTimeCreated();
+        }
+
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction replyEmbeds(@NotNull Collection<? extends MessageEmbed> embeds) {
+            return IReplyCallback.super.replyEmbeds(embeds);
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction replyEmbeds(@NotNull MessageEmbed embed, @NotNull MessageEmbed... embeds) {
+            return IReplyCallback.super.replyEmbeds(embed, embeds);
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction replyComponents(@NotNull Collection<? extends LayoutComponent> components) {
+            return IReplyCallback.super.replyComponents(components);
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction replyComponents(@NotNull LayoutComponent component, @NotNull LayoutComponent... other) {
+            return IReplyCallback.super.replyComponents(component, other);
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction replyFormat(@NotNull String format, @NotNull Object... args) {
+            return IReplyCallback.super.replyFormat(format, args);
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction replyFiles(@NotNull Collection<? extends FileUpload> files) {
+            return IReplyCallback.super.replyFiles(files);
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction replyFiles(@NotNull FileUpload... files) {
+            return IReplyCallback.super.replyFiles(files);
         }
         // </editor-fold>
 
