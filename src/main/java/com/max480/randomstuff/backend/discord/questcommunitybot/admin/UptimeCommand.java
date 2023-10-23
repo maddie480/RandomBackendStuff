@@ -5,7 +5,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -44,7 +43,7 @@ public class UptimeCommand implements BotCommand {
 
     @Override
     public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
-        long minutes = startDate.until(Instant.now(), ChronoUnit.MINUTES);
+        long minutes = startDate.until(ZonedDateTime.now(), ChronoUnit.MINUTES);
 
         long remainingMinutes = minutes % 60;
         long hours = (minutes / 60) % 24;
