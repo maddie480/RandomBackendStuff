@@ -78,7 +78,7 @@ public class SlashCommandBot extends ListenerAdapter {
 
         jda = JDABuilder.create(SecretConstants.SLASH_COMMAND_BOT_TOKEN,
                         GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
-                .addEventListeners(new SlashCommandBot())
+                .addEventListeners(this)
                 .build().awaitReady();
 
         for (Long serverId : Arrays.asList(SERVER_ID, 443390765826179072L)) {
