@@ -151,7 +151,7 @@ public class JsonUpdateChecker {
                 log.debug("Il n'y a pas de fichier avec lequel comparer.");
             }
 
-            Files.move(oldContents, newContents);
+            Files.move(newContents, oldContents);
 
         } catch (Exception e) {
             log.error("Erreur lors du relevé des MAJ de JSON", e);
