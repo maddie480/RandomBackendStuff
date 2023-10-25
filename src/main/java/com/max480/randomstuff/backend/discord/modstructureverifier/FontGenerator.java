@@ -244,7 +244,12 @@ public class FontGenerator {
             // zip the fnt file (renamed to <language>.fnt) and all png files
             try (ZipOutputStream zipOutput = new ZipOutputStream(new FileOutputStream(tempDirectory.resolve("font.zip").toFile()))) {
                 for (File f : tempDirectory.toFile().listFiles((dir, name) -> name.endsWith(".png") || name.endsWith(".fnt"))) {
-                    String fileName = f.getName().endsWith(".fnt") ? language + ".fnt" : f.getName();
+                    String fileName;
+                    if (f.getName().endsWith(".fnt")) {
+                        fileName = "renogare".equals(language) ? "renogare64.fnt" : (language + ".fnt");
+                    } else {
+                        fileName = f.getName();
+                    }
                     zipOutput.putNextEntry(new ZipEntry(fileName));
                     try (FileInputStream fileInput = new FileInputStream(f)) {
                         IOUtils.copy(fileInput, zipOutput);

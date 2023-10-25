@@ -1054,7 +1054,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
 
             // add characters that are added by the mod to that (if it has any of course!).
-            ZipEntry fontFile = modZip.getEntry("Dialog/Fonts/" + languageName + ".fnt");
+            ZipEntry fontFile = modZip.getEntry("Dialog/Fonts/" + ("renogare".equals(languageName) ? "renogare64" : languageName) + ".fnt");
             if (fontFile != null) {
                 try (InputStream is = modZip.getInputStream(fontFile)) {
                     existingCodePoints.addAll(readFontFile(is));
