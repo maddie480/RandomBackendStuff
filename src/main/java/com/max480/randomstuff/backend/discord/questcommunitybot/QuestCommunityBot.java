@@ -75,6 +75,9 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
         SteamCommand steamCommand = new SteamCommand(gamestatsManager);
         steamCommand.loadFile(questGuild);
 
+        UptimeCommand uptimeCommand = new UptimeCommand();
+        uptimeCommand.run(client);
+
         commandCategories = ImmutableMap.of(
                 "Mods et outils Quest", Arrays.asList(
                         new ListModsCommand(),
@@ -130,7 +133,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
                 "Commandes d'administration", Arrays.asList(
                         new ShutdownCommand(),
                         new PingCommand(),
-                        new UptimeCommand()
+                        uptimeCommand
                 ),
                 "Téléchargement de vidéos", Arrays.asList(
                         new YoutubeDlCommand(),

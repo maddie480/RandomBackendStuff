@@ -1,14 +1,20 @@
 package com.max480.randomstuff.backend.discord.questcommunitybot.admin;
 
 import com.max480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
 public class UptimeCommand implements BotCommand {
+    private static final Logger log = LoggerFactory.getLogger(UptimeCommand.class);
+
     private final ZonedDateTime startDate = ZonedDateTime.now();
 
     @Override
@@ -61,6 +67,37 @@ public class UptimeCommand implements BotCommand {
 
         event.getChannel().sendMessage(s).queue();
     }
+
+
+    public void run(JDA jda) throws IOException {
+        new Thread("Uptime Presence Updater") {
+            @Override
+            public void run() {
+                while (true) {
+                    long minutes = startDate.until(ZonedDateTime.now(), ChronoUnit.MINUTES);
+
+                    long remainingMinutes = minutes % 60;
+                    long hours = (minutes / 60) % 24;
+                    long days = minutes / 24 / 60;
+
+                    String s = "Lancé depuis ";
+                    if (days != 0) s += days + "j ";
+                    if (hours != 0) s += hours + "h ";
+                    if (remainingMinutes != 0) s += remainingMinutes + "m ";
+                    s = s.trim();
+
+                    jda.getPresence().setActivity(Activity.playing("!help | " + s));
+
+                    try {
+                        Thread.sleep(60000);
+                    } catch (InterruptedException e) {
+                        log.error("Sleep interrupted", e);
+                    }
+                }
+            }
+        }.start();
+    }
+
 
     @Override
     public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
