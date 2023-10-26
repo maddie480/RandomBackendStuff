@@ -173,14 +173,17 @@ public class LNJTwitchBot {
         TwitchHelix helix = TwitchHelixBuilder.builder().build();
         chat.getEventManager().onEvent(ChannelMessageEvent.class, event -> handleChatMessage(event, chat, helix, accessToken));
 
-        new Thread(() -> {
-            try {
-                Thread.sleep(expiresIn * 1000L);
-                System.exit(0);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+        new Thread("LNJ Bot Scheduled Shutdown Thread") {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(expiresIn * 1000L);
+                    System.exit(0);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
-        }).start();
+        }.start();
 
         logger.debug("Startup finished!");
     }

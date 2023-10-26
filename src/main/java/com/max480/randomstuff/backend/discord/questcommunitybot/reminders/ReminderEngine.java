@@ -25,22 +25,25 @@ public class ReminderEngine {
     private final List<RappelV3> tousLesRappelsV3;
 
     public void run(Guild guild) throws IOException {
-        new Thread(() -> {
-            while (true) {
-                try {
-                    checkForReminders(guild.getJDA());
-                } catch (Exception e) {
-                    logger.error("Uncaught exception during reminders refresh", e);
-                }
+        new Thread("Reminder Engine") {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        checkForReminders(guild.getJDA());
+                    } catch (Exception e) {
+                        logger.error("Uncaught exception during reminders refresh", e);
+                    }
 
-                try {
-                    Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
-                            + ZonedDateTime.now().getNano() / 1_000_000) + 50);
-                } catch (InterruptedException e) {
-                    logger.error("Sleep interrupted", e);
+                    try {
+                        Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
+                                + ZonedDateTime.now().getNano() / 1_000_000) + 50);
+                    } catch (InterruptedException e) {
+                        logger.error("Sleep interrupted", e);
+                    }
                 }
             }
-        }).start();
+        }.start();
     }
 
     public ReminderEngine(Guild guild) throws IOException {

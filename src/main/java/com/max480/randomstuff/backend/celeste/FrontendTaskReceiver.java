@@ -34,19 +34,22 @@ public class FrontendTaskReceiver {
      * Starts listening for pub/sub messages.
      */
     public static void start() {
-        new Thread(() -> {
-            try (ServerSocket serverSocket = new ServerSocket(44480)) {
-                while (true) {
-                    try (Socket connection = serverSocket.accept()) {
-                        messageReceived(IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8));
-                    } catch (Exception e) {
-                        log.warn("Error while handling socket message", e);
+        new Thread("Frontend Task Receiver") {
+            @Override
+            public void run() {
+                try (ServerSocket serverSocket = new ServerSocket(44480)) {
+                    while (true) {
+                        try (Socket connection = serverSocket.accept()) {
+                            messageReceived(IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8));
+                        } catch (Exception e) {
+                            log.warn("Error while handling socket message", e);
+                        }
                     }
+                } catch (IOException e) {
+                    log.error("Error while starting server socket", e);
                 }
-            } catch (IOException e) {
-                log.error("Error while starting server socket", e);
             }
-        }).start();
+        }.start();
     }
 
     /**

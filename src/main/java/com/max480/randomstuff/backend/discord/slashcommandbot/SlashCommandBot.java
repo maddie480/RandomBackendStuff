@@ -116,23 +116,26 @@ public class SlashCommandBot extends ListenerAdapter {
             ).queue();
         }
 
-        new Thread(() -> {
-            while (true) {
-                try {
-                    hourlyProcess();
-                } catch (Exception e) {
-                    logger.error("Uncaught exception during ", e);
-                }
+        new Thread("Slash Command Bot Hourly Process Runner") {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        hourlyProcess();
+                    } catch (Exception e) {
+                        logger.error("Uncaught exception during ", e);
+                    }
 
-                try {
-                    Thread.sleep(3600000 - (ZonedDateTime.now().getMinute() * 60000
-                            + ZonedDateTime.now().getSecond() * 1000
-                            + ZonedDateTime.now().getNano() / 1_000_000) + 50);
-                } catch (InterruptedException e) {
-                    logger.error("Sleep interrupted", e);
+                    try {
+                        Thread.sleep(3600000 - (ZonedDateTime.now().getMinute() * 60000
+                                + ZonedDateTime.now().getSecond() * 1000
+                                + ZonedDateTime.now().getNano() / 1_000_000) + 50);
+                    } catch (InterruptedException e) {
+                        logger.error("Sleep interrupted", e);
+                    }
                 }
             }
-        }).start();
+        }.start();
     }
 
     private void hourlyProcess() {

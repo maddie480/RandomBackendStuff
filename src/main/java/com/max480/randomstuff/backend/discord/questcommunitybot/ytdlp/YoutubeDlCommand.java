@@ -78,53 +78,56 @@ public class YoutubeDlCommand implements BotCommand {
         msg.addReaction(Emoji.fromUnicode("\uD83D\uDC4C")).queue(); // ok_hand
         msg.delete().queueAfter(5, TimeUnit.MINUTES);
 
-        new Thread(() -> {
-            log.info("youtube-dl starting for format {} and url {} in {}", format, url, tempFolder.getAbsolutePath());
+        new Thread("youtube-dl runner") {
+            @Override
+            public void run() {
+                log.info("youtube-dl starting for format {} and url {} in {}", format, url, tempFolder.getAbsolutePath());
 
-            try {
-                Process p;
-                if (sponsorBlock) {
-                    p = new ProcessBuilder("/app/static/youtube-dl",
-                            "-f", format, "--sponsorblock-remove", "sponsor,selfpromo", url)
-                            .directory(tempFolder)
-                            .inheritIO()
-                            .start();
-                } else if (audio) {
-                    p = new ProcessBuilder("/app/static/youtube-dl", "-f",
-                            "bestaudio/bestaudio*", "-x", "--audio-format", "mp3", url)
-                            .directory(tempFolder)
-                            .inheritIO()
-                            .start();
-                } else {
-                    p = new ProcessBuilder("/app/static/youtube-dl", "-f", format, url)
-                            .directory(tempFolder)
-                            .inheritIO()
-                            .start();
-                }
+                try {
+                    Process p;
+                    if (sponsorBlock) {
+                        p = new ProcessBuilder("/app/static/youtube-dl",
+                                "-f", format, "--sponsorblock-remove", "sponsor,selfpromo", url)
+                                .directory(tempFolder)
+                                .inheritIO()
+                                .start();
+                    } else if (audio) {
+                        p = new ProcessBuilder("/app/static/youtube-dl", "-f",
+                                "bestaudio/bestaudio*", "-x", "--audio-format", "mp3", url)
+                                .directory(tempFolder)
+                                .inheritIO()
+                                .start();
+                    } else {
+                        p = new ProcessBuilder("/app/static/youtube-dl", "-f", format, url)
+                                .directory(tempFolder)
+                                .inheritIO()
+                                .start();
+                    }
 
-                p.waitFor();
+                    p.waitFor();
 
-                if (p.exitValue() != 0) {
-                    log.warn("youtube-dl ckc, exit code = {}", p.exitValue());
+                    if (p.exitValue() != 0) {
+                        log.warn("youtube-dl ckc, exit code = {}", p.exitValue());
 
+                        msg.getChannel().sendMessage("Il y a eu un problème. <:A_ckc:644445091884171264>")
+                                .queue(message -> message.delete().queueAfter(5, TimeUnit.MINUTES));
+                    } else {
+                        log.warn("youtube-dl done!");
+                        youtubeDlUpload(msg, tempFolder);
+                    }
+                } catch (IOException | InterruptedException e) {
+                    log.error("youtube-dl ckc", e);
                     msg.getChannel().sendMessage("Il y a eu un problème. <:A_ckc:644445091884171264>")
                             .queue(message -> message.delete().queueAfter(5, TimeUnit.MINUTES));
-                } else {
-                    log.warn("youtube-dl done!");
-                    youtubeDlUpload(msg, tempFolder);
                 }
-            } catch (IOException | InterruptedException e) {
-                log.error("youtube-dl ckc", e);
-                msg.getChannel().sendMessage("Il y a eu un problème. <:A_ckc:644445091884171264>")
-                        .queue(message -> message.delete().queueAfter(5, TimeUnit.MINUTES));
-            }
 
-            try {
-                FileUtils.deleteDirectory(tempFolder);
-            } catch (IOException e) {
-                log.error("Could not delete youtube-dl directory", e);
+                try {
+                    FileUtils.deleteDirectory(tempFolder);
+                } catch (IOException e) {
+                    log.error("Could not delete youtube-dl directory", e);
+                }
             }
-        }).start();
+        }.start();
     }
 
     private static void youtubeDlUpload(Message msg, File tempFolder) throws IOException {

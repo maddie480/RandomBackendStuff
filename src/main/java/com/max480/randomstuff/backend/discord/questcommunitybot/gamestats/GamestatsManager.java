@@ -37,41 +37,44 @@ public class GamestatsManager {
     public void run(Guild guild) throws IOException {
         loadFile(guild);
 
-        new Thread(() -> {
-            while (true) {
-                try {
-                    updateStats(guild);
+        new Thread("Gamestats Manager") {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        updateStats(guild);
 
-                    if (ZonedDateTime.now().getHour() == 0) {
-                        if (ZonedDateTime.now().getMinute() == 0) {
-                            autoPurge();
-                            wipeStats(DAILY);
+                        if (ZonedDateTime.now().getHour() == 0) {
+                            if (ZonedDateTime.now().getMinute() == 0) {
+                                autoPurge();
+                                wipeStats(DAILY);
 
-                            if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.MONDAY) {
-                                wipeStats(WEEKLY);
-                            }
+                                if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.MONDAY) {
+                                    wipeStats(WEEKLY);
+                                }
 
-                            if (ZonedDateTime.now().getDayOfMonth() == 1) {
-                                wipeStats(MONTHLY);
+                                if (ZonedDateTime.now().getDayOfMonth() == 1) {
+                                    wipeStats(MONTHLY);
+                                }
                             }
                         }
+
+                        if (ZonedDateTime.now().getMinute() == 0) {
+                            steamCommand.refreshSteamStats(guild.getJDA());
+                        }
+                    } catch (Exception e) {
+                        log.error("Uncaught exception during gamestats refresh", e);
                     }
 
-                    if (ZonedDateTime.now().getMinute() == 0) {
-                        steamCommand.refreshSteamStats(guild.getJDA());
+                    try {
+                        Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
+                                + ZonedDateTime.now().getNano() / 1_000_000) + 50);
+                    } catch (InterruptedException e) {
+                        log.error("Sleep interrupted", e);
                     }
-                } catch (Exception e) {
-                    log.error("Uncaught exception during gamestats refresh", e);
-                }
-
-                try {
-                    Thread.sleep(60000 - (ZonedDateTime.now().getSecond() * 1000
-                            + ZonedDateTime.now().getNano() / 1_000_000) + 50);
-                } catch (InterruptedException e) {
-                    log.error("Sleep interrupted", e);
                 }
             }
-        }).start();
+        }.start();
     }
 
     private void loadFile(Guild guild) throws IOException {
