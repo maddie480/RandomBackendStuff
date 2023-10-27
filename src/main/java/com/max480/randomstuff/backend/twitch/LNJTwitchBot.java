@@ -23,10 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -197,7 +194,7 @@ public class LNJTwitchBot {
             return;
         }
 
-        if (event.getMessage().trim().equals("!clip")) {
+        if (event.getMessage().trim().toLowerCase(Locale.ROOT).matches("^! *clip$")) {
             logger.debug("Received a !clip command from " + event.getMessageEvent().getUserName());
 
             if (System.currentTimeMillis() - lastClipAt > 30000) {
