@@ -157,7 +157,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-        if (!event.getMessage().getContentRaw().startsWith("!")) {
+        if (event.getAuthor().isBot() || !event.getMessage().getContentRaw().startsWith("!")) {
             return;
         }
 
@@ -227,6 +227,10 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
 
     @Override
     public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
+        if (event.getUser() == null || event.getUser().isBot()) {
+            return;
+        }
+
         for (BotCommand command : commandCategories.values().stream().flatMap(List::stream).toList()) {
             try {
                 if (command.processReaction(event, Utils.getUnicodeHexFromEmoji(event.getEmoji().getName()))) {
