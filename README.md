@@ -13,7 +13,7 @@ The [CrontabRunner](src/main/java/com/max480/randomstuff/backend/CrontabRunner.j
   - A health check bot
   - A socket server the frontend can use to trigger backend tasks
 - for scheduled processes, it is called by a crontab with different arguments:
-  - `--daily`: called every day at 16:15 GMT
+  - `--daily`: called every day at 17:15 GMT
   - `--hourly`: called every hour when the minute is 45
   - `--updater`: called every 2 minutes except when the minute is 0, or if another instance is running
   - `--updater-full`: called every hour when the minute is 0, except if another instance is running
