@@ -145,6 +145,8 @@ public class CrontabRunner {
             CustomEntityCatalogGenerator.main(null);
             ServerJanitorBot.main(null);
             housekeepArbitraryModApp();
+            AssetDriveService.refreshCachedAssets();
+            AssetDriveService.classifyAssets();
 
             // health checks
             WorldClockHealthCheck.main(null);

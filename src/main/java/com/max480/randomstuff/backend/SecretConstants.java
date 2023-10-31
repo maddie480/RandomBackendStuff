@@ -54,8 +54,9 @@ public class SecretConstants {
     // Raw content of the update_checker_config.yaml to pass to the Everest Update Checker
     public static String UPDATE_CHECKER_CONFIG;
 
-    // API key allowing to download stuff from Google Drive
+    // Asset Drive Browser service: interacts with Google Drive
     public static String GOOGLE_DRIVE_API_KEY;
+    public static String ASSET_DRIVE_FOLDER_ID;
 
     // secret used to call "reload" APIs on the frontend, when everest_update.yaml / mod_search_database.yaml is updated
     public static String RELOAD_SHARED_SECRET;
@@ -163,6 +164,7 @@ public class SecretConstants {
         UPDATE_CHECKER_CONFIG = secrets.getString("UPDATE_CHECKER_CONFIG");
 
         GOOGLE_DRIVE_API_KEY = secrets.getString("GOOGLE_DRIVE_API_KEY");
+        ASSET_DRIVE_FOLDER_ID = secrets.getString("ASSET_DRIVE_FOLDER_ID");
 
         RELOAD_SHARED_SECRET = secrets.getString("RELOAD_SHARED_SECRET");
 
