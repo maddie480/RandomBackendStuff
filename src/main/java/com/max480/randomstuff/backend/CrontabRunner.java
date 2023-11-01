@@ -17,6 +17,7 @@ import com.max480.randomstuff.backend.utils.WebhookExecutor;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
@@ -179,7 +180,8 @@ public class CrontabRunner {
             QuestCommunityWebsiteHealthCheck.run();
             SlashCommandBotHealthCheck.checkSlashCommands();
 
-            JDA client = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN).build().awaitReady();
+            JDA client = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)
+                    .build().awaitReady();
 
             try {
                 StonkUpdateChecker.postTo(client.getTextChannelById(551822297573490749L));
