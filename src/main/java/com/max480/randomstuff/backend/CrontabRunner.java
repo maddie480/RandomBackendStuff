@@ -34,6 +34,8 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -55,6 +57,7 @@ public class CrontabRunner {
         if (arg.equals("--daily")) {
             runDailyProcesses();
             sendMessageToWebhook(":white_check_mark: Daily processes completed!");
+            System.exit(0);
             return;
         }
 
@@ -194,8 +197,26 @@ public class CrontabRunner {
             }
 
             // save the longest for the end
-            PrivateDiscordJanitor.runCleanup();
             AssetDriveService.cacheAllFiles();
+
+            Semaphore mutex = new Semaphore(0);
+            new Thread("Discord Janitor") {
+                @Override
+                public void run() {
+                    try {
+                        PrivateDiscordJanitor.runCleanup();
+                        mutex.release();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }.start();
+
+            if (mutex.tryAcquire(10, TimeUnit.MINUTES)) {
+                logger.debug("Discord Janitor finished!");
+            } else {
+                logger.warn("Discord Janitor didn't finish in 10 minutes, aborting.");
+            }
         });
     }
 
