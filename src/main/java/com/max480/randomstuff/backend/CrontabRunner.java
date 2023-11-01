@@ -193,7 +193,9 @@ public class CrontabRunner {
                 throw e;
             }
 
+            // save the longest for the end
             PrivateDiscordJanitor.runCleanup();
+            AssetDriveService.cacheAllFiles();
         });
     }
 

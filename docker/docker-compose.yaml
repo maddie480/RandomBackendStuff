@@ -31,9 +31,7 @@ services:
 
           "GITHUB_SSH_KNOWN_HOSTS": "[TODO]",
           "GITHUB_SSH_PUBLIC_KEY": "[TODO]",
-          "GITHUB_SSH_PRIVATE_KEY": "[TODO]",
-
-          "GOOGLE_DRIVE_API_KEY": "[TODO]"
+          "GITHUB_SSH_PRIVATE_KEY": "[TODO]"
         }
     volumes:
       - /home/debian/shared:/shared

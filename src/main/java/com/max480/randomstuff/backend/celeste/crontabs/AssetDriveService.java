@@ -15,6 +15,7 @@ import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -138,6 +139,34 @@ public class AssetDriveService {
 
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/temp/asset-drive/categorized-assets.json"))) {
             IOUtils.write(result.toString(), os, StandardCharsets.UTF_8);
+        }
+    }
+
+    public static void cacheAllFiles() throws IOException {
+        JSONArray allFiles;
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/temp/asset-drive/cached-list.json"))) {
+            allFiles = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+        }
+
+        for (Object o : allFiles) {
+            String fileId = ((JSONObject) o).getString("id");
+            Path cached = Paths.get("/shared/temp/asset-drive/cached-" + fileId + ".bin");
+
+            log.debug("Downloading non-cached file with id {}", fileId);
+
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://www.googleapis.com/drive/v3/files/" + fileId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media");
+                 OutputStream os = Files.newOutputStream(cached)) {
+
+                IOUtils.copy(is, os);
+            } catch (IOException e) {
+                // get rid of the cached file, since it might be incomplete
+                if (Files.exists(cached)) {
+                    log.warn("Deleting cached file {} due to I/O exception", cached);
+                    Files.delete(cached);
+                }
+
+                throw e;
+            }
         }
     }
 
