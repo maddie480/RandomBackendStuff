@@ -1,5 +1,6 @@
 package com.max480.randomstuff.backend.celeste.crontabs;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.max480.everest.updatechecker.YamlUtil;
 import com.max480.randomstuff.backend.SecretConstants;
 import com.max480.randomstuff.backend.utils.ConnectionUtils;
@@ -9,9 +10,11 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -27,6 +30,11 @@ public class AssetDriveService {
         JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID, new HashSet<>(Arrays.asList("image/png", "text/plain", "text/yaml")), "");
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/temp/asset-drive/cached-list.json"))) {
             IOUtils.write(allFiles.toString(), os, StandardCharsets.UTF_8);
+        }
+
+        log.debug("Calling frontend to refresh existing assets list...");
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/reload?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
+            IOUtils.consume(is);
         }
     }
 
@@ -143,6 +151,9 @@ public class AssetDriveService {
     }
 
     public static void cacheAllFiles() throws IOException {
+        GoogleCredentials credential = GoogleCredentials.fromStream(new ByteArrayInputStream(SecretConstants.GOOGLE_DRIVE_OAUTH_CONFIG.getBytes(StandardCharsets.UTF_8)))
+                .createScoped(Collections.singletonList("https://www.googleapis.com/auth/drive.readonly"));
+
         JSONArray allFiles;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/temp/asset-drive/cached-list.json"))) {
             allFiles = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
@@ -152,9 +163,14 @@ public class AssetDriveService {
             String fileId = ((JSONObject) o).getString("id");
             Path cached = Paths.get("/shared/temp/asset-drive/cached-" + fileId + ".bin");
 
-            log.debug("Downloading non-cached file with id {}", fileId);
+            log.debug("Downloading Google Drive file with id {}", fileId);
 
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://www.googleapis.com/drive/v3/files/" + fileId + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media");
+            credential.refreshIfExpired();
+
+            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media");
+            conn.setRequestProperty("Authorization", "Bearer " + credential.getAccessToken().getTokenValue());
+
+            try (InputStream is = ConnectionUtils.connectionToInputStream(conn);
                  OutputStream os = Files.newOutputStream(cached)) {
 
                 IOUtils.copy(is, os);

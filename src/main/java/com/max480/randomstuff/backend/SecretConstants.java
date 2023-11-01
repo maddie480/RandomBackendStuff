@@ -57,6 +57,7 @@ public class SecretConstants {
     // Asset Drive Browser service: interacts with Google Drive
     public static String GOOGLE_DRIVE_API_KEY;
     public static String ASSET_DRIVE_FOLDER_ID;
+    public static String GOOGLE_DRIVE_OAUTH_CONFIG;
 
     // secret used to call "reload" APIs on the frontend, when everest_update.yaml / mod_search_database.yaml is updated
     public static String RELOAD_SHARED_SECRET;
@@ -165,6 +166,7 @@ public class SecretConstants {
 
         GOOGLE_DRIVE_API_KEY = secrets.getString("GOOGLE_DRIVE_API_KEY");
         ASSET_DRIVE_FOLDER_ID = secrets.getString("ASSET_DRIVE_FOLDER_ID");
+        GOOGLE_DRIVE_OAUTH_CONFIG = secrets.getString("GOOGLE_DRIVE_OAUTH_CONFIG");
 
         RELOAD_SHARED_SECRET = secrets.getString("RELOAD_SHARED_SECRET");
 
