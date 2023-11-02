@@ -21,18 +21,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
-import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AssetDriveService {
     private static final Logger log = LoggerFactory.getLogger(AssetDriveService.class);
 
-    public static void refreshCachedAssets() throws IOException {
+    public static void listAllFiles() throws IOException {
         JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID, new HashSet<>(Arrays.asList("image/png", "text/plain", "text/yaml")), "");
-        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/temp/asset-drive/cached-list.json"))) {
+        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             IOUtils.write(allFiles.toString(), os, StandardCharsets.UTF_8);
         }
 
@@ -44,7 +44,7 @@ public class AssetDriveService {
 
     public static void classifyAssets() throws IOException {
         JSONArray allFiles;
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/temp/asset-drive/cached-list.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             allFiles = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
         }
 
@@ -94,6 +94,7 @@ public class AssetDriveService {
             mappedObject.put("author", author);
             mappedObject.put("id", file.getString("id"));
 
+            // find a README that would be in any parent folder.
             for (Object o2 : allFiles) {
                 JSONObject readmeCandidate = (JSONObject) o2;
 
@@ -105,36 +106,57 @@ public class AssetDriveService {
                 }
             }
 
+            // find a properties yaml file that is in the same folder, called "index.yaml".
             for (Object o2 : allFiles) {
                 JSONObject yamlCandidate = (JSONObject) o2;
 
                 if ("text/yaml".equals(yamlCandidate.getString("mimeType"))
                         && file.getString("folder").equals(yamlCandidate.getString("folder"))
-                        && (file.getString("name") + ".yaml").equals(yamlCandidate.getString("name"))) {
+                        && "index.yaml".equals(yamlCandidate.getString("name"))) {
 
-                    Map<String, String> yaml;
-                    try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://www.googleapis.com/drive/v3/files/" + file.getString("id") + "?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&alt=media")) {
-                        yaml = YamlUtil.load(is);
-                    }
-
-                    if (yaml.containsKey("Tags")) {
-                        mappedObject.put("tags", Arrays.stream(yaml.get("Tags").split(","))
-                                .map(String::trim).collect(Collectors.toList()));
-                    }
-                    if (yaml.containsKey("Name")) {
-                        mappedObject.put("name", yaml.get("Name"));
-                    }
-                    if (yaml.containsKey("Author")) {
-                        mappedObject.put("author", yaml.get("Author"));
-                    }
-                    if (yaml.containsKey("Template")) {
-                        mappedObject.put("template", yaml.get("Template"));
-                    }
-                    if (yaml.containsKey("Notes")) {
-                        mappedObject.put("notes", yaml.get("Notes"));
+                    String[] yamls;
+                    try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/files/" + file.getString("id") + ".yaml"))) {
+                        yamls = IOUtils.toString(is, StandardCharsets.UTF_8).replace("\r\n", "\n").split("\n---\n");
                     }
 
-                    break;
+                    for (String yamlRaw : yamls) {
+                        Map<String, String> yaml;
+                        try (InputStream is = new ByteArrayInputStream(yamlRaw.getBytes(StandardCharsets.UTF_8))) {
+                            yaml = YamlUtil.load(is);
+                        }
+
+                        String matchingPath = yaml.get("Path");
+                        if (matchingPath.endsWith("*")) {
+                            // prefix match
+                            if (!file.getString("name").startsWith(matchingPath.substring(0, matchingPath.length() - 1))) {
+                                continue;
+                            }
+                        } else {
+                            // full name match
+                            if (!file.getString("name").equals(matchingPath)) {
+                                continue;
+                            }
+                        }
+
+                        if (yaml.containsKey("Tags")) {
+                            mappedObject.put("tags", Arrays.stream(yaml.get("Tags").split(","))
+                                    .map(String::trim).collect(Collectors.toList()));
+                        }
+                        if (yaml.containsKey("Name")) {
+                            mappedObject.put("name", yaml.get("Name"));
+                        }
+                        if (yaml.containsKey("Author")) {
+                            mappedObject.put("author", yaml.get("Author"));
+                        }
+                        if (yaml.containsKey("Template")) {
+                            mappedObject.put("template", yaml.get("Template"));
+                        }
+                        if (yaml.containsKey("Notes")) {
+                            mappedObject.put("notes", yaml.get("Notes"));
+                        }
+
+                        break;
+                    }
                 }
             }
 
@@ -149,34 +171,53 @@ public class AssetDriveService {
             result.put(entry.getKey(), new JSONArray(value));
         }
 
-        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/temp/asset-drive/categorized-assets.json"))) {
+        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/categorized-assets.json"))) {
             IOUtils.write(result.toString(), os, StandardCharsets.UTF_8);
         }
     }
 
-    public static void cacheAllFiles() throws IOException {
+    public static void rsyncFiles() throws IOException {
+        Path syncedFilesRepository = Paths.get("/shared/celeste/asset-drive/files");
+
         GoogleCredentials credential = GoogleCredentials.fromStream(new ByteArrayInputStream(SecretConstants.GOOGLE_DRIVE_OAUTH_CONFIG.getBytes(StandardCharsets.UTF_8)))
                 .createScoped(Collections.singletonList("https://www.googleapis.com/auth/drive.readonly"));
 
+
+        Set<String> missingFiles;
+        try (Stream<Path> fileListing = Files.list(syncedFilesRepository)) {
+            missingFiles = fileListing
+                    .map(file -> file.getFileName().toString())
+                    .collect(Collectors.toSet());
+        }
+
         JSONArray allFiles;
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/temp/asset-drive/cached-list.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             allFiles = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
         }
 
         for (Object o : allFiles) {
             String fileId = ((JSONObject) o).getString("id");
-            Path cached = Paths.get("/shared/temp/asset-drive/cached-" + fileId + ".bin");
+            String extension = switch (((JSONObject) o).getString("mimeType")) {
+                case "image/png" -> "png";
+                case "text/plain" -> "txt";
+                case "text/yaml" -> "yaml";
+                default -> "bin";
+            };
+            Instant lastModified = ZonedDateTime.parse(((JSONObject) o).getString("modifiedTime")).toInstant();
 
-            // we're only redownloading all files once a week, on Mondays, in case they changed, because it takes *hours*
-            if (Files.exists(cached) && ZonedDateTime.now().getDayOfWeek() != DayOfWeek.MONDAY) {
-                // otherwise, we just "touch" them to prevent the /shared/temp cleanup script from deleting them
-                log.debug("Updating last modified date of file {}", fileId);
-                Files.setLastModifiedTime(cached, FileTime.from(Instant.now()));
+            Path cached = syncedFilesRepository.resolve(fileId + "." + extension);
+
+            // 1. the file still exists, don't delete it
+            missingFiles.remove(cached.getFileName().toString());
+
+            // 2. if the last modified date matches, the file didn't get modified, so don't download it again
+            if (Files.exists(cached) && Files.getLastModifiedTime(cached).toInstant().equals(lastModified)) {
                 continue;
             }
 
+            // 3. if it doesn't, download it and make sure we set the last modified time right!
             ConnectionUtils.runWithRetry(() -> {
-                log.debug("Downloading Google Drive file with id {}", fileId);
+                log.debug("Downloading Google Drive file with id {}, last modified on {}", fileId, lastModified);
 
                 credential.refreshIfExpired();
 
@@ -184,20 +225,20 @@ public class AssetDriveService {
                 conn.setRequestProperty("Authorization", "Bearer " + credential.getAccessToken().getTokenValue());
 
                 try (InputStream is = ConnectionUtils.connectionToInputStream(conn);
-                    OutputStream os = Files.newOutputStream(cached)) {
+                     OutputStream os = Files.newOutputStream(cached)) {
 
                     IOUtils.copy(is, os);
-                    return null;
-                } catch (IOException e) {
-                    // get rid of the cached file, since it might be incomplete
-                    if (Files.exists(cached)) {
-                        log.warn("Deleting cached file {} due to I/O exception", cached);
-                        Files.delete(cached);
-                    }
-
-                    throw e;
                 }
+
+                Files.setLastModifiedTime(cached, FileTime.from(lastModified));
+                return null;
             });
+        }
+
+        // 4. delete the files that don't exist anymore!
+        for (String s : missingFiles) {
+            log.warn("Deleting file {} that doesn't seem to exist anymore!", s);
+            Files.delete(syncedFilesRepository.resolve(s));
         }
     }
 
@@ -247,8 +288,9 @@ public class AssetDriveService {
     }
 
     private static JSONObject listPageOfFilesInFolder(String folderId, String pageToken) throws IOException {
-        String url = "https://www.googleapis.com/drive/v3/files?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY + "&q="
-                + URLEncoder.encode("'" + folderId + "' in parents and trashed = false", StandardCharsets.UTF_8)
+        String url = "https://www.googleapis.com/drive/v3/files?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY
+                + "&q=" + URLEncoder.encode("'" + folderId + "' in parents and trashed = false", StandardCharsets.UTF_8)
+                + "&fields=" + URLEncoder.encode("files(id,mimeType,name,modifiedTime)", StandardCharsets.UTF_8)
                 + (pageToken == null ? "" : "&pageToken=" + pageToken);
 
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
