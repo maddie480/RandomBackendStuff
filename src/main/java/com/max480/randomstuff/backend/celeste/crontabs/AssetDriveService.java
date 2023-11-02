@@ -20,6 +20,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -162,6 +166,14 @@ public class AssetDriveService {
         for (Object o : allFiles) {
             String fileId = ((JSONObject) o).getString("id");
             Path cached = Paths.get("/shared/temp/asset-drive/cached-" + fileId + ".bin");
+
+            // we're only redownloading all files once a week, on Mondays, in case they changed, because it takes *hours*
+            if (Files.exists(cached) && ZonedDateTime.now().getDayOfWeek() != DayOfWeek.MONDAY) {
+                // otherwise, we just "touch" them to prevent the /shared/temp cleanup script from deleting them
+                log.debug("Updating last modified date of file {}", fileId);
+                Files.setLastModifiedTime(cached, FileTime.from(Instant.now()));
+                continue;
+            }
 
             log.debug("Downloading Google Drive file with id {}", fileId);
 
