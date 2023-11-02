@@ -115,7 +115,7 @@ public class AssetDriveService {
                         && "index.yaml".equals(yamlCandidate.getString("name"))) {
 
                     String[] yamls;
-                    try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/files/" + file.getString("id") + ".yaml"))) {
+                    try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/files/" + yamlCandidate.getString("id") + ".yaml"))) {
                         yamls = IOUtils.toString(is, StandardCharsets.UTF_8).replace("\r\n", "\n").split("\n---\n");
                     }
 
