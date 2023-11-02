@@ -10,13 +10,11 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.*;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.cert.X509Certificate;
 import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -26,30 +24,8 @@ import java.util.stream.Collectors;
 public class JsonUpdateChecker {
     private static final Logger log = LoggerFactory.getLogger(JsonUpdateChecker.class);
 
-    private SSLSocketFactory trustAllSocketFactory = null;
-
     private boolean firstLine = false;
     private boolean hadContent = false;
-
-    public void initialize() throws Exception {
-        // Create a trust manager that does not validate certificate chains
-        TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-
-            public void checkClientTrusted(X509Certificate[] certs, String authType) {
-            }
-
-            public void checkServerTrusted(X509Certificate[] certs, String authType) {
-            }
-        }
-        };
-
-        SSLContext sc = SSLContext.getInstance("SSL");
-        sc.init(null, trustAllCerts, new java.security.SecureRandom());
-        trustAllSocketFactory = sc.getSocketFactory();
-    }
 
     public void checkForUpdates(MessageChannel target) throws Exception {
         {
@@ -69,7 +45,6 @@ public class JsonUpdateChecker {
             for (int i = 0; i < SecretConstants.JSON_URLS.size(); i++) {
                 HttpsURLConnection connection = (HttpsURLConnection) ConnectionUtils.openConnectionWithTimeout(SecretConstants.JSON_URLS.get(i));
                 connection.setRequestProperty("Authorization", "Basic " + SecretConstants.JSON_BASIC_AUTH);
-                connection.setSSLSocketFactory(trustAllSocketFactory);
 
                 Path oldContents = Paths.get("old_json_contents_" + i + ".json");
                 Path newContents = Paths.get("new_json_contents_" + i + ".json");

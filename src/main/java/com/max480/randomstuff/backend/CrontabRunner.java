@@ -251,10 +251,7 @@ public class CrontabRunner {
                 new TemperatureChecker().checkForUpdates(webhookHell);
                 PinUpdater.update(webhookHell);
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);
-
-                JsonUpdateChecker checker = new JsonUpdateChecker();
-                checker.initialize();
-                checker.checkForUpdates(webhookHell);
+                new JsonUpdateChecker().checkForUpdates(webhookHell);
 
                 client.shutdown();
             } catch (IOException e) {
