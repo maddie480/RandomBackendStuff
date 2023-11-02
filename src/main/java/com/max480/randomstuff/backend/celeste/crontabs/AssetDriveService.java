@@ -293,8 +293,28 @@ public class AssetDriveService {
                 + "&fields=" + URLEncoder.encode("files(id,mimeType,name,modifiedTime)", StandardCharsets.UTF_8)
                 + (pageToken == null ? "" : "&pageToken=" + pageToken);
 
+        JSONObject result;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-            return new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
         }
+
+        for (Object o : result.getJSONArray("files")) {
+            JSONObject file = (JSONObject) o;
+
+            // if the file isn't a folder, guess its type based on the extension,
+            // as autodetect can be unreliable when it comes to yaml and txt.
+            if (!file.getString("mimeType").equals("application/vnd.google-apps.folder")) {
+                String extension = file.getString("name");
+                extension = extension.substring(extension.lastIndexOf(".") + 1);
+
+                file.put("mimeType", switch (extension) {
+                    case "yaml" -> "text/yaml";
+                    case "txt" -> "text/plain";
+                    default -> file.getString("mimeType");
+                });
+            }
+        }
+
+        return result;
     }
 }
