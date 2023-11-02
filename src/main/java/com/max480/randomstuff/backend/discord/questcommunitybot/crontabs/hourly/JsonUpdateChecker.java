@@ -66,92 +66,94 @@ public class JsonUpdateChecker {
         try {
             log.debug("Checking for JSON updates");
 
-            HttpsURLConnection connection = (HttpsURLConnection) ConnectionUtils.openConnectionWithTimeout(SecretConstants.JSON_URL);
-            connection.setRequestProperty("Authorization", "Basic " + SecretConstants.JSON_BASIC_AUTH);
-            connection.setSSLSocketFactory(trustAllSocketFactory);
+            for (int i = 0; i < SecretConstants.JSON_URLS.size(); i++) {
+                HttpsURLConnection connection = (HttpsURLConnection) ConnectionUtils.openConnectionWithTimeout(SecretConstants.JSON_URLS.get(i));
+                connection.setRequestProperty("Authorization", "Basic " + SecretConstants.JSON_BASIC_AUTH);
+                connection.setSSLSocketFactory(trustAllSocketFactory);
 
-            Path oldContents = Paths.get("old_json_contents.json");
-            Path newContents = Paths.get("new_json_contents.json");
+                Path oldContents = Paths.get("old_json_contents_" + i + ".json");
+                Path newContents = Paths.get("new_json_contents_" + i + ".json");
 
-            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-                JSONObject contents = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
-                FileUtils.writeStringToFile(newContents.toFile(), contents.toString(2), StandardCharsets.UTF_8);
-            }
-
-            if (Files.exists(oldContents)) {
-                Process p = new ProcessBuilder("diff", "-w", "old_json_contents.json", "new_json_contents.json")
-                        .redirectErrorStream(true)
-                        .redirectInput(ProcessBuilder.Redirect.INHERIT)
-                        .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                        .start();
-
-                String diff = IOUtils.toString(p.getInputStream(), StandardCharsets.UTF_8);
-
-                p.waitFor();
-
-                log.debug("Diff brute : {}", diff);
-
-                // formater le diff pour qu'il soit coloré syntaxiquement joliment sur Discord
-                firstLine = true;
-                hadContent = false;
-                diff = Arrays.stream(diff.split("\n"))
-                        .map(line -> {
-                            if (firstLine) {
-                                firstLine = false;
-                                return null;
-                            }
-
-                            if (line.isEmpty() || line.substring(1).trim().isEmpty()) {
-                                return null;
-                            }
-                            if (line.startsWith("<")) {
-                                hadContent = true;
-                                return "-" + line.substring(1);
-                            } else if (line.startsWith(">")) {
-                                hadContent = true;
-                                return "+" + line.substring(1);
-                            } else if (!line.startsWith("-") && hadContent) {
-                                hadContent = false;
-                                return "=====";
-                            }
-
-                            return null;
-                        })
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.joining("\n"));
-
-                log.debug("Diff filtrée : {}", diff);
-                final String fullDiff = diff.replace("\r", "").replace("\n", "\r\n");
-                boolean sendFullDiff = false;
-
-                if (p.exitValue() == 0) {
-                    log.debug("No diff");
-                } else if (diff.isEmpty()) {
-                    log.debug("Il y avait une diff, mais il n'y en a plus. Certainement du pur whitespace.");
-                } else {
-                    String messageBefore = "<@" + SecretConstants.OWNER_ID + "> Il y a du nouveau dans le fichier JSON que tu m'as demandé de surveiller :\n```diff\n";
-                    String messageAfter = "\n```";
-                    if (messageBefore.length() + diff.length() + messageAfter.length() > 2000) {
-                        diff = diff.substring(0, 1985 - messageBefore.length() - messageAfter.length()) + "\n[diff tronqué]";
-                        sendFullDiff = true;
-                    }
-                    log.info(messageBefore + diff + messageAfter);
-                    target.sendMessage(messageBefore + diff + messageAfter).queue();
-
-                    if (sendFullDiff) {
-                        log.debug("Envoi de la full diff en PJ");
-                        // envoyer la diff complète en PJ
-                        target.sendMessage("Tous les changements ne rentrent pas dans un seul message Discord. Les voici :")
-                                .addFiles(FileUpload.fromData(fullDiff.getBytes(StandardCharsets.UTF_8), "full_diff.txt")).queue();
-                    }
+                try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
+                    JSONObject contents = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    FileUtils.writeStringToFile(newContents.toFile(), contents.toString(2), StandardCharsets.UTF_8);
                 }
 
-                Files.delete(oldContents);
-            } else {
-                log.debug("Il n'y a pas de fichier avec lequel comparer.");
-            }
+                if (Files.exists(oldContents)) {
+                    Process p = new ProcessBuilder("diff", "-w", "old_json_contents_" + i + ".json", "new_json_contents_" + i + ".json")
+                            .redirectErrorStream(true)
+                            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+                            .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                            .start();
 
-            Files.move(newContents, oldContents);
+                    String diff = IOUtils.toString(p.getInputStream(), StandardCharsets.UTF_8);
+
+                    p.waitFor();
+
+                    log.debug("Diff brute : {}", diff);
+
+                    // formater le diff pour qu'il soit coloré syntaxiquement joliment sur Discord
+                    firstLine = true;
+                    hadContent = false;
+                    diff = Arrays.stream(diff.split("\n"))
+                            .map(line -> {
+                                if (firstLine) {
+                                    firstLine = false;
+                                    return null;
+                                }
+
+                                if (line.isEmpty() || line.substring(1).trim().isEmpty()) {
+                                    return null;
+                                }
+                                if (line.startsWith("<")) {
+                                    hadContent = true;
+                                    return "-" + line.substring(1);
+                                } else if (line.startsWith(">")) {
+                                    hadContent = true;
+                                    return "+" + line.substring(1);
+                                } else if (!line.startsWith("-") && hadContent) {
+                                    hadContent = false;
+                                    return "=====";
+                                }
+
+                                return null;
+                            })
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.joining("\n"));
+
+                    log.debug("Diff filtrée : {}", diff);
+                    final String fullDiff = diff.replace("\r", "").replace("\n", "\r\n");
+                    boolean sendFullDiff = false;
+
+                    if (p.exitValue() == 0) {
+                        log.debug("No diff");
+                    } else if (diff.isEmpty()) {
+                        log.debug("Il y avait une diff, mais il n'y en a plus. Certainement du pur whitespace.");
+                    } else {
+                        String messageBefore = "<@" + SecretConstants.OWNER_ID + "> Il y a du nouveau dans le fichier JSON que tu m'as demandé de surveiller :\n```diff\n";
+                        String messageAfter = "\n```";
+                        if (messageBefore.length() + diff.length() + messageAfter.length() > 2000) {
+                            diff = diff.substring(0, 1985 - messageBefore.length() - messageAfter.length()) + "\n[diff tronqué]";
+                            sendFullDiff = true;
+                        }
+                        log.info(messageBefore + diff + messageAfter);
+                        target.sendMessage(messageBefore + diff + messageAfter).queue();
+
+                        if (sendFullDiff) {
+                            log.debug("Envoi de la full diff en PJ");
+                            // envoyer la diff complète en PJ
+                            target.sendMessage("Tous les changements ne rentrent pas dans un seul message Discord. Les voici :")
+                                    .addFiles(FileUpload.fromData(fullDiff.getBytes(StandardCharsets.UTF_8), "full_diff.txt")).queue();
+                        }
+                    }
+
+                    Files.delete(oldContents);
+                } else {
+                    log.debug("Il n'y a pas de fichier avec lequel comparer.");
+                }
+
+                Files.move(newContents, oldContents);
+            }
 
         } catch (Exception e) {
             log.error("Erreur lors du relevé des MAJ de JSON", e);
