@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,7 +44,7 @@ public class JsonUpdateChecker {
             log.debug("Checking for JSON updates");
 
             for (int i = 0; i < SecretConstants.JSON_URLS.size(); i++) {
-                HttpsURLConnection connection = (HttpsURLConnection) ConnectionUtils.openConnectionWithTimeout(SecretConstants.JSON_URLS.get(i));
+                HttpURLConnection connection = (HttpURLConnection) ConnectionUtils.openConnectionWithTimeout(SecretConstants.JSON_URLS.get(i));
                 connection.setRequestProperty("Authorization", "Basic " + SecretConstants.JSON_BASIC_AUTH);
 
                 Path oldContents = Paths.get("old_json_contents_" + i + ".json");
