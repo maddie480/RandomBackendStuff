@@ -175,26 +175,29 @@ public class AssetDriveService {
                 continue;
             }
 
-            log.debug("Downloading Google Drive file with id {}", fileId);
+            ConnectionUtils.runWithRetry(() -> {
+                log.debug("Downloading Google Drive file with id {}", fileId);
 
-            credential.refreshIfExpired();
+                credential.refreshIfExpired();
 
-            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media");
-            conn.setRequestProperty("Authorization", "Bearer " + credential.getAccessToken().getTokenValue());
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media");
+                conn.setRequestProperty("Authorization", "Bearer " + credential.getAccessToken().getTokenValue());
 
-            try (InputStream is = ConnectionUtils.connectionToInputStream(conn);
-                 OutputStream os = Files.newOutputStream(cached)) {
+                try (InputStream is = ConnectionUtils.connectionToInputStream(conn);
+                    OutputStream os = Files.newOutputStream(cached)) {
 
-                IOUtils.copy(is, os);
-            } catch (IOException e) {
-                // get rid of the cached file, since it might be incomplete
-                if (Files.exists(cached)) {
-                    log.warn("Deleting cached file {} due to I/O exception", cached);
-                    Files.delete(cached);
+                    IOUtils.copy(is, os);
+                    return null;
+                } catch (IOException e) {
+                    // get rid of the cached file, since it might be incomplete
+                    if (Files.exists(cached)) {
+                        log.warn("Deleting cached file {} due to I/O exception", cached);
+                        Files.delete(cached);
+                    }
+
+                    throw e;
                 }
-
-                throw e;
-            }
+            });
         }
     }
 

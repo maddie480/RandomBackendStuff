@@ -151,6 +151,7 @@ public class CrontabRunner {
             housekeepArbitraryModApp();
             AssetDriveService.refreshCachedAssets();
             AssetDriveService.classifyAssets();
+            AssetDriveService.cacheAllFiles();
 
             // health checks
             WorldClockHealthCheck.main(null);
@@ -173,6 +174,7 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkCollabList();
             CelesteStuffHealthCheck.checkCustomEntityCatalog();
             CelesteStuffHealthCheck.checkOlympusNews();
+            CelesteStuffHealthCheck.checkAssetDriveBrowser();
             checkArbitraryModApp();
             checkRadioLNJ();
             LNJTwitchBot.healthCheck();
@@ -196,9 +198,8 @@ public class CrontabRunner {
                 throw e;
             }
 
-            // save the longest for the end
-            AssetDriveService.cacheAllFiles();
-
+            // Run this asynchronously and leave it 30 minutes to finish, because it tends to lock up
+            // (if this times out, it will be aborted through the magic of System.exit(0))
             Semaphore mutex = new Semaphore(0);
             new Thread("Discord Janitor") {
                 @Override
@@ -212,7 +213,7 @@ public class CrontabRunner {
                 }
             }.start();
 
-            if (mutex.tryAcquire(10, TimeUnit.MINUTES)) {
+            if (mutex.tryAcquire(30, TimeUnit.MINUTES)) {
                 logger.debug("Discord Janitor finished!");
             } else {
                 logger.warn("Discord Janitor didn't finish in 10 minutes, aborting.");

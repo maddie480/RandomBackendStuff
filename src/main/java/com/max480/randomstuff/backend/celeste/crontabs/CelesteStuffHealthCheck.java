@@ -1232,4 +1232,46 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Olympus News was not found on the page!");
         }
     }
+
+    /**
+     * Checks that there are assets in the asset drive browser, and that we can download one from each category.
+     * Run daily.
+     */
+    public static void checkAssetDriveBrowser() throws IOException {
+        for (String category : Arrays.asList("decals", "stylegrounds", "bgtilesets", "fgtilesets", "misc")) {
+            JSONArray list;
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/list/" + category)) {
+                list = new JSONArray(IOUtils.toString(is, UTF_8));
+            }
+
+            if (list.length() == 0) {
+                throw new IOException("The list of " + category + " is empty!");
+            }
+
+            String idToDownload = list.getJSONObject(0).getString("id");
+            log.debug("There are {} {} on the website, trying to download {}", category, list.length(), idToDownload);
+
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/files/" + idToDownload)) {
+                byte[] signature = new byte[8];
+                int readBytes = is.read(signature);
+
+                // assets have to be PNG files, no exceptions (they're filtered on MIME type)
+                boolean isPng = readBytes == 8
+                        && signature[0] == -119 // 0x89
+                        && signature[1] == 0x50
+                        && signature[2] == 0x4E
+                        && signature[3] == 0x47
+                        && signature[4] == 0x0D
+                        && signature[5] == 0x0A
+                        && signature[6] == 0x1A
+                        && signature[7] == 0x0A;
+
+                if (!isPng) {
+                    throw new IOException("Downloaded file " + idToDownload + " is not a PNG file!");
+                }
+
+                log.debug("Downloaded {} bytes", IOUtils.consume(is) + 8);
+            }
+        }
+    }
 }
