@@ -1244,34 +1244,61 @@ public class CelesteStuffHealthCheck {
                 list = new JSONArray(IOUtils.toString(is, UTF_8));
             }
 
-            if (list.length() == 0) {
+            if (list.isEmpty()) {
                 throw new IOException("The list of " + category + " is empty!");
             }
 
             String idToDownload = list.getJSONObject(0).getString("id");
-            log.debug("There are {} {} on the website, trying to download {}", category, list.length(), idToDownload);
+            log.debug("There are {} {} on the website, trying to download {}", list.length(), category, idToDownload);
 
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/files/" + idToDownload)) {
-                byte[] signature = new byte[8];
-                int readBytes = is.read(signature);
+                checkPngInputStreamForAssetBrowser(is);
+            }
 
-                // assets have to be PNG files, no exceptions (they're filtered on MIME type)
-                boolean isPng = readBytes == 8
-                        && signature[0] == -119 // 0x89
-                        && signature[1] == 0x50
-                        && signature[2] == 0x4E
-                        && signature[3] == 0x47
-                        && signature[4] == 0x0D
-                        && signature[5] == 0x0A
-                        && signature[6] == 0x1A
-                        && signature[7] == 0x0A;
+            // download the first 100 files
+            StringBuilder idsToDownload = new StringBuilder("https://maddie480.ovh/celeste/asset-drive/multi-download?files=");
+            Set<String> namesAlreadyUsed = new HashSet<>();
+            for (int i = 0; namesAlreadyUsed.size() < 100; i++) {
+                String name = list.getJSONObject(i).getString("name");
+                if (namesAlreadyUsed.contains(name)) continue;
+                namesAlreadyUsed.add(name);
 
-                if (!isPng) {
-                    throw new IOException("Downloaded file " + idToDownload + " is not a PNG file!");
+                if (i != 0) idsToDownload.append(',');
+                idsToDownload.append(list.getJSONObject(i).getString("id"));
+            }
+            log.debug("Bulk download test: {}", idsToDownload);
+
+            try (ZipInputStream is = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(idsToDownload.toString()))) {
+                for (int i = 0; i < 100; i++) {
+                    ZipEntry entry = is.getNextEntry();
+                    if (entry == null) throw new IOException("Zip has less than 100 files!");
+                    log.debug("Reading file: {}", entry.getName());
+                    checkPngInputStreamForAssetBrowser(is);
                 }
-
-                log.debug("Downloaded {} bytes", IOUtils.consume(is) + 8);
+                if (is.getNextEntry() != null) throw new IOException("Zip has more than 100 files!");
             }
         }
+    }
+
+    private static void checkPngInputStreamForAssetBrowser(InputStream is) throws IOException {
+        byte[] signature = new byte[8];
+        int readBytes = is.read(signature);
+
+        // assets have to be PNG files, no exceptions (they're filtered on MIME type)
+        boolean isPng = readBytes == 8
+                && signature[0] == -119 // 0x89
+                && signature[1] == 0x50
+                && signature[2] == 0x4E
+                && signature[3] == 0x47
+                && signature[4] == 0x0D
+                && signature[5] == 0x0A
+                && signature[6] == 0x1A
+                && signature[7] == 0x0A;
+
+        if (!isPng) {
+            throw new IOException("Downloaded file is not a PNG file!");
+        }
+
+        log.debug("Downloaded {} bytes", IOUtils.consume(is) + 8);
     }
 }
