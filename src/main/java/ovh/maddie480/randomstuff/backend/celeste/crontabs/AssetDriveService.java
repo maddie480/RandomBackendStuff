@@ -1,14 +1,14 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.auth.oauth2.GoogleCredentials;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -47,6 +47,24 @@ public class AssetDriveService {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             allFiles = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
         }
+
+        Map<String, String> readmesPerFolder = new HashMap<>();
+        for (Object o : allFiles) {
+            JSONObject file = (JSONObject) o;
+            if ("text/plain".equals(file.getString("mimeType"))) {
+                readmesPerFolder.put(file.getString("folder"), file.getString("id"));
+            }
+        }
+        log.debug("README file IDs per folder: {}", readmesPerFolder);
+
+        Map<String, String> indexYamlsPerFolder = new HashMap<>();
+        for (Object o : allFiles) {
+            JSONObject file = (JSONObject) o;
+            if ("text/yaml".equals(file.getString("mimeType")) && "index.yaml".equals(file.getString("name"))) {
+                indexYamlsPerFolder.put(file.getString("folder"), file.getString("id"));
+            }
+        }
+        log.debug("index.yaml file IDs per folder: {}", indexYamlsPerFolder);
 
         JSONObject result = new JSONObject();
         result.put("misc", new JSONArray());
@@ -95,68 +113,57 @@ public class AssetDriveService {
             mappedObject.put("id", file.getString("id"));
 
             // find a README that would be in any parent folder.
-            for (Object o2 : allFiles) {
-                JSONObject readmeCandidate = (JSONObject) o2;
-
-                if ("text/plain".equals(readmeCandidate.getString("mimeType"))
-                        && file.getString("folder").startsWith(readmeCandidate.getString("folder"))) {
-
-                    mappedObject.put("readme", readmeCandidate.getString("id"));
+            for (Map.Entry<String, String> readmeCandidate : readmesPerFolder.entrySet()) {
+                if (file.getString("folder").startsWith(readmeCandidate.getKey())) {
+                    mappedObject.put("readme", readmeCandidate.getValue());
                     break;
                 }
             }
 
             // find a properties yaml file that is in the same folder, called "index.yaml".
-            for (Object o2 : allFiles) {
-                JSONObject yamlCandidate = (JSONObject) o2;
+            if (indexYamlsPerFolder.containsKey(file.getString("folder"))) {
+                String[] yamls;
+                try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/files/" + indexYamlsPerFolder.get(file.getString("folder")) + ".yaml"))) {
+                    yamls = IOUtils.toString(is, StandardCharsets.UTF_8).replace("\r\n", "\n").split("\n---\n");
+                }
 
-                if ("text/yaml".equals(yamlCandidate.getString("mimeType"))
-                        && file.getString("folder").equals(yamlCandidate.getString("folder"))
-                        && "index.yaml".equals(yamlCandidate.getString("name"))) {
-
-                    String[] yamls;
-                    try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/files/" + yamlCandidate.getString("id") + ".yaml"))) {
-                        yamls = IOUtils.toString(is, StandardCharsets.UTF_8).replace("\r\n", "\n").split("\n---\n");
+                for (String yamlRaw : yamls) {
+                    Map<String, String> yaml;
+                    try (InputStream is = new ByteArrayInputStream(yamlRaw.getBytes(StandardCharsets.UTF_8))) {
+                        yaml = YamlUtil.load(is);
                     }
 
-                    for (String yamlRaw : yamls) {
-                        Map<String, String> yaml;
-                        try (InputStream is = new ByteArrayInputStream(yamlRaw.getBytes(StandardCharsets.UTF_8))) {
-                            yaml = YamlUtil.load(is);
+                    String matchingPath = yaml.get("Path");
+                    if (matchingPath.endsWith("*")) {
+                        // prefix match
+                        if (!file.getString("name").startsWith(matchingPath.substring(0, matchingPath.length() - 1))) {
+                            continue;
                         }
-
-                        String matchingPath = yaml.get("Path");
-                        if (matchingPath.endsWith("*")) {
-                            // prefix match
-                            if (!file.getString("name").startsWith(matchingPath.substring(0, matchingPath.length() - 1))) {
-                                continue;
-                            }
-                        } else {
-                            // full name match
-                            if (!file.getString("name").equals(matchingPath)) {
-                                continue;
-                            }
+                    } else {
+                        // full name match
+                        if (!file.getString("name").equals(matchingPath)) {
+                            continue;
                         }
-
-                        if (yaml.containsKey("Tags")) {
-                            mappedObject.put("tags", Arrays.stream(yaml.get("Tags").split(","))
-                                    .map(String::trim).collect(Collectors.toList()));
-                        }
-                        if (yaml.containsKey("Name")) {
-                            mappedObject.put("name", yaml.get("Name"));
-                        }
-                        if (yaml.containsKey("Author")) {
-                            mappedObject.put("author", yaml.get("Author"));
-                        }
-                        if (yaml.containsKey("Template")) {
-                            mappedObject.put("template", yaml.get("Template"));
-                        }
-                        if (yaml.containsKey("Notes")) {
-                            mappedObject.put("notes", yaml.get("Notes"));
-                        }
-
-                        break;
                     }
+
+                    if (yaml.containsKey("Tags")) {
+                        mappedObject.put("tags", Arrays.stream(yaml.get("Tags").split(","))
+                                .map(String::trim).collect(Collectors.toList()));
+                    }
+                    if (yaml.containsKey("Name")) {
+                        mappedObject.put("name", yaml.get("Name"));
+                    }
+                    if (yaml.containsKey("Author")) {
+                        mappedObject.put("author", yaml.get("Author"));
+                    }
+                    if (yaml.containsKey("Template")) {
+                        mappedObject.put("template", yaml.get("Template"));
+                    }
+                    if (yaml.containsKey("Notes")) {
+                        mappedObject.put("notes", yaml.get("Notes"));
+                    }
+
+                    break;
                 }
             }
 
@@ -181,7 +188,6 @@ public class AssetDriveService {
 
         GoogleCredentials credential = GoogleCredentials.fromStream(new ByteArrayInputStream(SecretConstants.GOOGLE_DRIVE_OAUTH_CONFIG.getBytes(StandardCharsets.UTF_8)))
                 .createScoped(Collections.singletonList("https://www.googleapis.com/auth/drive.readonly"));
-
 
         Set<String> missingFiles;
         try (Stream<Path> fileListing = Files.list(syncedFilesRepository)) {

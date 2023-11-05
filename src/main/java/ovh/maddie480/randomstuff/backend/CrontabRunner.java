@@ -152,9 +152,6 @@ public class CrontabRunner {
             CustomEntityCatalogGenerator.main(null);
             ServerJanitorBot.main(null);
             housekeepArbitraryModApp();
-            AssetDriveService.listAllFiles();
-            AssetDriveService.rsyncFiles();
-            AssetDriveService.classifyAssets();
 
             // health checks
             WorldClockHealthCheck.main(null);
@@ -235,6 +232,9 @@ public class CrontabRunner {
             UsageStatsService.writeWeeklyStatisticsToFile();
             MastodonUpdateChecker.checkForUpdates();
             OlympusNewsUpdateChecker.checkForUpdates();
+            AssetDriveService.listAllFiles();
+            AssetDriveService.rsyncFiles();
+            AssetDriveService.classifyAssets();
 
             // health checks
             CelesteStuffHealthCheck.updateCheckerHealthCheck();
