@@ -7,11 +7,11 @@
         </encoder>
     </appender>
 
-    <logger name="com.max480" level="debug" additivity="false">
+    <logger name="ovh.maddie480" level="debug" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
 
-    <logger name="com.max480.everest.updatechecker" level="info" additivity="false">
+    <logger name="ovh.maddie480.everest.updatechecker" level="info" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
 

@@ -6,10 +6,10 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Date;
 
-/**
- * Yet another serializable class that's at an odd place to keep an old class name.
- */
 public class ReminderEngine {
+    /**
+     * A reminder, that gets saved to disk in serialized form, because, well, the reminder bot should remember it.
+     */
     public static class RappelV3 implements Serializable {
         @Serial
         private static final long serialVersionUID = -7600103237848984874L;
