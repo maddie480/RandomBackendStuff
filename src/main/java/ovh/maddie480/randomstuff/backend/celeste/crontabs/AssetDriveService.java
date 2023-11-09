@@ -2,6 +2,9 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import org.apache.commons.io.IOUtils;
+import org.apache.poi.extractor.POITextExtractor;
+import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -118,11 +121,13 @@ public class AssetDriveService {
             mappedObject.put("id", file.getString("id"));
 
             // find a README that would be in any parent folder.
-            for (Map.Entry<String, String> readmeCandidate : readmesPerFolder.entrySet()) {
-                if (file.getString("folder").startsWith(readmeCandidate.getKey())) {
-                    mappedObject.put("readme", readmeCandidate.getValue());
+            String parentFolder = file.getString("folder");
+            while (!parentFolder.isEmpty()) {
+                if (readmesPerFolder.containsKey(parentFolder)) {
+                    mappedObject.put("readme", readmesPerFolder.get(parentFolder));
                     break;
                 }
+                parentFolder = parentFolder.substring(0, parentFolder.lastIndexOf("/"));
             }
 
             // find a properties yaml file that is in the same folder, called "index.yaml".
@@ -232,19 +237,28 @@ public class AssetDriveService {
 
                 credential.refreshIfExpired();
 
-                String url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media";
-                if (((JSONObject) o).getString("mimeType").equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
-                    // DOCX files should be exported to TXT instead
-                    url = "https://www.googleapis.com/drive/v3/files/" + fileId + "/export?mimeType=" + URLEncoder.encode("text/plain", StandardCharsets.UTF_8);
-                }
-
-                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout(url);
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media");
                 conn.setRequestProperty("Authorization", "Bearer " + credential.getAccessToken().getTokenValue());
 
                 try (InputStream is = ConnectionUtils.connectionToInputStream(conn);
                      OutputStream os = Files.newOutputStream(cached)) {
 
                     IOUtils.copy(is, os);
+                }
+
+                if (((JSONObject) o).getString("mimeType").equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+                    log.debug("Converting file {} to TXT...", cached);
+
+                    String extractedText;
+                    try (InputStream is = Files.newInputStream(cached)) {
+                        XWPFDocument doc = new XWPFDocument(is);
+                        POITextExtractor extractor = new XWPFWordExtractor(doc);
+                        extractedText = extractor.getText();
+                    }
+
+                    try (OutputStream os = Files.newOutputStream(cached)) {
+                        IOUtils.write(extractedText, os, StandardCharsets.UTF_8);
+                    }
                 }
 
                 Files.setLastModifiedTime(cached, FileTime.from(lastModified));
