@@ -1239,7 +1239,7 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkAssetDriveBrowser() throws IOException {
-        for (String category : Arrays.asList("decals", "stylegrounds", "bgtilesets", "fgtilesets", "misc")) {
+        for (String category : Arrays.asList("decals", "stylegrounds", "bgtilesets", "fgtilesets", "hires", "misc")) {
             JSONArray list;
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/list/" + category)) {
                 list = new JSONArray(IOUtils.toString(is, UTF_8));

@@ -72,6 +72,7 @@ public class AssetDriveService {
         result.put("stylegrounds", new JSONArray());
         result.put("bgtilesets", new JSONArray());
         result.put("fgtilesets", new JSONArray());
+        result.put("hires", new JSONArray());
 
         for (Object o : allFiles) {
             JSONObject file = (JSONObject) o;
@@ -85,6 +86,9 @@ public class AssetDriveService {
             } else if (folder.startsWith("/Stylegrounds/")) {
                 category = "stylegrounds";
                 folder = folder.substring(14);
+            } else if (folder.startsWith("/Hi-Res Art/")) {
+                category = "hires";
+                folder = folder.substring(12);
             } else if (folder.startsWith("/Tilesets/Foreground Tilesets/")) {
                 category = "fgtilesets";
                 folder = folder.substring(30);
@@ -101,7 +105,7 @@ public class AssetDriveService {
             String author, assetName;
             if (folder.contains("/")) {
                 author = folder.substring(0, folder.indexOf("/"));
-                assetName = folder.substring(folder.lastIndexOf("/") + 1) + "/" + file.getString("name");
+                assetName = folder.substring(folder.indexOf("/") + 1) + "/" + file.getString("name");
             } else {
                 author = folder;
                 assetName = file.getString("name");
