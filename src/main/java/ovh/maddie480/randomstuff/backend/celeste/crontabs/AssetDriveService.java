@@ -31,7 +31,8 @@ public class AssetDriveService {
     private static final Logger log = LoggerFactory.getLogger(AssetDriveService.class);
 
     public static void listAllFiles() throws IOException {
-        JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID, new HashSet<>(Arrays.asList("image/png", "text/plain", "text/yaml")), "");
+        JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID, new HashSet<>(Arrays.asList(
+                "image/png", "text/plain", "text/yaml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" /* <- docx */)), "");
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             IOUtils.write(allFiles.toString(), os, StandardCharsets.UTF_8);
         }
@@ -51,7 +52,7 @@ public class AssetDriveService {
         Map<String, String> readmesPerFolder = new HashMap<>();
         for (Object o : allFiles) {
             JSONObject file = (JSONObject) o;
-            if ("text/plain".equals(file.getString("mimeType"))) {
+            if (Arrays.asList("text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document").contains(file.getString("mimeType"))) {
                 readmesPerFolder.put(file.getString("folder"), file.getString("id"));
             }
         }
@@ -209,7 +210,7 @@ public class AssetDriveService {
             String fileId = ((JSONObject) o).getString("id");
             String extension = switch (((JSONObject) o).getString("mimeType")) {
                 case "image/png" -> "png";
-                case "text/plain" -> "txt";
+                case "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> "txt";
                 case "text/yaml" -> "yaml";
                 default -> "bin";
             };
@@ -231,7 +232,13 @@ public class AssetDriveService {
 
                 credential.refreshIfExpired();
 
-                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media");
+                String url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media";
+                if (((JSONObject) o).getString("mimeType").equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+                    // DOCX files should be exported to TXT instead
+                    url = "https://www.googleapis.com/drive/v3/files/" + fileId + "/export?mimeType=" + URLEncoder.encode("text/plain", StandardCharsets.UTF_8);
+                }
+
+                HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout(url);
                 conn.setRequestProperty("Authorization", "Bearer " + credential.getAccessToken().getTokenValue());
 
                 try (InputStream is = ConnectionUtils.connectionToInputStream(conn);
