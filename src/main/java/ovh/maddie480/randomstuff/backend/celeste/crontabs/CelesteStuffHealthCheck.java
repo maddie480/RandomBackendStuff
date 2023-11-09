@@ -1259,7 +1259,7 @@ public class CelesteStuffHealthCheck {
             // download the first 100 files
             StringBuilder idsToDownload = new StringBuilder("https://maddie480.ovh/celeste/asset-drive/multi-download?files=");
             Set<String> namesAlreadyUsed = new HashSet<>();
-            for (int i = 0; namesAlreadyUsed.size() < 100; i++) {
+            for (int i = 0; i < list.length() && namesAlreadyUsed.size() < 100; i++) {
                 String name = list.getJSONObject(i).getString("name");
                 if (namesAlreadyUsed.contains(name)) continue;
                 namesAlreadyUsed.add(name);
@@ -1270,9 +1270,9 @@ public class CelesteStuffHealthCheck {
             log.debug("Bulk download test: {}", idsToDownload);
 
             try (ZipInputStream is = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(idsToDownload.toString()))) {
-                for (int i = 0; i < 100; i++) {
+                for (int i = 0; i < namesAlreadyUsed.size(); i++) {
                     ZipEntry entry = is.getNextEntry();
-                    if (entry == null) throw new IOException("Zip has less than 100 files!");
+                    if (entry == null) throw new IOException("Zip has less than " + namesAlreadyUsed.size() + " files!");
                     log.debug("Reading file: {}", entry.getName());
                     checkPngInputStreamForAssetBrowser(is);
                 }
