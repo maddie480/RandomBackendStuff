@@ -1,12 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -16,7 +10,13 @@ import org.json.JSONObject;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
 import ovh.maddie480.everest.updatechecker.Main;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -1261,29 +1261,34 @@ public class CelesteStuffHealthCheck {
             Set<String> namesAlreadyUsed = new HashSet<>();
             for (int i = 0; i < list.length() && namesAlreadyUsed.size() < 100; i++) {
                 String name = list.getJSONObject(i).getString("name");
+                if (name.contains("/")) name = name.substring(name.lastIndexOf("/") + 1);
                 if (namesAlreadyUsed.contains(name)) continue;
                 namesAlreadyUsed.add(name);
 
                 if (i != 0) idsToDownload.append(',');
                 idsToDownload.append(list.getJSONObject(i).getString("id"));
             }
-            log.debug("Bulk download test: {}", idsToDownload);
+
+            int fileCount = namesAlreadyUsed.size();
+            log.debug("Bulk download test of {} files: {} (names: {})", fileCount, idsToDownload, namesAlreadyUsed);
 
             try (ZipInputStream is = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(idsToDownload.toString()))) {
-                for (int i = 0; i < namesAlreadyUsed.size(); i++) {
+                for (int i = 0; i < fileCount; i++) {
                     ZipEntry entry = is.getNextEntry();
-                    if (entry == null) throw new IOException("Zip has less than " + namesAlreadyUsed.size() + " files!");
+                    if (entry == null) throw new IOException("Zip has less than " + fileCount + " files!");
                     log.debug("Reading file: {}", entry.getName());
                     checkPngInputStreamForAssetBrowser(is);
+                    namesAlreadyUsed.remove(entry.getName());
                 }
-                if (is.getNextEntry() != null) throw new IOException("Zip has more than 100 files!");
+                if (is.getNextEntry() != null) throw new IOException("Zip has more than " + fileCount + " files!");
+                if (!namesAlreadyUsed.isEmpty()) throw new IOException("Zip didn't contain the expected file names!");
             }
         }
     }
 
     private static void checkPngInputStreamForAssetBrowser(InputStream is) throws IOException {
         byte[] signature = new byte[8];
-        int readBytes = is.read(signature);
+        int readBytes = IOUtils.read(is, signature);
 
         // assets have to be PNG files, no exceptions (they're filtered on MIME type)
         boolean isPng = readBytes == 8
