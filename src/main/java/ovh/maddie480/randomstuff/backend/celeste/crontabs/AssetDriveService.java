@@ -123,6 +123,7 @@ public class AssetDriveService {
             mappedObject.put("name", assetName);
             mappedObject.put("author", author);
             mappedObject.put("id", file.getString("id"));
+            mappedObject.put("folder", file.getString("folder"));
 
             // find a README that would be in any parent folder.
             String parentFolder = file.getString("folder");
