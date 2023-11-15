@@ -33,9 +33,13 @@ import java.util.stream.Stream;
 public class AssetDriveService {
     private static final Logger log = LoggerFactory.getLogger(AssetDriveService.class);
 
+    private static final String DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    private static final String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+
     public static void listAllFiles() throws IOException {
-        JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID, new HashSet<>(Arrays.asList(
-                "image/png", "text/plain", "text/yaml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" /* <- docx */)), "");
+        JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID,
+                new HashSet<>(Arrays.asList("image/png", "text/plain", "text/yaml", DOCX_MIME_TYPE, FOLDER_MIME_TYPE)), "");
+
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             IOUtils.write(allFiles.toString(), os, StandardCharsets.UTF_8);
         }
@@ -55,7 +59,7 @@ public class AssetDriveService {
         Map<String, String> readmesPerFolder = new HashMap<>();
         for (Object o : allFiles) {
             JSONObject file = (JSONObject) o;
-            if (Arrays.asList("text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document").contains(file.getString("mimeType"))) {
+            if (Arrays.asList("text/plain", DOCX_MIME_TYPE).contains(file.getString("mimeType"))) {
                 readmesPerFolder.put(file.getString("folder"), file.getString("id"));
             }
         }
@@ -212,10 +216,12 @@ public class AssetDriveService {
         }
 
         for (Object o : allFiles) {
+            if (((JSONObject) o).getString("mimeType").equals(FOLDER_MIME_TYPE)) continue;
+
             String fileId = ((JSONObject) o).getString("id");
             String extension = switch (((JSONObject) o).getString("mimeType")) {
                 case "image/png" -> "png";
-                case "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> "txt";
+                case "text/plain", DOCX_MIME_TYPE -> "txt";
                 case "text/yaml" -> "yaml";
                 default -> "bin";
             };
@@ -246,7 +252,7 @@ public class AssetDriveService {
                     IOUtils.copy(is, os);
                 }
 
-                if (((JSONObject) o).getString("mimeType").equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+                if (((JSONObject) o).getString("mimeType").equals(DOCX_MIME_TYPE)) {
                     log.debug("Converting file {} to TXT...", cached);
 
                     String extractedText;
@@ -290,7 +296,7 @@ public class AssetDriveService {
         // get subfolders and query them
         for (Object o : fileList) {
             JSONObject subfolder = (JSONObject) o;
-            if (!subfolder.getString("mimeType").equals("application/vnd.google-apps.folder")) {
+            if (!subfolder.getString("mimeType").equals(FOLDER_MIME_TYPE)) {
                 continue;
             }
 
@@ -334,7 +340,7 @@ public class AssetDriveService {
 
             // if the file isn't a folder, guess its type based on the extension,
             // as autodetect can be unreliable when it comes to yaml and txt.
-            if (!file.getString("mimeType").equals("application/vnd.google-apps.folder")) {
+            if (!file.getString("mimeType").equals(FOLDER_MIME_TYPE)) {
                 String extension = file.getString("name");
                 extension = extension.substring(extension.lastIndexOf(".") + 1);
 
