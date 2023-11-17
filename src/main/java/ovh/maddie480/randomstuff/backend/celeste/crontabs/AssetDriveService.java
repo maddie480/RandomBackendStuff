@@ -43,11 +43,6 @@ public class AssetDriveService {
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             IOUtils.write(allFiles.toString(), os, StandardCharsets.UTF_8);
         }
-
-        log.debug("Calling frontend to refresh existing assets list...");
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/reload?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
-            IOUtils.consume(is);
-        }
     }
 
     public static void classifyAssets() throws IOException {
@@ -195,6 +190,11 @@ public class AssetDriveService {
 
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/categorized-assets.json"))) {
             IOUtils.write(result.toString(), os, StandardCharsets.UTF_8);
+        }
+
+        log.debug("Calling frontend to refresh existing assets list...");
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/reload?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
+            IOUtils.consume(is);
         }
     }
 
