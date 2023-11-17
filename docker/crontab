@@ -24,7 +24,7 @@
  15 17  *   *   *     /home/debian/docker-run-with-logging.sh daily-crontabs
  45 *   *   *   *     /home/debian/docker-run-with-logging.sh hourly-crontabs
   0 *   *   *   *     /home/debian/docker-run-with-logging.sh update-checker-full
- 50 18  *   *   5     /home/debian/docker-run-with-logging.sh lnj-twitch-bot
+ 50 19  *   *   5     /home/debian/docker-run-with-logging.sh lnj-twitch-bot
 
 # Every 2 minutes except on minute 0 :maddyS:
 2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58 * * * * /home/debian/docker-run-with-logging.sh update-checker
