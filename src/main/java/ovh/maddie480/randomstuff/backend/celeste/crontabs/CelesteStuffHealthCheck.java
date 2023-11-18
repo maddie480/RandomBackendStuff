@@ -472,7 +472,7 @@ public class CelesteStuffHealthCheck {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
             latestDev = new JSONObject(IOUtils.toString(is, UTF_8)).getInt("dev");
         }
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest-versions"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest-versions?supportsNativeBuilds=true"), UTF_8)
                 .contains("\"version\":" + latestDev)) {
 
             throw new IOException("Everest versions test failed");
