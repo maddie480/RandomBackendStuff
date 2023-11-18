@@ -2,6 +2,7 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.extractor.POITextExtractor;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -184,7 +185,7 @@ public class AssetDriveService {
 
         for (Map.Entry<String, Object> entry : result.toMap().entrySet()) {
             List<Object> value = (List<Object>) entry.getValue();
-            value.sort(Comparator.comparing(a -> ((Map<String, Object>) a).get("name").toString().toLowerCase(Locale.ROOT)));
+            value.sort(Comparator.comparing(a -> ((Map<String, Object>) a).get("name").toString().toLowerCase(Locale.ROOT), new NumberFriendlyComparator()));
             result.put(entry.getKey(), new JSONArray(value));
         }
 
@@ -195,6 +196,41 @@ public class AssetDriveService {
         log.debug("Calling frontend to refresh existing assets list...");
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/reload?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
             IOUtils.consume(is);
+        }
+    }
+
+    /**
+     * A Comparator that sorts strings "mystring11" _before_ "mystring101" despite alphabetical order.
+     */
+    private static class NumberFriendlyComparator implements Comparator<String> {
+        @Override
+        public int compare(String s1, String s2) {
+            Pair<String, Integer> p1 = separateIntegerFromEndOfString(s1);
+            Pair<String, Integer> p2 = separateIntegerFromEndOfString(s2);
+
+            // fall back to normal string comparison if prefixes are different or one string does not end with numbers
+            if (p1 == null || p2 == null || !p1.getLeft().equals(p2.getLeft())) {
+                return s1.compareTo(s2);
+            }
+
+            // otherwise, order by suffix
+            return p1.getRight() - p2.getRight();
+        }
+
+        private Pair<String, Integer> separateIntegerFromEndOfString(String s) {
+            // trim the file extension
+            if (!s.contains(".")) return null;
+            s = s.substring(0, s.lastIndexOf("."));
+
+            // move until we hit the start of the string, or a non-number
+            StringBuilder number = new StringBuilder();
+            for (int i = s.length() - 1; i > 0 && Character.isDigit(s.charAt(i)); i--) {
+                number.insert(0, s.charAt(i));
+            }
+
+            // figure out if we actually found any numbers
+            if (number.isEmpty()) return null;
+            return Pair.of(s.substring(0, s.length() - number.length()), Integer.parseInt(number.toString()));
         }
     }
 
