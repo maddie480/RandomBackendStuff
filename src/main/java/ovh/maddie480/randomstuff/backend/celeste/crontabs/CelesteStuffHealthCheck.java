@@ -22,6 +22,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -170,16 +171,17 @@ public class CelesteStuffHealthCheck {
      * Checks that all artifacts of an Everest version are downloadable.
      */
     private static void checkEverestVersionExists(int versionNumber) throws IOException {
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
             JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
 
                 if (versionObj.getInt("version") == versionNumber) {
-                    checkExists(versionObj.getString("mainDownload"));
-                    checkExists(versionObj.getString("olympusMetaDownload"));
-                    checkExists(versionObj.getString("olympusBuildDownload"));
+                    String namePrefix = "everest-" + versionNumber + "-";
+                    checkExists(versionObj.getString("mainDownload"), namePrefix + "main.zip");
+                    checkExists(versionObj.getString("olympusMetaDownload"), namePrefix + "olympus-meta.zip");
+                    checkExists(versionObj.getString("olympusBuildDownload"), namePrefix + "olympus-build.zip");
                 }
             }
         }
@@ -196,9 +198,10 @@ public class CelesteStuffHealthCheck {
                 JSONObject versionObj = (JSONObject) version;
 
                 if (branch.equals(versionObj.getString("branch"))) {
-                    checkExists(versionObj.getString("windowsDownload"));
-                    checkExists(versionObj.getString("macDownload"));
-                    checkExists(versionObj.getString("linuxDownload"));
+                    String namePrefix = "olympus-" + versionObj.getString("version") + "-";
+                    checkExists(versionObj.getString("windowsDownload"), namePrefix + "windows.zip");
+                    checkExists(versionObj.getString("macDownload"), namePrefix + "mac.zip");
+                    checkExists(versionObj.getString("linuxDownload"), namePrefix + "linux.zip");
                     break;
                 }
             }
@@ -206,20 +209,21 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
-     * Checks that a link is downloadable.
+     * Checks that a link is downloadable, and... downloads it.
      */
-    private static void checkExists(String link) throws IOException {
+    private static void checkExists(String link, String fileName) throws IOException {
         log.debug("Trying to download {}...", link);
 
-        long size = 0;
-        byte[] buffer = new byte[4096];
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(link)) {
-            while (true) {
-                int read = is.read(buffer);
-                if (read == -1) break;
-                size += read;
-            }
+        Path target = Paths.get("/tmp/everest-versions", fileName);
+        Files.createDirectories(target.getParent());
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout(link);
+             OutputStream os = Files.newOutputStream(target)) {
+
+            IOUtils.copy(is, os);
         }
+
+        long size = Files.size(target);
 
         int minSize = 1_000_000;
         if (link.contains("meta")) {
