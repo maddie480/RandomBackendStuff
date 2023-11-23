@@ -39,7 +39,7 @@ public class AssetDriveService {
 
     public static void listAllFiles() throws IOException {
         JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID,
-                new HashSet<>(Arrays.asList("image/png", "text/plain", "text/yaml", DOCX_MIME_TYPE, FOLDER_MIME_TYPE)), "");
+                new HashSet<>(Arrays.asList("image/png", "font/ttf", "text/plain", "text/yaml", DOCX_MIME_TYPE, FOLDER_MIME_TYPE)), "");
 
         try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
             IOUtils.write(allFiles.toString(), os, StandardCharsets.UTF_8);
@@ -70,6 +70,17 @@ public class AssetDriveService {
         }
         log.debug("index.yaml file IDs per folder: {}", indexYamlsPerFolder);
 
+        Map<String, String> previewPngsPerFolder = new HashMap<>();
+        for (Object o : allFiles) {
+            JSONObject file = (JSONObject) o;
+            if ("image/png".equals(file.getString("mimeType")) && file.getString("name").endsWith(".preview.png")) {
+                String fileNameWithoutExtension = file.getString("name");
+                fileNameWithoutExtension = fileNameWithoutExtension.substring(0, fileNameWithoutExtension.length() - 12);
+                previewPngsPerFolder.put(file.getString("folder") + "/" + fileNameWithoutExtension, file.getString("id"));
+            }
+        }
+        log.debug("preview.png files per file prefix: {}", indexYamlsPerFolder);
+
         JSONObject result = new JSONObject();
         result.put("misc", new JSONArray());
         result.put("decals", new JSONArray());
@@ -80,7 +91,8 @@ public class AssetDriveService {
 
         for (Object o : allFiles) {
             JSONObject file = (JSONObject) o;
-            if (!"image/png".equals(file.getString("mimeType"))) continue;
+            if (!Arrays.asList("image/png", "font/ttf").contains(file.getString("mimeType"))) continue;
+            if (file.getString("name").endsWith(".preview.png")) continue;
 
             String folder = file.getString("folder");
             String category;
@@ -120,6 +132,14 @@ public class AssetDriveService {
             mappedObject.put("author", author);
             mappedObject.put("id", file.getString("id"));
             mappedObject.put("folder", file.getString("folder"));
+
+            String fileNameWithoutExtension = file.getString("folder") + "/" + file.getString("name");
+            if (fileNameWithoutExtension.contains(".")) {
+                fileNameWithoutExtension = fileNameWithoutExtension.substring(0, fileNameWithoutExtension.lastIndexOf("."));
+            }
+            if (previewPngsPerFolder.containsKey(fileNameWithoutExtension)) {
+                mappedObject.put("preview", previewPngsPerFolder.get(fileNameWithoutExtension));
+            }
 
             // find a README that would be in any parent folder.
             String parentFolder = file.getString("folder");
@@ -258,6 +278,7 @@ public class AssetDriveService {
             String fileId = ((JSONObject) o).getString("id");
             String extension = switch (((JSONObject) o).getString("mimeType")) {
                 case "image/png" -> "png";
+                case "font/ttf" -> "ttf";
                 case "text/plain", DOCX_MIME_TYPE -> "txt";
                 case "text/yaml" -> "yaml";
                 default -> "bin";
@@ -384,6 +405,7 @@ public class AssetDriveService {
                 file.put("mimeType", switch (extension) {
                     case "yaml" -> "text/yaml";
                     case "txt" -> "text/plain";
+                    case "ttf" -> "font/ttf";
                     default -> file.getString("mimeType");
                 });
             }
