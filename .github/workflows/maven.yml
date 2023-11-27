@@ -71,6 +71,9 @@ jobs:
         push: true
         tags: max480/random-stuff-backend:latest
 
+    - name: Submit Dependency Snapshot
+      uses: advanced-security/maven-dependency-submission-action@v3
+
     - name: Upload target folder as artifact
       if: always()
       uses: actions/upload-artifact@v3
