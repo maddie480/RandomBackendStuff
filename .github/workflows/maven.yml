@@ -72,6 +72,7 @@ jobs:
         tags: max480/random-stuff-backend:latest
 
     - name: Submit Dependency Snapshot
+      if: github.ref == 'refs/heads/main'
       uses: advanced-security/maven-dependency-submission-action@v3
 
     - name: Upload target folder as artifact
