@@ -49,7 +49,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class CrontabRunner {
     private static final Logger logger = LoggerFactory.getLogger(CrontabRunner.class);
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         // load update checker config from secret constants
         ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
         Map<String, Object> config = YamlUtil.load(is);
@@ -73,31 +73,44 @@ public class CrontabRunner {
             return;
         }
 
-        if (arg.equals("--updater") || arg.equals("--updater-full")) {
+        if (arg.equals("--updater")) {
             // register update checker tracker
             EventListener.addEventListener(new UpdateCheckerTracker());
 
-            Path lockFile = Paths.get("updater_lock");
-            if (Files.exists(lockFile)) {
-                logger.warn("Updater already running!");
-                return;
-            }
+            ZonedDateTime runUntil = ZonedDateTime.now().plusHours(1)
+                    .withMinute(0).withSecond(0).withNano(0);
 
-            try {
-                Files.createFile(lockFile);
-            } catch (IOException e) {
-                logger.error("Could not lock updater", e);
-                sendMessageToWebhook(":x: Could not lock updater: " + e);
-            }
+            logger.info("Starting updater loop, will stop on {}", runUntil);
+            boolean full = true;
 
-            boolean full = arg.equals("--updater-full");
-            runUpdater(full);
+            while (ZonedDateTime.now().isBefore(runUntil)) {
+                logger.debug("Waiting for updater to be unlocked...");
 
-            try {
-                Files.delete(lockFile);
-            } catch (IOException e) {
-                logger.error("Could not unlock updater", e);
-                sendMessageToWebhook(":x: Could not unlock updater: " + e);
+                Path lockFile = Paths.get("updater_lock");
+                while (Files.exists(lockFile)) {
+                    Thread.sleep(1000);
+                }
+
+                try {
+                    Files.createFile(lockFile);
+                    logger.debug("Acquired updater lock!");
+                } catch (IOException e) {
+                    logger.error("Could not lock updater", e);
+                    sendMessageToWebhook(":x: Could not lock updater: " + e);
+                }
+
+                runUpdater(full);
+                full = false;
+
+                try {
+                    Files.delete(lockFile);
+                    logger.debug("Released updater lock!");
+                } catch (IOException e) {
+                    logger.error("Could not unlock updater", e);
+                    sendMessageToWebhook(":x: Could not unlock updater: " + e);
+                }
+
+                Thread.sleep(120_000);
             }
 
             return;

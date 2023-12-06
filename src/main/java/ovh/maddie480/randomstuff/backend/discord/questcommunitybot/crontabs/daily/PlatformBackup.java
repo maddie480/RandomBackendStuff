@@ -26,6 +26,8 @@ public class PlatformBackup {
     public static void run(JDA client) throws IOException {
         Path updaterLock = Paths.get("/backend/updater_lock");
 
+        logger.debug("Waiting for updater to be unlocked...");
+
         while (Files.exists(updaterLock)) {
             try {
                 Thread.sleep(1000);
@@ -35,6 +37,7 @@ public class PlatformBackup {
         }
 
         Files.createFile(updaterLock);
+        logger.debug("Acquired updater lock!");
 
         runMessageDump(client);
 
@@ -53,6 +56,7 @@ public class PlatformBackup {
         }
 
         Files.delete(updaterLock);
+        logger.debug("Released updater lock!");
     }
 
     private static void runMessageDump(JDA client) throws IOException {

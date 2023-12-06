@@ -5,6 +5,7 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -49,6 +50,12 @@ public class UpdateOutgoingWebhooks {
 
             return null; // method signature
         });
+
+        WebhookExecutor.executeWebhook(
+                SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
+                "Everest Update Checker",
+                ":tada: Update Checker data was refreshed.");
 
         changesHappened = false;
     }
