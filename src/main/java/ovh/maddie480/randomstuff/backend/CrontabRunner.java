@@ -65,18 +65,11 @@ public class CrontabRunner {
         }
 
         if (arg.equals("--hourly")) {
-            // load #celeste_news_network state from disk
-            MastodonUpdateChecker.loadFile();
-            OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
-
             runHourlyProcesses();
             return;
         }
 
         if (arg.equals("--updater")) {
-            // register update checker tracker
-            EventListener.addEventListener(new UpdateCheckerTracker());
-
             ZonedDateTime runUntil = ZonedDateTime.now().plusHours(1)
                     .withMinute(0).withSecond(0).withNano(0);
 
@@ -215,6 +208,10 @@ public class CrontabRunner {
 
     private static void runHourlyProcesses() {
         runProcessAndAlertOnException("Hourly processes", () -> {
+            // load #celeste_news_network state from disk
+            MastodonUpdateChecker.loadFile();
+            OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
+
             // update tasks
             UpdateCheckerTracker.updatePrivateHelpersFromGitHub();
             CollabAutoHider.run();
@@ -255,6 +252,11 @@ public class CrontabRunner {
 
     private static void runUpdater(boolean fullUpdateCheck) {
         runProcessAndAlertOnException("Everest Update Checker", () -> {
+            if (fullUpdateCheck) {
+                logger.info("Registering Update Checker Tracker...");
+                EventListener.addEventListener(new UpdateCheckerTracker());
+            }
+
             if (!fullUpdateCheck) {
                 EverestVersionLister.checkEverestVersions();
                 OlympusVersionLister.checkOlympusVersions();
@@ -344,11 +346,17 @@ public class CrontabRunner {
         logger.debug("Waiting for updater lock to be released...");
 
         Path lockFile = Paths.get("updater_lock");
+        int startHour = ZonedDateTime.now().getHour();
         while (Files.exists(lockFile)) {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 sendMessageToWebhook(":x: Could not wait for lock: " + e);
+                return;
+            }
+
+            if (startHour != ZonedDateTime.now().getHour()) {
+                logger.error("Could not get updater lock in time! Aborting.");
                 return;
             }
         }
