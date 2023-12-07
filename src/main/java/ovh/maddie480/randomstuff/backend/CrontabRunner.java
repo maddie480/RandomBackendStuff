@@ -84,32 +84,8 @@ public class CrontabRunner {
             boolean full = true;
 
             while (ZonedDateTime.now().isBefore(runUntil)) {
-                logger.debug("Waiting for updater to be unlocked...");
-
-                Path lockFile = Paths.get("updater_lock");
-                while (Files.exists(lockFile)) {
-                    Thread.sleep(1000);
-                }
-
-                try {
-                    Files.createFile(lockFile);
-                    logger.debug("Acquired updater lock!");
-                } catch (IOException e) {
-                    logger.error("Could not lock updater", e);
-                    sendMessageToWebhook(":x: Could not lock updater: " + e);
-                }
-
                 runUpdater(full);
                 full = false;
-
-                try {
-                    Files.delete(lockFile);
-                    logger.debug("Released updater lock!");
-                } catch (IOException e) {
-                    logger.error("Could not unlock updater", e);
-                    sendMessageToWebhook(":x: Could not unlock updater: " + e);
-                }
-
                 Thread.sleep(120_000);
             }
 
@@ -365,6 +341,26 @@ public class CrontabRunner {
     }
 
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
+        logger.debug("Waiting for updater lock to be released...");
+
+        Path lockFile = Paths.get("updater_lock");
+        while (Files.exists(lockFile)) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                sendMessageToWebhook(":x: Could not wait for lock: " + e);
+                return;
+            }
+        }
+
+        try {
+            Files.createFile(lockFile);
+            logger.debug("Acquired updater lock!");
+        } catch (IOException e) {
+            logger.error("Could not lock updater", e);
+            sendMessageToWebhook(":x: Could not lock updater: " + e);
+        }
+
         try {
             logger.info("Starting {}", name);
             process.run();
@@ -372,6 +368,14 @@ public class CrontabRunner {
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
             sendMessageToWebhook("Error while running " + name + ": " + e);
+        }
+
+        try {
+            Files.delete(lockFile);
+            logger.debug("Released updater lock!");
+        } catch (IOException e) {
+            logger.error("Could not unlock updater", e);
+            sendMessageToWebhook(":x: Could not unlock updater: " + e);
         }
     }
 

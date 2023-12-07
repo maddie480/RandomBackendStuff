@@ -24,21 +24,6 @@ public class PlatformBackup {
     private static final Logger logger = LoggerFactory.getLogger(PlatformBackup.class);
 
     public static void run(JDA client) throws IOException {
-        Path updaterLock = Paths.get("/backend/updater_lock");
-
-        logger.debug("Waiting for updater to be unlocked...");
-
-        while (Files.exists(updaterLock)) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                throw new IOException(e);
-            }
-        }
-
-        Files.createFile(updaterLock);
-        logger.debug("Acquired updater lock!");
-
         runMessageDump(client);
 
         try {
@@ -54,9 +39,6 @@ public class PlatformBackup {
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
-
-        Files.delete(updaterLock);
-        logger.debug("Released updater lock!");
     }
 
     private static void runMessageDump(JDA client) throws IOException {
