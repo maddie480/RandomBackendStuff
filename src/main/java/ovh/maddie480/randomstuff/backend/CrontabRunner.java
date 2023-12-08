@@ -49,7 +49,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class CrontabRunner {
     private static final Logger logger = LoggerFactory.getLogger(CrontabRunner.class);
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         // load update checker config from secret constants
         ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
         Map<String, Object> config = YamlUtil.load(is);
@@ -77,11 +77,12 @@ public class CrontabRunner {
             boolean full = true;
 
             while (ZonedDateTime.now().isBefore(runUntil)) {
-                runUpdater(full);
+                runUpdater(full, runUntil);
                 full = false;
-                Thread.sleep(120_000);
+                unstoppableSleep(120_000);
             }
 
+            logger.info("Exiting updater process");
             return;
         }
 
@@ -115,8 +116,10 @@ public class CrontabRunner {
     }
 
     private static void runDailyProcesses() {
-        runProcessAndAlertOnException("Daily processes", () -> {
-            // GameBanana automated checks
+        // The 5-second breaks allow other processes to be run, to avoid getting stuck for too long...
+        // because those processes are long indeed.
+
+        runProcessAndAlertOnException("Daily processes - GameBanana Automated Checks", () -> {
             GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick();
             GameBananaAutomatedChecks.checkForForbiddenFiles();
             GameBananaAutomatedChecks.checkForDuplicateModIds();
@@ -125,8 +128,11 @@ public class CrontabRunner {
             GameBananaAutomatedChecks.checkPngFilesArePngFiles();
             GameBananaAutomatedChecks.checkUnapprovedCategories();
             GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive();
+        });
 
-            // update tasks
+        unstoppableSleep(5000);
+
+        runProcessAndAlertOnException("Daily processes - Update Tasks", () -> {
             AutoLeaver.main(null);
             CustomSlashCommandsCleanup.housekeep();
             ServerCountUploader.run();
@@ -137,8 +143,11 @@ public class CrontabRunner {
             AssetDriveService.listAllFiles();
             AssetDriveService.rsyncFiles();
             AssetDriveService.classifyAssets();
+        });
 
-            // health checks
+        unstoppableSleep(5000);
+
+        runProcessAndAlertOnException("Daily processes - Health Checks", () -> {
             WorldClockHealthCheck.main(null);
             CelesteStuffHealthCheck.checkEverestExists(true);
             CelesteStuffHealthCheck.checkOlympusExists(true);
@@ -163,8 +172,11 @@ public class CrontabRunner {
             checkArbitraryModApp();
             checkRadioLNJ();
             LNJTwitchBot.healthCheck();
+        });
 
-            // Quest Community Bot stuff
+        unstoppableSleep(5000);
+
+        runProcessAndAlertOnException("Daily processes - Non-Celeste Stuff", () -> {
             ChangeBGToRandom.run();
             PurgePosts.run();
             QuestCommunityWebsiteHealthCheck.run();
@@ -250,8 +262,8 @@ public class CrontabRunner {
         });
     }
 
-    private static void runUpdater(boolean fullUpdateCheck) {
-        runProcessAndAlertOnException("Everest Update Checker", () -> {
+    private static void runUpdater(boolean fullUpdateCheck, ZonedDateTime giveUpAt) {
+        runProcessAndAlertOnException("Everest Update Checker", giveUpAt, () -> {
             if (fullUpdateCheck) {
                 logger.info("Registering Update Checker Tracker...");
                 EventListener.addEventListener(new UpdateCheckerTracker());
@@ -343,20 +355,18 @@ public class CrontabRunner {
     }
 
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
+        runProcessAndAlertOnException(name, null, process);
+    }
+
+    private static void runProcessAndAlertOnException(String name, ZonedDateTime giveUpAt, ExplodyMethod process) {
         logger.debug("Waiting for updater lock to be released...");
 
         Path lockFile = Paths.get("updater_lock");
-        int startHour = ZonedDateTime.now().getHour();
         while (Files.exists(lockFile)) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                sendMessageToWebhook(":x: Could not wait for lock: " + e);
-                return;
-            }
+            unstoppableSleep(1000);
 
-            if (startHour != ZonedDateTime.now().getHour()) {
-                logger.error("Could not get updater lock in time! Aborting.");
+            if (giveUpAt != null && ZonedDateTime.now().isAfter(giveUpAt)) {
+                logger.debug("Waited for too long! Aborting.");
                 return;
             }
         }
@@ -367,6 +377,7 @@ public class CrontabRunner {
         } catch (IOException e) {
             logger.error("Could not lock updater", e);
             sendMessageToWebhook(":x: Could not lock updater: " + e);
+            return;
         }
 
         try {
@@ -384,6 +395,7 @@ public class CrontabRunner {
         } catch (IOException e) {
             logger.error("Could not unlock updater", e);
             sendMessageToWebhook(":x: Could not unlock updater: " + e);
+            return;
         }
     }
 
@@ -396,6 +408,15 @@ public class CrontabRunner {
                     message);
         } catch (IOException e) {
             logger.error("Error while sending message \"{}\"", message, e);
+        }
+    }
+
+    private static void unstoppableSleep(int delay) {
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            sendMessageToWebhook(":x: Could not wait for lock: " + e);
+            return;
         }
     }
 }

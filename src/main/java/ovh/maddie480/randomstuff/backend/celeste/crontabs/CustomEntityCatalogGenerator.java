@@ -376,9 +376,11 @@ public class CustomEntityCatalogGenerator {
             String downloadLink = (String) everestUpdateYaml.get("MoreLoennPlugins")
                     .get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
 
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(downloadLink)) {
-                FileUtils.copyToFile(is, new File("/tmp/mlp.zip"));
-            }
+            ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(downloadLink)) {
+                    FileUtils.copyToFile(is, new File("/tmp/mlp.zip"));
+                }
+            });
 
             try (ZipFile file = new ZipFile("/tmp/mlp.zip")) {
                 Enumeration<? extends ZipEntry> entries = file.entries();
