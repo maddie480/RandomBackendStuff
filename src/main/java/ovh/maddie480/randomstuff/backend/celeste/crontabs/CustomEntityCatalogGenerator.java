@@ -379,6 +379,7 @@ public class CustomEntityCatalogGenerator {
             ConnectionUtils.runWithRetry(() -> {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout(downloadLink)) {
                     FileUtils.copyToFile(is, new File("/tmp/mlp.zip"));
+                    return null;
                 }
             });
 
