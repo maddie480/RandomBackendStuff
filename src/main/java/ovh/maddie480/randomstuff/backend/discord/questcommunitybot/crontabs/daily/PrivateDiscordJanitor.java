@@ -21,7 +21,7 @@ public class PrivateDiscordJanitor {
     public static void runCleanup() throws InterruptedException {
         {
             logger.info("Starting up Quest Community Bot...");
-            JDA questBot = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)
+            JDA questBot = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)
                     .build().awaitReady();
 
             logger.info("Running cleanup...");
@@ -67,12 +67,12 @@ public class PrivateDiscordJanitor {
 
         long[] messagesToDelete = channel.getIterableHistory().stream()
                 .filter(message ->
-                        // message from a specific user
-                        message.getAuthor().getIdLong() == 950840173732724796L ||
+                        // spammy messages from the Update Checker
+                        ":tada: Update Checker data was refreshed.".equals(message.getContentRaw()) ||
 
-                                // message older than a month and not pinned
-                                (message.getTimeCreated().isBefore(OffsetDateTime.now().minusMonths(1))
-                                        && pins.stream().noneMatch(pin -> pin.getIdLong() == message.getIdLong())))
+                        // message older than a month and not pinned
+                        (message.getTimeCreated().isBefore(OffsetDateTime.now().minusMonths(1))
+                            && pins.stream().noneMatch(pin -> pin.getIdLong() == message.getIdLong())))
                 .mapToLong(Message::getIdLong)
                 .toArray();
 
