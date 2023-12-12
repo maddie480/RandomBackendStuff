@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -70,10 +71,14 @@ public class CrontabRunner {
         }
 
         if (arg.equals("--updater")) {
-            ZonedDateTime runUntil = ZonedDateTime.now().plusHours(1)
+            ZonedDateTime runUntil = ZonedDateTime.now(ZoneId.of("UTC")).plusHours(1)
                     .withMinute(0).withSecond(0).withNano(0);
 
-            logger.info("Starting updater loop, will stop on {}", runUntil);
+            while (runUntil.getHour() % 6 != 0) {
+                runUntil = runUntil.plusHours(1);
+            }
+
+            logger.info("Starting updater loop, will stop on {}", runUntil.withZoneSameInstant(ZoneId.systemDefault()));
             boolean full = true;
 
             while (ZonedDateTime.now().isBefore(runUntil)) {

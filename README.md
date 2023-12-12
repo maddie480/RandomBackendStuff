@@ -15,5 +15,4 @@ The [CrontabRunner](src/main/java/ovh/maddie480/randomstuff/backend/CrontabRunne
 - for scheduled processes, it is called by a crontab with different arguments:
   - `--daily`: called every day at 17:15 GMT
   - `--hourly`: called every hour when the minute is 45
-  - `--updater`: called every 2 minutes except when the minute is 0, or if another instance is running
-  - `--updater-full`: called every hour when the minute is 0, except if another instance is running
+  - `--updater`: called every day at 0:00, 6:00, 12:00 and 18:00 GMT. Runs a full update once, then a fast update every 2 minutes.
