@@ -38,8 +38,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -61,7 +59,6 @@ public class CrontabRunner {
         if (arg.equals("--daily")) {
             runDailyProcesses();
             sendMessageToWebhook(":white_check_mark: Daily processes completed!");
-            System.exit(0);
             return;
         }
 
@@ -200,26 +197,7 @@ public class CrontabRunner {
                 throw e;
             }
 
-            // Run this asynchronously and leave it 30 minutes to finish, because it tends to lock up
-            // (if this times out, it will be aborted through the magic of System.exit(0))
-            Semaphore mutex = new Semaphore(0);
-            new Thread("Discord Janitor") {
-                @Override
-                public void run() {
-                    try {
-                        PrivateDiscordJanitor.runCleanup();
-                        mutex.release();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }.start();
-
-            if (mutex.tryAcquire(30, TimeUnit.MINUTES)) {
-                logger.debug("Discord Janitor finished!");
-            } else {
-                logger.warn("Discord Janitor didn't finish in 10 minutes, aborting.");
-            }
+            PrivateDiscordJanitor.runCleanup();
         });
     }
 
