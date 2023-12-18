@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily;
 
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
@@ -8,12 +7,13 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,9 +27,8 @@ public class PlatformBackup {
         runMessageDump(client);
 
         try {
-            Process p = new ProcessBuilder("/app/static/backup-platform.sh")
-                    .inheritIO()
-                    .start();
+            Process p = OutputStreamLogger.redirectAllOutput(logger,
+                    new ProcessBuilder("/app/static/backup-platform.sh").start());
 
             p.waitFor();
 

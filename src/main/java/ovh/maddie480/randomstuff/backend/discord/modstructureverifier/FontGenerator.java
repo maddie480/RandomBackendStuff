@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.modstructureverifier;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
@@ -15,6 +14,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -201,12 +202,12 @@ public class FontGenerator {
 
             // run BMFont to generate the font!
             if (message != null) message.addReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
-            new ProcessBuilder("/usr/bin/wine", "/app/static/font-generator-data/bmfont.exe",
-                    "-c", toWindowsPath(fontConfig),
-                    "-t", toWindowsPath(textFile),
-                    "-o", toWindowsPath(targetFile))
-                    .inheritIO()
-                    .start().waitFor();
+            OutputStreamLogger.redirectAllOutput(logger,
+                    new ProcessBuilder("/usr/bin/wine", "/app/static/font-generator-data/bmfont.exe",
+                            "-c", toWindowsPath(fontConfig),
+                            "-t", toWindowsPath(textFile),
+                            "-o", toWindowsPath(targetFile))
+                            .start()).waitFor();
             if (message != null) message.removeReaction(Emoji.fromUnicode("\uD83E\uDD14")).queue(); // :thinking:
 
             if (customFontFile != null) {

@@ -1,7 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.utils.FileUpload;
 import org.apache.commons.io.FileUtils;
@@ -9,6 +7,9 @@ import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -56,11 +57,9 @@ public class JsonUpdateChecker {
                 }
 
                 if (Files.exists(oldContents)) {
-                    Process p = new ProcessBuilder("diff", "-w", "old_json_contents_" + i + ".json", "new_json_contents_" + i + ".json")
-                            .redirectErrorStream(true)
-                            .redirectInput(ProcessBuilder.Redirect.INHERIT)
-                            .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                            .start();
+                    Process p = OutputStreamLogger.redirectErrorOutput(log,
+                            new ProcessBuilder("diff", "-w", "old_json_contents_" + i + ".json", "new_json_contents_" + i + ".json")
+                                    .start());
 
                     String diff = IOUtils.toString(p.getInputStream(), StandardCharsets.UTF_8);
 

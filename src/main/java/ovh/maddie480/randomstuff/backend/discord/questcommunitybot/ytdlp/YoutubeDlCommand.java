@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -8,6 +7,8 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -86,22 +87,22 @@ public class YoutubeDlCommand implements BotCommand {
                 try {
                     Process p;
                     if (sponsorBlock) {
-                        p = new ProcessBuilder("/app/static/youtube-dl",
-                                "-f", format, "--sponsorblock-remove", "sponsor,selfpromo", url)
-                                .directory(tempFolder)
-                                .inheritIO()
-                                .start();
+                        p = OutputStreamLogger.redirectAllOutput(log,
+                                new ProcessBuilder("/app/static/youtube-dl",
+                                        "-f", format, "--sponsorblock-remove", "sponsor,selfpromo", url)
+                                        .directory(tempFolder)
+                                        .start());
                     } else if (audio) {
-                        p = new ProcessBuilder("/app/static/youtube-dl", "-f",
-                                "bestaudio/bestaudio*", "-x", "--audio-format", "mp3", url)
-                                .directory(tempFolder)
-                                .inheritIO()
-                                .start();
+                        p = OutputStreamLogger.redirectAllOutput(log,
+                                new ProcessBuilder("/app/static/youtube-dl", "-f",
+                                        "bestaudio/bestaudio*", "-x", "--audio-format", "mp3", url)
+                                        .directory(tempFolder)
+                                        .start());
                     } else {
-                        p = new ProcessBuilder("/app/static/youtube-dl", "-f", format, url)
-                                .directory(tempFolder)
-                                .inheritIO()
-                                .start();
+                        p = OutputStreamLogger.redirectAllOutput(log,
+                                new ProcessBuilder("/app/static/youtube-dl", "-f", format, url)
+                                        .directory(tempFolder)
+                                        .start());
                     }
 
                     p.waitFor();

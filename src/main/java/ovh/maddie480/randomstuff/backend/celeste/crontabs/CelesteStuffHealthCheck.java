@@ -16,6 +16,7 @@ import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
@@ -378,7 +379,9 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkGameBananaCategories() throws IOException {
-        Process gamebananaChecker = new ProcessBuilder("/bin/bash", "-c", "/app/static/check-gb.sh").start();
+        Process gamebananaChecker = OutputStreamLogger.redirectErrorOutput(log,
+                new ProcessBuilder("/bin/bash", "-c", "/app/static/check-gb.sh").start());
+
         String result = IOUtils.toString(gamebananaChecker.getInputStream(), StandardCharsets.UTF_8);
         if (!result.equals("""
                 App - NO

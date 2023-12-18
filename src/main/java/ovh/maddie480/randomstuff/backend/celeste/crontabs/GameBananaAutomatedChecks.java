@@ -1,12 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -15,6 +9,13 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.Main;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -145,9 +146,8 @@ public class GameBananaAutomatedChecks {
 
                                     // invoke ilspycmd to decompile the mod.
                                     logger.debug("Decompiling DLL...");
-                                    Process p = new ProcessBuilder("/home/debian/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll")
-                                            .redirectError(ProcessBuilder.Redirect.INHERIT)
-                                            .start();
+                                    Process p = OutputStreamLogger.redirectErrorOutput(logger,
+                                            new ProcessBuilder("/home/debian/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start());
 
                                     String fullDecompile;
                                     try (InputStream is = p.getInputStream()) {

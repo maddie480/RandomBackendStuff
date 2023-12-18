@@ -1,9 +1,12 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.misc;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,6 +17,8 @@ import java.util.List;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class AsciiTextCommand implements BotCommand {
+    private static final Logger log = LoggerFactory.getLogger(AsciiTextCommand.class);
+
     @Override
     public String getCommandName() {
         return "ascii_text";
@@ -54,19 +59,13 @@ public class AsciiTextCommand implements BotCommand {
             if (!getAvailableFonts().contains(parameters[0])) {
                 event.getChannel().sendMessage("La police `" + parameters[0] + "` n'existe pas !\nFais `!help ascii_text` pour avoir la liste des polices.").queue();
             } else {
-                figlet = new ProcessBuilder("/usr/bin/figlet", "-f", parameters[0])
-                        .redirectError(ProcessBuilder.Redirect.INHERIT)
-                        .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                        .redirectInput(ProcessBuilder.Redirect.PIPE)
-                        .start();
+                figlet = OutputStreamLogger.redirectErrorOutput(log,
+                        new ProcessBuilder("/usr/bin/figlet", "-f", parameters[0]).start());
                 text = parameters[1];
             }
         } else {
-            figlet = new ProcessBuilder("/usr/bin/figlet")
-                    .redirectError(ProcessBuilder.Redirect.INHERIT)
-                    .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                    .redirectInput(ProcessBuilder.Redirect.PIPE)
-                    .start();
+            figlet = OutputStreamLogger.redirectErrorOutput(log,
+                    new ProcessBuilder("/usr/bin/figlet").start());
             text = parameters[0];
         }
 
