@@ -1,7 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.slashcommandbot;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.*;
@@ -18,6 +16,8 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -47,7 +47,10 @@ public class SlashCommandBot extends ListenerAdapter {
 
 
     public void start() throws Exception {
-        reloadPlanningExploit();
+        ConnectionUtils.runWithRetry(() -> {
+            reloadPlanningExploit();
+            return null;
+        });
 
         slashCommandToURL = new HashMap<>();
         slashCommandToURL.put("/pipo", "https://max480-random-stuff.appspot.com/mattermost/pipo");
