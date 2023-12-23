@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -159,18 +160,9 @@ public class TimezoneBot {
         }
     }
 
-    public static int getServerCount() {
-        try {
-            JDA jda = JDABuilder.createLight(SecretConstants.TIMEZONE_BOT_TOKEN, Collections.emptyList())
-                    .build().awaitReady();
-
-            int serverCount = jda.getGuilds().size();
-
-            jda.shutdown();
-
-            return serverCount;
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+    public static int getServerCount() throws IOException {
+        try (DiscardableJDA jda = new DiscardableJDA(SecretConstants.TIMEZONE_BOT_TOKEN)) {
+            return jda.getGuilds().size();
         }
     }
 

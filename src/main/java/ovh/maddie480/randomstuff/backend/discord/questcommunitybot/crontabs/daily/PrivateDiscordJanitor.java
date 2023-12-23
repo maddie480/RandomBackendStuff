@@ -1,15 +1,16 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
+import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -18,33 +19,17 @@ public class PrivateDiscordJanitor {
 
     private JDA botClient;
 
-    public static void runCleanup() throws InterruptedException {
-        {
-            logger.info("Starting up Quest Community Bot...");
-            JDA questBot = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)
-                    .build().awaitReady();
-
+    public static void runCleanup() throws IOException {
+        try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)) {
             logger.info("Running cleanup...");
             PrivateDiscordJanitor j = new PrivateDiscordJanitor();
             j.botClient = questBot;
             j.run();
-
-            logger.info("Waiting for Quest Community Bot shutdown...");
-            questBot.shutdown();
-            questBot.awaitShutdown();
         }
 
-        {
-            logger.info("Starting up Slash Command Bot...");
-            JDA slashBot = JDABuilder.createLight(SecretConstants.SLASH_COMMAND_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)
-                    .build().awaitReady();
-
+        try (DiscardableJDA slashBot = new DiscardableJDA(SecretConstants.SLASH_COMMAND_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
             logger.info("Running cleanup...");
             SlashCommandBot.deleteOldMessages(slashBot);
-
-            logger.info("Waiting for Slash Command Bot shutdown...");
-            slashBot.shutdown();
-            slashBot.awaitShutdown();
         }
 
         logger.info("Finished!");

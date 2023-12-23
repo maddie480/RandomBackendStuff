@@ -1,13 +1,6 @@
 package ovh.maddie480.randomstuff.backend.discord.modstructureverifier;
 
 import com.google.common.collect.ImmutableMap;
-import ovh.maddie480.everest.updatechecker.ModFilesDatabaseBuilder;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -41,6 +34,14 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import ovh.maddie480.everest.updatechecker.Main;
+import ovh.maddie480.everest.updatechecker.ModFilesDatabaseBuilder;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
+import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
 
 import javax.annotation.Nonnull;
 import javax.xml.XMLConstants;
@@ -200,18 +201,9 @@ public class ModStructureVerifier extends ListenerAdapter {
         ModStructureVerifier.effectToMod = effectToMod;
     }
 
-    public static int getServerCount() {
-        try {
-            JDA jda = JDABuilder.createLight(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN, Collections.emptyList())
-                    .build().awaitReady();
-
-            int serverCount = jda.getGuilds().size();
-
-            jda.shutdown();
-
-            return serverCount;
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+    public static int getServerCount() throws IOException {
+        try (DiscardableJDA jda = new DiscardableJDA(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN)) {
+            return jda.getGuilds().size();
         }
     }
 

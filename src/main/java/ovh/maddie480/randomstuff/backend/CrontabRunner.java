@@ -1,7 +1,5 @@
 package ovh.maddie480.randomstuff.backend;
 
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.io.IOUtils;
@@ -26,6 +24,7 @@ import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import ovh.maddie480.randomstuff.backend.twitch.LNJTwitchBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
@@ -184,17 +183,9 @@ public class CrontabRunner {
             QuestCommunityWebsiteHealthCheck.run();
             SlashCommandBotHealthCheck.checkSlashCommands();
 
-            JDA client = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)
-                    .build().awaitReady();
-
-            try {
+            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)) {
                 StonkUpdateChecker.postTo(client.getTextChannelById(551822297573490749L));
                 PlatformBackup.run(client);
-
-                client.shutdown();
-            } catch (IOException e) {
-                client.shutdown();
-                throw e;
             }
 
             PrivateDiscordJanitor.runCleanup();
@@ -224,9 +215,7 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkOlympusAPIs();
 
             // Quest Community Bot stuff
-            JDA client = JDABuilder.createLight(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN).build().awaitReady();
-
-            try {
+            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
                 TextChannel webhookHell = client.getTextChannelById(551822297573490749L);
 
                 BusUpdateChecker.runCheckForUpdates(webhookHell);
@@ -236,11 +225,6 @@ public class CrontabRunner {
                 PinUpdater.update(webhookHell);
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);
                 new JsonUpdateChecker().checkForUpdates(webhookHell);
-
-                client.shutdown();
-            } catch (IOException e) {
-                client.shutdown();
-                throw e;
             }
         });
     }
