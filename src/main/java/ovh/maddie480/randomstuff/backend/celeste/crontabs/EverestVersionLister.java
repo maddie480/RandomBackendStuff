@@ -58,9 +58,9 @@ public class EverestVersionLister {
             }
         }
 
-        // get the latest Azure builds for dev, beta and core branches
+        // get the latest Azure builds for dev and beta branches
         List<Integer> currentAzureBuilds = new ArrayList<>();
-        for (String branch : Arrays.asList("dev", "beta", "core")) {
+        for (String branch : Arrays.asList("dev", "beta")) {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
                 currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
                         .toList().stream()
@@ -148,9 +148,9 @@ public class EverestVersionLister {
             }
         }
 
-        // === Azure: for dev, beta and core builds
+        // === Azure: for dev and beta builds
 
-        for (String branch : Arrays.asList("dev", "beta", "core")) {
+        for (String branch : Arrays.asList("dev", "beta")) {
             JSONObject azureBuilds;
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
                 azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
