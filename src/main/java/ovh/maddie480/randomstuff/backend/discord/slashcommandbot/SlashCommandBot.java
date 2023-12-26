@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
 import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -254,8 +255,12 @@ public class SlashCommandBot extends ListenerAdapter {
         List<Long> newBackupExploit = new ArrayList<>();
         Map<Long, List<Pair<ZonedDateTime, ZonedDateTime>>> newHolidayDates = new HashMap<>();
 
+        // This call is expected to be extremely slow (it's a calendar export after all), so we want to be extremely patient
+        HttpURLConnection icsConnection = ConnectionUtils.openConnectionWithTimeout(SecretConstants.EXPLOIT_PLANNING_URL);
+        icsConnection.setReadTimeout(600000); // 10 minutes!
+
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                ConnectionUtils.openStreamWithTimeout(SecretConstants.EXPLOIT_PLANNING_URL)))) {
+                ConnectionUtils.connectionToInputStream(icsConnection), StandardCharsets.UTF_8))) {
 
             // date => ID Discord
             TreeMap<String, Long> principals = new TreeMap<>();
