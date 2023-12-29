@@ -6,13 +6,14 @@ import com.github.twitch4j.chat.TwitchChatBuilder;
 import com.github.twitch4j.chat.events.channel.ChannelMessageEvent;
 import com.github.twitch4j.helix.TwitchHelix;
 import com.github.twitch4j.helix.TwitchHelixBuilder;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import com.github.twitch4j.helix.domain.UserList;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,6 +26,8 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -35,8 +38,8 @@ import java.util.stream.Collectors;
 public class LNJTwitchBot {
     private static final Logger logger = LoggerFactory.getLogger(LNJTwitchBot.class);
 
-    private static final String CHANNEL_NAME = "lesnavetsjouables";
-    private static final String CHANNEL_ID = "431608356";
+    static final String CHANNEL_NAME = "lesnavetsjouables";
+    private static String CHANNEL_ID;
 
     private static long lastClipAt = 0;
     private static boolean rateLimitMessageSent = false;
@@ -94,6 +97,8 @@ public class LNJTwitchBot {
             }
         }
     }
+
+    private static SHSChatControl shsChatControl;
 
     public static void main(String[] args) throws IOException {
         // use the refresh token to get a new access token
@@ -168,6 +173,9 @@ public class LNJTwitchBot {
         chat.sendMessage(CHANNEL_NAME, "Je suis prêt !");
 
         TwitchHelix helix = TwitchHelixBuilder.builder().build();
+        UserList users = helix.getUsers(accessToken, null, Collections.singletonList(CHANNEL_NAME)).execute();
+        CHANNEL_ID = users.getUsers().get(0).getId();
+        logger.debug("Channel ID retrieved for {}: {}", CHANNEL_NAME, CHANNEL_ID);
         chat.getEventManager().onEvent(ChannelMessageEvent.class, event -> handleChatMessage(event, chat, helix, accessToken));
 
         new Thread("LNJ Bot Scheduled Shutdown Thread") {
@@ -181,6 +189,9 @@ public class LNJTwitchBot {
                 }
             }
         }.start();
+
+        shsChatControl = new SHSChatControl(chat);
+        shsChatControl.run();
 
         logger.debug("Startup finished!");
     }
@@ -253,6 +264,13 @@ public class LNJTwitchBot {
             } catch (IOException e) {
                 logger.error("Could not save LNJ Poll vote", e);
             }
+        }
+
+        Matcher tolerantCommandMatcher = Pattern.compile("^! *([a-z0-9_]+)$")
+                .matcher(event.getMessage().trim().toLowerCase(Locale.ROOT));
+
+        if (tolerantCommandMatcher.matches()) {
+            shsChatControl.handleCommand("!" + tolerantCommandMatcher.group(1));
         }
     }
 
