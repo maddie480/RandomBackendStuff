@@ -8,6 +8,8 @@ services:
       - /home/debian/backend:/backend
       - /home/debian/shared:/shared
       - /home/debian/logs:/logs
+    ports:
+      - 11584:11584/tcp
     deploy:
       resources:
         limits:
