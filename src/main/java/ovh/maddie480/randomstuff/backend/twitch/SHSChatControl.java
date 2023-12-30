@@ -1,14 +1,23 @@
 package ovh.maddie480.randomstuff.backend.twitch;
 
 import com.github.twitch4j.chat.TwitchChat;
+import org.apache.commons.io.IOUtils;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -23,8 +32,9 @@ public class SHSChatControl implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SHSChatControl.class);
 
     private static final List<String> COMMANDS = Arrays.asList(
-            "!zombie", "!clio", "!audir8", "!transform", "!enter_bowling", "!enter_caesars",
-            "!police", "!gravity", "!poop", "!snow", "!rain", "!upsidedown", "!tiny", "!flip"
+            "!zombie", "!clio", "!audi", "!transform", "!enter_bowling", "!enter_caesars",
+            "!police", "!set_gravity", "!poop", "!snow", "!rain", "!upside_down", "!tiny", "!flip",
+            "!radio_lnj"
     );
 
     private final TwitchChat chat;
@@ -38,6 +48,11 @@ public class SHSChatControl implements Runnable {
     }
 
     public void run() {
+        runSHSServerSocket();
+        runSHSRadioSocket();
+    }
+
+    private void runSHSServerSocket() {
         new Thread("SHS Server Socket") {
             @Override
             public void run() {
@@ -56,6 +71,25 @@ public class SHSChatControl implements Runnable {
                     }
                 } catch (IOException e) {
                     logger.error("Error while starting server socket!", e);
+                }
+            }
+        }.start();
+    }
+
+    private void runSHSRadioSocket() {
+        new Thread("SHS Radio Socket") {
+            @Override
+            public void run() {
+                try (ServerSocket serverSocket = new ServerSocket(11585)) {
+                    while (true) {
+                        try (Socket socket = serverSocket.accept()) {
+                            sendRadio(socket);
+                        } catch (IOException | InterruptedException e) {
+                            logger.error("Error while sending radio to client!", e);
+                        }
+                    }
+                } catch (IOException e) {
+                    logger.error("Error while starting radio socket!", e);
                 }
             }
         }.start();
@@ -118,6 +152,113 @@ public class SHSChatControl implements Runnable {
 
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void sendRadio(Socket socket) throws IOException, InterruptedException {
+        try (InputStream is = socket.getInputStream();
+             ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream())) {
+
+            {
+                // hi! - 43
+                int handshake = is.read();
+                if (handshake != 43) throw new IOException("Unexpected handshake " + handshake);
+
+                logger.debug("Handshake received!");
+            }
+
+            // get radio state, make sure there is more than 15 seconds left or hold the line
+            String songPath;
+            int seek;
+            int duration;
+            long seekTimeMillis;
+            while (true) {
+                try (InputStream ris = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/radio-lnj/playlist.json")) {
+                    JSONObject response = new JSONObject(IOUtils.toString(ris, StandardCharsets.UTF_8));
+                    songPath = "https://maddie480.ovh" + response.getJSONArray("playlist").getJSONObject(0).getString("path");
+                    seek = response.getInt("seek");
+                    duration = response.getJSONArray("playlist").getJSONObject(0).getInt("duration");
+                    seekTimeMillis = System.currentTimeMillis();
+
+                    if (duration - seek < 15000) {
+                        logger.info("Time left is {}, not enough to be worth it! Waiting for the next song.", duration - seek);
+                        Thread.sleep(duration - seek + 1500);
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // download the song, cut it if necessary
+            Path radioToSend;
+            {
+                Path radioTemp = Paths.get("/tmp/radio.mp3");
+                Path radioTempCut = Paths.get("/tmp/radio_cut.mp3");
+                radioToSend = radioTemp;
+
+                if (Files.exists(radioTempCut)) Files.delete(radioTempCut);
+
+                logger.debug("Next song is {} (duration {}) with seek {}, downloading...", songPath, duration, seek);
+
+                try (InputStream ris = ConnectionUtils.openStreamWithTimeout(songPath);
+                     OutputStream ros = Files.newOutputStream(radioTemp)) {
+
+                    IOUtils.copy(ris, ros);
+                }
+
+                seek += (int) (System.currentTimeMillis() - seekTimeMillis);
+                seekTimeMillis = System.currentTimeMillis();
+                logger.debug("Download complete, seek adjusted to {}", seek);
+
+                if (seek > 10000) {
+                    List<String> command = Arrays.asList("ffmpeg",
+                            "-ss", Float.toString(seek / 1000f),
+                            "-i", radioTemp.toAbsolutePath().toString(),
+                            "-to", Float.toString(duration / 1000f),
+                            "-c", "copy",
+                            radioTempCut.toAbsolutePath().toString()
+                    );
+                    logger.debug("Cutting file... Command line: {}", command);
+
+                    Process ffmpeg = new ProcessBuilder(command).start();
+
+                    OutputStreamLogger.redirectAllOutput(logger, ffmpeg);
+                    ffmpeg.waitFor();
+                    if (ffmpeg.exitValue() != 0) {
+                        throw new IOException("Could not convert file: return code " + ffmpeg.exitValue());
+                    }
+
+                    Files.delete(radioTemp);
+                    radioToSend = radioTempCut;
+
+                    seek += (int) (System.currentTimeMillis() - seekTimeMillis);
+                    logger.debug("Cut complete, seek adjusted to {}", seek);
+                }
+            }
+
+            int fileSize = (int) Files.size(radioToSend);
+            logger.debug("Transferring file {} @ {} ({} bytes) and remaining duration {} to client", songPath, radioToSend.toAbsolutePath().toString(), fileSize, duration - seek);
+
+            // transfer the size, the file, then the time left
+            os.writeInt(fileSize);
+            byte[] buf = new byte[4096];
+            try (InputStream ris = Files.newInputStream(radioToSend)) {
+                while (true) {
+                    int read = ris.read(buf);
+                    if (read == -1) break;
+                    os.write(buf, 0, read);
+                }
+            }
+            Files.delete(radioToSend);
+            os.writeInt(duration - seek + 1000);
+
+            // send a random number, the client should reply with that number to acknowledge they received everything
+            byte random = (byte) (Math.random() * Byte.MAX_VALUE);
+            os.writeByte(random);
+            os.flush();
+            if (is.read() != random) throw new IOException("Did not receive ack!");
+
+            logger.debug("Transfer done! Closing connection.");
         }
     }
 }
