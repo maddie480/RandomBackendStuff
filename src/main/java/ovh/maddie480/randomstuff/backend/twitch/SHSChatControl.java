@@ -34,7 +34,9 @@ public class SHSChatControl implements Runnable {
     private static final List<String> COMMANDS = Arrays.asList(
             "!zombie", "!clio", "!audi", "!transform", "!enter_bowling", "!enter_caesars",
             "!police", "!set_gravity", "!poop", "!snow", "!rain", "!upside_down", "!tiny", "!flip",
-            "!radio_lnj"
+            "!radio_lnj", "!ultra_slow", "!ultra_fast", "!superman", "!fighter_jet", "!clipping_land",
+            "!mirror_mode", "!sniper_view", "!tunnel_vision", "!murk", "!give_gun", "!give_grenade",
+            "!give_flame", "!give_bat"
     );
 
     private final TwitchChat chat;
