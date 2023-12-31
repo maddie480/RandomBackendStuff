@@ -36,7 +36,7 @@ public class SHSChatControl implements Runnable {
             "!police", "!set_gravity", "!poop", "!snow", "!rain", "!upside_down", "!tiny", "!flip",
             "!radio_lnj", "!ultra_slow", "!ultra_fast", "!superman", "!fighter_jet", "!clipping_land",
             "!mirror_mode", "!sniper_view", "!tunnel_vision", "!murk", "!give_gun", "!give_grenade",
-            "!give_flame", "!give_bat"
+            "!give_flame", "!give_bat", "!exploding_peds", "!chirac_en_3d"
     );
 
     private final TwitchChat chat;
