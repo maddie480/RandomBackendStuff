@@ -68,6 +68,9 @@ public class SecretConstants {
     // Discord webhooks to call about GameBanana check issues
     public static List<String> GAMEBANANA_ISSUES_ALERT_HOOKS;
 
+    // The channel on Celestecord where people running collabs should be pinged when they are auto-hidden from the list
+    public static String COLLAB_AUTO_HIDDEN_ALERT_HOOK;
+
     // hooks to call when posting update checker notifications
     public static List<String> UPDATE_CHECKER_HOOKS;
 
@@ -173,6 +176,7 @@ public class SecretConstants {
         SRC_MOD_UPDATE_NOTIFICATIONS_KEY = secrets.getString("SRC_MOD_UPDATE_NOTIFICATIONS_KEY");
 
         GAMEBANANA_ISSUES_ALERT_HOOKS = getListOfStrings(secrets.getJSONArray("GAMEBANANA_ISSUES_ALERT_HOOKS"));
+        COLLAB_AUTO_HIDDEN_ALERT_HOOK = secrets.getString("COLLAB_AUTO_HIDDEN_ALERT_HOOK");
         UPDATE_CHECKER_HOOKS = getListOfStrings(secrets.getJSONArray("UPDATE_CHECKER_HOOKS"));
         UPDATE_CHECKER_LOGS_HOOK = secrets.getString("UPDATE_CHECKER_LOGS_HOOK");
         JADE_PLATFORM_HEALTHCHECK_HOOKS = getListOfStrings(secrets.getJSONArray("JADE_PLATFORM_HEALTHCHECK_HOOKS"));
