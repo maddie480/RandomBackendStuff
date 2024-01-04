@@ -211,8 +211,8 @@ public class CustomEntityCatalogGenerator {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                     ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/wiki/EverestAPI/Resources/Mapping/Helper-Manuals.md")))) {
 
-                // we're expecting - [label](link)
-                Pattern linkPattern = Pattern.compile("^- \\[(.*)]\\((.*)\\)$");
+                // we're expecting - [label :link:](link)
+                Pattern linkPattern = Pattern.compile("^- \\[(.*) :link:]\\((.*)\\)$");
 
                 String sectionName = null;
                 String line;
