@@ -58,7 +58,6 @@ public class UsageStatsService {
         return ImmutableMap.of(
                 "responseCountPerCode", getResponseCountByStatus(days),
                 "githubActionsPerRepository", countGitHubActionsPerRepository(days),
-                "gitlabActionsCount", countGitLabActions(days),
                 "customSlashCommandsUsage", countFrontendLogEntries("/discord/custom-slash-commands", days),
                 "gamesBotUsage", countFrontendLogEntries("/discord/games-bot", days),
                 "timezoneBotLiteUsage", countFrontendLogEntries("/discord/timezone-bot", days),
@@ -199,38 +198,6 @@ public class UsageStatsService {
                     int count = result.getOrDefault(repoName, 0);
                     result.put(repoName, count + 1);
                 }
-            }
-
-            page++;
-        }
-    }
-
-    private static int countGitLabActions(int days) throws IOException {
-        int count = 0;
-        int page = 1;
-
-        while (true) {
-            log.debug("Getting GitLab actions page {}...", page);
-
-            int curPage = page;
-            JSONArray events = ConnectionUtils.runWithRetry(() -> {
-                HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://gitlab.com/api/v4/events?page=" + curPage);
-                connAuth.setRequestProperty("Private-Token", SecretConstants.GITLAB_ACCESS_TOKEN);
-
-                try (InputStream is = ConnectionUtils.connectionToInputStream(connAuth)) {
-                    return new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
-                }
-            });
-
-            for (Object o : events) {
-                JSONObject item = (JSONObject) o;
-
-                OffsetDateTime createdAt = OffsetDateTime.parse(item.getString("created_at"), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                if (createdAt.isBefore(OffsetDateTime.now().minusDays(days))) {
-                    return count;
-                }
-
-                count++;
             }
 
             page++;

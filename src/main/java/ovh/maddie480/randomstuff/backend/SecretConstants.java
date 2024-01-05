@@ -92,9 +92,6 @@ public class SecretConstants {
     // header used to authenticate with the GitHub API
     public static String GITHUB_BASIC_AUTH;
 
-    // personal access token used to authenticate with the GitLab API
-    public static String GITLAB_ACCESS_TOKEN;
-
     // URL used to update the China-accessible mirror of updater files
     public static String CHINA_MIRROR_UPDATE_WEBHOOK;
 
@@ -187,7 +184,6 @@ public class SecretConstants {
         PERSONAL_NOTIFICATION_WEBHOOK_URL = secrets.getString("PERSONAL_NOTIFICATION_WEBHOOK_URL");
 
         GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
-        GITLAB_ACCESS_TOKEN = secrets.getString("GITLAB_ACCESS_TOKEN");
 
         CHINA_MIRROR_UPDATE_WEBHOOK = secrets.getString("CHINA_MIRROR_UPDATE_WEBHOOK");
 
