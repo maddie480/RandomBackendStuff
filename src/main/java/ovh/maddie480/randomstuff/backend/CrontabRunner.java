@@ -203,7 +203,7 @@ public class CrontabRunner {
             CollabAutoHider.run();
             TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true);
             TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log"));
-            TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook);
+            // TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook);
             UsageStatsService.writeWeeklyStatisticsToFile();
             MastodonUpdateChecker.checkForUpdates();
             OlympusNewsUpdateChecker.checkForUpdates();
