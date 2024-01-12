@@ -136,7 +136,6 @@ public class CrontabRunner {
         runProcessAndAlertOnException("Daily processes - Update Tasks", () -> {
             AutoLeaver.main(null);
             CustomSlashCommandsCleanup.housekeep();
-            ServerCountUploader.run();
             ArbitraryModAppCacher.refreshArbitraryModAppCache();
             CustomEntityCatalogGenerator.main(null);
             ServerJanitorBot.main(null);
@@ -144,6 +143,9 @@ public class CrontabRunner {
             AssetDriveService.listAllFiles();
             AssetDriveService.rsyncFiles();
             AssetDriveService.classifyAssets();
+
+            // Make sure the frequent top.gg outages don't affect us by doing this last.
+            ServerCountUploader.run();
         });
 
         unstoppableSleep(5000);
@@ -203,7 +205,6 @@ public class CrontabRunner {
             CollabAutoHider.run();
             TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true);
             TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log"));
-            // TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook);
             UsageStatsService.writeWeeklyStatisticsToFile();
             MastodonUpdateChecker.checkForUpdates();
             OlympusNewsUpdateChecker.checkForUpdates();
@@ -226,6 +227,9 @@ public class CrontabRunner {
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);
                 new JsonUpdateChecker().checkForUpdates(webhookHell);
             }
+
+            // Make sure the frequent top.gg outages don't affect us by doing this last.
+            TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook);
         });
     }
 
