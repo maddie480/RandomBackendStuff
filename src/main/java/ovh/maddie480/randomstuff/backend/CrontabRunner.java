@@ -306,6 +306,14 @@ public class CrontabRunner {
             }
         }
 
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/radio-lnj/playlist.m3u");
+             BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
+
+            if (!br.readLine().equals("https://maddie480.ovh" + playlist.getJSONArray("playlist").getJSONObject(0).getString("path"))) {
+                throw new IOException("m3u head of playlist does not match JSON head of playlist!");
+            }
+        }
+
         String url = "https://maddie480.ovh" + playlist.getJSONArray("playlist").getJSONObject(0).getString("path");
         logger.debug("Downloading head of playlist at {}", url);
 
@@ -387,7 +395,6 @@ public class CrontabRunner {
             Thread.sleep(delay);
         } catch (InterruptedException e) {
             sendMessageToWebhook(":x: Could not wait for lock: " + e);
-            return;
         }
     }
 }

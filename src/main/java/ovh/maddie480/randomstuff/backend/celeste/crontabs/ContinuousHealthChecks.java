@@ -1,16 +1,16 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneRoleUpdater;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOSupplier;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneRoleUpdater;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,10 +19,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Supplier;
 
 /**
@@ -67,6 +64,8 @@ public class ContinuousHealthChecks {
                         // backend check: notify privately and restart if it goes down.
                         checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - TimezoneRoleUpdater.getLastRunDate() < 1_800_000L,
                                 "Timezone Role Updater");
+                        checkHealth(ContinuousHealthChecks::checkNextcloudSpace,
+                                "Nextcloud", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                     } catch (Exception e) {
                         // this shouldn't happen, unless we cannot communicate with Discord.
                         logger.error("Uncaught exception happened during health check!", e);
@@ -120,6 +119,19 @@ public class ContinuousHealthChecks {
             JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             JSONArray data = resp.getJSONArray("data").getJSONArray(0);
             return data.getInt(1) < 3;
+        }
+    }
+
+    private static boolean checkNextcloudSpace() throws IOException {
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://nextcloud.maddie480.ovh/ocs/v2.php/apps/serverinfo/api/v1/info?format=json&skipApps=true");
+        conn.setRequestProperty("NC-Token", SecretConstants.NEXTCLOUD_HEALTHCHECK_TOKEN);
+
+        try (InputStream is = ConnectionUtils.connectionToInputStream(conn)) {
+            JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+
+            // more than 10 GB free space
+            return resp.getJSONObject("ocs").getJSONObject("data").getJSONObject("nextcloud")
+                    .getJSONObject("system").getLong("freespace") > 10 * 1024 * 1024 * 1024L;
         }
     }
 
