@@ -18,7 +18,10 @@ import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.*;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.JsonUpdateChecker;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.PinUpdater;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
@@ -220,8 +223,6 @@ public class CrontabRunner {
                 TextChannel webhookHell = client.getTextChannelById(551822297573490749L);
 
                 BusUpdateChecker.runCheckForUpdates(webhookHell);
-                new ComicUpdateChecker().runCheckForUpdates(webhookHell);
-                RandomStuffPoster.run(webhookHell);
                 new TemperatureChecker().checkForUpdates(webhookHell);
                 PinUpdater.update(webhookHell);
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);

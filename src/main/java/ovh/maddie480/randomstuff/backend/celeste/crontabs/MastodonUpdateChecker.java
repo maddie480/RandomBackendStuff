@@ -1,9 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOConsumer;
@@ -12,6 +9,9 @@ import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.net.URLDecoder;
@@ -20,10 +20,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -69,22 +69,9 @@ public class MastodonUpdateChecker {
      * @throws IOException In case of issues when fetching statuses or notifying about them
      */
     public static void checkForUpdates() throws IOException {
-        // all subscribed feeds are listed in a text file.
-        // lines can start with a number to only post every X hours, in order to deal with bots that post a lot of content.
-        // for instance: "8;https://botsin.space/api/v1/accounts/109505842438488729/statuses" checks for status updates only if hour % 8 == 0.
-        try (BufferedReader br = new BufferedReader(new FileReader("followed_mastodon_accounts.txt"))) {
-            String s;
-            while ((s = br.readLine()) != null) {
-                int rateLimit = 1;
-                if (s.contains(";")) {
-                    String[] splitLine = s.split(";", 2);
-                    rateLimit = Integer.parseInt(splitLine[0]);
-                    s = splitLine[1];
-                }
-
-                if (ZonedDateTime.now().getHour() % rateLimit == 0) {
-                    checkForUpdates(s, rateLimit > 1);
-                }
+        try (Stream<String> linkList = Files.lines(Paths.get("followed_mastodon_accounts.txt"))) {
+            for (String link : linkList.toList()) {
+                checkForUpdates(link);
             }
         }
     }
@@ -92,11 +79,10 @@ public class MastodonUpdateChecker {
     /**
      * Checks for updates on a specific Mastodon feed.
      *
-     * @param feed    The feed to check
-     * @param onlyOne Whether only one status should be posted
+     * @param feed The feed to check
      * @throws IOException In case of issues when fetching statuses or notifying about them
      */
-    private static void checkForUpdates(String feed, boolean onlyOne) throws IOException {
+    private static void checkForUpdates(String feed) throws IOException {
         log.debug("Checking for updates on feed " + feed);
 
         boolean firstRun = !previousStatuses.containsKey(feed);
@@ -187,10 +173,6 @@ public class MastodonUpdateChecker {
                     }
 
                     statusesAlreadyNotified.add(id);
-
-                    if (onlyOne) {
-                        break;
-                    }
                 } else {
                     log.info("New status with id " + id + ", but this is a self-reblog of a status from less than a week before, or this is the first run.");
                     statusesAlreadyNotified.add(id);
@@ -240,7 +222,7 @@ public class MastodonUpdateChecker {
         if (!goneWebhooks.isEmpty()) {
             // some webhooks were deleted! notify the owner about it.
             for (String goneWebhook : goneWebhooks) {
-                WebhookExecutor.executeWebhook(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
+                WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
                         "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/mastodon.png",
                         "Mastodon Bot",
                         ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook);

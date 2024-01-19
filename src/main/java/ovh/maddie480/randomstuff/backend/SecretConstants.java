@@ -121,11 +121,9 @@ public class SecretConstants {
     public static String JSON_BASIC_AUTH;
     public static String BUS_URL;
     public static String STONK_URL;
-    public static Map<String, String> COMIC_URLS;
     public static String WEATHER_WARNING_DOMAIN;
     public static String WEATHER_PLACE;
     public static List<String> SLASH_COMMAND_BOT_HEALTHCHECKS;
-    public static List<String> RANDOM_SOURCES;
 
     static {
         // The SECRET_CONSTANTS environment variable has all secrets, in JSON format.
@@ -211,11 +209,9 @@ public class SecretConstants {
         JSON_BASIC_AUTH = secrets.getString("JSON_BASIC_AUTH");
         BUS_URL = secrets.getString("BUS_URL");
         STONK_URL = secrets.getString("STONK_URL");
-        COMIC_URLS = getMapOfStrings(secrets.getJSONObject("COMIC_URLS"));
         WEATHER_WARNING_DOMAIN = secrets.getString("WEATHER_WARNING_DOMAIN");
         WEATHER_PLACE = secrets.getString("WEATHER_PLACE");
         SLASH_COMMAND_BOT_HEALTHCHECKS = getListOfStrings(secrets.getJSONArray("SLASH_COMMAND_BOT_HEALTHCHECKS"));
-        RANDOM_SOURCES = getListOfStrings(secrets.getJSONArray("RANDOM_SOURCES"));
     }
 
     private static List<String> getListOfStrings(JSONArray array) {
