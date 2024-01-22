@@ -202,7 +202,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
         if (command.getCommandParameters().length == 1 && commandParsed.size() > 2) {
             commandParsed.remove(0);
             parameters = new String[]{String.join(" ", commandParsed)};
-            log.debug("Single-operand command parameters grouped as one: {}", parameters);
+            log.debug("Single-operand command parameters grouped as one: {}", (Object[]) parameters);
         } else {
             commandParsed.remove(0);
             parameters = new String[commandParsed.size()];
