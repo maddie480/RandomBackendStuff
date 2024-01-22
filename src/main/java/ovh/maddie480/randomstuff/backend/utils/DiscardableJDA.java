@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.concrete.*;
 import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.entities.sticker.StickerPack;
@@ -24,6 +25,7 @@ import net.dv8tion.jda.api.requests.restaction.GuildAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.utils.cache.CacheView;
+import net.dv8tion.jda.api.utils.cache.ChannelCacheView;
 import net.dv8tion.jda.api.utils.cache.SnowflakeCacheView;
 import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
@@ -288,6 +290,12 @@ public class DiscardableJDA implements JDA, Closeable {
     @Override
     public SnowflakeCacheView<ScheduledEvent> getScheduledEventCache() {
         return backingJDA.getScheduledEventCache();
+    }
+
+    @NotNull
+    @Override
+    public ChannelCacheView<Channel> getChannelCache() {
+        return backingJDA.getChannelCache();
     }
 
     @NotNull
