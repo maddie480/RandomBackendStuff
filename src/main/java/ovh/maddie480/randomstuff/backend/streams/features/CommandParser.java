@@ -1,4 +1,4 @@
-package ovh.maddie480.randomstuff.backend.twitch;
+package ovh.maddie480.randomstuff.backend.streams.features;
 
 import java.util.ArrayList;
 import java.util.List;

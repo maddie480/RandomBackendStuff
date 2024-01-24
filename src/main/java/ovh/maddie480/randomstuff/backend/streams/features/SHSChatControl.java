@@ -1,10 +1,10 @@
-package ovh.maddie480.randomstuff.backend.twitch;
+package ovh.maddie480.randomstuff.backend.streams.features;
 
-import com.github.twitch4j.chat.TwitchChat;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.streams.apis.AbstractChatProvider;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
@@ -39,14 +39,14 @@ public class SHSChatControl implements Runnable {
             "!give_flame", "!give_bat", "!exploding_peds", "!chirac_en_3d"
     );
 
-    private final TwitchChat chat;
+    private final List<AbstractChatProvider<?>> chatProviders;
 
     private int sessionId = 0;
 
     private BlockingQueue<Byte> commandQueue;
 
-    public SHSChatControl(TwitchChat chat) {
-        this.chat = chat;
+    public SHSChatControl(List<AbstractChatProvider<?>> chatProviders) {
+        this.chatProviders = chatProviders;
     }
 
     public void run() {
@@ -120,8 +120,8 @@ public class SHSChatControl implements Runnable {
                 logger.debug("Handshake received!");
             }
 
-            chat.sendMessage(LNJTwitchBot.CHANNEL_NAME, "Streatham Hill Stories est connecté ! "
-                    + "Commandes disponibles : " + String.join(", ", COMMANDS));
+            chatProviders.forEach(provider -> provider.sendMessage("Streatham Hill Stories est connecté ! "
+                    + "Commandes disponibles : " + String.join(", ", COMMANDS)));
 
             new Thread("Command Poster") {
                 @Override
@@ -133,7 +133,7 @@ public class SHSChatControl implements Runnable {
                             throw new RuntimeException(e);
                         }
 
-                        chat.sendMessage(LNJTwitchBot.CHANNEL_NAME, "Commandes disponibles : " + String.join(", ", COMMANDS));
+                        chatProviders.forEach(provider -> provider.sendMessage("Commandes disponibles : " + String.join(", ", COMMANDS)));
                     }
                 }
             }.start();

@@ -36,7 +36,7 @@ import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.Youtube
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.YoutubeDlCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.YoutubeDlRandomCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.YoutubeDlSponsorBlockCommand;
-import ovh.maddie480.randomstuff.backend.twitch.CommandParser;
+import ovh.maddie480.randomstuff.backend.streams.features.CommandParser;
 
 import java.io.IOException;
 import java.util.*;

@@ -1,8 +1,8 @@
 services:
-  lnj-twitch-bot:
+  lnj-bot:
     image: max480/random-stuff-backend
     network_mode: host
-    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/twitch.LNJTwitchBot/' /app/run_bot.sh && /app/run_bot.sh"]
+    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/streams.features.LNJBot/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants
     volumes:
       - /home/debian/backend:/backend

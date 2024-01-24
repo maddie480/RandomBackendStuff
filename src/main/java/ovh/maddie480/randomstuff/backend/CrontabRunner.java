@@ -25,7 +25,7 @@ import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hour
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
-import ovh.maddie480.randomstuff.backend.twitch.LNJTwitchBot;
+import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
@@ -177,7 +177,7 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkAssetDriveBrowser();
             checkArbitraryModApp();
             checkRadioLNJ();
-            LNJTwitchBot.healthCheck();
+            LNJBot.healthCheck();
         });
 
         unstoppableSleep(5000);

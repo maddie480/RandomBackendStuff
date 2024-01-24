@@ -101,6 +101,9 @@ public class SecretConstants {
     public static String TWITCH_CLIENT_ID;
     public static String TWITCH_CLIENT_SECRET;
 
+    public static String YOUTUBE_LNJ_BOT_CLIENT_ID;
+    public static String YOUTUBE_LNJ_BOT_CLIENT_SECRET;
+
     // Quest Community Bot secrets
     public static String QUEST_COMMUNITY_BOT_TOKEN;
     public static long QUEST_COMMUNITY_SERVER_ID;
@@ -191,6 +194,9 @@ public class SecretConstants {
 
         TWITCH_CLIENT_ID = secrets.getString("TWITCH_CLIENT_ID");
         TWITCH_CLIENT_SECRET = secrets.getString("TWITCH_CLIENT_SECRET");
+
+        YOUTUBE_LNJ_BOT_CLIENT_ID = secrets.getString("YOUTUBE_LNJ_BOT_CLIENT_ID");
+        YOUTUBE_LNJ_BOT_CLIENT_SECRET = secrets.getString("YOUTUBE_LNJ_BOT_CLIENT_SECRET");
 
         QUEST_COMMUNITY_BOT_TOKEN = secrets.getString("QUEST_COMMUNITY_BOT_TOKEN");
         QUEST_COMMUNITY_SERVER_ID = secrets.getLong("QUEST_COMMUNITY_SERVER_ID");
