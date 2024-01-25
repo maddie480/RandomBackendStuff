@@ -65,7 +65,7 @@ public class LNJBot {
         clipper = new ClippyTheClipper(twitchChatProvider);
     }
 
-    private <T> void handleChatMessage(ChatMessage<T> message) {
+    private synchronized <T> void handleChatMessage(ChatMessage<T> message) {
         LNJPoll poll;
         try (InputStream is = Files.newInputStream(lnjPollPath)) {
             poll = new LNJPoll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)));
