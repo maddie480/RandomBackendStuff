@@ -26,6 +26,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -38,9 +40,15 @@ public class YouTubeChatProvider implements IChatProvider<String> {
     private static final String CHANNEL_ID = "UCeYyIN2Z1H2R4gc-mQJyrsA";
 
     private Credential credential;
+
     private String liveChatId;
     private String lastMessageId;
     private boolean firstPass = true;
+
+    private Map<String, String> fixedMessages;
+    private long lastTimedMessagePostedAt = 0;
+    private int lastTimedMessagePosted = 0;
+    private int messageCountSinceLastTimedPost = 0;
 
     @Override
     public void connect(Consumer<ChatMessage<String>> messageListener) throws IOException {
@@ -70,6 +78,8 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
         liveChatId = getLiveChatId(getLiveStreamVideoId());
         log.debug("The ID of the chat of the current YouTube live stream is {}", liveChatId);
+
+        fixedMessages = getMoobotCommands();
 
         runReadMessagesLoop(messageListener);
     }
@@ -111,6 +121,23 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         }
     }
 
+    private Map<String, String> getMoobotCommands() throws IOException {
+        Map<String, String> commands = new HashMap<>();
+
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://api.moo.bot/1/channel/public/commands/list?channel=431608356")) {
+            JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+
+            for (int i = 0; i < response.getJSONArray("list").length(); i++) {
+                JSONObject command = response.getJSONArray("list").getJSONObject(i);
+                if (!"custom".equals(command.getString("type"))) continue;
+                commands.put(command.getString("identifier"), command.getString("response"));
+            }
+
+            log.debug("Retrieved Moobot commands: {}", commands);
+            return commands;
+        }
+    }
+
     private void runReadMessagesLoop(Consumer<ChatMessage<String>> messageListener) {
         new Thread("YouTube Chat Reader") {
             @Override
@@ -118,6 +145,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                 while (true) {
                     try {
                         Thread.sleep(readMessages(messageListener));
+                        sendPeriodicMessageIfNecessary();
                     } catch (Exception e) {
                         log.error("Error while checking chat", e);
 
@@ -173,12 +201,33 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                 );
 
                 messageListener.accept(chatMessage);
+                messageCountSinceLastTimedPost++;
             }
 
             if (firstPass) log.debug("Latest message has id {}", lastMessageId);
             firstPass = false;
 
             return response.getInt("pollingIntervalMillis");
+        }
+    }
+
+    private void sendPeriodicMessageIfNecessary() {
+        if (System.currentTimeMillis() - lastTimedMessagePostedAt > 1_200_000L // 20 minutes
+            && messageCountSinceLastTimedPost >= 10) {
+
+            lastTimedMessagePosted++;
+            lastTimedMessagePosted %= 2;
+
+            String message = switch (lastTimedMessagePosted) {
+                case 0 -> "Nous sommes en live tous les vendredis à 21h (normalement) ! Suivez la chaîne pour ne pas rater les prochains lives !";
+                case 1 -> "Tapez !clip pour créer automatiquement un clip des 30 dernières sec de stream ! Merci Maddie pour la création de cette commande !";
+                default -> "cpt"
+            };
+
+            sendMessage(message);
+
+            lastTimedMessagePostedAt = System.currentTimeMillis();
+            messageCountSinceLastTimedPost = 0;
         }
     }
 
@@ -219,5 +268,24 @@ public class YouTubeChatProvider implements IChatProvider<String> {
     public void respondTo(ChatMessage<String> message, String response) {
         // YouTube doesn't have replies, it does have chat mentions however
         sendMessage("@" + message.messageSenderName() + " " + response);
+    }
+
+    public void respondToFixedCommand(ChatMessage<?> message, String command) {
+        if (!fixedMessages.containsKey(command)) {
+            return;
+        }
+
+        String response = fixedMessages.get(command);
+
+        if (response.contains("<username>") || response.contains("<twitch.mentioned>")) {
+            // do not respond because the text already contains a mention
+            sendMessage(response
+                .replace("<username>", "@" + message.messageSenderName())
+                .replace("<twitch.mentioned>", "@" + message.messageSenderName()));
+
+        } else {
+            // respond to the user with a mention
+            message.respond(message);
+        }
     }
 }

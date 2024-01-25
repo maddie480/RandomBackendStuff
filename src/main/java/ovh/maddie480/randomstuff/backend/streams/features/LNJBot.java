@@ -111,11 +111,15 @@ public class LNJBot {
             }
         }
 
-        Matcher tolerantCommandMatcher = Pattern.compile("^! *([a-z0-9_]+)$")
+        Matcher tolerantCommandMatcher = Pattern.compile("^! *([a-z0-9_é]+)$")
                 .matcher(message.messageContents().trim().toLowerCase(Locale.ROOT));
 
         if (tolerantCommandMatcher.matches()) {
             shsChatControl.handleCommand("!" + tolerantCommandMatcher.group(1));
+
+            if (message.provider() instanceof YouTubeChatProvider youtube) {
+                youtube.respondToFixedCommand(message, tolerantCommandMatcher.group(1));
+            }
         }
     }
 
