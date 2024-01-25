@@ -3,6 +3,9 @@ package ovh.maddie480.randomstuff.backend.streams.features;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Utility class to split parameters belonging to a command.
+ */
 public class CommandParser {
     private String commandToParse;
 

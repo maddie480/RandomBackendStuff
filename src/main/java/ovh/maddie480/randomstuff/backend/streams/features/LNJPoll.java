@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Represents the ongoing poll on the stream, and handles people responding to it.
+ */
 class LNJPoll {
     private final long id;
     private final String name;

@@ -27,7 +27,10 @@ import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-public class TwitchChatProvider extends AbstractChatProvider<TwitchMessageID> {
+/**
+ * A provider that connects to the lesnavetsjouables chat on Twitch.
+ */
+public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
     private static final Logger logger = LoggerFactory.getLogger(TwitchChatProvider.class);
 
     private static final String CHANNEL_NAME = "lesnavetsjouables";
@@ -124,8 +127,7 @@ public class TwitchChatProvider extends AbstractChatProvider<TwitchMessageID> {
         chat.sendMessage(CHANNEL_NAME, contents);
     }
 
-    @Override
-    protected void actuallyMakeClip(ChatMessage<TwitchMessageID> triggeredByMessage) {
+    public void makeClip(ChatMessage<?> triggeredByMessage) {
         CompletableFuture
                 .supplyAsync(() -> helix.createClip(accessToken, channelId, false).execute())
                 .thenAcceptAsync(clip -> {

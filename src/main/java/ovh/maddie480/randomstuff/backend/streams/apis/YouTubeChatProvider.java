@@ -28,7 +28,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.function.Consumer;
 
-public class YouTubeChatProvider extends AbstractChatProvider<String> {
+/**
+ * A provider that connects to the chat of the (hopefully only) video currently live or upcoming on
+ * the @LesNavetsJouables YouTube channel.
+ */
+public class YouTubeChatProvider implements IChatProvider<String> {
     private static final Logger log = LoggerFactory.getLogger(YouTubeChatProvider.class);
 
     private static final String CHANNEL_ID = "UCeYyIN2Z1H2R4gc-mQJyrsA";
@@ -209,11 +213,6 @@ public class YouTubeChatProvider extends AbstractChatProvider<String> {
         } catch (IOException e) {
             log.error("Could not send message", e);
         }
-    }
-
-    @Override
-    protected void actuallyMakeClip(ChatMessage<String> triggeredByMessage) {
-        triggeredByMessage.respond("Désolé, les clips sur YouTube ne sont pas (encore) supportés. :(");
     }
 
     @Override

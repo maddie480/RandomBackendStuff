@@ -5,8 +5,8 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.streams.apis.AbstractChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.ChatMessage;
+import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * A small Twitch bot that listens to the chat of a specific channel, and that can respond to 2 commands:
+ * A small Twitch and YouTube bot that listens to the chat of a specific channel, and that can respond to 2 commands:
  * !clip - creates a clip
  * !poll - runs a poll, users can vote using keywords in the chat
  */
@@ -36,6 +36,7 @@ public class LNJBot {
     private static final Path lnjPollPath = Paths.get("/shared/lnj-poll.json");
 
     private final SHSChatControl shsChatControl;
+    private final ClippyTheClipper clipper;
 
     public static void main(String[] args) throws IOException {
         new LNJBot();
@@ -57,10 +58,11 @@ public class LNJBot {
         YouTubeChatProvider youTubeChatProvider = new YouTubeChatProvider();
         youTubeChatProvider.connect(this::handleChatMessage);
 
-        List<AbstractChatProvider<?>> chatProviders = Arrays.asList(twitchChatProvider, youTubeChatProvider);
+        List<IChatProvider<?>> chatProviders = Arrays.asList(twitchChatProvider, youTubeChatProvider);
         chatProviders.forEach(provider -> provider.sendMessage("Je suis prêt !"));
 
         shsChatControl = new SHSChatControl(chatProviders);
+        clipper = new ClippyTheClipper(twitchChatProvider);
     }
 
     private <T> void handleChatMessage(ChatMessage<T> message) {
@@ -74,7 +76,7 @@ public class LNJBot {
 
         if (message.messageContents().trim().toLowerCase(Locale.ROOT).matches("^! *clip$")) {
             logger.debug("Received a !clip command from " + message.messageSenderName());
-            message.makeClip();
+            clipper.makeClip(message);
 
         } else if (message.isAdmin()
                 && (message.messageContents().trim().startsWith("!poll ") || message.messageContents().trim().equals("!poll"))) {
