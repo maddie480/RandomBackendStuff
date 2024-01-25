@@ -50,6 +50,12 @@ public class YouTubeChatProvider implements IChatProvider<String> {
     private int lastTimedMessagePosted = 0;
     private int messageCountSinceLastTimedPost = 0;
 
+    private final Runnable givingUpAction;
+
+    public YouTubeChatProvider(Runnable givingUpAction) {
+        this.givingUpAction = givingUpAction;
+    }
+
     @Override
     public void connect(Consumer<ChatMessage<String>> messageListener) throws IOException {
         DataStoreFactory dataStoreFactory = new FileDataStoreFactory(new File("youtube_api_credentials"));
@@ -142,12 +148,23 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         new Thread("YouTube Chat Reader") {
             @Override
             public void run() {
+                int failsInARow = 0;
+
                 while (true) {
                     try {
-                        Thread.sleep(readMessages(messageListener));
+                        int suggestedSleepTime = readMessages(messageListener);
+                        Thread.sleep(Math.max(suggestedSleepTime, 10000));
                         sendPeriodicMessageIfNecessary();
+                        failsInARow = 0;
                     } catch (Exception e) {
-                        log.error("Error while checking chat", e);
+                        log.error("Error while checking chat, consecutive failure #{}", failsInARow, e);
+
+                        failsInARow++;
+                        if (failsInARow > 10) {
+                            log.error("Aborting YouTube chat!");
+                            givingUpAction.run();
+                            break;
+                        }
 
                         try {
                             Thread.sleep(10000);
@@ -234,6 +251,8 @@ public class YouTubeChatProvider implements IChatProvider<String> {
     @Override
     public void sendMessage(String contents) {
         try {
+            if (contents.length() > 200) contents = contents.substring(0, 197) + "...";
+
             JSONObject text = new JSONObject();
             text.put("messageText", contents);
 

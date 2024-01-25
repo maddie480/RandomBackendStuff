@@ -55,7 +55,8 @@ public class LNJBot {
         TwitchChatProvider twitchChatProvider = new TwitchChatProvider();
         twitchChatProvider.connect(this::handleChatMessage);
 
-        YouTubeChatProvider youTubeChatProvider = new YouTubeChatProvider();
+        YouTubeChatProvider youTubeChatProvider = new YouTubeChatProvider(() ->
+                twitchChatProvider.sendMessage("Le bot YouTube n'a plus de budget. RIP"));
         youTubeChatProvider.connect(this::handleChatMessage);
 
         List<IChatProvider<?>> chatProviders = Arrays.asList(twitchChatProvider, youTubeChatProvider);
