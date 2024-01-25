@@ -285,7 +285,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
         } else {
             // respond to the user with a mention
-            message.respond(message);
+            message.respond(response);
         }
     }
 }
