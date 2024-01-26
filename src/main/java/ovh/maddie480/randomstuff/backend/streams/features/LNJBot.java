@@ -67,6 +67,8 @@ public class LNJBot {
     }
 
     private synchronized <T> void handleChatMessage(ChatMessage<T> message) {
+        logger.debug("New message from {}: {}", message.messageSenderName(), message.messageContents());
+
         LNJPoll poll;
         try (InputStream is = Files.newInputStream(lnjPollPath)) {
             poll = new LNJPoll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)));

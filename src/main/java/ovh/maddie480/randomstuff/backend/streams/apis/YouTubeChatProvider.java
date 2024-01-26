@@ -40,10 +40,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
     private static final String CHANNEL_ID = "UCeYyIN2Z1H2R4gc-mQJyrsA";
 
     private Credential credential;
-
     private String liveChatId;
-    private String lastMessageId;
-    private boolean firstPass = true;
 
     private Map<String, String> fixedMessages;
     private long lastTimedMessagePostedAt = 0;
@@ -149,11 +146,13 @@ public class YouTubeChatProvider implements IChatProvider<String> {
             @Override
             public void run() {
                 int failsInARow = 0;
+                String pageToken = null;
 
                 while (true) {
                     try {
-                        int suggestedSleepTime = readMessages(messageListener);
-                        Thread.sleep(Math.max(suggestedSleepTime, 10000));
+                        MessageCheckResult result = readMessages(messageListener, pageToken);
+                        pageToken = result.pageToken();
+                        Thread.sleep(Math.max(result.suggestedSleepTime(), 10000));
                         sendPeriodicMessageIfNecessary();
                         failsInARow = 0;
                     } catch (Exception e) {
@@ -177,31 +176,20 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         }.start();
     }
 
-    private int readMessages(Consumer<ChatMessage<String>> messageListener) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/youtube/v3/liveChat/messages?" +
-                "liveChatId=" + liveChatId + "&part=id,snippet,authorDetails&maxResults=200");
+    private record MessageCheckResult(int suggestedSleepTime, String pageToken) {
+    }
+
+    private MessageCheckResult readMessages(Consumer<ChatMessage<String>> messageListener, String pageToken) throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/youtube/v3/liveChat/messages?"
+                + "liveChatId=" + liveChatId + "&part=id,snippet,authorDetails&maxResults=200"
+                + (pageToken == null ? "" : "&pageToken=" + pageToken));
         connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
             JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
 
-            boolean reachedLastMessage = false;
-
-            for (int i = 0; i < response.getJSONArray("items").length(); i++) {
+            for (int i = 0; i < response.getJSONArray("items").length() && pageToken != null; i++) {
                 JSONObject message = response.getJSONArray("items").getJSONObject(i);
-                if (!reachedLastMessage && lastMessageId != null) {
-                    if (lastMessageId.equals(message.getString("id"))) {
-                        reachedLastMessage = true;
-                    }
-                    continue;
-                }
-
-                lastMessageId = message.getString("id");
-                reachedLastMessage = true;
-
-                if (firstPass) {
-                    continue;
-                }
 
                 if (!"textMessageEvent".equals(message.getJSONObject("snippet").getString("type"))) {
                     log.debug("Skipping message of type " + message.getJSONObject("snippet").getString("type"));
@@ -221,23 +209,22 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                 messageCountSinceLastTimedPost++;
             }
 
-            if (firstPass) log.debug("Latest message has id {}", lastMessageId);
-            firstPass = false;
-
-            return response.getInt("pollingIntervalMillis");
+            return new MessageCheckResult(response.getInt("pollingIntervalMillis"), response.getString("nextPageToken"));
         }
     }
 
     private void sendPeriodicMessageIfNecessary() {
         if (System.currentTimeMillis() - lastTimedMessagePostedAt > 1_200_000L // 20 minutes
-            && messageCountSinceLastTimedPost >= 10) {
+                && messageCountSinceLastTimedPost >= 10) {
 
             lastTimedMessagePosted++;
             lastTimedMessagePosted %= 2;
 
             String message = switch (lastTimedMessagePosted) {
-                case 0 -> "Nous sommes en live tous les vendredis à 21h (normalement) ! Suivez la chaîne pour ne pas rater les prochains lives !";
-                case 1 -> "Tapez !clip pour créer automatiquement un clip des 30 dernières sec de stream ! Merci Maddie pour la création de cette commande !";
+                case 0 ->
+                        "Nous sommes en live tous les vendredis à 21h (normalement) ! Suivez la chaîne pour ne pas rater les prochains lives !";
+                case 1 ->
+                        "Tapez !clip pour créer automatiquement un clip des 30 dernières sec de stream ! Merci Maddie pour la création de cette commande !";
                 default -> "cpt";
             };
 
@@ -299,8 +286,8 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         if (response.contains("<username>") || response.contains("<twitch.mentioned>")) {
             // do not respond because the text already contains a mention
             sendMessage(response
-                .replace("<username>", "@" + message.messageSenderName())
-                .replace("<twitch.mentioned>", "@" + message.messageSenderName()));
+                    .replace("<username>", "@" + message.messageSenderName())
+                    .replace("<twitch.mentioned>", "@" + message.messageSenderName()));
 
         } else {
             // respond to the user with a mention
