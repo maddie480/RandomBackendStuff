@@ -4,10 +4,14 @@ import com.github.philippheuer.credentialmanager.domain.OAuth2Credential;
 import com.github.twitch4j.chat.TwitchChat;
 import com.github.twitch4j.chat.TwitchChatBuilder;
 import com.github.twitch4j.chat.events.channel.ChannelMessageEvent;
+import com.github.twitch4j.chat.events.channel.IRCMessageEvent;
 import com.github.twitch4j.helix.TwitchHelix;
 import com.github.twitch4j.helix.TwitchHelixBuilder;
+import com.github.twitch4j.helix.domain.ChatBadge;
+import com.github.twitch4j.helix.domain.ChatBadgeSet;
 import com.github.twitch4j.helix.domain.UserList;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +28,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -36,6 +43,7 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
     private static final String CHANNEL_NAME = "lesnavetsjouables";
 
     private String channelId;
+    private Map<Pair<String, String>, String> allBadges;
     private TwitchChat chat;
     private TwitchHelix helix;
     private String accessToken;
@@ -116,10 +124,37 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         UserList users = helix.getUsers(accessToken, null, Collections.singletonList(CHANNEL_NAME)).execute();
         channelId = users.getUsers().get(0).getId();
         logger.debug("Channel ID retrieved for {}: {}", CHANNEL_NAME, channelId);
-        chat.getEventManager().onEvent(ChannelMessageEvent.class, event -> messageListener.accept(new ChatMessage<>(
-                event.getMessageEvent().getUserId(), event.getMessageEvent().getUserName(),
-                new TwitchMessageID(event.getMessageEvent().getMessageId(), event.getNonce()),
-                event.getMessage(), channelId.equals(event.getMessageEvent().getUserId()), this)));
+
+        allBadges = getAllBadges();
+        logger.debug("Got a list of all Twitch badges: {}", allBadges);
+
+        chat.getEventManager().onEvent(ChannelMessageEvent.class, event -> {
+            IRCMessageEvent message = event.getMessageEvent();
+            logger.debug("{}", getAuthorBadges(message));
+            messageListener.accept(new ChatMessage<>(message.getUserId(),
+                    message.getUserDisplayName().orElse(message.getUserName()),
+                    new TwitchMessageID(message.getMessageId(), event.getNonce()),
+                    event.getMessage(), channelId.equals(message.getUserId()),
+                    getAuthorBadges(message), this));
+        });
+    }
+
+    private Map<Pair<String, String>, String> getAllBadges() {
+        Map<Pair<String, String>, String> result = new HashMap<>();
+        for (ChatBadgeSet badgeSet : helix.getGlobalChatBadges(accessToken).execute().getBadgeSets()) {
+            for (ChatBadge badge : badgeSet.getVersions()) {
+                result.put(Pair.of(badgeSet.getSetId(), badge.getId()), badge.getSmallImageUrl());
+            }
+        }
+        return result;
+    }
+
+    private List<String> getAuthorBadges(IRCMessageEvent message) {
+        return message.getBadges().entrySet().stream()
+                .map(entry -> Pair.of(entry.getKey(), entry.getValue()))
+                .filter(allBadges::containsKey)
+                .map(allBadges::get)
+                .toList();
     }
 
     @Override

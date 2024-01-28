@@ -202,6 +202,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                         message.getString("id"),
                         message.getJSONObject("snippet").getJSONObject("textMessageDetails").getString("messageText"),
                         CHANNEL_ID.equals(message.getJSONObject("authorDetails").getString("channelId")),
+                        Collections.emptyList(),
                         this
                 );
 

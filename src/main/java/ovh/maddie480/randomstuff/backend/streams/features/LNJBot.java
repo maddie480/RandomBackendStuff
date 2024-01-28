@@ -35,6 +35,7 @@ public class LNJBot {
     private static final Logger logger = LoggerFactory.getLogger(LNJBot.class);
     private static final Path lnjPollPath = Paths.get("/shared/lnj-poll.json");
 
+    private final WebsocketLiveChat websocketLiveChat;
     private final SHSChatControl shsChatControl;
     private final ClippyTheClipper clipper;
 
@@ -52,6 +53,10 @@ public class LNJBot {
     }
 
     private LNJBot() throws IOException {
+        new WebsocketHttpServer().start();
+        websocketLiveChat = new WebsocketLiveChat();
+        websocketLiveChat.start();
+
         TwitchChatProvider twitchChatProvider = new TwitchChatProvider();
         twitchChatProvider.connect(this::handleChatMessage);
 
@@ -68,6 +73,7 @@ public class LNJBot {
 
     private synchronized <T> void handleChatMessage(ChatMessage<T> message) {
         logger.debug("New message from {}: {}", message.messageSenderName(), message.messageContents());
+        websocketLiveChat.onMessageReceived(message);
 
         LNJPoll poll;
         try (InputStream is = Files.newInputStream(lnjPollPath)) {
