@@ -11,8 +11,8 @@ import ovh.maddie480.randomstuff.backend.streams.apis.ChatMessage;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 
 import java.net.InetSocketAddress;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.HashSet:
 
 /**
  * Transmits the live chat to the LNJ stream through the magic of websockets.
