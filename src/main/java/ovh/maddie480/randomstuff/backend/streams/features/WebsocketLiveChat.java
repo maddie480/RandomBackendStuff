@@ -11,6 +11,8 @@ import ovh.maddie480.randomstuff.backend.streams.apis.ChatMessage;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 
 import java.net.InetSocketAddress;
+import java.util.Set;
+import java.util.HashSet:
 
 /**
  * Transmits the live chat to the LNJ stream through the magic of websockets.
@@ -18,7 +20,7 @@ import java.net.InetSocketAddress;
 public class WebsocketLiveChat extends WebSocketServer {
     private static final Logger logger = LoggerFactory.getLogger(WebsocketLiveChat.class);
 
-    private WebSocket webSocket;
+    private final Set<WebSocket> webSockets = new HashSet<>();
 
     public WebsocketLiveChat() {
         super(new InetSocketAddress(11586));
@@ -33,13 +35,8 @@ public class WebsocketLiveChat extends WebSocketServer {
     public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
         logger.info("Client connected!");
 
-        synchronized (this) {
-            if (this.webSocket != null) {
-                logger.warn("There can only be one client at a time!");
-                webSocket.close();
-            } else {
-                this.webSocket = webSocket;
-            }
+        synchronized (webSockets) {
+            webSockets.add(webSocket);
         }
     }
 
@@ -52,9 +49,8 @@ public class WebsocketLiveChat extends WebSocketServer {
     public void onClose(WebSocket webSocket, int i, String s, boolean b) {
         logger.warn("Client disconnected!");
 
-        synchronized (this) {
-            if (this.webSocket != webSocket) return;
-            this.webSocket = null;
+        synchronized (webSockets) {
+            webSockets.remove(webSocket);
         }
     }
 
@@ -62,20 +58,12 @@ public class WebsocketLiveChat extends WebSocketServer {
     public void onError(WebSocket webSocket, Exception e) {
         logger.warn("Client disconnected!", e);
 
-        synchronized (this) {
-            if (this.webSocket != webSocket) return;
-            this.webSocket = null;
+        synchronized (webSockets) {
+            webSockets.remove(webSocket);
         }
     }
 
     public void onMessageReceived(ChatMessage<?> message) {
-        WebSocket webSocket;
-
-        synchronized (this) {
-            if (this.webSocket == null) return;
-            webSocket = this.webSocket;
-        }
-
         JSONObject messageSerialized = new JSONObject();
         messageSerialized.put("platform", message.provider() instanceof TwitchChatProvider ? "twitch" : "youtube");
         messageSerialized.put("author", message.messageSenderName());
@@ -84,6 +72,9 @@ public class WebsocketLiveChat extends WebSocketServer {
         messageSerialized.put("ack", RandomStringUtils.randomAlphanumeric(20));
 
         logger.debug("Sending message: {}", messageSerialized.toString(2));
-        webSocket.send(messageSerialized.toString());
+
+        synchronized (webSockets) {
+            webSockets.forEach(webSocket -> webSocket.send(messageSerialized.toString()));
+        }
     }
 }
