@@ -144,7 +144,11 @@ public class CustomSlashCommandsCleanup {
         connection.setDoOutput(true);
 
         try (OutputStream os = connection.getOutputStream()) {
-            IOUtils.write("grant_type=client_credentials&scope=applications.commands.update", os, StandardCharsets.UTF_8);
+            IOUtils.write("grant_type=client_credentials"
+                    + "&scope=applications.commands.update"
+                    + "&client_id=" + SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_ID
+                    + "&client_secret=" + SecretConstants.CUSTOM_SLASH_COMMANDS_CLIENT_SECRET,
+                os, StandardCharsets.UTF_8);
         }
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
