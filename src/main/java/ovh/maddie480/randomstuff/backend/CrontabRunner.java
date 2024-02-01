@@ -138,7 +138,7 @@ public class CrontabRunner {
 
         runProcessAndAlertOnException("Daily processes - Update Tasks", () -> {
             AutoLeaver.main(null);
-            CustomSlashCommandsCleanup.housekeep();
+            // CustomSlashCommandsCleanup.housekeep();
             ArbitraryModAppCacher.refreshArbitraryModAppCache();
             CustomEntityCatalogGenerator.main(null);
             ServerJanitorBot.main(null);
