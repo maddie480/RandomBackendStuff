@@ -113,6 +113,7 @@ public class EverestVersionLister {
                 JSONObject build = (JSONObject) b;
 
                 entry.put("date", build.getString("published_at"));
+                entry.put("commit", build.getString("target_commitish"));
 
                 // "beta" and "stable" is determined by the "prerelease" flag on the release.
                 entry.put("branch", build.getBoolean("prerelease") ? "beta" : "stable");
@@ -163,6 +164,7 @@ public class EverestVersionLister {
                 // most of the fields can be determined straight from the build number
                 entry.put("branch", branch);
                 entry.put("date", build.getString("finishTime"));
+                entry.put("commit", build.getString("sourceVersion"));
                 entry.put("version", build.getInt("id") + 700);
                 entry.put("mainDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=main&api-version=5.0&%24format=zip");
                 entry.put("olympusMetaDownload", "https://dev.azure.com/EverestAPI/Everest/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=olympus-meta&api-version=5.0&%24format=zip");
