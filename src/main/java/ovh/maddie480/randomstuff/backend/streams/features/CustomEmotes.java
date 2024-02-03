@@ -27,7 +27,7 @@ public class CustomEmotes {
                 cheetahmen;854307636581629992
                 chirac;852892791704649790
                 chirac2;852886742494216242
-                dannyboon;854310353893326858
+                danyboon;854310353893326858
                 davilex;589135269219926016
                 davilex1;854312377101320192
                 davilex2;854312419173335041
