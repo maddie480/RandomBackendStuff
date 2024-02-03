@@ -38,6 +38,7 @@ public class LNJBot {
     private final WebsocketLiveChat websocketLiveChat;
     private final SHSChatControl shsChatControl;
     private final ClippyTheClipper clipper;
+    private final CustomEmotes customEmotes;
 
     public static void main(String[] args) throws IOException {
         new LNJBot();
@@ -53,6 +54,8 @@ public class LNJBot {
     }
 
     private LNJBot() throws IOException {
+        customEmotes = new CustomEmotes();
+
         new WebsocketHttpServer().start();
         websocketLiveChat = new WebsocketLiveChat();
         websocketLiveChat.start();
@@ -73,6 +76,7 @@ public class LNJBot {
 
     private synchronized <T> void handleChatMessage(ChatMessage<T> message) {
         logger.debug("New message from {}: {}", message.messageSenderName(), message.messageContents());
+        message = customEmotes.fillWithCustomEmotes(message);
         websocketLiveChat.onMessageReceived(message);
 
         LNJPoll poll;

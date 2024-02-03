@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.streams.features.CustomEmotes;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.File;
@@ -243,7 +244,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                         messageText,
                         CHANNEL_ID.equals(message.getJSONObject("authorDetails").getString("channelId")),
                         Collections.emptyList(),
-                        findEmotes(messageText),
+                        CustomEmotes.findEmotes(messageText, allEmotes),
                         this
                 );
 
@@ -253,29 +254,6 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
             return new MessageCheckResult(response.getInt("pollingIntervalMillis"), response.getString("nextPageToken"));
         }
-    }
-
-    private List<Emote> findEmotes(String message) {
-        List<Emote> result = new LinkedList<>();
-
-        for (Map.Entry<String, String> emote : allEmotes.entrySet()) {
-            String truncatedMessage = message;
-            int index = 0;
-
-            while (truncatedMessage.contains(emote.getKey())) {
-                result.add(new Emote(
-                        emote.getValue(),
-                        truncatedMessage.indexOf(emote.getKey()) + index,
-                        truncatedMessage.indexOf(emote.getKey()) + index + emote.getKey().length()
-                ));
-
-                int cutoffAt = truncatedMessage.indexOf(emote.getKey()) + emote.getKey().length();
-                index += cutoffAt;
-                truncatedMessage = truncatedMessage.substring(cutoffAt);
-            }
-        }
-
-        return result;
     }
 
     private void sendPeriodicMessageIfNecessary() {
