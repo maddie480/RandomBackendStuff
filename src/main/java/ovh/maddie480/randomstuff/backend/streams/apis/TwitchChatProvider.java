@@ -27,12 +27,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * A provider that connects to the lesnavetsjouables chat on Twitch.
@@ -42,8 +41,16 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
 
     private static final String CHANNEL_NAME = "lesnavetsjouables";
 
+    private final Pattern emoteFieldRegex = Pattern.compile("^[0-9A-Za-z_]+:[0-9]+-[0-9]+(/[0-9A-Za-z_]+:[0-9]+-[0-9]+)*$");
+
     private String channelId;
+
+    // (badge set id, badge version) -> badge url
     private Map<Pair<String, String>, String> allBadges;
+
+    // emote id -> emote url
+    private Map<String, String> allEmotes;
+
     private TwitchChat chat;
     private TwitchHelix helix;
     private String accessToken;
@@ -128,14 +135,27 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         allBadges = getAllBadges();
         logger.debug("Got a list of all Twitch badges: {}", allBadges);
 
+        allEmotes = getAllEmotes();
+        logger.debug("Got a list of all Twitch emotes: {}", allEmotes);
+
+        Pattern emoteMatcher = Pattern.compile("^[0-9A-Za-z_]+$");
+        List<String> nonMatchingEmotes = allEmotes.keySet().stream()
+                .filter(emote -> !emoteMatcher.matcher(emote).matches())
+                .toList();
+
+        if (!nonMatchingEmotes.isEmpty()) {
+            logger.warn("Some emotes have an ID that doesn't match the regex: {}", nonMatchingEmotes);
+        }
+
         chat.getEventManager().onEvent(ChannelMessageEvent.class, event -> {
             IRCMessageEvent message = event.getMessageEvent();
-            logger.debug("{}", getAuthorBadges(message));
             messageListener.accept(new ChatMessage<>(message.getUserId(),
                     message.getUserDisplayName().orElse(message.getUserName()),
                     new TwitchMessageID(message.getMessageId(), event.getNonce()),
                     event.getMessage(), channelId.equals(message.getUserId()),
-                    getAuthorBadges(message), this));
+                    getAuthorBadges(message),
+                    message.getTagValue("emotes").map(this::getMessageEmotes).orElse(Collections.emptyList()),
+                    this));
         });
     }
 
@@ -149,11 +169,48 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         return result;
     }
 
+    private Map<String, String> getAllEmotes() {
+        return helix.getGlobalEmotes(accessToken).execute().getEmotes().stream()
+                .collect(Collectors.toMap(
+                        emote -> emote.getId(),
+                        emote -> emote.getImages().getSmallImageUrl()
+                ));
+    }
+
     private List<String> getAuthorBadges(IRCMessageEvent message) {
         return message.getBadges().entrySet().stream()
                 .map(entry -> Pair.of(entry.getKey(), entry.getValue()))
                 .filter(allBadges::containsKey)
                 .map(allBadges::get)
+                .toList();
+    }
+
+    private List<Emote> getMessageEmotes(String emotesTag) {
+        if (!emoteFieldRegex.matcher(emotesTag).matches()) {
+            return Collections.emptyList();
+        }
+
+        return Arrays.stream(emotesTag.split("/"))
+                .map(emote -> {
+                    // parse the string
+                    String[] emoteAndPosition = emote.split(":");
+                    String[] position = emoteAndPosition[1].split("-");
+                    return new Emote(
+                            emoteAndPosition[0],
+                            Integer.parseInt(position[0]),
+                            Integer.parseInt(position[1]) + 1 // Twitch seems to include the end index, while Java and JS don't
+                    );
+                })
+                .map(emote -> {
+                    // resolve the emote URL
+                    if (allEmotes.containsKey(emote.url())) {
+                        return new Emote(allEmotes.get(emote.url()), emote.startIndex(), emote.endIndex());
+                    } else {
+                        // Emotes from custom sets aren't in allEmotes, but URLs seem to follow a pattern anyway.
+                        // I'm so confused :catplant:
+                        return new Emote("https://static-cdn.jtvnw.net/emoticons/v2/" + emote.url() + "/static/light/1.0?unresolved", emote.startIndex(), emote.endIndex());
+                    }
+                })
                 .toList();
     }
 

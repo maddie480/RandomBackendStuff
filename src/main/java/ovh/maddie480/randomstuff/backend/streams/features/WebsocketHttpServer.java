@@ -56,7 +56,7 @@ public class WebsocketHttpServer {
             // send the response
             writer.write("""
                     HTTP/1.1 200 OK
-                    content-security-policy: default-src 'self' https://maddie480.ovh; connect-src 'self' https://maddie480.ovh ws:; img-src 'self' https://maddie480.ovh https://static-cdn.jtvnw.net; frame-ancestors 'none'; object-src 'none';
+                    content-security-policy: default-src 'self' https://maddie480.ovh; connect-src 'self' https://maddie480.ovh ws:; img-src 'self' https://maddie480.ovh https://static-cdn.jtvnw.net https://yt3.ggpht.com; frame-ancestors 'none'; object-src 'none';
                     connection: close
                     content-type: text/html
                     content-length: 288

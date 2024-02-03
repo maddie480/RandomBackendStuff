@@ -1,5 +1,6 @@
 package ovh.maddie480.randomstuff.backend.streams.features;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.RandomStringUtils;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -69,6 +70,13 @@ public class WebsocketLiveChat extends WebSocketServer {
         messageSerialized.put("author", message.messageSenderName());
         messageSerialized.put("badges", message.badgeUrls());
         messageSerialized.put("message", message.messageContents());
+        messageSerialized.put("emotes", message.emotesInMessage().stream()
+                .map(emote -> ImmutableMap.of(
+                        "url", emote.url(),
+                        "startIndex", emote.startIndex(),
+                        "endIndex", emote.endIndex()
+                ))
+                .toList());
         messageSerialized.put("ack", RandomStringUtils.randomAlphanumeric(20));
 
         logger.debug("Sending message: {}", messageSerialized.toString(2));

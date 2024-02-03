@@ -7,7 +7,7 @@ import java.util.List;
  */
 public record ChatMessage<IDType>(String messageSenderId, String messageSenderName, IDType messageId,
                                   String messageContents, boolean isAdmin, List<String> badgeUrls,
-                                  IChatProvider<IDType> provider) {
+                                  List<Emote> emotesInMessage, IChatProvider<IDType> provider) {
 
     public void respond(String response) {
         provider.respondTo(this, response);

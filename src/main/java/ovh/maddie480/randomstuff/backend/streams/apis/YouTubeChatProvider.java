@@ -24,10 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -41,6 +38,8 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
     private Credential credential;
     private String liveChatId;
+
+    private Map<String, String> allEmotes;
 
     private Map<String, String> fixedMessages;
     private long lastTimedMessagePostedAt = 0;
@@ -79,8 +78,12 @@ public class YouTubeChatProvider implements IChatProvider<String> {
             log.debug("Connected using stored credentials! Expires in {} seconds", credential.getExpiresInSeconds());
         }
 
-        liveChatId = getLiveChatId(getLiveStreamVideoId());
+        String liveStreamVideoId = getLiveStreamVideoId();
+        liveChatId = getLiveChatId(liveStreamVideoId);
         log.debug("The ID of the chat of the current YouTube live stream is {}", liveChatId);
+
+        allEmotes = getEmotes(liveStreamVideoId);
+        log.debug("Got emotes: {}", allEmotes);
 
         fixedMessages = getMoobotCommands();
 
@@ -121,6 +124,41 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
             JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
             return response.getJSONArray("items").getJSONObject(0).getJSONObject("liveStreamingDetails").getString("activeLiveChatId");
+        }
+    }
+
+    private Map<String, String> getEmotes(String liveStreamVideoId) {
+        try {
+            // we sure love spoofing Firefox because YouTube doesn't have official APIs for this
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://www.youtube.com/live_chat?v=" + liveStreamVideoId);
+            connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
+            connection.setRequestProperty("User-Agent", "Firefox/99");
+
+            JSONObject json;
+
+            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
+                String page = IOUtils.toString(is, StandardCharsets.UTF_8);
+                page = page.substring(page.indexOf("window[\"ytInitialData\"] = ") + 26);
+                page = page.substring(0, page.indexOf(";</script>"));
+                json = new JSONObject(page);
+            }
+
+            Map<String, String> emojis = new HashMap<>();
+
+            for (Object o : json.getJSONObject("contents").getJSONObject("liveChatRenderer").getJSONArray("emojis")) {
+                JSONObject rawEmoji = (JSONObject) o;
+
+                for (Object shortcut : rawEmoji.getJSONArray("shortcuts")) {
+                    emojis.put((String) shortcut, rawEmoji.getJSONObject("image").getJSONArray("thumbnails").getJSONObject(0).getString("url"));
+                }
+            }
+
+            return emojis;
+        } catch (Exception e) {
+            // since this is using undocumented APIs :sparkles:, we're just doing our best to retrieve them.
+            // not a big deal if we don't manage to.
+            log.warn("Could not parse YouTube emotes!", e);
+            return Collections.emptyMap();
         }
     }
 
@@ -196,13 +234,16 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                     continue;
                 }
 
+                String messageText = message.getJSONObject("snippet").getJSONObject("textMessageDetails").getString("messageText");
+
                 ChatMessage<String> chatMessage = new ChatMessage<>(
                         message.getJSONObject("authorDetails").getString("channelId"),
                         message.getJSONObject("authorDetails").getString("displayName"),
                         message.getString("id"),
-                        message.getJSONObject("snippet").getJSONObject("textMessageDetails").getString("messageText"),
+                        messageText,
                         CHANNEL_ID.equals(message.getJSONObject("authorDetails").getString("channelId")),
                         Collections.emptyList(),
+                        findEmotes(messageText),
                         this
                 );
 
@@ -212,6 +253,29 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
             return new MessageCheckResult(response.getInt("pollingIntervalMillis"), response.getString("nextPageToken"));
         }
+    }
+
+    private List<Emote> findEmotes(String message) {
+        List<Emote> result = new LinkedList<>();
+
+        for (Map.Entry<String, String> emote : allEmotes.entrySet()) {
+            String truncatedMessage = message;
+            int index = 0;
+
+            while (truncatedMessage.contains(emote.getKey())) {
+                result.add(new Emote(
+                        emote.getValue(),
+                        truncatedMessage.indexOf(emote.getKey()) + index,
+                        truncatedMessage.indexOf(emote.getKey()) + index + emote.getKey().length()
+                ));
+
+                int cutoffAt = truncatedMessage.indexOf(emote.getKey()) + emote.getKey().length();
+                index += cutoffAt;
+                truncatedMessage = truncatedMessage.substring(cutoffAt);
+            }
+        }
+
+        return result;
     }
 
     private void sendPeriodicMessageIfNecessary() {
