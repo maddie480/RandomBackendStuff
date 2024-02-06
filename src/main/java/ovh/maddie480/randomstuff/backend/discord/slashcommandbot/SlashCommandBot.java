@@ -19,12 +19,11 @@ import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -54,30 +53,30 @@ public class SlashCommandBot extends ListenerAdapter {
         });
 
         slashCommandToURL = new HashMap<>();
-        slashCommandToURL.put("/pipo", "https://max480-random-stuff.appspot.com/mattermost/pipo");
-        slashCommandToURL.put("/eddy", "https://max480-random-stuff.appspot.com/mattermost/eddy");
-        slashCommandToURL.put("/weekend", "https://max480-random-stuff.appspot.com/mattermost/weekend");
-        slashCommandToURL.put("/bientotleweekend", "https://max480-random-stuff.appspot.com/mattermost/bientotleweekend");
-        slashCommandToURL.put("/vacances", "https://max480-random-stuff.appspot.com/mattermost/vacances");
-        slashCommandToURL.put("/chucknorris", "https://max480-random-stuff.appspot.com/mattermost/chucknorris");
-        slashCommandToURL.put("/random", "https://max480-random-stuff.appspot.com/mattermost/random");
-        slashCommandToURL.put("/toplyrics", "https://max480-random-stuff.appspot.com/mattermost/toplyrics");
-        slashCommandToURL.put("/patoche", "https://max480-random-stuff.appspot.com/mattermost/patoche");
-        slashCommandToURL.put("/ckc", "https://max480-random-stuff.appspot.com/mattermost/ckc");
-        slashCommandToURL.put("/jcvd", "https://max480-random-stuff.appspot.com/mattermost/jcvd");
-        slashCommandToURL.put("/languedebois", "https://max480-random-stuff.appspot.com/mattermost/languedebois");
-        slashCommandToURL.put("/noel", "https://max480-random-stuff.appspot.com/mattermost/noel");
-        slashCommandToURL.put("/joiesducode", "https://max480-random-stuff.appspot.com/mattermost/joiesducode");
-        slashCommandToURL.put("/coronavirus", "https://max480-random-stuff.appspot.com/mattermost/coronavirus");
-        slashCommandToURL.put("/fakename", "https://max480-random-stuff.appspot.com/mattermost/fakename");
-        slashCommandToURL.put("/tendancesyoutube", "https://max480-random-stuff.appspot.com/mattermost/tendancesyoutube");
-        slashCommandToURL.put("/putaclic", "https://max480-random-stuff.appspot.com/mattermost/putaclic");
-        slashCommandToURL.put("/exploit", "https://max480-random-stuff.appspot.com/mattermost/exploit");
-        slashCommandToURL.put("/absents", "https://max480-random-stuff.appspot.com/mattermost/absents");
-        slashCommandToURL.put("/randomparrot", "https://max480-random-stuff.appspot.com/mattermost/randomparrot");
-        slashCommandToURL.put("/monkeyuser", "https://max480-random-stuff.appspot.com/mattermost/monkeyuser");
-        slashCommandToURL.put("/xkcd", "https://max480-random-stuff.appspot.com/mattermost/xkcd");
-        slashCommandToURL.put("/infopipo", "https://max480-random-stuff.appspot.com/mattermost/infopipo");
+        slashCommandToURL.put("/pipo", "");
+        slashCommandToURL.put("/eddy", "");
+        slashCommandToURL.put("/weekend", "");
+        slashCommandToURL.put("/bientotleweekend", "");
+        slashCommandToURL.put("/vacances", "");
+        slashCommandToURL.put("/chucknorris", "");
+        slashCommandToURL.put("/random", "");
+        slashCommandToURL.put("/toplyrics", "");
+        slashCommandToURL.put("/patoche", "");
+        slashCommandToURL.put("/ckc", "");
+        slashCommandToURL.put("/jcvd", "");
+        slashCommandToURL.put("/languedebois", "");
+        slashCommandToURL.put("/noel", "");
+        slashCommandToURL.put("/joiesducode", "");
+        slashCommandToURL.put("/coronavirus", "");
+        slashCommandToURL.put("/fakename", "");
+        slashCommandToURL.put("/tendancesyoutube", "");
+        slashCommandToURL.put("/putaclic", "");
+        slashCommandToURL.put("/randomparrot", "");
+        slashCommandToURL.put("/monkeyuser", "");
+        slashCommandToURL.put("/xkcd", "");
+        slashCommandToURL.put("/infopipo", "");
+        slashCommandToURL.put("/exploit", "https://maddie480.ovh/mattermost/exploit");
+        slashCommandToURL.put("/absents", "https://maddie480.ovh/mattermost/absents");
 
         jda = JDABuilder.create(SecretConstants.SLASH_COMMAND_BOT_TOKEN,
                         GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
@@ -385,19 +384,13 @@ public class SlashCommandBot extends ListenerAdapter {
             }
 
             // exporter le planning sur Cloud Storage
-            ConnectionUtils.runWithRetry(() -> {
-                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://max480-random-stuff.appspot.com/planning_exploit.ser?key=" + SecretConstants.RELOAD_SHARED_SECRET);
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);
-                try (ObjectOutputStream oos = new ObjectOutputStream(connection.getOutputStream())) {
-                    oos.writeObject(planningExploitExport);
-                }
-                if (connection.getResponseCode() != 200) {
-                    throw new IOException("le planning d'exploit ckc");
-                }
-                logger.debug("Sent planning_exploit.ser to Google Cloud Storage");
-                return null;
-            });
+
+            try (OutputStream os = Files.newOutputStream(Paths.get("/shared/mattermost/planning_exploit.ser"));
+                 ObjectOutputStream oos = new ObjectOutputStream(os)) {
+
+                oos.writeObject(planningExploitExport);
+                logger.debug("Exported planning_exploit.ser to frontend");
+            }
 
             // retenir le planning pour la commande /exploit
             exploitTimes = newExploitTimes;

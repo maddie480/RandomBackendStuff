@@ -27,11 +27,15 @@ services:
 
           "SRC_MOD_LIST_KEY": "[TODO]",
 
-          "RSS_AGGREGATOR_SECRET": "[TODO]",
-
           "GITHUB_SSH_KNOWN_HOSTS": "[TODO]",
           "GITHUB_SSH_PUBLIC_KEY": "[TODO]",
-          "GITHUB_SSH_PRIVATE_KEY": "[TODO]"
+          "GITHUB_SSH_PRIVATE_KEY": "[TODO]",
+
+          "MATTERMOST_TOKEN_LOCK": "[TODO]",
+          "MATTERMOST_TOKEN_UNLOCK": "[TODO]",
+          "MATTERMOST_TOKEN_EXPLOIT": "[TODO]",
+          "MATTERMOST_TOKEN_CONSISTENCYCHECK": "[TODO]",
+          "MATTERMOST_TOKEN_ABSENTS": "[TODO]"
         }
     volumes:
       - /home/debian/shared:/shared

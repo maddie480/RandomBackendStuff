@@ -21,7 +21,7 @@ public class SlashCommandBotHealthCheck {
         for (String command : SecretConstants.SLASH_COMMAND_BOT_HEALTHCHECKS) {
             String[] commandSplit = command.split(";");
 
-            String url = "https://max480-random-stuff.appspot.com/mattermost/" + commandSplit[0];
+            String url = "https://maddie480.ovh/mattermost/" + commandSplit[0];
 
             String body = "user_name=healthcheck&user_id=healthcheck&channel_name=healthcheck&command=/" + commandSplit[0]
                     + "&token=" + commandSplit[1]
