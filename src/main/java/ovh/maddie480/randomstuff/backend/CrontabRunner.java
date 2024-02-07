@@ -336,7 +336,7 @@ public class CrontabRunner {
 
     private static void checkLNJEmotes() throws IOException {
         logger.debug("Checking LNJ emotes...");
-        Elements emotes = Jsoup.connect("https://maddie480.ovh/lnj-emotes").get().select("img");
+        Elements emotes = Jsoup.connect("https://maddie480.ovh/lnj-emotes").get().select("table img");
         if (emotes.size() != 29) {
             throw new IOException("Expected 29 LNJ emotes!");
         }
