@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -63,11 +63,7 @@ public class LNJBot {
         TwitchChatProvider twitchChatProvider = new TwitchChatProvider();
         twitchChatProvider.connect(this::handleChatMessage);
 
-        YouTubeChatProvider youTubeChatProvider = new YouTubeChatProvider(() ->
-                twitchChatProvider.sendMessage("Le bot YouTube n'a plus de budget. RIP"));
-        youTubeChatProvider.connect(this::handleChatMessage);
-
-        List<IChatProvider<?>> chatProviders = Arrays.asList(twitchChatProvider, youTubeChatProvider);
+        List<IChatProvider<?>> chatProviders = Collections.singletonList(twitchChatProvider);
         chatProviders.forEach(provider -> provider.sendMessage("Je suis prêt !"));
 
         shsChatControl = new SHSChatControl(chatProviders);
