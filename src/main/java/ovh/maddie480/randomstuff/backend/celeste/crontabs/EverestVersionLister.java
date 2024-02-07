@@ -243,7 +243,7 @@ public class EverestVersionLister {
         UpdateOutgoingWebhooks.changesHappened();
     }
 
-    private static String getGitHubReleaseCommit(JSONObject release) {
+    private static String getGitHubReleaseCommit(JSONObject release) throws IOException {
         String commitish = release.getString("target_commitish");
         if (COMMIT_SHA.matcher(commitish).matches()) {
             return commitish;
