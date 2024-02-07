@@ -37,6 +37,7 @@ public class EverestVersionLister {
 
     private static final Pattern PULL_REQUEST_MERGE = Pattern.compile("^Merge pull request #([0-9]+) from .*$");
     private static final Pattern VERSION_NUMBER_IN_RELEASE_NAME = Pattern.compile("^[^0-9]*([0-9]+)$");
+    private static final Pattern COMMIT_SHA = Pattern.compile("^[0-9a-f]{40}$");
 
     private static List<Integer> latestAzureBuilds = new ArrayList<>();
     private static List<String> latestGitHubReleases = new ArrayList<>();
@@ -113,7 +114,7 @@ public class EverestVersionLister {
                 JSONObject build = (JSONObject) b;
 
                 entry.put("date", build.getString("published_at"));
-                entry.put("commit", build.getString("target_commitish"));
+                entry.put("commit", getGitHubReleaseCommit(build));
 
                 // "beta" and "stable" is determined by the "prerelease" flag on the release.
                 entry.put("branch", build.getBoolean("prerelease") ? "beta" : "stable");
@@ -240,6 +241,22 @@ public class EverestVersionLister {
         }
 
         UpdateOutgoingWebhooks.changesHappened();
+    }
+
+    private static String getGitHubReleaseCommit(JSONObject release) {
+        String commitish = build.getString("target_commitish");
+        if (COMMIT_SHA.matcher(commitish).matches()) {
+            return commitish;
+        }
+
+        // commitishes are not always commit hashes, it depends on what the release was based on,
+        // so try using the tag instead
+        JSONObject tagInfo;
+        try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/git/refs/tags/" + release.getString("tag_name"))) {
+            tagInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+        }
+
+        return tagInfo.getJSONObject("object").getString("sha");
     }
 
     private static InputStream authenticatedGitHubRequest(String url) throws IOException {
