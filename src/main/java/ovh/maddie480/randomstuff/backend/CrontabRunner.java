@@ -6,6 +6,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.EventListener;
@@ -30,6 +32,7 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
@@ -40,6 +43,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import javax.imageio.ImageIO;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -331,9 +335,24 @@ public class CrontabRunner {
     }
 
     private static void checkLNJEmotes() throws IOException {
-        logger.debug("Checking LNJ emote count...");
-        if (Jsoup.connect("https://maddie480.ovh/lnj-emotes").get().select(".emote-name").size() != 29) {
+        logger.debug("Checking LNJ emotes...");
+        Elements emotes = Jsoup.connect("https://maddie480.ovh/lnj-emotes").get().select("img");
+        if (emotes.size() != 29) {
             throw new IOException("Expected 29 LNJ emotes!");
+        }
+
+        for (Element emote : emotes) {
+            String url = emote.attr("src");
+            logger.debug("Checking LNJ emote {}...", url);
+
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+                BufferedImage image = ImageIO.read(is);
+                logger.debug("Dimensions are {}x{}", image.getWidth(), image.getHeight());
+
+                if (image.getWidth() != 24 && image.getHeight() != 24) {
+                    throw new IOException("Image did not have expected dimensions!");
+                }
+            }
         }
     }
 
