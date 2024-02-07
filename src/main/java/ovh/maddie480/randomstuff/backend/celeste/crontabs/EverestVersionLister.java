@@ -244,7 +244,7 @@ public class EverestVersionLister {
     }
 
     private static String getGitHubReleaseCommit(JSONObject release) {
-        String commitish = build.getString("target_commitish");
+        String commitish = release.getString("target_commitish");
         if (COMMIT_SHA.matcher(commitish).matches()) {
             return commitish;
         }
