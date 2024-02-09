@@ -67,6 +67,8 @@ public class LNJBot {
         chatProviders.forEach(provider -> provider.sendMessage("Je suis prêt !"));
 
         shsChatControl = new SHSChatControl(chatProviders);
+        shsChatControl.run();
+
         clipper = new ClippyTheClipper(twitchChatProvider);
     }
 
