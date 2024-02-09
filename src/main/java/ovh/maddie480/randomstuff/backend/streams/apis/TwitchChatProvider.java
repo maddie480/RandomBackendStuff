@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
     private static final Logger logger = LoggerFactory.getLogger(TwitchChatProvider.class);
 
-    private static final String CHANNEL_NAME = "maddie480";
+    private static final String CHANNEL_NAME = "lesnavetsjouables";
 
     private final Pattern emoteFieldRegex = Pattern.compile("^[0-9A-Za-z_]+:[0-9]+-[0-9]+(/[0-9A-Za-z_]+:[0-9]+-[0-9]+)*$");
 
