@@ -122,7 +122,6 @@ public class GameBananaAutomatedChecks {
 
                         boolean yieldReturnIssue = false;
                         boolean intPtrIssue = false;
-                        boolean readonlyStructIssue = false;
                         boolean consoleWriteLine = false;
                         boolean dllEntryFoundInYaml = false;
 
@@ -176,10 +175,6 @@ public class GameBananaAutomatedChecks {
                                         logger.warn("Mod {} might be using the IntPtr trick", modName);
                                         intPtrIssue = true;
                                     }
-                                    if (fullDecompile.contains("readonly struct")) {
-                                        logger.warn("Mod {} might have a readonly struct", modName);
-                                        readonlyStructIssue = true;
-                                    }
                                     if (fullDecompile.contains("Console.WriteLine")) {
                                         logger.warn("Mod {} contains Console.WriteLine", modName);
                                         consoleWriteLine = true;
@@ -201,12 +196,6 @@ public class GameBananaAutomatedChecks {
 
                         if (intPtrIssue) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** might be using the `IntPtr` trick to call base methods!" +
-                                    " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
-                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
-                        }
-
-                        if (readonlyStructIssue) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** is using a `readonly struct`!" +
                                     " This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/"
                                     + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
                         }
