@@ -757,7 +757,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         Set<String> availableDecals = new HashSet<>();
         Set<String> availableStylegrounds = new HashSet<>();
 
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/vanilla-graphics-dump/list.json")) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/graphics-dump-browser/list.json")) {
             for (Object o : new JSONArray(IOUtils.toString(is, UTF_8))) {
                 String path = (String) o;
 
