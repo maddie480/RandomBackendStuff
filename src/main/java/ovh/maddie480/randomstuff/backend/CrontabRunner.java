@@ -22,7 +22,6 @@ import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunit
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.JsonUpdateChecker;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.PinUpdater;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
@@ -229,7 +228,6 @@ public class CrontabRunner {
 
                 BusUpdateChecker.runCheckForUpdates(webhookHell);
                 new TemperatureChecker().checkForUpdates(webhookHell);
-                PinUpdater.update(webhookHell);
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);
                 new JsonUpdateChecker().checkForUpdates(webhookHell);
             }
