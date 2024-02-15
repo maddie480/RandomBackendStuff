@@ -162,7 +162,7 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
     @Override
     public void disconnect() {
         if (chat != null) {
-            chat.disconnect();
+            chat.close();
         }
     }
 
