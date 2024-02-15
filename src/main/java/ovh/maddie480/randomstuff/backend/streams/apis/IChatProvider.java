@@ -11,6 +11,8 @@ import java.util.function.Consumer;
 public interface IChatProvider<MessageIDType> {
     void connect(Consumer<ChatMessage<MessageIDType>> messageListener) throws IOException;
 
+    void disconnect();
+
     void sendMessage(String contents);
 
     void respondTo(ChatMessage<MessageIDType> message, String response);

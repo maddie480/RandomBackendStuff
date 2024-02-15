@@ -25,7 +25,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -46,6 +49,8 @@ public class YouTubeChatProvider implements IChatProvider<String> {
     private long lastTimedMessagePostedAt = 0;
     private int lastTimedMessagePosted = 0;
     private int messageCountSinceLastTimedPost = 0;
+
+    private boolean readMessagesLoopActive = true;
 
     private final Runnable givingUpAction;
 
@@ -89,6 +94,11 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         fixedMessages = getMoobotCommands();
 
         runReadMessagesLoop(messageListener);
+    }
+
+    @Override
+    public void disconnect() {
+        readMessagesLoopActive = false;
     }
 
     private String getAccessToken() throws IOException {
@@ -187,7 +197,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                 int failsInARow = 0;
                 String pageToken = null;
 
-                while (true) {
+                while (readMessagesLoopActive) {
                     try {
                         MessageCheckResult result = readMessages(messageListener, pageToken);
                         pageToken = result.pageToken();
@@ -211,6 +221,8 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                         }
                     }
                 }
+
+                log.info("YouTube read message loop stopping!");
             }
         }.start();
     }

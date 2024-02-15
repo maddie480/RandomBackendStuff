@@ -159,6 +159,13 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         });
     }
 
+    @Override
+    public void disconnect() {
+        if (chat != null) {
+            chat.disconnect();
+        }
+    }
+
     private Map<Pair<String, String>, String> getAllBadges() {
         Map<Pair<String, String>, String> result = new HashMap<>();
         for (ChatBadgeSet badgeSet : helix.getGlobalChatBadges(accessToken).execute().getBadgeSets()) {

@@ -26,11 +26,15 @@ import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hour
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
+import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
+import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
+import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -42,7 +46,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import javax.imageio.ImageIO;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -182,6 +185,8 @@ public class CrontabRunner {
             checkRadioLNJ();
             LNJBot.healthCheck();
             checkLNJEmotes();
+            checkChatProviderCanConnect(new TwitchChatProvider());
+            checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
         });
 
         unstoppableSleep(5000);
@@ -351,6 +356,21 @@ public class CrontabRunner {
                     throw new IOException("Image did not have expected dimensions!");
                 }
             }
+        }
+    }
+
+    /**
+     * Checks that the Twitch/YouTube bots can connect to their respective services.
+     * This doubles as a way to refresh tokens more regularly than once a week... just in case,
+     * since they sometimes expire, especially on YouTube's side.
+     */
+    private static void checkChatProviderCanConnect(IChatProvider<?> chatProvider) throws IOException {
+        try {
+            logger.info("Trying to connect with {}...", chatProvider.getClass().getName());
+            chatProvider.connect(message -> logger.info("Received message: {}", message.messageContents()));
+        } finally {
+            logger.info("Disconnecting from {}...", chatProvider.getClass().getName());
+            chatProvider.disconnect();
         }
     }
 
