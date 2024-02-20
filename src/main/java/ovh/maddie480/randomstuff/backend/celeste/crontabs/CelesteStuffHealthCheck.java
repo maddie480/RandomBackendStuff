@@ -268,14 +268,6 @@ public class CelesteStuffHealthCheck {
             log.debug("Checking Banana Mirror contents ({})...", mirror);
 
             { // === zips referenced in everest_update.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror/
-                List<String> bananaMirror = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror/")
-                        .select("td.indexcolname a")
-                        .stream()
-                        .map(a -> mirror + "/banana-mirror/" + a.attr("href"))
-                        .filter(item -> !item.equals(mirror + "/banana-mirror//"))
-                        .sorted()
-                        .toList();
-
                 List<String> everestUpdate;
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
                     Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
@@ -287,20 +279,21 @@ public class CelesteStuffHealthCheck {
                             .collect(Collectors.toList());
                 }
 
+                List<String> bananaMirror = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror/")
+                        .select("td.indexcolname a")
+                        .stream()
+                        .map(a -> mirror + "/banana-mirror/" + a.attr("href"))
+                        .filter(item -> !item.equals(mirror + "/banana-mirror//"))
+                        .sorted()
+                        .toList();
+
+
                 if (!bananaMirror.equals(everestUpdate)) {
                     throw new IOException("Banana Mirror contents at " + mirror + " don't match the mod updater database");
                 }
             }
 
             { // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror-images/
-                List<String> bananaMirrorImages = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror-images/")
-                        .select("td.indexcolname a")
-                        .stream()
-                        .map(a -> mirror + "/banana-mirror-images/" + a.attr("href"))
-                        .filter(item -> !item.equals(mirror + "/banana-mirror-images//"))
-                        .sorted()
-                        .toList();
-
                 List<String> modSearchDatabase;
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
                     List<Map<String, Object>> mapped = YamlUtil.load(is);
@@ -312,6 +305,14 @@ public class CelesteStuffHealthCheck {
                             .map(i -> i.replace("https://celestemodupdater.0x0a.de", mirror))
                             .collect(Collectors.toList());
                 }
+
+                List<String> bananaMirrorImages = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror-images/")
+                        .select("td.indexcolname a")
+                        .stream()
+                        .map(a -> mirror + "/banana-mirror-images/" + a.attr("href"))
+                        .filter(item -> !item.equals(mirror + "/banana-mirror-images//"))
+                        .sorted()
+                        .toList();
 
                 if (!bananaMirrorImages.equals(modSearchDatabase)) {
                     throw new IOException("Banana Mirror Images contents at " + mirror + " don't match the mod updater database");
@@ -325,14 +326,6 @@ public class CelesteStuffHealthCheck {
             }
 
             { // === Rich Presence icons we saved locally should be present at https://celestemodupdater.0x0a.de/rich-presence-icons/
-                List<String> richPresenceIcons = ConnectionUtils.jsoupGetWithRetry(mirror + "/rich-presence-icons/")
-                        .select("td.indexcolname a")
-                        .stream()
-                        .map(a -> mirror + "/rich-presence-icons/" + a.attr("href"))
-                        .filter(item -> !item.equals(mirror + "/rich-presence-icons//") && !item.equals(mirror + "/rich-presence-icons/list.json"))
-                        .sorted()
-                        .toList();
-
                 List<String> richPresenceIconsLocal;
                 try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
                     Map<String, Map<String, List<String>>> mapped = YamlUtil.load(is);
@@ -357,6 +350,14 @@ public class CelesteStuffHealthCheck {
                             .sorted()
                             .collect(Collectors.toList());
                 }
+
+                List<String> richPresenceIcons = ConnectionUtils.jsoupGetWithRetry(mirror + "/rich-presence-icons/")
+                        .select("td.indexcolname a")
+                        .stream()
+                        .map(a -> mirror + "/rich-presence-icons/" + a.attr("href"))
+                        .filter(item -> !item.equals(mirror + "/rich-presence-icons//") && !item.equals(mirror + "/rich-presence-icons/list.json"))
+                        .sorted()
+                        .toList();
 
                 // and they should also match the list present at list.json
                 JSONArray richPresenceIconListJson;
