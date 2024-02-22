@@ -93,6 +93,13 @@
             <version>1.5.6</version>
         </dependency>
 
+        <!-- Force-update vulnerable dependency of Apache POI -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.26.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
