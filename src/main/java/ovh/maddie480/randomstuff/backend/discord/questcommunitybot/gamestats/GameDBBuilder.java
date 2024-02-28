@@ -2,12 +2,13 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats;
 
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
+import java.io.GZIPInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,7 +33,7 @@ public class GameDBBuilder {
         }
 
         JSONArray gameDB;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://discord.com/api/v9/applications/detectable")) {
+        try (InputStream is = openStreamWithTimeout("https://discord.com/api/v9/applications/detectable")) {
             System.out.println("Downloading game database...");
             gameDB = new JSONArray(IOUtils.toString(is, UTF_8));
         }
@@ -58,16 +59,16 @@ public class GameDBBuilder {
                 urlBuilder.append("application_ids=").append(applicationId);
             }
 
-            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(urlBuilder.toString());
+            HttpURLConnection connection = openConnectionWithTimeout(urlBuilder.toString());
             connection.setRequestProperty("Authorization", discordToken);
 
             JSONArray response;
-            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
+            try (InputStream is = connectionToInputStream(connection)) {
                 response = new JSONArray(IOUtils.toString(is, UTF_8));
             }
 
             for (Object o : response) {
-                output.put(o);
+                output.add(o);
             }
 
             Thread.sleep((int) (Math.random() * 5000));
@@ -77,5 +78,37 @@ public class GameDBBuilder {
         try (OutputStream os = Files.newOutputStream(outputFile)) {
             IOUtils.write(output.toString(), os, UTF_8);
         }
+    }
+
+    // == copy-paste from ConnectionUtils, since this needs to be self-contained
+
+    private static HttpURLConnection openConnectionWithTimeout(String url) throws IOException {
+        URLConnection con;
+
+        try {
+            con = new URI(url).toURL().openConnection();
+        } catch (URISyntaxException e) {
+            throw new IOException(e);
+        }
+
+        con.setRequestProperty("User-Agent", "Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)");
+        con.setRequestProperty("Accept-Encoding", "gzip");
+
+        con.setConnectTimeout(10000);
+        con.setReadTimeout(30000);
+
+        return (HttpURLConnection) con;
+    }
+
+    private static InputStream connectionToInputStream(HttpURLConnection con) throws IOException {
+        InputStream is = con.getInputStream();
+        if ("gzip".equals(con.getContentEncoding())) {
+            return new GZIPInputStream(is);
+        }
+        return is;
+    }
+
+    private static InputStream openStreamWithTimeout(String url) throws IOException {
+        return connectionToInputStream(openConnectionWithTimeout(url));
     }
 }
