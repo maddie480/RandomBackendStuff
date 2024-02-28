@@ -26,12 +26,12 @@ COPY --chown=debian:debian target/run_bot.sh /app/run_bot.sh
 COPY --chown=debian:debian target/random-stuff-backend-0.0.1-SNAPSHOT.jar /app/random-stuff-backend-0.0.1-SNAPSHOT.jar
 COPY --chown=debian:debian target/java-libs /app/java-libs
 COPY --chown=debian:debian static /app/static
+COPY --chown=debian:debian games.json /app/static/games.json
 
 RUN cd /app/static && \
   chmod -c u+x /app/run_bot.sh *.sh && \
   dotnet tool install -g ilspycmd && \
   wine cmd /c echo success && \
-  wget -O games.json "https://discordapp.com/api/v6/applications/detectable" && \
   curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./youtube-dl && \
   chmod -c a+rx ./youtube-dl
 
