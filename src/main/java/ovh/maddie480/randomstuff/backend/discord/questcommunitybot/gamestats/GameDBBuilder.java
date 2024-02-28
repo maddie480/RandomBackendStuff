@@ -1,6 +1,7 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats;
 
 import org.apache.commons.io.IOUtils;
+import org.json.JSONArray;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.InputStream;
@@ -8,6 +9,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -49,11 +51,11 @@ public class GameDBBuilder {
             StringBuilder urlBuilder = new StringBuilder("https://discord.com/api/v9/applications/public?");
             for (int i = 0; i < 10 && indices.size() > 0; i++) {
                 if (i != 0) {
-                    urlBuilder.concat('&');
+                    urlBuilder.append('&');
                 }
 
                 long applicationId = gameDB.getJSONObject(indices.remove(0)).getLong("id");
-                urlBuilder.concat("application_ids=").concat(applicationId);
+                urlBuilder.append("application_ids=").append(applicationId);
             }
 
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(urlBuilder.toString());
