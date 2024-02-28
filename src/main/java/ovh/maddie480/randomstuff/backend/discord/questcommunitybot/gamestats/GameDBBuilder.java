@@ -67,7 +67,7 @@ public class GameDBBuilder {
             }
 
             for (Object o : response) {
-                output.add(o);
+                output.put(o);
             }
 
             Thread.sleep((int) (Math.random() * 5000));
