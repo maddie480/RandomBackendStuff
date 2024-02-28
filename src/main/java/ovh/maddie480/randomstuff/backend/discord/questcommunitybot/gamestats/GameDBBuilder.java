@@ -3,11 +3,12 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 
-import java.io.GZIPInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,6 +16,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -68,7 +70,7 @@ public class GameDBBuilder {
             }
 
             for (Object o : response) {
-                output.add(o);
+                output.put(o);
             }
 
             Thread.sleep((int) (Math.random() * 5000));
