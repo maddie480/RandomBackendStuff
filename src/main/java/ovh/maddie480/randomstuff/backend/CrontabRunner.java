@@ -99,13 +99,7 @@ public class CrontabRunner {
         }
 
         // redirect logs to a file
-        try {
-            String date = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            System.setOut(new PrintStream(args[0] + File.separator + date + "_out.backend.log"));
-            System.setErr(new PrintStream(args[0] + File.separator + date + "_err.backend.log"));
-        } catch (FileNotFoundException e) {
-            logger.error("Could not redirect trace to log file", e);
-        }
+        redirectLogsToFile(args[0]);
 
         // start the health checks
         ContinuousHealthChecks.startChecking();
@@ -125,6 +119,52 @@ public class CrontabRunner {
             logger.error("Error while starting up the bots", e);
             sendMessageToWebhook(":x: Could not start up the bots: " + e);
         }
+    }
+
+    private static void redirectLogsToFile(String logsDirectory) {
+        new Thread("Log Rotator") {
+            @Override
+            public void run() {
+                PrintStream currentOut = null;
+                PrintStream currentErr = null;
+
+                try {
+                    while (true) {
+                        long waitTime;
+
+                        {
+                            // open new System.out and System.err streams based on the current date
+                            String date = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                            PrintStream newOut = new PrintStream(logsDirectory + File.separator + date + "_out.backend.log");
+                            PrintStream newErr = new PrintStream(logsDirectory + File.separator + date + "_err.backend.log");
+                            System.setOut(newOut);
+                            System.setErr(newErr);
+                            logger.info("Redirected System.out to file {}/{}_out.backend.log", logsDirectory, date);
+
+                            // leave the old System.out and System.err open for a minute after the switch,
+                            // to leave time to ongoing processes to finish what they are doing with them
+                            if (currentOut != null) {
+                                Thread.sleep(60000);
+                                currentOut.close();
+                                currentErr.close();
+                                logger.info("Closed old System.out and System.err streams");
+                            }
+                            currentOut = newOut;
+                            currentErr = newErr;
+
+                            long target = ZonedDateTime.now().plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0)
+                                    .toInstant().toEpochMilli();
+                            waitTime = target - System.currentTimeMillis();
+                        }
+
+                        logger.info("Waiting for {} ms before rotating logs", waitTime);
+                        Thread.sleep(waitTime);
+                    }
+                } catch (FileNotFoundException | InterruptedException e) {
+                    logger.error("Could not redirect trace to log file", e);
+                }
+            }
+        }.start();
     }
 
     private static void runDailyProcesses() {
