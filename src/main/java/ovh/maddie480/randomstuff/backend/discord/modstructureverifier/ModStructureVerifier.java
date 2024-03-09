@@ -55,8 +55,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
@@ -85,7 +83,7 @@ public class ModStructureVerifier extends ListenerAdapter {
     // watched channel ID > response channel ID but for channels that don't check file names
     private static final Map<Long, Long> noNameResponseChannels = new HashMap<>();
 
-    private static final Map<Long, Long> messagesToEmbeds = new HashMap<>(); // message ID > embed message ID from the bot
+    private static final List<MessageEmbedPair> messagesToEmbeds = new ArrayList<>();
 
     private static Map<String, String> assetToMod = Collections.emptyMap();
     private static Map<String, String> entityToMod = Collections.emptyMap();
@@ -129,19 +127,8 @@ public class ModStructureVerifier extends ListenerAdapter {
         // load the list of messages-to-embeds associations from disk.
         if (new File(MESSAGES_TO_ANSWERS_FILE_NAME).exists()) {
             try (Stream<String> lines = Files.lines(Paths.get(MESSAGES_TO_ANSWERS_FILE_NAME))) {
-                lines.forEach(line -> {
-                    String[] split = line.split(";", 2);
-                    messagesToEmbeds.put(Long.parseLong(split[0]), Long.parseLong(split[1]));
-                });
-            }
-        }
-
-        // clean up messages-to-embeds links that are older than 6 months (message IDs are "snowflakes" and the creation date can be deduced from them).
-        for (Long messageId : new ArrayList<>(messagesToEmbeds.keySet())) {
-            ZonedDateTime messageDate = Instant.ofEpochMilli((messageId >> 22) + 1420070400000L).atZone(ZoneId.systemDefault());
-            if (messageDate.isBefore(ZonedDateTime.now().minusMonths(6))) {
-                logger.warn("Forgetting message {} because its date is {}", messageId, messageDate);
-                messagesToEmbeds.remove(messageId);
+                messagesToEmbeds.clear();
+                lines.map(MessageEmbedPair::fromCSV).forEach(messagesToEmbeds::add);
             }
         }
 
@@ -175,15 +162,15 @@ public class ModStructureVerifier extends ListenerAdapter {
                 noNameResponseChannels.remove(channelId);
             }
         }
-
-        // save the files after cleanup.
         saveMap(null, null);
-        savePostedMessagesMap(null);
 
         logger.debug("Bot is currently in following guilds: {}", jda.getGuilds());
 
         // fill in the asset => mod maps on startup
         UpdateCheckerTracker.updateModStructureVerifierMaps();
+
+        // start up the hourly signed link updater
+        LinkRefresher.start(jda, messagesToEmbeds, () -> savePostedMessagesMap(null));
     }
 
     /**
@@ -575,8 +562,13 @@ public class ModStructureVerifier extends ListenerAdapter {
                             .setTimestamp(Instant.now());
                     event.getChannel().sendMessageEmbeds(embedBuilder.build())
                             .queue(postedMessage -> {
-                                // save the message ID and the embed ID.
-                                messagesToEmbeds.put(event.getMessageIdLong(), postedMessage.getIdLong());
+                                messagesToEmbeds.add(new MessageEmbedPair(
+                                        event.getGuild().getIdLong(),
+                                        event.getChannel().getIdLong(),
+                                        event.getMessageIdLong(),
+                                        postedMessage.getIdLong(),
+                                        LinkRefresher.getLinkExpirationTimestamp(attachment.getUrl())
+                                ));
                                 savePostedMessagesMap(event);
                             });
                 }
@@ -742,12 +734,14 @@ public class ModStructureVerifier extends ListenerAdapter {
     public void onMessageDelete(@NotNull MessageDeleteEvent event) {
         if (!event.isFromGuild()) return;
 
-        if (messagesToEmbeds.containsKey(event.getMessageIdLong())) {
-            // if a user deletes their file, make sure to delete the embed that goes with it.
-            event.getChannel().deleteMessageById(messagesToEmbeds.get(event.getMessageIdLong())).queue();
-            messagesToEmbeds.remove(event.getMessageIdLong());
-            savePostedMessagesMap(event);
-        }
+        messagesToEmbeds.stream()
+                .filter(messageEmbedPair -> messageEmbedPair.messageId() == event.getMessageIdLong())
+                .findFirst()
+                .ifPresent(messageEmbedPair -> {
+                    event.getChannel().deleteMessageById(messageEmbedPair.embedId()).queue();
+                    messagesToEmbeds.remove(messageEmbedPair);
+                    savePostedMessagesMap(event);
+                });
     }
 
     private static void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, Set<String> missingDependencies,
@@ -1336,8 +1330,8 @@ public class ModStructureVerifier extends ListenerAdapter {
 
     private static void savePostedMessagesMap(Event event) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(MESSAGES_TO_ANSWERS_FILE_NAME))) {
-            for (Map.Entry<Long, Long> entry : messagesToEmbeds.entrySet()) {
-                writer.write(entry.getKey() + ";" + entry.getValue() + "\n");
+            for (MessageEmbedPair entry : messagesToEmbeds) {
+                writer.write(entry.toCSV() + "\n");
             }
         } catch (IOException e) {
             logger.error("Error while writing file", e);

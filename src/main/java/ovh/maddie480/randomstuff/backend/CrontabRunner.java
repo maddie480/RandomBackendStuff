@@ -239,8 +239,11 @@ public class CrontabRunner {
             QuestCommunityWebsiteHealthCheck.run();
             SlashCommandBotHealthCheck.checkSlashCommands();
 
-            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)) {
+            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
                 StonkUpdateChecker.postTo(client.getTextChannelById(551822297573490749L));
+            }
+
+            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)) {
                 PlatformBackup.run(client);
             }
 
