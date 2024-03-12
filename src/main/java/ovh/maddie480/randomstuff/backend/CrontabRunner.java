@@ -271,6 +271,7 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkEverestExists(false);
             CelesteStuffHealthCheck.checkOlympusExists(false);
             CelesteStuffHealthCheck.checkOlympusAPIs();
+            UsageStatsService.healthCheckCurl();
 
             // Quest Community Bot stuff
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {

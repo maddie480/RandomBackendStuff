@@ -58,27 +58,45 @@ public class UsageStatsService {
         return ImmutableMap.of(
                 "responseCountPerCode", getResponseCountByStatus(days),
                 "githubActionsPerRepository", countGitHubActionsPerRepository(days),
-                "customSlashCommandsUsage", countFrontendLogEntries("/discord/custom-slash-commands", days),
-                "gamesBotUsage", countFrontendLogEntries("/discord/games-bot", days),
-                "timezoneBotLiteUsage", countFrontendLogEntries("/discord/timezone-bot", days),
+                "customSlashCommandsUsage", countFrontendLogEntries("POST /discord/custom-slash-commands", days),
+                "gamesBotUsage", countFrontendLogEntries("POST /discord/games-bot", days),
+                "timezoneBotLiteUsage", countFrontendLogEntries("POST /discord/timezone-bot", days),
                 "timezoneBotFullUsage", countBackendLogEntries(l -> l.contains(".BotEventListener") && l.contains("New command: "), days),
                 "modStructureVerifierUsage", countBackendLogEntries(l -> l.contains(".ModStructureVerifier") && l.contains("Collab assets folder = "), days),
-                "bananaBotUsage", countFrontendLogEntries("/discord/bananabot", days)
+                "bananaBotUsage", countFrontendLogEntries("POST /discord/bananabot", days)
         );
     }
 
-    private static int countFrontendLogEntries(String path, int days) {
+    public static void healthCheckCurl() throws IOException {
+        // health check curl is supposed to be called every 15 minutes Monday-Friday 8am-7pm
+        if (Arrays.asList(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(ZonedDateTime.now().getDayOfWeek())
+            || ZonedDateTime.now().getHour() <= 8 || ZonedDateTime.now().getHour() >= 19) {
+
+            log.debug("Skipping curl health check");
+            return;
+        }
+
+        ZonedDateTime after = ZonedDateTime.now().minusHours(1);
+        int callCount = countFrontendLogEntries(SecretConstants.HEALTH_CHECK_CURL_URL, after);
+        log.debug("{} calls to health check curl found after {}", callCount, after);
+
+        if (callCount == 0) {
+            throw new IOException("curl health check failed!");
+        }
+    }
+
+    private static int countFrontendLogEntries(String path, ZonedDateTime after) {
         try (Stream<Path> frontendLogs = Files.list(Paths.get("/logs"))) {
             return frontendLogs
                     .filter(p -> p.getFileName().toString().endsWith(".request.log"))
-                    .filter(p -> fileWasModifiedInLast(p, days))
+                    .filter(p -> fileWasModifiedAfter(p, after))
                     .mapToInt(p -> {
-                        log.debug("Counting instances of {} in last {} day(s) in file {}...", path, days, p.getFileName());
+                        log.debug("Counting instances of {} after {} in file {}...", path, after, p.getFileName());
 
                         try (Stream<String> lines = Files.lines(p)) {
                             return (int) lines
-                                    .filter(l -> l.contains("POST " + path))
-                                    .filter(l -> frontendLogIsRecentEnough(l, days))
+                                    .filter(l -> l.contains(path))
+                                    .filter(l -> frontendLogIsRecentEnough(l, after))
                                     .count();
                         } catch (IOException e) {
                             log.warn("Could not check frontend log entries!", e);
@@ -93,10 +111,12 @@ public class UsageStatsService {
     }
 
     private static int countBackendLogEntries(Predicate<String> filter, int days) {
+        ZonedDateTime after = ZonedDateTime.now().minusDays(days);
+
         try (Stream<Path> backendLogs = Files.list(Paths.get("/logs"))) {
             return backendLogs
                     .filter(p -> p.getFileName().toString().endsWith("_out.backend.log"))
-                    .filter(p -> fileWasModifiedInLast(p, days))
+                    .filter(p -> fileWasModifiedAfter(p, after))
                     .mapToInt(p -> {
                         log.debug("Counting lines matching filter in last {} day(s) in file {}...", days, p.getFileName());
 
@@ -118,10 +138,9 @@ public class UsageStatsService {
         }
     }
 
-    private static boolean fileWasModifiedInLast(Path file, int days) {
+    private static boolean fileWasModifiedAfter(Path file, ZonedDateTime after) {
         try {
-            return Files.getLastModifiedTime(file).toInstant()
-                    .isAfter(Instant.now().minus(days, ChronoUnit.DAYS));
+            return Files.getLastModifiedTime(file).toInstant().isAfter(after.toInstant());
         } catch (IOException e) {
             log.warn("Could not read file last modified time!", e);
             return true;
@@ -129,16 +148,18 @@ public class UsageStatsService {
     }
 
     private static Map<Integer, Long> getResponseCountByStatus(int days) {
+        ZonedDateTime after = ZonedDateTime.now().minusDays(days);
+
         try (Stream<Path> frontendLogs = Files.list(Paths.get("/logs"))) {
             return frontendLogs
                     .filter(p -> p.getFileName().toString().endsWith(".request.log"))
-                    .filter(p -> fileWasModifiedInLast(p, days))
+                    .filter(p -> fileWasModifiedAfter(p, after))
                     .map(p -> {
                         log.debug("Counting responses by status code in last {} day(s) in file {}...", days, p.getFileName());
 
                         try (Stream<String> lines = Files.lines(p)) {
                             return lines
-                                    .filter(l -> frontendLogIsRecentEnough(l, days))
+                                    .filter(l -> frontendLogIsRecentEnough(l, after))
                                     .map(l -> {
                                         Matcher m = frontendLogPatternStatusCode.matcher(l);
                                         if (!m.matches())
@@ -159,11 +180,10 @@ public class UsageStatsService {
         }
     }
 
-    private static boolean frontendLogIsRecentEnough(String l, int days) {
+    private static boolean frontendLogIsRecentEnough(String l, ZonedDateTime after) {
         Matcher m = frontendLogPattern.matcher(l);
         if (m.matches()) {
-            return ZonedDateTime.now().minusDays(days).isBefore(
-                    ZonedDateTime.parse(m.group(1), frontendDateFormat));
+            return after.isBefore(ZonedDateTime.parse(m.group(1), frontendDateFormat));
         }
         return false;
     }
