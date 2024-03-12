@@ -55,15 +55,17 @@ public class UsageStatsService {
     }
 
     public static Map<String, Object> getStatistics(int days) throws IOException {
+        ZonedDateTime after = ZonedDateTime.now().minusDays(days);
+
         return ImmutableMap.of(
                 "responseCountPerCode", getResponseCountByStatus(days),
                 "githubActionsPerRepository", countGitHubActionsPerRepository(days),
-                "customSlashCommandsUsage", countFrontendLogEntries("POST /discord/custom-slash-commands", days),
-                "gamesBotUsage", countFrontendLogEntries("POST /discord/games-bot", days),
-                "timezoneBotLiteUsage", countFrontendLogEntries("POST /discord/timezone-bot", days),
+                "customSlashCommandsUsage", countFrontendLogEntries("POST /discord/custom-slash-commands", after),
+                "gamesBotUsage", countFrontendLogEntries("POST /discord/games-bot", after),
+                "timezoneBotLiteUsage", countFrontendLogEntries("POST /discord/timezone-bot", after),
                 "timezoneBotFullUsage", countBackendLogEntries(l -> l.contains(".BotEventListener") && l.contains("New command: "), days),
                 "modStructureVerifierUsage", countBackendLogEntries(l -> l.contains(".ModStructureVerifier") && l.contains("Collab assets folder = "), days),
-                "bananaBotUsage", countFrontendLogEntries("POST /discord/bananabot", days)
+                "bananaBotUsage", countFrontendLogEntries("POST /discord/bananabot", after)
         );
     }
 
