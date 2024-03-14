@@ -121,8 +121,6 @@ public class SecretConstants {
     public static String EXPLOIT_PLANNING_URL;
 
     // Quest Community Bot crontabs
-    public static List<String> JSON_URLS;
-    public static String JSON_BASIC_AUTH;
     public static String BUS_URL;
     public static String STONK_URL;
     public static String WEATHER_WARNING_DOMAIN;
@@ -213,8 +211,6 @@ public class SecretConstants {
         PEOPLE_TO_DISCORD_IDS = getMapOfStrings(secrets.getJSONObject("PEOPLE_TO_DISCORD_IDS"));
         EXPLOIT_PLANNING_URL = secrets.getString("EXPLOIT_PLANNING_URL");
 
-        JSON_URLS = getListOfStrings(secrets.getJSONArray("JSON_URLS"));
-        JSON_BASIC_AUTH = secrets.getString("JSON_BASIC_AUTH");
         BUS_URL = secrets.getString("BUS_URL");
         STONK_URL = secrets.getString("STONK_URL");
         WEATHER_WARNING_DOMAIN = secrets.getString("WEATHER_WARNING_DOMAIN");

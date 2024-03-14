@@ -21,7 +21,6 @@ import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructu
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.JsonUpdateChecker;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
@@ -280,7 +279,6 @@ public class CrontabRunner {
                 BusUpdateChecker.runCheckForUpdates(webhookHell);
                 new TemperatureChecker().checkForUpdates(webhookHell);
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);
-                new JsonUpdateChecker().checkForUpdates(webhookHell);
             }
 
             // Make sure the frequent top.gg outages don't affect us by doing this last.
