@@ -129,9 +129,9 @@ public class ContinuousHealthChecks {
         try (InputStream is = ConnectionUtils.connectionToInputStream(conn)) {
             JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
 
-            // more than 10 GB free space
+            // more than 3 GB free space
             return resp.getJSONObject("ocs").getJSONObject("data").getJSONObject("nextcloud")
-                    .getJSONObject("system").getLong("freespace") > 10 * 1024 * 1024 * 1024L;
+                    .getJSONObject("system").getLong("freespace") > 3 * 1024 * 1024 * 1024L;
         }
     }
 
