@@ -206,7 +206,7 @@ public class EverestVersionLister {
                     }
                 }
 
-                entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload")));
+                entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload"), "main"));
                 entry.put("olympusBuildFileSize", getFileSize((String) entry.get("olympusBuildDownload"), "olympusBuild"));
                 entry.put("olympusMetaFileSize", getFileSize((String) entry.get("olympusMetaDownload"), "olympusMeta"));
 
