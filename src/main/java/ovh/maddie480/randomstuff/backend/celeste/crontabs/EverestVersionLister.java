@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -317,11 +318,11 @@ public class EverestVersionLister {
         log.debug("Size of olympus-meta file {} is {} bytes", olympusMetaUrl, olympusMetaSize);
 
         long olympusBuildSize;
-        try (ZipInputStream is = new ZipInputStream(Files.newInputStream(tmpMetaZip))) {
+        try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(tmpMetaZip))) {
             // seek to size.txt, which is the only flat file there is in the zip
-            while (outerZip.getNextEntry().isDirectory()) ;
+            while (zip.getNextEntry().isDirectory()) ;
 
-            olympusBuildSize = Long.parseLong(IOUtils.toString(outerZip.getInputStream(), StandardCharsets.UTF_8).trim());
+            olympusBuildSize = Long.parseLong(IOUtils.toString(zip.getInputStream(), StandardCharsets.UTF_8).trim());
             log.debug("Size of olympus-build file is {} bytes according to {}", olympusBuildSize, olympusMetaUrl);
         }
 
