@@ -322,7 +322,7 @@ public class EverestVersionLister {
             // seek to size.txt, which is the only flat file there is in the zip
             while (zip.getNextEntry().isDirectory()) ;
 
-            olympusBuildSize = Long.parseLong(IOUtils.toString(zip.getInputStream(), StandardCharsets.UTF_8).trim());
+            olympusBuildSize = Long.parseLong(IOUtils.toString(zip, StandardCharsets.UTF_8).trim());
             log.debug("Size of olympus-build file is {} bytes according to {}", olympusBuildSize, olympusMetaUrl);
         }
 
