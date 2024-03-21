@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -141,9 +140,9 @@ public class EverestVersionLister {
                     }
                 }
 
-                entry.put("mainFileSize", getMainFileSize((String) entry.get("mainDownload")));
-                entry.put("olympusBuildFileSize", getOlympusBuildFileSize((String) entry.get("olympusMetaDownload")).olympusBuildFileSize());
-                entry.put("olympusMetaFileSize", getOlympusBuildFileSize((String) entry.get("olympusMetaDownload")).olympusMetaFileSize());
+                entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload"), "main"));
+                entry.put("olympusBuildFileSize", getFileSize((String) entry.get("olympusBuildDownload"), "olympusBuild"));
+                entry.put("olympusMetaFileSize", getFileSize((String) entry.get("olympusMetaDownload"), "olympusMeta"));
 
                 boolean isNative = isNative((String) entry.get("olympusBuildDownload"));
                 entry.put("isNative", isNative);
@@ -207,9 +206,9 @@ public class EverestVersionLister {
                     }
                 }
 
-                entry.put("mainFileSize", getMainFileSize((String) entry.get("mainDownload")));
-                entry.put("olympusBuildFileSize", getOlympusBuildFileSize((String) entry.get("olympusMetaDownload")).olympusBuildFileSize());
-                entry.put("olympusMetaFileSize", getOlympusBuildFileSize((String) entry.get("olympusMetaDownload")).olympusMetaFileSize());
+                entry.put("mainFileSize", getFileSize((String) entry.get("mainDownload")));
+                entry.put("olympusBuildFileSize", getFileSize((String) entry.get("olympusBuildDownload"), "olympusBuild"));
+                entry.put("olympusMetaFileSize", getFileSize((String) entry.get("olympusMetaDownload"), "olympusMeta"));
 
                 boolean isNative = isNative((String) entry.get("olympusBuildDownload"));
                 entry.put("isNative", isNative);
@@ -274,8 +273,8 @@ public class EverestVersionLister {
      * Gets a file size by downloading it twice.
      * This is useful for Azure, since it does not tell file sizes through response headers.
      */
-    private static long getMainFileSize(String url) throws IOException {
-        Optional<Long> calculated = getPreviouslyCalculatedValue("mainDownload", url, v -> v.getLong("mainFileSize"));
+    private static long getFileSize(String url, String name) throws IOException {
+        Optional<Long> calculated = getPreviouslyCalculatedValue(name + "Download", url, v -> v.getLong(name + "FileSize"));
         if (calculated.isPresent()) return calculated.get();
 
         long[] size = new long[2];
@@ -292,43 +291,11 @@ public class EverestVersionLister {
         }
 
         if (size[0] == size[1]) {
-            log.debug("Size of main file {} is {} bytes", url, size[0]);
+            log.debug("Size of file {} is {} bytes", url, size[0]);
             return size[0];
         }
 
         throw new IOException("Got different sizes for " + url + ": " + size[0] + " and " + size[1] + "!");
-    }
-
-    private record OlympusBuildFileSize(long olympusBuildFileSize, long olympusMetaFileSize) {}
-
-    private static OlympusBuildFileSize getOlympusBuildFileSize(String olympusMetaUrl) throws IOException {
-        Optional<OlympusBuildFileSize> calculated = getPreviouslyCalculatedValue("olympusMetaDownload", olympusMetaUrl,
-            v -> new OlympusBuildFileSize(v.getLong("olympusBuildFileSize"), v.getLong("olympusMetaFileSize")));
-        if (calculated.isPresent()) return calculated.get();
-
-        Path tmpMetaZip = Paths.get("/tmp/olympus-meta.zip");
-
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(olympusMetaUrl);
-             OutputStream os = Files.newOutputStream(tmpMetaZip)) {
-
-            IOUtils.copy(is, os);
-        }
-
-        long olympusMetaSize = Files.size(tmpMetaZip);
-        log.debug("Size of olympus-meta file {} is {} bytes", olympusMetaUrl, olympusMetaSize);
-
-        long olympusBuildSize;
-        try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(tmpMetaZip))) {
-            // seek to size.txt, which is the only flat file there is in the zip
-            while (zip.getNextEntry().isDirectory()) ;
-
-            olympusBuildSize = Long.parseLong(IOUtils.toString(zip, StandardCharsets.UTF_8).trim());
-            log.debug("Size of olympus-build file is {} bytes according to {}", olympusBuildSize, olympusMetaUrl);
-        }
-
-        Files.delete(tmpMetaZip);
-
-        return new OlympusBuildFileSize(olympusBuildSize, olympusMetaSize);
     }
 
     /**
