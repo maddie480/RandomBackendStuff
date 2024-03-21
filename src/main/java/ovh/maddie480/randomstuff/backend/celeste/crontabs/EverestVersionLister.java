@@ -306,7 +306,7 @@ public class EverestVersionLister {
         if (calculated.isPresent()) return calculated.get();
 
         Path tmpMetaZip = Paths.get("/tmp/olympus-meta.zip");
-        
+
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(olympusMetaUrl);
              OutputStream os = Files.newOutputStream(tmpMetaZip)) {
 
