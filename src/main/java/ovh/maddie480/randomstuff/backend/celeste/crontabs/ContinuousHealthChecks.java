@@ -33,6 +33,20 @@ public class ContinuousHealthChecks {
     private static final Map<String, Integer> servicesHealth = new HashMap<>();
     private static final Map<String, Boolean> servicesStatus = new HashMap<>();
 
+    private static final Map<String, Integer> servicesMaxHP = ImmutableMap.of(
+            "Banana Mirror", 1,
+            "CelesteNet", 1,
+            "CelesteNet UDP", 1,
+            "Update Checker", 1,
+            "Timezone Role Updater", 1,
+            "Nextcloud", 1,
+            "Maddie's Random Stuff Website", 1,
+            // GameBanana is given more leniency, ESPECIALLY the file server
+            "GameBanana Website", 3,
+            "GameBanana API", 3,
+            "GameBanana File Server", 5
+    );
+
     public static void startChecking() {
         new Thread("Continuous Health Checks") {
             @Override
@@ -148,16 +162,18 @@ public class ContinuousHealthChecks {
 
         logger.debug("Health check result for {}: {}", serviceName, result);
 
-        int currentHealth = servicesHealth.getOrDefault(serviceName, 3);
+        int serviceMaxHP = servicesMaxHP.get(serviceName);
+
+        int currentHealth = servicesHealth.getOrDefault(serviceName, serviceMaxHP);
         boolean currentStatus = servicesStatus.getOrDefault(serviceName, true);
 
         if (result) {
-            if (currentHealth < 3) {
+            if (currentHealth < serviceMaxHP) {
                 currentHealth++;
-                logger.info("Health of {} increased to {}/3 HP", serviceName, currentHealth);
+                logger.info("Health of {} increased to {}/{} HP", serviceName, currentHealth, serviceMaxHP);
 
                 // if health is at max and the service was declared down, declare it up again!
-                if (currentHealth == 3 && !currentStatus) {
+                if (currentHealth == serviceMaxHP && !currentStatus) {
                     logger.info("Service {} has full HP!", serviceName);
                     currentStatus = true;
                     for (String webhook : webhookUrls) {
@@ -168,7 +184,7 @@ public class ContinuousHealthChecks {
         } else {
             if (currentHealth > 0) {
                 currentHealth--;
-                logger.warn("Health of {} decreased to {}/3 HP", serviceName, currentHealth);
+                logger.warn("Health of {} decreased to {}/{} HP", serviceName, currentHealth, serviceMaxHP);
 
                 // if health is at zero and the service is officially up, declare it down.
                 if (currentHealth == 0 && currentStatus) {
