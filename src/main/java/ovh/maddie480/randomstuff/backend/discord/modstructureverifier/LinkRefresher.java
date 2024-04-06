@@ -6,6 +6,8 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,12 +73,19 @@ public class LinkRefresher {
                 continue;
             }
 
-            Message origMessage = channel.retrieveMessageById(message.messageId()).complete();
-            Message embedMessage = channel.retrieveMessageById(message.embedId()).complete();
+            Message origMessage;
+            Message embedMessage;
 
-            if (origMessage == null || embedMessage == null) {
-                log.warn("Forgetting message {} because it wasn't found in channel {} of guild {}", message.messageId(), channel, guild);
-                continue;
+            try {
+                origMessage = channel.retrieveMessageById(message.messageId()).complete();
+                embedMessage = channel.retrieveMessageById(message.embedId()).complete();
+            } catch (ErrorResponseException e) {
+                if (e.getErrorResponse() == ErrorResponse.UNKNOWN_MESSAGE) {
+                    log.warn("Forgetting message {} because it wasn't found in channel {} of guild {}", message.messageId(), channel, guild);
+                    continue;
+                }
+
+                throw e;
             }
 
             log.info("Refreshing link of message {} that expired on {}", message.embedId(), linkExpiresAt);
