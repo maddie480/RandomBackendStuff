@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.crontabs;
 
-import ovh.maddie480.randomstuff.backend.discord.timezonebot.BotEventListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
@@ -20,6 +19,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.timezonebot.BotEventListener;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -276,6 +276,12 @@ public class WorldClockHealthCheck {
         @Override
         public DiscordLocale getGuildLocale() {
             return IReplyCallback.super.getGuildLocale();
+        }
+
+        @NotNull
+        @Override
+        public List<Entitlement> getEntitlements() {
+            return Collections.emptyList();
         }
 
         public JDA getJDA() {
