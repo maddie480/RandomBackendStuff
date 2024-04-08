@@ -22,6 +22,7 @@ import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
 import net.dv8tion.jda.api.requests.restaction.CommandEditAction;
 import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
 import net.dv8tion.jda.api.requests.restaction.GuildAction;
+import net.dv8tion.jda.api.requests.restaction.pagination.EntitlementPaginationAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.utils.cache.CacheView;
@@ -402,6 +403,12 @@ public class DiscardableJDA implements JDA, Closeable {
     @Override
     public RestAction<ApplicationInfo> retrieveApplicationInfo() {
         return backingJDA.retrieveApplicationInfo();
+    }
+
+    @NotNull
+    @Override
+    public EntitlementPaginationAction retrieveEntitlements() {
+        return backingJDA.retrieveEntitlements();
     }
 
     @NotNull
