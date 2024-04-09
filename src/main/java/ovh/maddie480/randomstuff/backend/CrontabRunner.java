@@ -276,7 +276,7 @@ public class CrontabRunner {
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
                 TextChannel webhookHell = client.getTextChannelById(551822297573490749L);
 
-                BusUpdateChecker.runCheckForUpdates(webhookHell);
+                // BusUpdateChecker.runCheckForUpdates(webhookHell);
                 new TemperatureChecker().checkForUpdates(webhookHell);
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);
             }
