@@ -12,4 +12,4 @@ services:
       resources:
         limits:
           cpus: "0.1"
-          memory: 384M
+          memory: 256M

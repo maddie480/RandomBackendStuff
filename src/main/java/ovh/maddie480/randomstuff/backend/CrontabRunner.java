@@ -20,7 +20,6 @@ import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
@@ -170,19 +169,6 @@ public class CrontabRunner {
         // The 5-second breaks allow other processes to be run, to avoid getting stuck for too long...
         // because those processes are long indeed.
 
-        runProcessAndAlertOnException("Daily processes - GameBanana Automated Checks", () -> {
-            GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick();
-            GameBananaAutomatedChecks.checkForForbiddenFiles();
-            GameBananaAutomatedChecks.checkForDuplicateModIds();
-            GameBananaAutomatedChecks.checkForFilesBelongingToMultipleMods();
-            GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator();
-            GameBananaAutomatedChecks.checkPngFilesArePngFiles();
-            GameBananaAutomatedChecks.checkUnapprovedCategories();
-            GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive();
-        });
-
-        unstoppableSleep(5000);
-
         runProcessAndAlertOnException("Daily processes - Update Tasks", () -> {
             AutoLeaver.main(null);
             CustomSlashCommandsCleanup.housekeep();
@@ -201,6 +187,7 @@ public class CrontabRunner {
         unstoppableSleep(5000);
 
         runProcessAndAlertOnException("Daily processes - Health Checks", () -> {
+            GameBananaAutomatedChecks.checkUnapprovedCategories();
             WorldClockHealthCheck.main(null);
             CelesteStuffHealthCheck.checkEverestExists(true);
             CelesteStuffHealthCheck.checkOlympusExists(true);
@@ -256,7 +243,7 @@ public class CrontabRunner {
             MastodonUpdateChecker.loadFile();
             OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
 
-            // update tasks
+            logger.info("Starting update tasks");
             UpdateCheckerTracker.updatePrivateHelpersFromGitHub();
             CollabAutoHider.run();
             TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true);
@@ -265,14 +252,23 @@ public class CrontabRunner {
             MastodonUpdateChecker.checkForUpdates();
             OlympusNewsUpdateChecker.checkForUpdates();
 
-            // health checks
+            logger.info("Starting GameBanana automated checks");
+            GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick();
+            GameBananaAutomatedChecks.checkForForbiddenFiles();
+            GameBananaAutomatedChecks.checkForDuplicateModIds();
+            GameBananaAutomatedChecks.checkForFilesBelongingToMultipleMods();
+            GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator();
+            GameBananaAutomatedChecks.checkPngFilesArePngFiles();
+            GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive();
+
+            logger.info("Starting health checks");
             CelesteStuffHealthCheck.updateCheckerHealthCheck();
             CelesteStuffHealthCheck.checkEverestExists(false);
             CelesteStuffHealthCheck.checkOlympusExists(false);
             CelesteStuffHealthCheck.checkOlympusAPIs();
             UsageStatsService.healthCheckCurl();
 
-            // Quest Community Bot stuff
+            logger.info("Starting Quest Community Bot stuff");
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
                 TextChannel webhookHell = client.getTextChannelById(551822297573490749L);
 
