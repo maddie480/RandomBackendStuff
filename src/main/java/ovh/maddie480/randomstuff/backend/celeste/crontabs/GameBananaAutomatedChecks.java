@@ -50,6 +50,7 @@ public class GameBananaAutomatedChecks {
             "Microsoft.Xna.Framework.Game.dll", "Microsoft.Xna.Framework.Graphics.dll");
 
     private static final Pattern gamebananaLinkRegex = Pattern.compile(".*(https://gamebanana.com/mmdl/[0-9]+).*");
+    private static final Pattern objDirectoryRegex = Pattern.compile(".*(?:/|^)obj/(Debug|Release)(?:/|$).*");
 
     /**
      * Downloads every mod with a DLL and decompiles it looking for a "yield return orig.Invoke",
@@ -295,6 +296,14 @@ public class GameBananaAutomatedChecks {
                                     "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl);
                             return;
                         }
+                    }
+
+                    Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
+                    if (objDirectoryMatcher.matches()) {
+                        String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
+                        sendAlertToWebhook(":warning: The mod called **" + modName + "** contains an `obj/" + objDirectoryMatcher.group(1) + "` folder! " +
+                                "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl);
+                        return;
                     }
                 }
             }
