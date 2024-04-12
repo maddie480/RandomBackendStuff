@@ -299,7 +299,7 @@ public class SlashCommandBot extends ListenerAdapter {
                     }
 
                     // check intégrité
-                    if ("Exploitation".equals(properties.get("CATEGORIES")) 
+                    if ("Exploitation".equals(properties.get("CATEGORIES"))
                             && Arrays.asList("Principal", "Backup", "Exploitant principal", "Exploitant backup").contains(properties.get("SUMMARY"))
                             && properties.containsKey("DTSTART;VALUE=DATE") && properties.getOrDefault("ATTENDEE", "").contains("CN=")) {
 
