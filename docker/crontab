@@ -19,8 +19,8 @@
 #
 # For more information see the manual pages of crontab(5) and cron(8)
 #
-# m       h dom mon dow command
- 15      17   *   *   *   /home/debian/docker-run-with-logging.sh daily-crontabs
- 45       *   *   *   *   /home/debian/docker-run-with-logging.sh hourly-crontabs
-  0 5,11,17   *   *   *   /home/debian/docker-run-with-logging.sh update-checker
- 30      18   *   *   5   /home/debian/docker-run-with-logging.sh lnj-bot
+# m          h dom mon dow command
+ 15         17   *   *   *   /home/debian/docker-run-with-logging.sh daily-crontabs
+ 45          *   *   *   *   /home/debian/docker-run-with-logging.sh hourly-crontabs
+  0 5,11,17,23   *   *   *   /home/debian/docker-run-with-logging.sh update-checker
+ 30         18   *   *   5   /home/debian/docker-run-with-logging.sh lnj-bot
