@@ -37,6 +37,7 @@ services:
           "MATTERMOST_TOKEN_CONSISTENCYCHECK": "[TODO]",
           "MATTERMOST_TOKEN_ABSENTS": "[TODO]"
         }
+      JAVA_OPTIONS: -Xmx256m
     volumes:
       - /home/debian/shared:/shared
       - /home/debian/logs:/var/lib/jetty/logs
@@ -44,7 +45,7 @@ services:
       resources:
         limits:
           cpus: "0.4"
-          memory: 384M
+          memory: 512M
 
   backend:
     image: max480/random-stuff-backend
