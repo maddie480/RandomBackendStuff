@@ -79,7 +79,7 @@ public class CrontabRunner {
             ZonedDateTime runUntil = ZonedDateTime.now(ZoneId.of("UTC")).plusHours(1)
                     .withMinute(0).withSecond(0).withNano(0);
 
-            while (runUntil.getHour() % 6 != 0) {
+            while (runUntil.getHour() % 6 != 5) {
                 runUntil = runUntil.plusHours(1);
             }
 
