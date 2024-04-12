@@ -307,13 +307,48 @@ public class SlashCommandBot extends ListenerAdapter {
                         userName = userName.substring(userName.indexOf("CN=") + 3);
                         userName = userName.substring(0, userName.indexOf(";"));
 
-                        // sauvegarde
-                        if (properties.get("SUMMARY").equals("Principal")) {
-                            principals.put(properties.get("DTSTART;VALUE=DATE"), Long.parseLong(SecretConstants.PEOPLE_TO_DISCORD_IDS.getOrDefault(userName, "-1")));
-                            principalsNames.put(properties.get("DTSTART;VALUE=DATE"), userName);
-                        } else {
-                            backups.put(properties.get("DTSTART;VALUE=DATE"), Long.parseLong(SecretConstants.PEOPLE_TO_DISCORD_IDS.getOrDefault(userName, "-1")));
-                            backupsNames.put(properties.get("DTSTART;VALUE=DATE"), userName);
+                        // extraction de la récurrence, s'il y en a une
+                        LocalDate date = LocalDate.parse(properties.get("DTSTART;VALUE=DATE"), DateTimeFormatter.ofPattern("yyyyMMdd"));
+                        int count = 1;
+                        int interval = 1;
+
+                        if (properties.containsKey("RRULE")) {
+                            count = 5; // default count if infinite
+
+                            for (String rrule : properties.get("RRULE").split(";")) {
+                                String[] rruleKV = rrule.split("=", 2);
+                                switch (rruleKV[0]) {
+                                    case "FREQ":
+                                        if (!rruleKV[1].equals("WEEKLY")) throw new IOException("Unsupported FREQ=" + rruleKV[1]);
+                                        break;
+                                    case "COUNT":
+                                        count = Integer.parseInt(rruleKV[1]);
+                                        break;
+                                    case "INTERVAL":
+                                        interval = Integer.parseInt(rruleKV[1]);
+                                        break;
+                                    case "BYDAY":
+                                        if (!rruleKV[1].equals("MO")) throw new IOException("Unsupported BYDAY=" + rruleKV[1]);
+                                        break;
+                                    default:
+                                        throw new IOException("Unsupported RRULE " + rrule);
+                                }
+                            }
+                        }
+
+                        for (int i = 0; i < count; i++) {
+                            String formattedDate = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+                            
+                            // sauvegarde
+                            if (Arrays.asList("Principal", "Exploitant principal").contains(properties.get("SUMMARY"))) {
+                                principals.put(formattedDate, Long.parseLong(SecretConstants.PEOPLE_TO_DISCORD_IDS.getOrDefault(userName, "-1")));
+                                principalsNames.put(formattedDate, userName);
+                            } else {
+                                backups.put(formattedDate, Long.parseLong(SecretConstants.PEOPLE_TO_DISCORD_IDS.getOrDefault(userName, "-1")));
+                                backupsNames.put(formattedDate, userName);
+                            }
+
+                            date = date.plusDays(7 * interval);
                         }
                     }
 
