@@ -337,7 +337,7 @@ public class SlashCommandBot extends ListenerAdapter {
                         }
 
                         for (int i = 0; i < count; i++) {
-                            String formattedDate = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+                            String formattedDate = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
                             // sauvegarde
                             if (Arrays.asList("Principal", "Exploitant principal").contains(properties.get("SUMMARY"))) {
