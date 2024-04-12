@@ -1310,4 +1310,48 @@ public class CelesteStuffHealthCheck {
 
         log.debug("Downloaded {} bytes", IOUtils.consume(is) + 8);
     }
+
+    public static void checkWipeConverter() throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/convert-wipe");
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+
+        try (InputStream is = CelesteStuffHealthCheck.class.getResourceAsStream("/BlackFullHD.png");
+             OutputStream os = connection.getOutputStream()) {
+
+            IOUtils.copy(is, os);
+        }
+
+        JSONArray response;
+        try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
+            response = new JSONArray(IOUtils.toString(is, UTF_8));
+        }
+
+        /*
+        We expect just 2 triangles covering the 1920x1080 surface.
+        const tri1 = [
+          [x, y],
+          [x + width, y],
+          [x + width, y + height],
+        ];
+        const tri2 = [
+          [x, y],
+          [x, y + height],
+          [x + width, y + height],
+        ];
+        return [tri1, tri2];
+         */
+
+        if (!response.toList().equals(Arrays.asList(
+                0, 0,
+                1920, 0,
+                1920, 1080,
+
+                0, 0,
+                0, 1080,
+                1920, 1080
+        ))) {
+            throw new IOException("Wipe Converter didn't return the expected data!");
+        }
+    }
 }
