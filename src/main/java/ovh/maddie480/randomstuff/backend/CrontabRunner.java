@@ -20,7 +20,7 @@ import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
+// import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
@@ -274,7 +274,7 @@ public class CrontabRunner {
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
                 TextChannel webhookHell = client.getTextChannelById(551822297573490749L);
 
-                BusUpdateChecker.runCheckForUpdates(webhookHell);
+                // BusUpdateChecker.runCheckForUpdates(webhookHell);
                 new TemperatureChecker().checkForUpdates(webhookHell);
                 new TwitchUpdateChecker().checkForUpdates(webhookHell);
             }
