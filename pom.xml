@@ -23,7 +23,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.5.5</version>
+            <version>1.5.6</version>
         </dependency>
 
         <!-- Force-update okio to fix vulnerability on transitive dependency for JDA -->
