@@ -15,6 +15,7 @@ import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import net.dv8tion.jda.api.utils.messages.MessagePollData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -96,6 +97,18 @@ public class WorldClockHealthCheck {
         }
 
         public List<FileUpload> getAttachments() {
+            return null;
+        }
+
+        @Nullable
+        @Override
+        public MessagePollData getPoll() {
+            return null;
+        }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction setPoll(@Nullable MessagePollData messagePollData) {
             return null;
         }
 
