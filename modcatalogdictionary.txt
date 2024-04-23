@@ -91,6 +91,7 @@ JungleHelper/UIImageTrigger=UI Image Trigger
 JungleHelper/UITextTrigger=UI Text Trigger
 Madhunt/C3OshiroSecret=Chapter 3 Oshiro Secret
 MaxHelpingHand/CustomNPCSprite=Custom NPC Sprite
+MaxHelpingHand/UpsideDownMovingPlatformGravityHelper=Upside Down Moving Platform (with Gravity Helper support)
 Mine/CSTheMineDarkness=CS The Mine Darkness
 Mine/CSTheMineEnter=CS The Mine Enter
 Mine/CSTheMinePit=CS The Mine Pit
