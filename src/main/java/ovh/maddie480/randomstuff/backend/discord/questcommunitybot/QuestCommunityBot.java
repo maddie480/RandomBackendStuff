@@ -47,6 +47,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
     private static final Logger log = LoggerFactory.getLogger(QuestCommunityBot.class);
 
     private final Map<String, List<BotCommand>> commandCategories;
+    private final PlagiatTatsumaki levelingManager;
 
     public QuestCommunityBot() throws IOException {
         JDA client;
@@ -67,7 +68,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
         GamestatsManager gamestatsManager = new GamestatsManager();
         gamestatsManager.run(questGuild);
 
-        PlagiatTatsumaki levelingManager = new PlagiatTatsumaki(gamestatsManager, questGuild);
+        levelingManager = new PlagiatTatsumaki(gamestatsManager, questGuild);
 
         ReminderEngine reminderEngine = new ReminderEngine(questGuild);
         reminderEngine.run(questGuild);
@@ -157,6 +158,10 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        if (event.isFromGuild() && event.getGuild().getIdLong() == SecretConstants.QUEST_COMMUNITY_SERVER_ID) {
+            levelingManager.onMessageReceived(event);
+        }
+
         if (event.getAuthor().isBot() || !event.getMessage().getContentRaw().startsWith("!")) {
             return;
         }

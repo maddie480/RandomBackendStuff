@@ -1,10 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.leveling;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats.GameDB;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats.GamestatsManager;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -17,6 +12,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats.GameDB;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats.GamestatsManager;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -261,7 +261,7 @@ public class PlagiatTatsumaki {
         }
     }
 
-    void onMessageReceived(MessageReceivedEvent message) {
+    public void onMessageReceived(MessageReceivedEvent message) {
         long authorId = message.getAuthor().getIdLong();
 
         if (!lastSpokeAt.containsKey(authorId) ||
