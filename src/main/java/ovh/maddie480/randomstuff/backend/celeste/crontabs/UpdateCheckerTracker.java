@@ -191,7 +191,7 @@ public class UpdateCheckerTracker extends EventListener {
     public void scannedModDependencies(String modId, int dependencyCount, int optionalDependencyCount) {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: **" + modId + "** has "
                 + pluralize(dependencyCount, "dependency", "dependencies") + " and "
-                + pluralize(optionalDependencyCount, "optional dependency", "optional dependencies") ".");
+                + pluralize(optionalDependencyCount, "optional dependency", "optional dependencies") + ".");
     }
 
     @Override
