@@ -188,11 +188,10 @@ public class UpdateCheckerTracker extends EventListener {
     }
 
     @Override
-    public void scannedModDependencies(String modId, int dependencyCount, int optionalDependencyCount, int aliasCount) {
+    public void scannedModDependencies(String modId, int dependencyCount, int optionalDependencyCount) {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":mag_right: **" + modId + "** has "
-                + pluralize(dependencyCount, "dependency", "dependencies") + ", "
-                + pluralize(optionalDependencyCount, "optional dependency", "optional dependencies")
-                + " and " + pluralize(aliasCount, "alias", "aliases") + ".");
+                + pluralize(dependencyCount, "dependency", "dependencies") + " and "
+                + pluralize(optionalDependencyCount, "optional dependency", "optional dependencies") ".");
     }
 
     @Override
@@ -554,7 +553,6 @@ public class UpdateCheckerTracker extends EventListener {
         for (Map<String, Object> entry : dependencyGraph.values()) {
             entry.put("Dependencies", keyValueToEverestYamlFormat((Map<String, Object>) entry.get("Dependencies")));
             entry.put("OptionalDependencies", keyValueToEverestYamlFormat((Map<String, Object>) entry.get("OptionalDependencies")));
-            entry.put("Aliases", keyValueToEverestYamlFormat((Map<String, Object>) entry.get("Aliases")));
         }
 
         // write
