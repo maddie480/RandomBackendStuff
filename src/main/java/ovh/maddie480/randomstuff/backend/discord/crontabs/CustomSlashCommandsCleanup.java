@@ -1,13 +1,14 @@
 package ovh.maddie480.randomstuff.backend.discord.crontabs;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -106,11 +107,11 @@ public class CustomSlashCommandsCleanup {
 
         if (connection.getResponseCode() == 200) {
             try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-                return new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+                return new JSONArray(new JSONTokener(is));
             }
         } else {
             try (InputStream is = getErrorStream(connection)) {
-                JSONObject error = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                JSONObject error = new JSONObject(new JSONTokener(is));
 
                 if (error.has("retry_after")) {
                     try {

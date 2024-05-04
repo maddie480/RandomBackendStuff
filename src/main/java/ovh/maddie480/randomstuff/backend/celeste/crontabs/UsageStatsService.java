@@ -1,26 +1,24 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import org.apache.commons.io.IOUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -72,7 +70,7 @@ public class UsageStatsService {
     public static void healthCheckCurl() throws IOException {
         // health check curl is supposed to be called every 15 minutes Monday-Friday 8am-7pm
         if (Arrays.asList(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(ZonedDateTime.now().getDayOfWeek())
-            || ZonedDateTime.now().getHour() <= 8 || ZonedDateTime.now().getHour() >= 19) {
+                || ZonedDateTime.now().getHour() <= 8 || ZonedDateTime.now().getHour() >= 19) {
 
             log.debug("Skipping curl health check");
             return;
@@ -203,7 +201,7 @@ public class UsageStatsService {
                 connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
 
                 try (InputStream is = ConnectionUtils.connectionToInputStream(connAuth)) {
-                    return new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    return new JSONArray(new JSONTokener(is));
                 }
             });
 

@@ -10,16 +10,14 @@ import com.google.api.client.util.store.DataStoreFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.streams.features.CustomEmotes;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -119,7 +117,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
             connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-                JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                JSONObject response = new JSONObject(new JSONTokener(is));
                 if (response.getJSONArray("items").isEmpty()) continue;
                 return response.getJSONArray("items").getJSONObject(0).getJSONObject("id").getString("videoId");
             }
@@ -133,7 +131,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONObject response = new JSONObject(new JSONTokener(is));
             return response.getJSONArray("items").getJSONObject(0).getJSONObject("liveStreamingDetails").getString("activeLiveChatId");
         }
     }
@@ -177,7 +175,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         Map<String, String> commands = new HashMap<>();
 
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://api.moo.bot/1/channel/public/commands/list?channel=431608356")) {
-            JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONObject response = new JSONObject(new JSONTokener(is));
 
             for (int i = 0; i < response.getJSONArray("list").length(); i++) {
                 JSONObject command = response.getJSONArray("list").getJSONObject(i);
@@ -237,7 +235,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONObject response = new JSONObject(new JSONTokener(is));
 
             for (int i = 0; i < response.getJSONArray("items").length() && pageToken != null; i++) {
                 JSONObject message = response.getJSONArray("items").getJSONObject(i);
@@ -312,8 +310,10 @@ public class YouTubeChatProvider implements IChatProvider<String> {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
 
-            try (OutputStream os = connection.getOutputStream()) {
-                IOUtils.write(request.toString(), os, StandardCharsets.UTF_8);
+            try (OutputStream os = connection.getOutputStream();
+                 OutputStreamWriter bw = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
+
+                request.write(bw);
             }
 
             if (connection.getResponseCode() != 200) {

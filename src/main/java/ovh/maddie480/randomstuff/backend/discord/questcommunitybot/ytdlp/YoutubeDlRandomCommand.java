@@ -1,14 +1,14 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp;
 
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import org.apache.commons.io.IOUtils;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,8 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class YoutubeDlRandomCommand implements BotCommand {
     private static final Logger log = LoggerFactory.getLogger(YoutubeDlRandomCommand.class);
@@ -92,8 +90,9 @@ public class YoutubeDlRandomCommand implements BotCommand {
 
             String actualUrl = url;
             JSONObject items = ConnectionUtils.runWithRetry(() -> {
-                InputStream listeVideos = ConnectionUtils.openStreamWithTimeout(actualUrl);
-                return new JSONObject(IOUtils.toString(listeVideos, UTF_8));
+                try (InputStream listeVideos = ConnectionUtils.openStreamWithTimeout(actualUrl)) {
+                    return new JSONObject(new JSONTokener(listeVideos));
+                }
             });
 
             items.getJSONArray("items").forEach(item ->

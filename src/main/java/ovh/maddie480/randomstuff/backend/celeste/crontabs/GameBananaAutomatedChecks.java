@@ -6,6 +6,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.Main;
@@ -400,7 +401,7 @@ public class GameBananaAutomatedChecks {
         try {
             return ConnectionUtils.runWithRetry(() -> {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_bIsObsolete")) {
-                    JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    JSONObject modInfo = new JSONObject(new JSONTokener(is));
                     return modInfo.getBoolean("_bIsObsolete");
                 }
             });
@@ -414,7 +415,7 @@ public class GameBananaAutomatedChecks {
         try {
             return ConnectionUtils.runWithRetry(() -> {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_aWip")) {
-                    JSONObject modInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    JSONObject modInfo = new JSONObject(new JSONTokener(is));
 
                     // check that the mod has a linked wip, and that it is the wip we were given
                     return !modInfo.isNull("_aWip") && wip.equals("Wip/" + modInfo.getJSONObject("_aWip").getInt("_idRow"));
@@ -524,7 +525,11 @@ public class GameBananaAutomatedChecks {
                     submit.addFormField("outputFormat", "json");
                     HttpURLConnection result = submit.finish();
 
-                    JSONObject resultBody = new JSONObject(IOUtils.toString(ConnectionUtils.connectionToInputStream(result), StandardCharsets.UTF_8));
+                    JSONObject resultBody;
+                    try (InputStream is = ConnectionUtils.connectionToInputStream(result)) {
+                        resultBody = new JSONObject(new JSONTokener(is));
+                    }
+
                     logger.debug("Checking result");
                     if (resultBody.has("parseError")) {
                         sendAlertToWebhook(":warning: The mod called **" + modName + "** has an everest.yaml file with invalid syntax:\n```\n"
@@ -657,7 +662,7 @@ public class GameBananaAutomatedChecks {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + name + "Category/ByGame?_aGameRowIds[]=6460&" +
                     "_csvProperties=_idRow,_idParentCategoryRow&_sOrderBy=_idRow,ASC&_nPage=1&_nPerpage=50")) {
 
-                return new JSONArray(IOUtils.toString(is, UTF_8));
+                return new JSONArray(new JSONTokener(is));
             }
         });
 
@@ -685,7 +690,7 @@ public class GameBananaAutomatedChecks {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + name + "/ByGame?_aGameRowIds[]=6460&" +
                         "_csvProperties=_aCategory&_sOrderBy=_idRow,ASC&_nPage=" + thisPage + "&_nPerpage=50")) {
 
-                    return new JSONArray(IOUtils.toString(is, UTF_8));
+                    return new JSONArray(new JSONTokener(is));
                 }
             });
 

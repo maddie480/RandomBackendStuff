@@ -1,21 +1,20 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.awt.*;
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -92,7 +91,7 @@ public class TemperatureChecker {
 
         JSONObject result;
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            result = new JSONObject(new JSONTokener(is));
         }
 
         JSONArray phenomenons = result.getJSONArray("phenomenons");
@@ -111,7 +110,7 @@ public class TemperatureChecker {
 
         JSONObject result;
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            result = new JSONObject(new JSONTokener(is));
         }
 
         JSONArray phenomenons = result.getJSONArray("phenomenons_max_colors");
@@ -181,7 +180,7 @@ public class TemperatureChecker {
 
         JSONObject result;
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            result = new JSONObject(new JSONTokener(is));
         }
 
         float temperature = result.getJSONObject("properties").getJSONObject("gridded").getFloat("T");
@@ -197,7 +196,7 @@ public class TemperatureChecker {
 
         JSONObject result;
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            result = new JSONObject(new JSONTokener(is));
         }
 
         OffsetDateTime daylightStart = OffsetDateTime.parse(result.getJSONObject("properties").getJSONObject("ephemeris").getString("sunrise_time"));

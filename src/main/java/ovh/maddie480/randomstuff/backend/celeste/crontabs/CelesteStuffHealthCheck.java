@@ -7,6 +7,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,7 @@ public class CelesteStuffHealthCheck {
         int latestDev = -1;
 
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
-            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+            JSONArray versionList = new JSONArray(new JSONTokener(is));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
@@ -122,7 +123,7 @@ public class CelesteStuffHealthCheck {
         String latestWindowsInit = "";
 
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
-            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+            JSONArray versionList = new JSONArray(new JSONTokener(is));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
@@ -165,7 +166,7 @@ public class CelesteStuffHealthCheck {
      */
     private static void checkEverestVersionExists(int versionNumber) throws IOException {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
-            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+            JSONArray versionList = new JSONArray(new JSONTokener(is));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
@@ -185,7 +186,7 @@ public class CelesteStuffHealthCheck {
      */
     private static void checkOlympusVersionExists(String branch) throws IOException {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
-            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+            JSONArray versionList = new JSONArray(new JSONTokener(is));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
@@ -362,7 +363,7 @@ public class CelesteStuffHealthCheck {
                 // and they should also match the list present at list.json
                 JSONArray richPresenceIconListJson;
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout(mirror + "/rich-presence-icons/list.json")) {
-                    richPresenceIconListJson = new JSONArray(IOUtils.toString(is, UTF_8));
+                    richPresenceIconListJson = new JSONArray(new JSONTokener(is));
                 }
                 List<String> richPresenceIconsList = new ArrayList<>();
                 for (Object o : richPresenceIconListJson) {
@@ -472,8 +473,8 @@ public class CelesteStuffHealthCheck {
 
         // Everest versions: check that latest dev is listed
         int latestDev;
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
-            latestDev = new JSONObject(IOUtils.toString(is, UTF_8)).getInt("dev");
+        try (BufferedReader br = Files.newBufferedReader(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
+            latestDev = new JSONObject(new JSONTokener(br)).getInt("dev");
         }
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest-versions?supportsNativeBuilds=true"), UTF_8)
                 .contains("\"version\":" + latestDev)) {
@@ -500,7 +501,7 @@ public class CelesteStuffHealthCheck {
         // Olympus redirect: check that we are redirected to latest stable
         String latestStableLink = null;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
-            JSONArray versionList = new JSONArray(IOUtils.toString(is, UTF_8));
+            JSONArray versionList = new JSONArray(new JSONTokener(is));
 
             for (Object version : versionList) {
                 JSONObject versionObj = (JSONObject) version;
@@ -720,7 +721,11 @@ public class CelesteStuffHealthCheck {
             HttpURLConnection result = submit.finish();
 
             // read the response from everest.yaml validator and check the Winter Collab is deemed valid.
-            JSONObject resultBody = new JSONObject(IOUtils.toString(ConnectionUtils.connectionToInputStream(result), StandardCharsets.UTF_8));
+            JSONObject resultBody;
+            try (InputStream is = ConnectionUtils.connectionToInputStream(result)) {
+                resultBody = new JSONObject(new JSONTokener(is));
+            }
+
             boolean found = false;
             for (Object dependency : resultBody.getJSONArray("modInfo").getJSONObject(0).getJSONArray("Dependencies")) {
                 JSONObject dep = (JSONObject) dependency;
@@ -1112,7 +1117,7 @@ public class CelesteStuffHealthCheck {
 
         String expected;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/celeste-news-network-subscribers.json"))) {
-            int count = new JSONArray(IOUtils.toString(is, UTF_8)).length();
+            int count = new JSONArray(new JSONTokener(is)).length();
             expected = "<b>" + count + " " + (count == 1 ? "webhook" : "webhooks") + "</b>";
         }
 
@@ -1153,8 +1158,8 @@ public class CelesteStuffHealthCheck {
 
         String key = "";
         for (String s : new File("/shared/celeste/collab-list").list()) {
-            try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/collab-list/" + s))) {
-                JSONObject o = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            try (BufferedReader br = Files.newBufferedReader(Paths.get("/shared/celeste/collab-list/" + s))) {
+                JSONObject o = new JSONObject(new JSONTokener(br));
                 if ("Anarchy Mapping Event".equals(o.getString("name"))) {
                     key = s.substring(0, s.length() - 5);
                 }
@@ -1245,7 +1250,7 @@ public class CelesteStuffHealthCheck {
         for (String category : Arrays.asList("decals", "stylegrounds", "bgtilesets", "fgtilesets", "hires", "misc")) {
             JSONArray list;
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/asset-drive/list/" + category)) {
-                list = new JSONArray(IOUtils.toString(is, UTF_8));
+                list = new JSONArray(new JSONTokener(is));
             }
 
             if (list.isEmpty()) {
@@ -1324,7 +1329,7 @@ public class CelesteStuffHealthCheck {
 
         JSONArray response;
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            response = new JSONArray(IOUtils.toString(is, UTF_8));
+            response = new JSONArray(new JSONTokener(is));
         }
 
         /*

@@ -1,15 +1,15 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -28,7 +28,7 @@ public class ArbitraryModAppCacher {
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(
                 "https://maddie480.ovh/gamebanana/arbitrary-mod-app-modlist?key=" + SecretConstants.RELOAD_SHARED_SECRET)) {
 
-            modList = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+            modList = new JSONArray(new JSONTokener(is));
         }
 
         logger.debug("Got list of mods to cache: {}", modList);

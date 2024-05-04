@@ -8,16 +8,14 @@ import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -41,15 +39,15 @@ public class AssetDriveService {
         JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID,
                 new HashSet<>(Arrays.asList("image/png", "font/ttf", "text/plain", "text/yaml", DOCX_MIME_TYPE, FOLDER_MIME_TYPE)), "");
 
-        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
-            IOUtils.write(allFiles.toString(), os, StandardCharsets.UTF_8);
+        try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
+            allFiles.write(bw);
         }
     }
 
     public static void classifyAssets() throws IOException {
         JSONArray allFiles;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
-            allFiles = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+            allFiles = new JSONArray(new JSONTokener(is));
         }
 
         Map<String, String> readmesPerFolder = new HashMap<>();
@@ -209,8 +207,8 @@ public class AssetDriveService {
             result.put(entry.getKey(), new JSONArray(value));
         }
 
-        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/asset-drive/categorized-assets.json"))) {
-            IOUtils.write(result.toString(), os, StandardCharsets.UTF_8);
+        try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("/shared/celeste/asset-drive/categorized-assets.json"))) {
+            result.write(bw);
         }
 
         log.debug("Calling frontend to refresh existing assets list...");
@@ -269,7 +267,7 @@ public class AssetDriveService {
 
         JSONArray allFiles;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/asset-drive/file-list.json"))) {
-            allFiles = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+            allFiles = new JSONArray(new JSONTokener(is));
         }
 
         for (Object o : allFiles) {
@@ -390,7 +388,7 @@ public class AssetDriveService {
 
         JSONObject result;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-            result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            result = new JSONObject(new JSONTokener(is));
         }
 
         for (Object o : result.getJSONArray("files")) {

@@ -1,9 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -12,12 +8,16 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -141,7 +141,7 @@ public class SteamCommand implements BotCommand {
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key="
                 + SecretConstants.STEAM_WEB_API_KEY + "&steamid=" + steamId + "&include_played_free_games=1&include_appinfo=1")) {
 
-            games = new JSONObject(IOUtils.toString(is, UTF_8));
+            games = new JSONObject(new JSONTokener(is));
         }
 
         if (!games.getJSONObject("response").has("games")) {
@@ -209,7 +209,10 @@ public class SteamCommand implements BotCommand {
             searchRequest.connect();
 
             if (searchRequest.getResponseCode() == 200) {
-                JSONObject response = new JSONObject(IOUtils.toString(ConnectionUtils.connectionToInputStream(searchRequest), UTF_8));
+                JSONObject response;
+                try (InputStream is = ConnectionUtils.connectionToInputStream(searchRequest)) {
+                    response = new JSONObject(new JSONTokener(is));
+                }
 
                 Document responseBody = Jsoup.parse(response.getString("html"));
                 results = responseBody.select("a.searchPersonaName").stream()

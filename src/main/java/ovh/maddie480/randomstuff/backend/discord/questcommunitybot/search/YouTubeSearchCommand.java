@@ -1,18 +1,18 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.search;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,7 +69,7 @@ public class YouTubeSearchCommand implements BotCommand {
         log.debug("Requête à YouTube : {}", url);
 
         try (InputStream listeVideos = ConnectionUtils.openStreamWithTimeout(url)) {
-            JSONObject items = new JSONObject(IOUtils.toString(listeVideos, StandardCharsets.UTF_8));
+            JSONObject items = new JSONObject(new JSONTokener(listeVideos));
             log.debug("Réponse reçue : {}", items);
 
             List<String> videoIds = new ArrayList<>();

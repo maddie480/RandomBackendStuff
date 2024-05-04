@@ -1,11 +1,11 @@
 package ovh.maddie480.randomstuff.backend.discord.crontabs;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -85,8 +85,10 @@ public class TopGGCommunicator {
 
             JSONObject body = new JSONObject();
             body.put("server_count", guildCount);
-            try (OutputStream os = connection.getOutputStream()) {
-                IOUtils.write(body.toString(), os, StandardCharsets.UTF_8);
+            try (OutputStream os = connection.getOutputStream();
+                 Writer bw = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
+
+                body.write(bw);
             }
 
             if (connection.getResponseCode() != 200) {
@@ -106,7 +108,7 @@ public class TopGGCommunicator {
             connection.setRequestProperty("Authorization", botToken);
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-                JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                JSONObject response = new JSONObject(new JSONTokener(is));
                 updateBotScore(messagePoster, response.getInt("points"), response.getInt("monthlyPoints"), botName, oldCount, newCount);
             }
 

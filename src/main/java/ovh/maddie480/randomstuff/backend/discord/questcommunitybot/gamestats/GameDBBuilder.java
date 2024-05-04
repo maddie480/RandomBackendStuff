@@ -1,11 +1,11 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats;
 
-import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
+import org.json.JSONTokener;
 
-import java.io.InputStream;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -17,8 +17,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class GameDBBuilder {
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -37,7 +35,7 @@ public class GameDBBuilder {
         JSONArray gameDB;
         try (InputStream is = openStreamWithTimeout("https://discord.com/api/v9/applications/detectable")) {
             System.out.println("Downloading game database...");
-            gameDB = new JSONArray(IOUtils.toString(is, UTF_8));
+            gameDB = new JSONArray(new JSONTokener(is));
         }
 
         List<Integer> indices = new LinkedList<>();
@@ -66,7 +64,7 @@ public class GameDBBuilder {
 
             JSONArray response;
             try (InputStream is = connectionToInputStream(connection)) {
-                response = new JSONArray(IOUtils.toString(is, UTF_8));
+                response = new JSONArray(new JSONTokener(is));
             }
 
             for (Object o : response) {
@@ -77,8 +75,8 @@ public class GameDBBuilder {
         }
 
         System.out.println("Writing result...");
-        try (OutputStream os = Files.newOutputStream(outputFile)) {
-            IOUtils.write(output.toString(), os, UTF_8);
+        try (BufferedWriter bw = Files.newBufferedWriter(outputFile)) {
+            output.write(bw);
         }
     }
 

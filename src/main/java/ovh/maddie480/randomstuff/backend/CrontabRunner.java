@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -338,7 +339,7 @@ public class CrontabRunner {
 
         JSONObject playlist;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/radio-lnj/playlist.json")) {
-            playlist = new JSONObject(IOUtils.toString(is, UTF_8));
+            playlist = new JSONObject(new JSONTokener(is));
         }
 
         if (playlist.getJSONArray("playlist").length() != elementCount) {

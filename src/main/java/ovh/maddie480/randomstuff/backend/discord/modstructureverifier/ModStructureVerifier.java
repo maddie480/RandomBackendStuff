@@ -27,6 +27,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -50,7 +51,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -486,7 +486,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                     HttpURLConnection result = submit.finish();
 
                     // read the response from everest.yaml validator
-                    JSONObject resultBody = new JSONObject(IOUtils.toString(ConnectionUtils.connectionToInputStream(result), StandardCharsets.UTF_8));
+                    JSONObject resultBody;
+                    try (InputStream isb = ConnectionUtils.connectionToInputStream(result)) {
+                        resultBody = new JSONObject(new JSONTokener(isb));
+                    }
+
                     if (!resultBody.has("modInfo")) {
                         problemList.add(pickFormat(isHtml,
                                 "Your everest.yaml seems to have problems, send it to <a href=\"https://maddie480.ovh/celeste/everest-yaml-validator\" target=\"_blank\">the everest.yaml validator</a> for more details",
@@ -752,7 +756,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         Set<String> availableStylegrounds = new HashSet<>();
 
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/graphics-dump-browser/list.json")) {
-            for (Object o : new JSONArray(IOUtils.toString(is, UTF_8))) {
+            for (Object o : new JSONArray(new JSONTokener(is))) {
                 String path = (String) o;
 
                 if (path.startsWith("Graphics/Atlases/Gameplay/decals")) {
@@ -878,7 +882,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(conn)) {
-                binAsJSON = new JSONObject(IOUtils.toString(is, UTF_8));
+                binAsJSON = new JSONObject(new JSONTokener(is));
             }
         } catch (IOException e) {
             logger.error("Something bad happened while reading the map bin!", e);

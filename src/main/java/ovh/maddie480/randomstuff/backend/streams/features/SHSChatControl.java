@@ -2,6 +2,7 @@ package ovh.maddie480.randomstuff.backend.streams.features;
 
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
@@ -14,7 +15,6 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -176,7 +176,7 @@ public class SHSChatControl implements Runnable {
             long seekTimeMillis;
             while (true) {
                 try (InputStream ris = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/radio-lnj/playlist.json")) {
-                    JSONObject response = new JSONObject(IOUtils.toString(ris, StandardCharsets.UTF_8));
+                    JSONObject response = new JSONObject(new JSONTokener(ris));
                     songPath = "https://maddie480.ovh" + response.getJSONArray("playlist").getJSONObject(0).getString("path");
                     seek = response.getInt("seek");
                     duration = response.getJSONArray("playlist").getJSONObject(0).getInt("duration");

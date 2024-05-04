@@ -2,10 +2,10 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOConsumer;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +90,7 @@ public class MastodonUpdateChecker {
 
         JSONArray answer = ConnectionUtils.runWithRetry(() -> {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout(feed + "?exclude_replies=true")) {
-                return new JSONArray(IOUtils.toString(is, UTF_8));
+                return new JSONArray(new JSONTokener(is));
             }
         });
 
@@ -202,7 +202,7 @@ public class MastodonUpdateChecker {
         // load webhook URLs from Cloud Storage
         List<String> webhookUrls;
         try (InputStream is = Files.newInputStream(saveFile)) {
-            webhookUrls = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
+            webhookUrls = new JSONArray(new JSONTokener(is)).toList()
                     .stream()
                     .map(Object::toString)
                     .collect(Collectors.toCollection(ArrayList::new));

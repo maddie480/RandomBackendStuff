@@ -1,17 +1,13 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
-import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,8 +32,8 @@ public class CollabAutoHider {
         for (String s : new File("/shared/celeste/collab-list").list()) {
             Path jsonPath = Paths.get("/shared/celeste/collab-list/" + s);
             JSONObject json;
-            try (InputStream is = Files.newInputStream(jsonPath)) {
-                json = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            try (BufferedReader br = Files.newBufferedReader(jsonPath)) {
+                json = new JSONObject(new JSONTokener(br));
             }
 
             Instant updatedAt = Files.getLastModifiedTime(jsonPath).toInstant();
@@ -54,8 +50,8 @@ public class CollabAutoHider {
                 log.warn("Collab has expired!");
                 json.put("status", "hidden");
 
-                try (OutputStream os = Files.newOutputStream(jsonPath)) {
-                    IOUtils.write(json.toString(), os, StandardCharsets.UTF_8);
+                try (BufferedWriter bw = Files.newBufferedWriter(jsonPath)) {
+                    json.write(bw);
                 }
 
                 sendAlertToWebhook(key, "automatically hidden, since it was " + status

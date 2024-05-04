@@ -13,6 +13,7 @@ import com.github.twitch4j.helix.domain.UserList;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -106,7 +107,7 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         int expiresIn;
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-            JSONObject response = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONObject response = new JSONObject(new JSONTokener(is));
             accessToken = response.getString("access_token");
             refreshToken = response.getString("refresh_token");
             expiresIn = response.getInt("expires_in");

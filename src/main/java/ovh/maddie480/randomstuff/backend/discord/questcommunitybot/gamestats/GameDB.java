@@ -2,9 +2,9 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,8 +12,6 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class GameDB {
     private static final Logger log = LoggerFactory.getLogger(GameDB.class);
@@ -26,7 +24,7 @@ public class GameDB {
         JSONArray gameDB;
         try (InputStream is = new FileInputStream("/app/static/games.json")) {
             log.debug("Reloading game DB");
-            gameDB = new JSONArray(IOUtils.toString(is, UTF_8));
+            gameDB = new JSONArray(new JSONTokener(is));
         } catch (Exception e) {
             log.error("Impossible de lire la base de données de jeux", e);
             return null;

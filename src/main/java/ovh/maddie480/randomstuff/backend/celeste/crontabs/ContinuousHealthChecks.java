@@ -1,10 +1,10 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOSupplier;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Supplier;
@@ -120,7 +119,7 @@ public class ContinuousHealthChecks {
         // first, check whether there was no UDP traffic in both directions for the last minute.
         for (String chart : Arrays.asList("CelesteNet_v2.udpDownlinkPpS", "CelesteNet_v2.udpUplinkPpS")) {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&group=sum&points=1")) {
-                JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                JSONObject resp = new JSONObject(new JSONTokener(is));
                 JSONArray data = resp.getJSONArray("data").getJSONArray(0);
                 if (data.getInt(1) != 0) {
                     return true;
@@ -130,7 +129,7 @@ public class ContinuousHealthChecks {
 
         // if this is the case and there were 3 or more online players in the last minute, we got a problem!
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=CelesteNet_v2.online&after=-60&group=max&points=1")) {
-            JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONObject resp = new JSONObject(new JSONTokener(is));
             JSONArray data = resp.getJSONArray("data").getJSONArray(0);
             return data.getInt(1) < 3;
         }
@@ -141,7 +140,7 @@ public class ContinuousHealthChecks {
         conn.setRequestProperty("NC-Token", SecretConstants.NEXTCLOUD_HEALTHCHECK_TOKEN);
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(conn)) {
-            JSONObject resp = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONObject resp = new JSONObject(new JSONTokener(is));
 
             // more than 3 GB free space
             return resp.getJSONObject("ocs").getJSONObject("data").getJSONObject("nextcloud")

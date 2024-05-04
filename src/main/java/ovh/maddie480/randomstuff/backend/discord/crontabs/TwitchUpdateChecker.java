@@ -1,12 +1,12 @@
 package ovh.maddie480.randomstuff.backend.discord.crontabs;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -48,12 +48,14 @@ public class TwitchUpdateChecker {
             con.setDoOutput(true);
             con.setRequestProperty("Content-Type", "application/json");
 
-            try (OutputStream os = con.getOutputStream()) {
-                IOUtils.write(body.toString(), os, StandardCharsets.UTF_8);
+            try (OutputStream os = con.getOutputStream();
+                 OutputStreamWriter bw = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
+
+                body.write(bw);
             }
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(con)) {
-                JSONObject result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                JSONObject result = new JSONObject(new JSONTokener(is));
                 accessToken = result.getString("access_token");
             }
         }
@@ -66,7 +68,7 @@ public class TwitchUpdateChecker {
                 con.setRequestProperty("Client-Id", SecretConstants.TWITCH_CLIENT_ID);
 
                 try (InputStream is = ConnectionUtils.connectionToInputStream(con)) {
-                    JSONObject result = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    JSONObject result = new JSONObject(new JSONTokener(is));
 
                     if (result.getJSONArray("data").isEmpty()) {
                         log.debug("{} est hors-ligne", channelId);

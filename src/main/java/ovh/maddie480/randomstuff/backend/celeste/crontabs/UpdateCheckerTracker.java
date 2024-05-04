@@ -2,10 +2,10 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.EventListener;
@@ -61,8 +61,8 @@ public class UpdateCheckerTracker extends EventListener {
     public UpdateCheckerTracker() {
         try {
             // read back the latest updates that happened before the tracker was started up.
-            try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/updater/status.json"))) {
-                JSONObject updateCheckerStatusData = new JSONObject(IOUtils.toString(is, UTF_8));
+            try (BufferedReader br = Files.newBufferedReader(Paths.get("/shared/celeste/updater/status.json"))) {
+                JSONObject updateCheckerStatusData = new JSONObject(new JSONTokener(br));
 
                 lastFullCheckTimestamp = updateCheckerStatusData.getLong("lastFullCheckTimestamp");
                 lastIncrementalCheckTimestamp = updateCheckerStatusData.getLong("lastIncrementalCheckTimestamp");
@@ -150,7 +150,7 @@ public class UpdateCheckerTracker extends EventListener {
         }
 
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/src-mod-update-notification-ids.json"))) {
-            List<String> srcModIds = new JSONArray(IOUtils.toString(is, UTF_8)).toList()
+            List<String> srcModIds = new JSONArray(new JSONTokener(is)).toList()
                     .stream()
                     .map(Object::toString)
                     .collect(Collectors.toCollection(ArrayList::new));
@@ -370,8 +370,10 @@ public class UpdateCheckerTracker extends EventListener {
 
                 try (Socket socket = new Socket()) {
                     socket.connect(new InetSocketAddress("127.0.1.1", 44480));
-                    try (OutputStream os = socket.getOutputStream()) {
-                        IOUtils.write(message.toString(), os, UTF_8);
+                    try (OutputStream os = socket.getOutputStream();
+                         Writer bw = new OutputStreamWriter(os, UTF_8)) {
+
+                        message.write(bw);
                     }
                 }
 
@@ -628,8 +630,8 @@ public class UpdateCheckerTracker extends EventListener {
             }
         }
 
-        try (OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/everest-yamls-from-github.json"))) {
-            IOUtils.write(new JSONObject(extraYamls).toString(), os, UTF_8);
+        try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("/shared/celeste/everest-yamls-from-github.json"))) {
+            new JSONObject(extraYamls).write(bw);
         }
         log.info("Updated everest.yamls from GitHub with: {}", extraYamls);
     }

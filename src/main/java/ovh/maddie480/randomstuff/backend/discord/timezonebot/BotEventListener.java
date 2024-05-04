@@ -1,7 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.timezonebot;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -29,14 +27,16 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
-import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import javax.annotation.Nonnull;
 import java.io.*;
@@ -655,7 +655,7 @@ public class BotEventListener extends ListenerAdapter {
 
             JSONArray osmResults;
             try (InputStream is = ConnectionUtils.connectionToInputStream(osm)) {
-                osmResults = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+                osmResults = new JSONArray(new JSONTokener(is));
             }
 
             if (osmResults.isEmpty()) {
@@ -674,7 +674,7 @@ public class BotEventListener extends ListenerAdapter {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://api.timezonedb.com/v2.1/get-time-zone?key="
                         + SecretConstants.TIMEZONEDB_API_KEY + "&format=json&by=position&lat=" + latitude + "&lng=" + longitude)) {
 
-                    timezoneDBResult = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    timezoneDBResult = new JSONObject(new JSONTokener(is));
                 }
 
                 if (timezoneDBResult.getString("status").equals("OK")) {

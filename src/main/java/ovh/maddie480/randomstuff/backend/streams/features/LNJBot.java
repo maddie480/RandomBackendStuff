@@ -3,6 +3,7 @@ package ovh.maddie480.randomstuff.backend.streams.features;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.streams.apis.ChatMessage;
@@ -11,6 +12,7 @@ import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -82,8 +84,8 @@ public class LNJBot {
         websocketLiveChat.onMessageReceived(message);
 
         LNJPoll poll;
-        try (InputStream is = Files.newInputStream(lnjPollPath)) {
-            poll = new LNJPoll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)));
+        try (BufferedReader br = Files.newBufferedReader(lnjPollPath)) {
+            poll = new LNJPoll(new JSONObject(new JSONTokener(br)));
         } catch (IOException e) {
             logger.error("Could not load LNJ Poll", e);
             return;
@@ -141,7 +143,7 @@ public class LNJBot {
     public static void healthCheck() throws IOException {
         String title;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/twitch-poll.json")) {
-            JSONObject o = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONObject o = new JSONObject(new JSONTokener(is));
             title = o.getString("name");
         }
 

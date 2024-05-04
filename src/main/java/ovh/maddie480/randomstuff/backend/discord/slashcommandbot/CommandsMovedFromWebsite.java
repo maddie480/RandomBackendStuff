@@ -1,12 +1,11 @@
 package ovh.maddie480.randomstuff.backend.discord.slashcommandbot;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -15,6 +14,8 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.*;
 import java.text.DecimalFormat;
@@ -375,7 +376,7 @@ public class CommandsMovedFromWebsite {
             // get coronavirus stats and aggregate them
             JSONArray countries;
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://disease.sh/v2/countries?sort=cases")) {
-                countries = new JSONArray(IOUtils.toString(is, UTF_8));
+                countries = new JSONArray(new JSONTokener(is));
             }
 
             ArrayList<CoronavirusStats> stats = new ArrayList<>(countries.length());

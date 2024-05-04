@@ -1,14 +1,14 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
-import org.apache.commons.io.IOUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,7 +63,7 @@ public class EverestVersionLister {
         List<Integer> currentAzureBuilds = new ArrayList<>();
         for (String branch : Arrays.asList("dev", "beta")) {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
-                currentAzureBuilds.addAll(new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8)).getJSONArray("value")
+                currentAzureBuilds.addAll(new JSONObject(new JSONTokener(is)).getJSONArray("value")
                         .toList().stream()
                         .map(version -> (int) ((Map<String, Object>) version).get("id"))
                         .collect(Collectors.toList()));
@@ -73,7 +73,7 @@ public class EverestVersionLister {
         // get the latest GitHub release names
         List<String> currentGitHubReleases;
         try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/releases")) {
-            currentGitHubReleases = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8))
+            currentGitHubReleases = new JSONArray(new JSONTokener(is))
                     .toList().stream()
                     .map(version -> (String) ((Map<String, Object>) version).get("name"))
                     .collect(Collectors.toList());
@@ -106,7 +106,7 @@ public class EverestVersionLister {
         {
             JSONArray gitHubReleases;
             try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/releases")) {
-                gitHubReleases = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+                gitHubReleases = new JSONArray(new JSONTokener(is));
             }
 
             for (Object b : gitHubReleases) {
@@ -157,7 +157,7 @@ public class EverestVersionLister {
         for (String branch : Arrays.asList("dev", "beta")) {
             JSONObject azureBuilds;
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
-                azureBuilds = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                azureBuilds = new JSONObject(new JSONTokener(is));
             }
 
             for (Object b : azureBuilds.getJSONArray("value")) {
@@ -182,7 +182,7 @@ public class EverestVersionLister {
 
                         JSONObject prInfo;
                         try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/pulls/" + prNumber)) {
-                            prInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                            prInfo = new JSONObject(new JSONTokener(is));
                         }
 
                         entry.put("author", prInfo.getJSONObject("user").getString("login"));
@@ -193,7 +193,7 @@ public class EverestVersionLister {
 
                         JSONObject commitInfo;
                         try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/commits/" + commitSha)) {
-                            commitInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+                            commitInfo = new JSONObject(new JSONTokener(is));
                         }
 
                         String commitMessage = commitInfo.getJSONObject("commit").getString("message");
@@ -257,7 +257,7 @@ public class EverestVersionLister {
         // so try using the tag instead
         JSONObject tagInfo;
         try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/git/refs/tags/" + release.getString("tag_name"))) {
-            tagInfo = new JSONObject(IOUtils.toString(is, StandardCharsets.UTF_8));
+            tagInfo = new JSONObject(new JSONTokener(is));
         }
 
         return tagInfo.getJSONObject("object").getString("sha");
@@ -332,7 +332,7 @@ public class EverestVersionLister {
      */
     private static <T> Optional<T> getPreviouslyCalculatedValue(String fieldToMatch, String valueToMatch, Function<JSONObject, T> getter) throws IOException {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
-            JSONArray versions = new JSONArray(IOUtils.toString(is, StandardCharsets.UTF_8));
+            JSONArray versions = new JSONArray(new JSONTokener(is));
 
             for (int i = 0; i < versions.length(); i++) {
                 JSONObject version = versions.getJSONObject(i);
