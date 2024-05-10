@@ -254,6 +254,7 @@ public class CrontabRunner {
             UsageStatsService.writeWeeklyStatisticsToFile();
             MastodonUpdateChecker.checkForUpdates();
             OlympusNewsUpdateChecker.checkForUpdates();
+            LoennVersionLister.update();
 
             logger.info("Starting GameBanana automated checks");
             GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick();
