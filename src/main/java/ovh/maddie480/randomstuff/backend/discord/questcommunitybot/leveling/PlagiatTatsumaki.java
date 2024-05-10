@@ -1408,24 +1408,20 @@ public class PlagiatTatsumaki {
         Path tempDir = Paths.get("/shared/temp/quest-backgrounds");
 
         Path uploadDir = tempDir.resolve("quest_backgrounds");
-        if (!Files.isDirectory(uploadDir)) {
-            Files.createDirectories(uploadDir);
-            try (Stream<Path> list = Files.list(Paths.get("/app/static/quest/background-repository"))) {
-                for (Path p : list.toList()) {
-                    logger.debug("Sending background " + p.toAbsolutePath() + " to Cloud Storage");
-                    Files.copy(p, uploadDir.resolve(p.getFileName().toString()));
-                }
+        Files.createDirectories(uploadDir);
+        try (Stream<Path> list = Files.list(Paths.get("/app/static/quest/background-repository"))) {
+            for (Path p : list.toList()) {
+                logger.debug("Sending background {} to Cloud Storage", p.toAbsolutePath());
+                Files.copy(p, uploadDir.resolve(p.getFileName().toString()), StandardCopyOption.REPLACE_EXISTING);
             }
         }
 
         uploadDir = tempDir.resolve("quest_game_backgrounds");
-        if (!Files.isDirectory(uploadDir)) {
-            Files.createDirectories(uploadDir);
-            try (Stream<Path> list = Files.list(Paths.get("/app/static/quest/extra-game-backgrounds"))) {
-                for (Path p : list.toList()) {
-                    logger.debug("Sending game background " + p.toAbsolutePath() + " to Cloud Storage");
-                    Files.copy(p, uploadDir.resolve(p.getFileName().toString()));
-                }
+        Files.createDirectories(uploadDir);
+        try (Stream<Path> list = Files.list(Paths.get("/app/static/quest/extra-game-backgrounds"))) {
+            for (Path p : list.toList()) {
+                logger.debug("Sending game background {} to Cloud Storage", p.toAbsolutePath());
+                Files.copy(p, uploadDir.resolve(p.getFileName().toString()), StandardCopyOption.REPLACE_EXISTING);
             }
         }
     }
