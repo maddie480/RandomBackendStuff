@@ -193,6 +193,7 @@ public class CrontabRunner {
             WorldClockHealthCheck.main(null);
             CelesteStuffHealthCheck.checkEverestExists(true);
             CelesteStuffHealthCheck.checkOlympusExists(true);
+            CelesteStuffHealthCheck.checkLoennVersionsListAPI();
             CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch();
             CelesteStuffHealthCheck.checkFontGeneratorBMFont();
             CelesteStuffHealthCheck.checkFontGeneratorBMFontCustom();

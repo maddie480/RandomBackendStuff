@@ -202,6 +202,28 @@ public class CelesteStuffHealthCheck {
         }
     }
 
+    public static void checkLoennVersionsListAPI() throws IOException {
+        JSONObject latestVersion;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/loenn-versions")) {
+            latestVersion = new JSONObject(new JSONTokener(is));
+        }
+
+        String prefix = "loenn-" + latestVersion.getString("tag_name");
+
+        suffixLoop:
+        for (String suffix : Arrays.asList("-windows.zip", "-linux.zip", "-macos.app.zip")) {
+            for (Object o : latestVersion.getJSONArray("assets")) {
+                String downloadUrl = ((JSONObject) o).getString("browser_download_url");
+                if (downloadUrl.endsWith(suffix)) {
+                    checkExists(downloadUrl, prefix + suffix);
+                    continue suffixLoop;
+                }
+            }
+
+            throw new IOException("Could not find release ending with " + prefix);
+        }
+    }
+
     /**
      * Checks that a link is downloadable, and... downloads it.
      */
@@ -219,7 +241,7 @@ public class CelesteStuffHealthCheck {
 
         long size = Files.size(target);
 
-        int minSize = 1_000_000;
+        int minSize = 500_000;
         if (link.contains("meta")) {
             minSize = 100;
         }
