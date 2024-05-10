@@ -158,6 +158,14 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        try {
+            if (WebhookReposter.onMessageReceived(event)) {
+                return;
+            }
+        } catch (IOException e) {
+            log.error("Could not execute webhook reposter, proceeding with regular message handling", e);
+        }
+
         if (event.isFromGuild() && event.getGuild().getIdLong() == SecretConstants.QUEST_COMMUNITY_SERVER_ID) {
             levelingManager.onMessageReceived(event);
         }
