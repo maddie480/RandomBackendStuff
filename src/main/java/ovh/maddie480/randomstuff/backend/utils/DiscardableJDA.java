@@ -18,10 +18,7 @@ import net.dv8tion.jda.api.managers.DirectAudioController;
 import net.dv8tion.jda.api.managers.Presence;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.RestAction;
-import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
-import net.dv8tion.jda.api.requests.restaction.CommandEditAction;
-import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
-import net.dv8tion.jda.api.requests.restaction.GuildAction;
+import net.dv8tion.jda.api.requests.restaction.*;
 import net.dv8tion.jda.api.requests.restaction.pagination.EntitlementPaginationAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
@@ -409,6 +406,24 @@ public class DiscardableJDA implements JDA, Closeable {
     @Override
     public EntitlementPaginationAction retrieveEntitlements() {
         return backingJDA.retrieveEntitlements();
+    }
+
+    @NotNull
+    @Override
+    public RestAction<Entitlement> retrieveEntitlementById(long l) {
+        return backingJDA.retrieveEntitlementById(l);
+    }
+
+    @NotNull
+    @Override
+    public TestEntitlementCreateAction createTestEntitlement(long l, long l1, @NotNull TestEntitlementCreateAction.OwnerType ownerType) {
+        return backingJDA.createTestEntitlement(l, l1, ownerType);
+    }
+
+    @NotNull
+    @Override
+    public RestAction<Void> deleteTestEntitlement(long l) {
+        return backingJDA.deleteTestEntitlement(l);
     }
 
     @NotNull
