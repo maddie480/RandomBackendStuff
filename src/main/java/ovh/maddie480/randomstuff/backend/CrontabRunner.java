@@ -172,6 +172,9 @@ public class CrontabRunner {
         // because those processes are long indeed.
 
         runProcessAndAlertOnException("Daily processes - Update Tasks", () -> {
+            // This test has a tendency to OOM, get it out of the way right away
+            CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch();
+
             AutoLeaver.main(null);
             CustomSlashCommandsCleanup.housekeep();
             ArbitraryModAppCacher.refreshArbitraryModAppCache();
@@ -194,7 +197,6 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkEverestExists(true);
             CelesteStuffHealthCheck.checkOlympusExists(true);
             CelesteStuffHealthCheck.checkLoennVersionsListAPI();
-            CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch();
             CelesteStuffHealthCheck.checkFontGeneratorBMFont();
             CelesteStuffHealthCheck.checkFontGeneratorBMFontCustom();
             CelesteStuffHealthCheck.checkModStructureVerifier();
