@@ -1,6 +1,6 @@
 package ovh.maddie480.randomstuff.backend.utils;
 
-import org.apache.poi.util.IOUtils;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 
 import java.io.ByteArrayOutputStream;
