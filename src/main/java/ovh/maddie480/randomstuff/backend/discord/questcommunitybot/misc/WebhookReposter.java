@@ -34,7 +34,7 @@ public class WebhookReposter {
         Identity identity = getIdentities().stream()
             .filter(id -> event.getMessage().getContentRaw().startsWith(id.prefix()))
             .findFirst().orElse(null);
-        if (identity == null) return;
+        if (identity == null) return false;
 
         // download all attachments to a temp directory
         Path tempDirectory = Files.createTempDirectory("webhookreposter_");
