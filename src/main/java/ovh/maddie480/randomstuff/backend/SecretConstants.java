@@ -114,7 +114,6 @@ public class SecretConstants {
     public static String GOOGLE_CUSTOM_SEARCH_API_KEY;
     public static String STEAM_WEB_API_KEY;
     public static String REPOST_WEBHOOK_URL;
-    public static String REPOST_WEBHOOK_NAME;
 
     // Slash Command Bot secrets
     public static String SLASH_COMMAND_BOT_TOKEN;
@@ -208,7 +207,6 @@ public class SecretConstants {
         GOOGLE_CUSTOM_SEARCH_API_KEY = secrets.getString("GOOGLE_CUSTOM_SEARCH_API_KEY");
         STEAM_WEB_API_KEY = secrets.getString("STEAM_WEB_API_KEY");
         REPOST_WEBHOOK_URL = secrets.getString("REPOST_WEBHOOK_URL");
-        REPOST_WEBHOOK_NAME = secrets.getString("REPOST_WEBHOOK_NAME");
 
         SLASH_COMMAND_BOT_TOKEN = secrets.getString("SLASH_COMMAND_BOT_TOKEN");
         SLASH_COMMAND_TO_TOKEN = getMapOfStrings(secrets.getJSONObject("SLASH_COMMAND_TO_TOKEN"));
