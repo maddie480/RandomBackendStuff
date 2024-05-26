@@ -7,7 +7,7 @@
         </encoder>
     </appender>
 
-    <logger name="ovh.maddie480" level="debug" additivity="false">
+    <logger name="ovh.maddie480" level="trace" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
 
