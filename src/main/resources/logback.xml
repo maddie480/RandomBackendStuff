@@ -11,14 +11,6 @@
         <appender-ref ref="CONSOLE"/>
     </logger>
 
-    <logger name="ovh.maddie480.everest.updatechecker" level="info" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <logger name="net.dv8tion" level="info" additivity="false">
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
     <root level="info">
         <appender-ref ref="CONSOLE"/>
     </root>
