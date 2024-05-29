@@ -1,22 +1,32 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.function.IOConsumer;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TwitterUpdateChecker {
@@ -59,19 +69,37 @@ public class TwitterUpdateChecker {
                 String profilePictureUrl = answer.select("channel image url").text();
                 profilePictureUrl = profilePictureUrl.replace("https://nitter.privacydev.net/pic/", "https://");
                 profilePictureUrl = URLDecoder.decode(profilePictureUrl, StandardCharsets.UTF_8);
-                Map<String, Object> embed = generateEmbedFor(tweet);
+                Map<String, Object> embed = generateEmbedFor(tweet, link);
 
                 // Try to determine if the urls in the status have embeds.
                 final List<String> linksInStatus = detectLinksInStatus(tweet);
+
+                // Discord doesn't support embedding videos in their embeds... come on!
+                String videoUrl = null;
+                File videoFile = null;
+                if (embed.containsKey("video")) {
+                    videoUrl = ((Map<String, String>) embed.get("video")).get("url");
+                    videoFile = new File("/tmp/status_video" + MastodonUpdateChecker.getFileExtension(videoUrl));
+
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(videoUrl)) {
+                        FileUtils.copyToFile(is, videoFile);
+                    } catch (IOException e) {
+                        // don't worry about it!
+                        log.warn("Could not download status video!", e);
+                        videoFile.delete();
+                    }
+                }
 
                 // Those 3 aren't effectively final, so make them final, then build the action to post the status
                 final String finalLink = link;
                 final String finalProfilePictureUrl = profilePictureUrl;
                 final String finalUsername = username;
-                IOConsumer<String> postAction = webhook -> postStatusToWebhook(webhook, finalLink, finalProfilePictureUrl, finalUsername, embed, linksInStatus);
+                final String finalVideoUrl = videoUrl;
+                IOConsumer<String> postAction = webhook -> MastodonUpdateChecker.postStatusToWebhook(webhook, 0, finalLink, finalProfilePictureUrl, finalUsername, embed, finalVideoUrl, linksInStatus);
 
                 // post it to #celeste_news_network
-                MastodonUpdateChecker.sendToCelesteNewsNetwork(postAction);
+                // MastodonUpdateChecker.sendToCelesteNewsNetwork(postAction);
+                postAction.accept(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL);
 
                 previousStatuses.add(url);
                 while (previousStatuses.size() > 100) {
@@ -84,6 +112,10 @@ public class TwitterUpdateChecker {
                         bw.write(bl + "\n");
                     }
                 }
+
+                if (videoFile != null) {
+                    Files.delete(videoFile.toPath());
+                }
             }
         }
 
@@ -91,30 +123,14 @@ public class TwitterUpdateChecker {
     }
 
 
-    private static List<String> detectLinksInStatus(Element status) {
-        return status
+    private static List<String> detectLinksInStatus(Element tweet) {
+        return Jsoup.parse(tweet.select("description").text())
                 .select("a")
                 .stream()
                 .map(element -> element.attr("href"))
                 .filter(href -> !href.startsWith("https://nitter.privacydev.net/"))
-                .filter(TwitterUpdateChecker::hasEmbed)
+                .filter(MastodonUpdateChecker::hasEmbed)
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * Posts the status, the video and the links in 1 to 3 messages to the given webhook.
-     */
-    private static void postStatusToWebhook(String webhook, String statusLink, String profilePictureUrl, String username,
-                                            Map<String, Object> embed, List<String> linksInStatus) throws IOException {
-
-        // post the status link and its embed
-        WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, "<" + statusLink + ">",
-                Collections.singletonList(embed));
-
-        if (!linksInStatus.isEmpty()) {
-            // post all embeddable links after that
-            WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Links: " + String.join(", ", linksInStatus));
-        }
     }
 
     /**
@@ -124,7 +140,7 @@ public class TwitterUpdateChecker {
      * @param tweet The status to turn into an embed
      * @return The embed data
      */
-    static Map<String, Object> generateEmbedFor(Element tweet) throws IOException {
+    static Map<String, Object> generateEmbedFor(Element tweet, String url) throws IOException {
         Map<String, Object> embed = new HashMap<>();
 
         { // author
@@ -157,15 +173,21 @@ public class TwitterUpdateChecker {
             String imageUrl = image.attr("src")
                     .replace("https://nitter.privacydev.net/pic/", "https://pbs.twimg.com/");
             imageUrl = URLDecoder.decode(imageUrl, StandardCharsets.UTF_8);
+            String videoUrl = null;
 
             if (imageUrl.contains("video_thumb")) {
                 videoCount++;
+                videoUrl = getVideoUrlWithYoutubeDL(url);
             } else {
                 photoCount++;
             }
 
             if (!embeddedMedia) {
-                embed.put("image", ImmutableMap.of("url", imageUrl));
+                if (videoUrl != null) {
+                    embed.put("video", ImmutableMap.of("url", videoUrl));
+                } else {
+                    embed.put("image", ImmutableMap.of("url", imageUrl));
+                }
             }
 
             embeddedMedia = true;
@@ -205,22 +227,47 @@ public class TwitterUpdateChecker {
         return embed;
     }
 
-    private static boolean hasEmbed(String url) {
+    private static String getVideoUrlWithYoutubeDL(String tweetUrl) {
         try {
-            log.debug("Sending request to {} to check if it has an embed...", url);
+            // ./youtube-dl (actually yt-dlp) is downloaded at build time from: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+            log.debug("Running ./youtube-dl --dump-single-json {} to get video URL for the tweet...", tweetUrl);
+            Process youtubeDl = OutputStreamLogger.redirectErrorOutput(log,
+                    new ProcessBuilder("/app/static/youtube-dl", "--dump-single-json", tweetUrl).start());
 
-            return Jsoup
-                    .connect(url)
-                    .userAgent("Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)")
-                    .followRedirects(true)
-                    .timeout(10000)
-                    .get()
-                    .select("meta")
-                    .stream()
-                    .anyMatch(meta -> meta.attr("property").startsWith("og:"));
-        } catch (IOException e) {
-            log.warn("Cannot access {} to check for embeds", url, e);
-            return false;
+            try (InputStream is = youtubeDl.getInputStream()) {
+                JSONObject output = new JSONObject(new JSONTokener(is));
+
+                String bestUrl = null;
+                long filesize = -1;
+                for (Object format : output.getJSONArray("formats")) {
+                    String url = ((JSONObject) format).getString("url");
+                    // skip m3u8 links that are not actually videos
+                    if (!url.contains(".mp4")) continue;
+                    try {
+                        // query the header of each video to get the file size
+                        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
+                        connection.setRequestMethod("HEAD");
+                        if (connection.getHeaderField("Content-Length") != null) {
+                            long contentLength = Long.parseLong(connection.getHeaderField("Content-Length"));
+                            log.debug("File size for video at {}: {}", url, contentLength);
+                            // the "best" video is the biggest one that still fits within the 25 MB size limit.
+                            if (contentLength > filesize && contentLength <= 25 * 1024 * 1024) {
+                                bestUrl = url;
+                                filesize = contentLength;
+                            }
+                        }
+                    } catch (IOException | NumberFormatException e) {
+                        // skip the format
+                        log.warn("Could not get video size for URL {}", url, e);
+                    }
+                }
+                log.debug("Best video format is {} with size {}", bestUrl, filesize);
+                return bestUrl;
+            }
+        } catch (IOException | JSONException e) {
+            // this is an error, but this should NOT prevent from posting the tweet.
+            log.error("youtube-dl gave an unexpected response!", e);
+            return null;
         }
     }
 }

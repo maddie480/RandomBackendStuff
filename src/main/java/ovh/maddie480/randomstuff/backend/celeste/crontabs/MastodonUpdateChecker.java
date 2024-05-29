@@ -255,11 +255,11 @@ public class MastodonUpdateChecker {
     /**
      * Posts the status, the video and the links in 1 to 3 messages to the given webhook.
      */
-    private static void postStatusToWebhook(String webhook, long date, String statusLink, String profilePictureUrl, String username,
-                                            Map<String, Object> embed, String videoUrl, List<String> linksInStatus) throws IOException {
+    static void postStatusToWebhook(String webhook, long date, String statusLink, String profilePictureUrl, String username,
+                                    Map<String, Object> embed, String videoUrl, List<String> linksInStatus) throws IOException {
 
         // post the status link and its embed
-        WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, "<" + statusLink + ">" + "\n_Posted on <t:" + date + ":F>_",
+        WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, "<" + statusLink + ">" + (date == 0 ? "" : "\n_Posted on <t:" + date + ":F>_"),
                 Collections.singletonList(embed));
 
         if (videoUrl != null) {
@@ -287,7 +287,7 @@ public class MastodonUpdateChecker {
         }
     }
 
-    private static String getFileExtension(String link) {
+    static String getFileExtension(String link) {
         if (link.contains("?")) {
             link = link.substring(0, link.lastIndexOf("?"));
         }
@@ -377,7 +377,7 @@ public class MastodonUpdateChecker {
         return embed;
     }
 
-    private static boolean hasEmbed(String url) {
+    static boolean hasEmbed(String url) {
         try {
             log.debug("Sending request to {} to check if it has an embed...", url);
 
