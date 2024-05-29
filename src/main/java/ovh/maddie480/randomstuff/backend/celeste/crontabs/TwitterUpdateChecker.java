@@ -8,7 +8,6 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
@@ -71,8 +70,8 @@ public class TwitterUpdateChecker {
                 final String finalUsername = username;
                 IOConsumer<String> postAction = webhook -> postStatusToWebhook(webhook, finalLink, finalProfilePictureUrl, finalUsername, embed, linksInStatus);
 
-                // post it to the personal notifications channel
-                postAction.accept(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL);
+                // post it to #celeste_news_network
+                MastodonUpdateChecker.sendToCelesteNewsNetwork(postAction);
 
                 previousStatuses.add(url);
                 while (previousStatuses.size() > 100) {
