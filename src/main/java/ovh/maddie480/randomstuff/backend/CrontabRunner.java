@@ -247,6 +247,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("Hourly processes", () -> {
             // load #celeste_news_network state from disk
             MastodonUpdateChecker.loadFile();
+            TwitterUpdateChecker.loadFile();
             OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
 
             logger.info("Starting update tasks");

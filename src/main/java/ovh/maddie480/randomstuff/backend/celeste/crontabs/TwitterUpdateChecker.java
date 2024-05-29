@@ -1,12 +1,11 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.function.IOConsumer;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -15,17 +14,11 @@ import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TwitterUpdateChecker {
     private static final Logger log = LoggerFactory.getLogger(TwitterUpdateChecker.class);
@@ -46,18 +39,18 @@ public class TwitterUpdateChecker {
         }
     }
 
-    private static void checkForUpdates() throws IOException {
+    public static void checkForUpdates() throws IOException {
         log.debug("Checking for updates on Twitter");
 
         Document answer = ConnectionUtils.jsoupGetWithRetry(RSS_URL);
-        Element tweetList = answer.select("channel item");
+        Elements tweetList = answer.select("channel item");
 
-        for (int i = tweetList.length() - 1; i >= 0; i--) {
+        for (int i = tweetList.size() - 1; i >= 0; i--) {
             Element tweet = tweetList.get(i);
             String url = tweet.select("link").text();
 
             if (!previousStatuses.contains(url)) {
-                log.info("New status with url " + url);
+                log.info("New status with url {}", url);
 
                 String username = answer.select("channel title").text();
                 username = username.substring(0, username.indexOf(" / "));
@@ -66,28 +59,29 @@ public class TwitterUpdateChecker {
                 String link = url.replace("https://nitter.privacydev.net/", "https://twitter.com/").replace("#m", "");
                 String profilePictureUrl = answer.select("channel image url").text();
                 profilePictureUrl = profilePictureUrl.replace("https://nitter.privacydev.net/pic/", "https://");
-                profilePictureUrl = new URLDecoder().decode(profilePictureUrl, StandardCharsets.UTF_8);
+                profilePictureUrl = URLDecoder.decode(profilePictureUrl, StandardCharsets.UTF_8);
                 Map<String, Object> embed = generateEmbedFor(tweet);
 
                 // Try to determine if the urls in the status have embeds.
-                final List<String> linksInStatus = detectLinksInStatus(status);
+                final List<String> linksInStatus = detectLinksInStatus(tweet);
 
-                // Those 2 aren't effectively final, so make them final, then build the action to post the status
+                // Those 3 aren't effectively final, so make them final, then build the action to post the status
                 final String finalLink = link;
+                final String finalProfilePictureUrl = profilePictureUrl;
                 final String finalUsername = username;
-                IOConsumer<String> postAction = webhook -> postStatusToWebhook(webhook, finalLink, profilePictureUrl, finalUsername, embed, linksInStatus);
+                IOConsumer<String> postAction = webhook -> postStatusToWebhook(webhook, finalLink, finalProfilePictureUrl, finalUsername, embed, linksInStatus);
 
                 // post it to the personal notifications channel
                 postAction.accept(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL);
 
-                previousStatuses.add(id);
-            }
-        }
+                previousStatuses.add(url);
 
-        // write the list of statuses that were already encountered
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter("previous_twitter_statuses.txt"))) {
-            for (String bl : previousStatuses) {
-                bw.write(bl + "\n");
+                // write the list of statuses that were already encountered
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter("previous_twitter_statuses.txt"))) {
+                    for (String bl : previousStatuses) {
+                        bw.write(bl + "\n");
+                    }
+                }
             }
         }
 
@@ -100,8 +94,8 @@ public class TwitterUpdateChecker {
                 .select("a")
                 .stream()
                 .map(element -> element.attr("href"))
-                .filter(element -> !href.startsWith("https://nitter.privacydev.net/"))
-                .filter(MastodonUpdateChecker::hasEmbed)
+                .filter(href -> !href.startsWith("https://nitter.privacydev.net/"))
+                .filter(TwitterUpdateChecker::hasEmbed)
                 .collect(Collectors.toList());
     }
 
@@ -121,36 +115,24 @@ public class TwitterUpdateChecker {
         }
     }
 
-    private static String getFileExtension(String link) {
-        if (link.contains("?")) {
-            link = link.substring(0, link.lastIndexOf("?"));
-        }
-
-        if (link.contains(".")) {
-            return link.substring(link.lastIndexOf("."));
-        } else {
-            return "";
-        }
-    }
-
     /**
      * This makes Discord-like looking embeds of statuses in the place of Discord,
      * because Discord apparently suddenly stopped taking care of that.
      *
-     * @param status The status to turn into an embed
+     * @param tweet The status to turn into an embed
      * @return The embed data
      */
-    static Map<String, Object> generateEmbedFor(Element tweet) {
+    static Map<String, Object> generateEmbedFor(Element tweet) throws IOException {
         Map<String, Object> embed = new HashMap<>();
 
         { // author
             Map<String, String> authorInfo = new HashMap<>();
-            String username = tweet.select("dc:creator").text();
+            String username = tweet.select("dc\\:creator").text();
 
             Document answer = ConnectionUtils.jsoupGetWithRetry(RSS_URL.replace("celeste_game", username.substring(1)));
             String profilePictureUrl = answer.select("channel image url").text();
             profilePictureUrl = profilePictureUrl.replace("https://nitter.privacydev.net/pic/", "https://");
-            profilePictureUrl = new URLDecoder().decode(profilePictureUrl, StandardCharsets.UTF_8);
+            profilePictureUrl = URLDecoder.decode(profilePictureUrl, StandardCharsets.UTF_8);
             String nickname = answer.select("channel title").text();
             nickname = nickname.substring(0, nickname.indexOf(" / "));
 
@@ -165,11 +147,14 @@ public class TwitterUpdateChecker {
         int photoCount = 0;
         boolean embeddedMedia = false;
 
+        // the description (tweet content) is HTML in CDATA so it's interpreted as text rather than as XML, wooo!
+        Document description = Jsoup.parse(tweet.select("description").text());
+
         // media
-        for (Element image : tweet.select("description img")) {
-            String imageUrl = image.attr("href")
-                .replace("https://nitter.privacydev.net/pic/", "https://pbs.twimg.com/");
-            imageUrl = new URLDecoder().decode(imageUrl, StandardCharsets.UTF_8);
+        for (Element image : description.select("img")) {
+            String imageUrl = image.attr("src")
+                    .replace("https://nitter.privacydev.net/pic/", "https://pbs.twimg.com/");
+            imageUrl = URLDecoder.decode(imageUrl, StandardCharsets.UTF_8);
 
             if (imageUrl.contains("video_thumb")) {
                 videoCount++;
@@ -184,9 +169,9 @@ public class TwitterUpdateChecker {
             embeddedMedia = true;
         }
 
-        String textContent = tweet.select("description").text()
-            .replace("nitter.privacydev.net/", "https://twitter.com/")
-            .trim();
+        String textContent = description.text()
+                .replace("nitter.privacydev.net/", "https://twitter.com/")
+                .trim();
 
         if (textContent.startsWith("RT by @celeste_game: ")) {
             textContent = textContent.substring(21).trim();
