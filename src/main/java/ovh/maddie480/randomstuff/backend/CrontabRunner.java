@@ -256,6 +256,7 @@ public class CrontabRunner {
             TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log"));
             UsageStatsService.writeWeeklyStatisticsToFile();
             MastodonUpdateChecker.checkForUpdates();
+            TwitterUpdateChecker.checkForUpdates();
             OlympusNewsUpdateChecker.checkForUpdates();
             LoennVersionLister.update();
 
