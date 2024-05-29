@@ -26,7 +26,7 @@ public class TwitterUpdateChecker {
     // thanks to PrivacyDev for this!
     private static final String RSS_URL = "https://nitter.privacydev.net/celeste_game/rss";
 
-    private static final Set<String> previousStatuses = new HashSet<>();
+    private static final List<String> previousStatuses = new ArrayList<>();
 
     public static void loadFile() {
         try (BufferedReader br = new BufferedReader(new FileReader("previous_twitter_statuses.txt"))) {
@@ -75,6 +75,9 @@ public class TwitterUpdateChecker {
                 postAction.accept(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL);
 
                 previousStatuses.add(url);
+                while (previousStatuses.size() > 100) {
+                    log.debug("Forgetting oldest status {}", previousStatuses.removeFirst());
+                }
 
                 // write the list of statuses that were already encountered
                 try (BufferedWriter bw = new BufferedWriter(new FileWriter("previous_twitter_statuses.txt"))) {
