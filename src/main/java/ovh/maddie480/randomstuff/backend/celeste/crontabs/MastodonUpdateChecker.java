@@ -162,7 +162,7 @@ public class MastodonUpdateChecker {
 
                     if (ACCOUNTS_TO_FORWARD_TO_CELESTE_NEWS_NETWORK.contains(feed)) {
                         // post it to #celeste_news_network
-                        sendToCelesteNewsNetwork(postAction);
+                        sendToCelesteNewsNetwork(postAction, "mastodon");
                     } else {
                         // post it to the personal notifications channel
                         postAction.accept(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL);
@@ -192,46 +192,67 @@ public class MastodonUpdateChecker {
         log.debug("Done.");
     }
 
+    private record Subscriber(String webhook, List<String> channels) {
+    }
+
     /**
      * Calls the given method for all webhooks subscribed to #celeste_news_network,
      * and unsubscribes webhooks automatically if an UnknownWebhookException happens.
      */
-    static void sendToCelesteNewsNetwork(IOConsumer<String> handler) throws IOException {
+    static void sendToCelesteNewsNetwork(IOConsumer<String> handler, String channel) throws IOException {
         Path saveFile = Paths.get("/shared/celeste/celeste-news-network-subscribers.json");
 
         // load webhook URLs from Cloud Storage
-        List<String> webhookUrls;
+        List<Subscriber> subscribers;
         try (InputStream is = Files.newInputStream(saveFile)) {
-            webhookUrls = new JSONArray(new JSONTokener(is)).toList()
+            subscribers = new JSONArray(new JSONTokener(is)).toList()
                     .stream()
-                    .map(Object::toString)
+                    .map(object -> {
+                        Map<String, Object> subscriberRaw = (Map<String, Object>) object;
+                        return new Subscriber((String) subscriberRaw.get("webhook"), (List<String>) subscriberRaw.get("channels"));
+                    })
                     .collect(Collectors.toCollection(ArrayList::new));
         }
 
         // invoke webhooks
-        List<String> goneWebhooks = new ArrayList<>();
-        for (String webhook : webhookUrls) {
+        List<Subscriber> goneSubscribers = new ArrayList<>();
+        for (Subscriber subscriber : subscribers) {
+            if (!subscriber.channels.contains(channel)) {
+                log.debug("{} did not subscribe to {}, skipping", subscriber.webhook, channel);
+                continue;
+            }
+
             try {
-                handler.accept(webhook);
+                handler.accept(subscriber.webhook);
             } catch (WebhookExecutor.UnknownWebhookException e) {
                 // if this happens, this means the webhook was deleted.
-                goneWebhooks.add(webhook);
+                goneSubscribers.add(subscriber);
             }
         }
 
-        if (!goneWebhooks.isEmpty()) {
+        if (!goneSubscribers.isEmpty()) {
             // some webhooks were deleted! notify the owner about it.
-            for (String goneWebhook : goneWebhooks) {
+            for (Subscriber goneSubscriber : goneSubscribers) {
                 WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
                         "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/mastodon.png",
                         "Mastodon Bot",
-                        ":warning: Auto-unsubscribed webhook because it does not exist: " + goneWebhook);
+                        ":warning: Auto-unsubscribed webhook because it does not exist: " + goneSubscriber.webhook);
 
-                webhookUrls.remove(goneWebhook);
+                subscribers.remove(goneSubscriber);
             }
 
             // save the deletion to Cloud Storage.
-            Files.writeString(saveFile, new JSONArray(webhookUrls).toString(), UTF_8);
+            JSONArray data = new JSONArray(subscribers.stream()
+                    .map(subscriber -> ImmutableMap.of(
+                            "webhook", subscriber.webhook,
+                            "channels", subscriber.channels
+                    ))
+                    .toList());
+
+            try (BufferedWriter bw = Files.newBufferedWriter(saveFile)) {
+                data.write(bw);
+            }
+
         }
     }
 

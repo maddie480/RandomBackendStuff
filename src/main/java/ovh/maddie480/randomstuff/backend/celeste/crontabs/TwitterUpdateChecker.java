@@ -97,7 +97,7 @@ public class TwitterUpdateChecker {
                 IOConsumer<String> postAction = webhook -> MastodonUpdateChecker.postStatusToWebhook(webhook, 0, finalLink, finalProfilePictureUrl, finalUsername, embed, finalVideoUrl, linksInStatus);
 
                 // post it to #celeste_news_network
-                MastodonUpdateChecker.sendToCelesteNewsNetwork(postAction);
+                MastodonUpdateChecker.sendToCelesteNewsNetwork(postAction, "twitter");
 
                 previousStatuses.add(url);
                 while (previousStatuses.size() > 100) {

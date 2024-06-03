@@ -1,12 +1,12 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -130,9 +130,10 @@ public class OlympusNewsUpdateChecker {
         embed.put("color", 3878218);
 
         MastodonUpdateChecker.sendToCelesteNewsNetwork(webhookUrl -> WebhookExecutor.executeWebhook(webhookUrl,
-                "https://avatars.githubusercontent.com/u/36135162",
-                "Olympus News",
-                "",
-                Collections.singletonList(embed)));
+                        "https://avatars.githubusercontent.com/u/36135162",
+                        "Olympus News",
+                        "",
+                        Collections.singletonList(embed)),
+                "olympus");
     }
 }
