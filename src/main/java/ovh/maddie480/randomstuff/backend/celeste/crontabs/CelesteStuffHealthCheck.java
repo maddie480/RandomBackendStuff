@@ -539,6 +539,13 @@ public class CelesteStuffHealthCheck {
         if (redirectConnection.getResponseCode() != 302 || !redirectConnection.getHeaderField("Location").equals(latestStableLink)) {
             throw new IOException("Olympus redirect test failed");
         }
+
+        // Helper list
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/helper-list")) {
+            if (!IOUtils.toString(is, UTF_8).contains("\"MaxHelpingHand\"")) {
+                throw new IOException("Helper list API health check failed");
+            }
+        }
     }
 
     /**
