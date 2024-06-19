@@ -424,7 +424,6 @@ public class CelesteStuffHealthCheck {
                 Model - YES
                 News - NO
                 Poll - NO
-                PositionAvailable - NO
                 Project - NO
                 Question - NO
                 Request - NO
