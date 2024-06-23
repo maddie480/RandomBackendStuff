@@ -2,7 +2,7 @@ services:
   daily-crontabs:
     image: max480/random-stuff-backend
     network_mode: host
-    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/CrontabRunner --daily/' /app/run_bot.sh && /app/run_bot.sh"]
+    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/CrontabRunner --daily/' /app/run_bot.sh && sed -i 's/-Xmx128m/-Xmx144m/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants
     volumes:
       - /home/debian/backend:/backend
