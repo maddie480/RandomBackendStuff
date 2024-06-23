@@ -461,7 +461,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // sorted list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-list?sort=downloads&category=6803&page=1"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-list?sort=downloads&category=6800&page=1"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Sorted list API test failed");
@@ -471,11 +471,21 @@ public class CelesteStuffHealthCheck {
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-categories"), UTF_8)
                 .contains("""
                         - itemtype: Mod
-                          categoryid: 6803
-                          formatted: Maps – Collab/Contest
+                          categoryid: 6800
+                          formatted: Maps
                           count:\s""")) {
 
             throw new IOException("Categories list API failed");
+        }
+
+        // subcategories list
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-subcategories?itemtype=Mod&categoryId=6800"), UTF_8)
+                .contains("""
+                        - id: 6803
+                          name: Collab/Contest
+                          count:\s""")) {
+
+            throw new IOException("Subcategories list API failed");
         }
 
         // featured mods list
