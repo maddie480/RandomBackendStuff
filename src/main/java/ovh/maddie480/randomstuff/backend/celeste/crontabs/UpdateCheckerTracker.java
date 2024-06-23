@@ -515,8 +515,9 @@ public class UpdateCheckerTracker extends EventListener {
             Map<Integer, String> modCategories = new HashMap<>();
 
             for (HashMap<String, Object> mod : mods) {
-                if ("Mod".equals(mod.get("GameBananaType"))) {
-                    modCategories.put((int) mod.get("CategoryId"), mod.get("CategoryName").toString());
+                modCategories.put((int) mod.get("CategoryId"), mod.get("CategoryName").toString());
+                if (mod.containsKey("SubcategoryId")) {
+                    modCategories.put((int) mod.get("SubcategoryId"), mod.get("SubcategoryName").toString());
                 }
 
                 HashMap<String, Object> modWithTokenizedName = new HashMap<>(mod);
@@ -524,6 +525,7 @@ public class UpdateCheckerTracker extends EventListener {
 
                 modDatabaseForSorting.add(new ModInfo(mod.get("GameBananaType").toString(), (int) mod.get("GameBananaId"),
                         (int) mod.get("Likes"), (int) mod.get("Views"), (int) mod.get("Downloads"), (int) mod.get("CategoryId"),
+                        mod.containsKey("SubcategoryId") ? (int) mod.get("SubcategoryId") : null,
                         (int) mod.get("CreatedDate"), modWithTokenizedName));
             }
 
