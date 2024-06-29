@@ -38,6 +38,7 @@ public class EverestVersionLister {
     private static final Pattern PULL_REQUEST_MERGE = Pattern.compile("^Merge pull request #([0-9]+) from .*$");
     private static final Pattern VERSION_NUMBER_IN_RELEASE_NAME = Pattern.compile("^[^0-9]*([0-9]+)$");
     private static final Pattern COMMIT_SHA = Pattern.compile("^[0-9a-f]{40}$");
+    private static final Pattern LINK_HEADER_NEXT_PAGE = Pattern.compile("^ ?rel=\"next\", <(.*)>$");
 
     private static List<Integer> latestAzureBuilds = new ArrayList<>();
     private static List<String> latestGitHubReleases = new ArrayList<>();
@@ -71,13 +72,10 @@ public class EverestVersionLister {
         }
 
         // get the latest GitHub release names
-        List<String> currentGitHubReleases;
-        try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/releases")) {
-            currentGitHubReleases = new JSONArray(new JSONTokener(is))
-                    .toList().stream()
-                    .map(version -> (String) ((Map<String, Object>) version).get("name"))
-                    .collect(Collectors.toList());
-        }
+        List<String> currentGitHubReleases = getAllGitHubReleases()
+                .toList().stream()
+                .map(version -> (String) ((Map<String, Object>) version).get("name"))
+                .collect(Collectors.toList());
 
         if (!currentGitHubReleases.equals(latestGitHubReleases) || !currentAzureBuilds.equals(latestAzureBuilds)) {
             // one of them changed => trigger an update
@@ -104,10 +102,7 @@ public class EverestVersionLister {
         // === GitHub Releases: for stable builds
 
         {
-            JSONArray gitHubReleases;
-            try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/releases")) {
-                gitHubReleases = new JSONArray(new JSONTokener(is));
-            }
+            JSONArray gitHubReleases = getAllGitHubReleases();
 
             for (Object b : gitHubReleases) {
                 Map<String, Object> entry = new HashMap<>();
@@ -267,6 +262,38 @@ public class EverestVersionLister {
         HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout(url);
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
         return ConnectionUtils.connectionToInputStream(connAuth);
+    }
+
+    private static JSONArray getAllGitHubReleases() throws IOException {
+        String link = "https://api.github.com/repos/EverestAPI/Everest/releases";
+        JSONArray allReleases = new JSONArray();
+
+        while (true) {
+            HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout(link);
+            connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
+
+            try (InputStream is = ConnectionUtils.connectionToInputStream(connAuth)) {
+                JSONArray page = new JSONArray(new JSONTokener(is));
+                allReleases.putAll(page);
+            }
+
+            String linkHeader = connAuth.getHeaderField("link");
+            if (linkHeader != null) {
+                String nextPage = Arrays.stream(linkHeader.split(";"))
+                        .map(field -> {
+                            Matcher matcher = LINK_HEADER_NEXT_PAGE.matcher(field);
+                            return matcher.matches() ? matcher.group(1) : null;
+                        })
+                        .filter(Objects::nonNull)
+                        .findFirst().orElse(null);
+
+                if (nextPage == null) {
+                    return allReleases;
+                } else {
+                    link = nextPage;
+                }
+            }
+        }
     }
 
     /**
