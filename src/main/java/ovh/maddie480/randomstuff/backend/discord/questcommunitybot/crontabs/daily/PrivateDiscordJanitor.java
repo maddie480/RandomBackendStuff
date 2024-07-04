@@ -51,13 +51,9 @@ public class PrivateDiscordJanitor {
         List<Message> pins = channel.retrievePinnedMessages().complete();
 
         long[] messagesToDelete = channel.getIterableHistory().stream()
-                .filter(message ->
-                        // spammy messages from the Update Checker
-                        ":tada: Update Checker data was refreshed.".equals(message.getContentRaw()) ||
-
-                        // message older than a month and not pinned
-                        (message.getTimeCreated().isBefore(OffsetDateTime.now().minusMonths(1))
-                            && pins.stream().noneMatch(pin -> pin.getIdLong() == message.getIdLong())))
+                .filter(message -> // messages older than a month and not pinned
+                        message.getTimeCreated().isBefore(OffsetDateTime.now().minusMonths(1))
+                            && pins.stream().noneMatch(pin -> pin.getIdLong() == message.getIdLong()))
                 .mapToLong(Message::getIdLong)
                 .toArray();
 
