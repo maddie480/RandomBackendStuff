@@ -750,6 +750,7 @@ public class UpdateCheckerTracker extends EventListener {
 
         HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(SecretConstants.OTOBOT_MIRROR_UPDATE_WEBHOOK);
         connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
 
         try (OutputStream os = connection.getOutputStream();
              BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os, UTF_8))) {
