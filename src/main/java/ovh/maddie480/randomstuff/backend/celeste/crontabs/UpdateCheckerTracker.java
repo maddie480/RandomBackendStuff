@@ -210,10 +210,8 @@ public class UpdateCheckerTracker extends EventListener {
 
     @Override
     public void zipFileIsNotUTF8(String downloadUrl, String detectedEncoding) {
-        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            executeWebhookAsBananaWatch(webhook, ":warning: The zip at <" + downloadUrl + "> could not be read as a ZIP archive with UTF-8 file names. "
-                    + " It was read with the **" + detectedEncoding + "** encoding instead.");
-        }
+        executeWebhookAsBananaWatch(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: The zip at <" + downloadUrl + "> could not be read as a ZIP archive with UTF-8 file names. "
+                + " It was read with the **" + detectedEncoding + "** encoding instead.");
     }
 
     @Override
