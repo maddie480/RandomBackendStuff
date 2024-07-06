@@ -194,7 +194,7 @@ public class CelesteStuffHealthCheck {
                 if (branch.equals(versionObj.getString("branch"))) {
                     String namePrefix = "olympus-" + versionObj.getString("version") + "-";
                     checkExists(versionObj.getString("windowsDownload"), namePrefix + "windows.zip");
-                    checkExists(versionObj.getString("macDownload"), namePrefix + "mac.zip");
+                    checkExists(versionObj.getString("macosDownload"), namePrefix + "macos.zip");
                     checkExists(versionObj.getString("linuxDownload"), namePrefix + "linux.zip");
                     break;
                 }

@@ -92,8 +92,7 @@ public class OlympusVersionLister {
                 entry.put("version", build.getString("buildNumber"));
 
                 for (String os : Arrays.asList("windows", "macos", "linux")) {
-                    String key = "macos".equals(os) ? "macDownload" : os + "Download";
-                    entry.put(key, "https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=" + os + ".main&api-version=5.0&%24format=zip");
+                    entry.put(os + "Download", "https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=" + os + ".main&api-version=5.0&%24format=zip");
                 }
 
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/EverestAPI/Olympus/" + build.getString("sourceVersion") + "/changelog.txt")) {
