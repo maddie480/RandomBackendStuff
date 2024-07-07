@@ -23,4 +23,4 @@
  15         17   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs
  45          *   *   *   * /home/debian/docker-run-hourly-crontabs.sh
   0 5,11,17,23   *   *   * /home/debian/docker-run-with-logging.sh update-checker
- 30         11   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
+#30         11   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
