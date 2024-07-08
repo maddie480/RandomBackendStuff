@@ -66,7 +66,7 @@ public class YoutubeDlCommand implements BotCommand {
 
         if (parameters.length == 1) {
             // par défaut, on demande du 720p
-            format = "best[height <= 720]";
+            format = "bestvideo*[height <= 720]+bestaudio/best[height <= 720]";
             url = parameters[0];
         } else {
             format = parameters[0];
