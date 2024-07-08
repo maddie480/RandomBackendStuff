@@ -28,7 +28,7 @@ import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
-import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
+import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
@@ -216,10 +216,10 @@ public class CrontabRunner {
             CelesteStuffHealthCheck.checkWipeConverter();
             checkArbitraryModApp();
             checkRadioLNJ();
-            // LNJBot.healthCheck();
+            LNJBot.healthCheck();
             checkLNJEmotes();
             checkChatProviderCanConnect(new TwitchChatProvider());
-            checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
+            // checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
         });
 
         unstoppableSleep(5000);
