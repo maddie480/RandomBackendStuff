@@ -959,31 +959,83 @@ public class CelesteStuffHealthCheck {
     public static void checkMapTreeViewer() throws IOException {
         log.debug("Checking bin-to-json API...");
 
+        String url;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
+            Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
+            url = (String) mapped.get("Monika's D-Sides").get(Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL");
+        }
 
-        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip"))) {
+        Path mapToJson = Paths.get("/tmp/map.json");
+        Path mapToBin = Paths.get("/tmp/map.bin");
+        Path mapBackToJson = Paths.get("/tmp/map2.json");
+
+        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(url))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                if ("Maps/Meowsmith/1/TornadoValleyConcept.bin".equals(entry.getName())) {
+                if ("Maps/nameguysdsidespack/0/10-Farewell.bin".equals(entry.getName())) {
                     log.debug("Found map bin, sending...");
-
-                    HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/bin-to-json");
-                    connection.setRequestMethod("POST");
-                    connection.setDoOutput(true);
-
-                    try (OutputStream os = connection.getOutputStream()) {
-                        log.debug("Transferred {} bytes", IOUtils.copy(zis, os));
-                    }
-
-                    try (InputStream response = ConnectionUtils.connectionToInputStream(connection)) {
-                        if (!IOUtils.toString(response, UTF_8).contains("\"texture\":\"9-core/fossil_b.png\"")) {
-                            throw new IOException("bin-to-json response didn't have the expected content!");
-                        }
-                        return;
-                    }
+                    binToJsonToBin("bin-to-json", zis, mapToJson);
+                    break;
                 }
             }
 
-            throw new IOException("The map bin to use as a test was not found!");
+            if (entry == null) {
+                throw new IOException("The map bin to use as a test was not found!");
+            }
+        }
+
+        try (InputStream is = Files.newInputStream(mapToJson)) {
+            binToJsonToBin("json-to-bin", is, mapToBin);
+        }
+        try (InputStream is = Files.newInputStream(mapToBin)) {
+            binToJsonToBin("bin-to-json", is, mapBackToJson);
+        }
+
+        String a, b;
+        try (InputStream is = Files.newInputStream(mapToJson)) {
+            a = DigestUtils.sha512Hex(is);
+        }
+        try (InputStream is = Files.newInputStream(mapBackToJson)) {
+            b = DigestUtils.sha512Hex(is);
+        }
+
+        if (!a.equals(b)) {
+            throw new IOException("Back-and-forth bin-to-json conversions modified the map!");
+        }
+
+        Process p = OutputStreamLogger.redirectAllOutput(log,
+                new ProcessBuilder("grep", "-q", "\"texture\":\"bgs/nameguysdsides_stylegrounds/celeste_2_oldsite_bgsky_noheart\"",
+                        mapToJson.toAbsolutePath().toString()).start());
+
+        try {
+            p.waitFor();
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
+
+        if (p.exitValue() != 0) {
+            throw new IOException("JSON didn't contain the expected string!");
+        }
+
+        Files.delete(mapToJson);
+        Files.delete(mapToBin);
+        Files.delete(mapBackToJson);
+    }
+
+    private static void binToJsonToBin(String url, InputStream input, Path output) throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/" + url);
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        connection.setReadTimeout(300000);
+
+        try (OutputStream os = connection.getOutputStream()) {
+            log.debug("Transferred {} bytes", IOUtils.copy(input, os));
+        }
+
+        try (InputStream is = ConnectionUtils.connectionToInputStream(connection);
+             OutputStream os = Files.newOutputStream(output)) {
+
+            IOUtils.copy(is, os);
         }
     }
 
