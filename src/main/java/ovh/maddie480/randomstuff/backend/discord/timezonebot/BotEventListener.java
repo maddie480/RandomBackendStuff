@@ -5,7 +5,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
-import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -133,18 +132,7 @@ public class BotEventListener extends ListenerAdapter {
     }
 
     @Override
-    public void onGuildJoin(@NotNull GuildJoinEvent event) {
-        event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                .sendMessage("I just joined a new server! I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
-
-        logger.info("Just joined guild {}!", event.getGuild());
-    }
-
-    @Override
     public void onGuildLeave(@NotNull GuildLeaveEvent event) {
-        event.getJDA().getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                .sendMessage("I was just kicked from a server. I am now in **" + event.getJDA().getGuilds().size() + "** servers.").queue();
-
         // if it was a server with time, running the cleanup process will make us delete its ID.
         logger.info("Cleaning servers with time list after leaving guild {}", event.getGuild());
         TimezoneBot.removeNonExistingServersFromServersWithTime();

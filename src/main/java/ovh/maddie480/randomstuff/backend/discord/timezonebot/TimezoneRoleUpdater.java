@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.timezonebot;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
@@ -81,13 +80,6 @@ public class TimezoneRoleUpdater implements Runnable {
                         TimezoneBot.jda.getGuilds().size() + " servers"));
             } catch (Exception e) {
                 logger.error("Refresh roles failed", e);
-
-                try {
-                    TimezoneBot.jda.getGuildById(SecretConstants.REPORT_SERVER_ID).getTextChannelById(SecretConstants.REPORT_SERVER_CHANNEL)
-                            .sendMessage("An error occurred while refreshing roles: " + e).queue();
-                } catch (Exception e2) {
-                    logger.error("Alerting failed", e2);
-                }
             }
 
             lastRunDate = System.currentTimeMillis();
