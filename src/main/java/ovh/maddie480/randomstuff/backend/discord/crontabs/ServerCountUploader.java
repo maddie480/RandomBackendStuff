@@ -1,11 +1,11 @@
 package ovh.maddie480.randomstuff.backend.discord.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -30,9 +30,9 @@ public class ServerCountUploader {
     private static final Logger logger = LoggerFactory.getLogger(ServerCountUploader.class);
 
     public static void run() throws IOException {
-        int gamesBotServerCount = getServerUsageOfSlashCommandBot("Games Bot");
-        int timezoneBotServerCount = getServerUsageOfSlashCommandBot("Timezone Bot");
-        int bananaBotServerCount = getServerUsageOfSlashCommandBot("BananaBot");
+        int gamesBotServerCount = getServerUsageOfSlashCommandBot("Guild", "Games Bot");
+        int timezoneBotServerCount = getServerUsageOfSlashCommandBot("Guild", "Timezone Bot");
+        int bananaBotServerCount = getServerUsageOfSlashCommandBot("Guild", "BananaBot");
 
         // to know how many servers use the Custom Slash Commands bot, just list out how many guild ids have created custom commands!
         int customSlashCommandsServerCount = new File("/shared/discord-bots/custom-slash-commands").list().length;
@@ -41,6 +41,7 @@ public class ServerCountUploader {
         try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
             YamlUtil.dump(ImmutableMap.of(
                     "TimezoneBotLite", timezoneBotServerCount,
+                    "TimezoneBotUser", getServerUsageOfSlashCommandBot("User", "Timezone Bot"),
                     "TimezoneBotFull", TimezoneBot.getServerCount(),
                     "ModStructureVerifier", ModStructureVerifier.getServerCount(),
                     "GamesBot", gamesBotServerCount,
@@ -60,8 +61,8 @@ public class ServerCountUploader {
      * Roughly estimates the server count of an interaction-based bot, by counting the amount of servers it was
      * used on in the last 30 days.
      */
-    private static int getServerUsageOfSlashCommandBot(String botName) {
-        Pattern m = Pattern.compile(".*Guild ([0-9]+) used the " + botName + "!.*");
+    private static int getServerUsageOfSlashCommandBot(String type, String botName) {
+        Pattern m = Pattern.compile(".*" + type + " ([0-9]+) used the " + botName + "!.*");
         try (Stream<Path> frontendLogs = Files.list(Paths.get("/logs"))) {
             return (int) frontendLogs
                     .filter(p -> p.getFileName().toString().endsWith(".jetty.log"))
