@@ -8,6 +8,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -329,7 +330,10 @@ public class CelesteStuffHealthCheck {
                             .collect(Collectors.toList());
                 }
 
-                List<String> bananaMirrorImages = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror-images/")
+                List<String> bananaMirrorImages = ConnectionUtils.runWithRetry(() -> Jsoup.connect(mirror + "/banana-mirror-images/")
+                                .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
+                                .maxBodySize(4 * 1024 * 1024) // 4 MB
+                                .get())
                         .select("td.indexcolname a")
                         .stream()
                         .map(a -> mirror + "/banana-mirror-images/" + a.attr("href"))
