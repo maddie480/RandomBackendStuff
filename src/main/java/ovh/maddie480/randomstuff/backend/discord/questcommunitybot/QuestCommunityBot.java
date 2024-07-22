@@ -32,10 +32,6 @@ import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.search.Google
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.search.GoogleSearchCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.search.WikipediaCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.search.YouTubeSearchCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.YoutubeDlAudioCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.YoutubeDlCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.YoutubeDlRandomCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.ytdlp.YoutubeDlSponsorBlockCommand;
 import ovh.maddie480.randomstuff.backend.streams.features.CommandParser;
 
 import java.io.IOException;
@@ -135,12 +131,6 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
                         new ShutdownCommand(),
                         new PingCommand(),
                         uptimeCommand
-                ),
-                "Téléchargement de vidéos", Arrays.asList(
-                        new YoutubeDlCommand(),
-                        new YoutubeDlSponsorBlockCommand(),
-                        new YoutubeDlAudioCommand(),
-                        new YoutubeDlRandomCommand()
                 ),
                 "Commandes inutiles", Arrays.asList(
                         new BonjourCommand(),
