@@ -3,7 +3,7 @@ services:
     image: max480/random-stuff-frontend
     hostname: frontend
     ports:
-      - 8080
+      - "8080:8080"
     restart: on-failure
     environment:
       SECRET_CONSTANTS: |

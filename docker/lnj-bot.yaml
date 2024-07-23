@@ -2,10 +2,10 @@ services:
   lnj-bot:
     image: max480/random-stuff-backend
     ports:
-      - 11584 # SHS Chat Control socket
-      - 11585 # SHS Radio LNJ socket
-      - 11586 # Websocket live chat
-      - 11587 # Live chat HTML page server
+      - "11584:11584" # SHS Chat Control socket
+      - "11585:11585" # SHS Radio LNJ socket
+      - "11586:11586" # Websocket live chat
+      - "11587:11587" # Live chat HTML page server
     command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/streams.features.LNJBot/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants
     volumes:
