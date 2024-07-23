@@ -1,7 +1,6 @@
 services:
   update-checker:
     image: max480/random-stuff-backend
-    network_mode: host
     command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/CrontabRunner --updater/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants
     volumes:

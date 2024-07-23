@@ -367,7 +367,7 @@ public class UpdateCheckerTracker extends EventListener {
                 message.put("taskType", "updateModStructureVerifierMaps");
 
                 try (Socket socket = new Socket()) {
-                    socket.connect(new InetSocketAddress("127.0.1.1", 44480));
+                    socket.connect(new InetSocketAddress("backend", 44480));
                     try (OutputStream os = socket.getOutputStream();
                          Writer bw = new OutputStreamWriter(os, UTF_8)) {
 

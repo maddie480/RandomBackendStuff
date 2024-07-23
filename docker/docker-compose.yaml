@@ -2,7 +2,8 @@ services:
   frontend:
     image: max480/random-stuff-frontend
     hostname: frontend
-    network_mode: host
+    ports:
+      - 8080
     restart: on-failure
     environment:
       SECRET_CONSTANTS: |
@@ -50,7 +51,6 @@ services:
   backend:
     image: max480/random-stuff-backend
     hostname: backend
-    network_mode: host
     restart: on-failure
     env_file: secret_constants
     volumes:
