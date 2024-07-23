@@ -148,7 +148,7 @@ public class GameBananaAutomatedChecks {
                                     // invoke ilspycmd to decompile the mod.
                                     logger.debug("Decompiling DLL...");
                                     Process p = OutputStreamLogger.redirectErrorOutput(logger,
-                                            new ProcessBuilder("/home/debian/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start());
+                                            new ProcessBuilder("/home/ubuntu/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start());
 
                                     String fullDecompile;
                                     try (InputStream is = p.getInputStream()) {
