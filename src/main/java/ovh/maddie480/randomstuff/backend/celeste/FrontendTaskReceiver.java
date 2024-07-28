@@ -1,8 +1,5 @@
 package ovh.maddie480.randomstuff.backend.celeste;
 
-import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker;
-import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.FontGenerator;
-import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
@@ -10,6 +7,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.FontGenerator;
+import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 
 import java.io.File;
 import java.io.IOException;
@@ -82,7 +81,6 @@ public class FrontendTaskReceiver {
                         log.error("Error while searching file for request {}", o, e);
                     }
                 }
-                case "updateModStructureVerifierMaps" -> handleUpdateModStructureVerifierMapsRequest();
                 default -> log.error("Received invalid task type {}!", o.getString("taskType"));
             }
         } catch (JSONException e) {
@@ -136,16 +134,6 @@ public class FrontendTaskReceiver {
                     (message, files) -> sendResponse(taskName, message, files));
         } catch (IOException e) {
             log.error("Could not handle custom font generation asked by frontend!", e);
-        }
-    }
-
-    private static void handleUpdateModStructureVerifierMapsRequest() {
-        log.info("Frontend asked us to update mod structure verifier maps!");
-
-        try {
-            UpdateCheckerTracker.updateModStructureVerifierMaps();
-        } catch (IOException e) {
-            log.error("Could not handle update mod structure verifier maps request!", e);
         }
     }
 

@@ -76,27 +76,6 @@ public class CrontabRunner {
             return;
         }
 
-        if (arg.equals("--updater")) {
-            ZonedDateTime runUntil = ZonedDateTime.now(ZoneId.of("UTC")).plusHours(1)
-                    .withMinute(0).withSecond(0).withNano(0);
-
-            while (runUntil.getHour() % 6 != 5) {
-                runUntil = runUntil.plusHours(1);
-            }
-
-            logger.info("Starting updater loop, will stop on {}", runUntil.withZoneSameInstant(ZoneId.systemDefault()));
-            boolean full = true;
-
-            while (ZonedDateTime.now().isBefore(runUntil)) {
-                runUpdater(full, runUntil);
-                full = false;
-                unstoppableSleep(120_000);
-            }
-
-            logger.info("Exiting updater process");
-            return;
-        }
-
         // redirect logs to a file
         redirectLogsToFile(args[0]);
 
@@ -105,6 +84,14 @@ public class CrontabRunner {
 
         // start communication channel with the frontend
         FrontendTaskReceiver.start();
+
+        // start the updater
+        new Thread("Update Checker") {
+            @Override
+            public void run() {
+                updaterLoop();
+            }
+        }.start();
 
         try {
             // start the Timezone Bot and Mod Structure Verifier
@@ -288,6 +275,26 @@ public class CrontabRunner {
             // Make sure the frequent top.gg outages don't affect us by doing this last.
             TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook);
         });
+    }
+
+    private static void updaterLoop() {
+        while (true) {
+            ZonedDateTime runUntil = ZonedDateTime.now(ZoneId.of("UTC")).plusHours(1)
+                    .withMinute(0).withSecond(0).withNano(0);
+
+            while (runUntil.getHour() % 6 != 5) {
+                runUntil = runUntil.plusHours(1);
+            }
+
+            logger.info("Starting updater loop, will stop on {}", runUntil.withZoneSameInstant(ZoneId.systemDefault()));
+            boolean full = true;
+
+            while (ZonedDateTime.now().isBefore(runUntil)) {
+                runUpdater(full, runUntil);
+                full = false;
+                unstoppableSleep(120_000);
+            }
+        }
     }
 
     private static void runUpdater(boolean fullUpdateCheck, ZonedDateTime giveUpAt) {

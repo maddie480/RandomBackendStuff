@@ -19,8 +19,6 @@ import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -362,18 +360,8 @@ public class UpdateCheckerTracker extends EventListener {
                     throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
                 }
 
-                // update Mod Structure Verifier maps, by calling the frontend task receiver
-                JSONObject message = new JSONObject();
-                message.put("taskType", "updateModStructureVerifierMaps");
-
-                try (Socket socket = new Socket()) {
-                    socket.connect(new InetSocketAddress("backend", 44480));
-                    try (OutputStream os = socket.getOutputStream();
-                         Writer bw = new OutputStreamWriter(os, UTF_8)) {
-
-                        message.write(bw);
-                    }
-                }
+                // update Mod Structure Verifier maps
+                updateModStructureVerifierMaps();
 
                 // everest_update.yaml changed, so the files in it probably changed as well!
                 sendFileListToOtobotMirror();
