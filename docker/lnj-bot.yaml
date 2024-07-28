@@ -7,7 +7,7 @@ services:
       - "11586:11586" # Websocket live chat
       - "11587:11587" # Live chat HTML page server
     command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/streams.features.LNJBot/' /app/run_bot.sh && /app/run_bot.sh"]
-    env_file: secret_constants
+    env_file: secret_constants_backend
     volumes:
       - /home/debian/backend:/backend
       - /home/debian/shared:/shared

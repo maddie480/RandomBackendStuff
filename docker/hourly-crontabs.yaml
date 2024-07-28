@@ -2,7 +2,7 @@ services:
   hourly-crontabs:
     image: max480/random-stuff-backend
     command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/CrontabRunner --hourly/' /app/run_bot.sh && /app/run_bot.sh"]
-    env_file: secret_constants
+    env_file: secret_constants_backend
     volumes:
       - /home/debian/backend:/backend
       - /home/debian/shared:/shared

@@ -5,40 +5,7 @@ services:
     ports:
       - "8080:8080"
     restart: on-failure
-    environment:
-      SECRET_CONSTANTS: |
-        {
-          "GAMES_BOT_CLIENT_ID": "[TODO]",
-          "GAMES_BOT_PUBLIC_KEY": "[TODO]",
-
-          "CUSTOM_SLASH_COMMANDS_CLIENT_ID": "[TODO]",
-          "CUSTOM_SLASH_COMMANDS_CLIENT_SECRET": "[TODO]",
-          "CUSTOM_SLASH_COMMANDS_PUBLIC_KEY": "[TODO]",
-
-          "TIMEZONE_BOT_CLIENT_ID": "[TODO]",
-          "TIMEZONE_BOT_PUBLIC_KEY": "[TODO]",
-          "TIMEZONEDB_API_KEY": "[TODO]",
-
-          "BANANABOT_PUBLIC_KEY": "[TODO]",
-
-          "OLYMPUS_NEWS_MANAGER_CLIENT_ID": "[TODO]",
-          "OLYMPUS_NEWS_MANAGER_PUBLIC_KEY": "[TODO]",
-
-          "RELOAD_SHARED_SECRET": "[TODO]",
-
-          "SRC_MOD_LIST_KEY": "[TODO]",
-
-          "GITHUB_SSH_KNOWN_HOSTS": "[TODO]",
-          "GITHUB_SSH_PUBLIC_KEY": "[TODO]",
-          "GITHUB_SSH_PRIVATE_KEY": "[TODO]",
-
-          "MATTERMOST_TOKEN_LOCK": "[TODO]",
-          "MATTERMOST_TOKEN_UNLOCK": "[TODO]",
-          "MATTERMOST_TOKEN_EXPLOIT": "[TODO]",
-          "MATTERMOST_TOKEN_CONSISTENCYCHECK": "[TODO]",
-          "MATTERMOST_TOKEN_ABSENTS": "[TODO]"
-        }
-      JAVA_OPTIONS: -Xmx256m
+    env_file: secret_constants_frontend
     volumes:
       - /home/debian/shared:/shared
       - /home/debian/logs:/var/lib/jetty/logs
@@ -52,7 +19,7 @@ services:
     image: max480/random-stuff-backend
     hostname: backend
     restart: on-failure
-    env_file: secret_constants
+    env_file: secret_constants_backend
     volumes:
       - /home/debian/backend:/backend
       - /home/debian/shared:/shared
