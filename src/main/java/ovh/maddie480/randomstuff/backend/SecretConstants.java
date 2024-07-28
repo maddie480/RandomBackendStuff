@@ -113,7 +113,6 @@ public class SecretConstants {
     public static long QUEST_COMMUNITY_SERVER_ID;
     public static long LEVELING_NOTIFICATION_CHANNEL;
     public static String YOUTUBE_API_KEY;
-    public static Map<String, String> YOUTUBE_PRESELECTED_PLAYLISTS;
     public static String GOOGLE_CUSTOM_SEARCH_API_KEY;
     public static String STEAM_WEB_API_KEY;
     public static String REPOST_WEBHOOK_URL;
@@ -207,7 +206,6 @@ public class SecretConstants {
         QUEST_COMMUNITY_SERVER_ID = secrets.getLong("QUEST_COMMUNITY_SERVER_ID");
         LEVELING_NOTIFICATION_CHANNEL = secrets.getLong("LEVELING_NOTIFICATION_CHANNEL");
         YOUTUBE_API_KEY = secrets.getString("YOUTUBE_API_KEY");
-        YOUTUBE_PRESELECTED_PLAYLISTS = getMapOfStrings(secrets.getJSONObject("YOUTUBE_PRESELECTED_PLAYLISTS"));
         GOOGLE_CUSTOM_SEARCH_API_KEY = secrets.getString("GOOGLE_CUSTOM_SEARCH_API_KEY");
         STEAM_WEB_API_KEY = secrets.getString("STEAM_WEB_API_KEY");
         REPOST_WEBHOOK_URL = secrets.getString("REPOST_WEBHOOK_URL");
