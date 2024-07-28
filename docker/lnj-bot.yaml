@@ -6,7 +6,7 @@ services:
       - "11585:11585" # SHS Radio LNJ socket
       - "11586:11586" # Websocket live chat
       - "11587:11587" # Live chat HTML page server
-    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/streams.features.LNJBot/' /app/run_bot.sh && sed -i 's/-Xmx256m/-Xmx128m/' && /app/run_bot.sh"]
+    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/streams.features.LNJBot/' /app/run_bot.sh && sed -i 's/-Xmx256m/-Xmx128m/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants_backend
     volumes:
       - /home/debian/backend:/backend
