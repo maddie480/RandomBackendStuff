@@ -11,6 +11,6 @@ mv dependency/ java-libs/
 echo "#!/bin/bash" > run_bot.sh
 echo "" >> run_bot.sh
 
-echo -n "java -Xmx128m -cp \"/app/random-stuff-backend-0.0.1-SNAPSHOT.jar:/app/java-libs/" >> run_bot.sh
+echo -n "java -Xmx256m -cp \"/app/random-stuff-backend-0.0.1-SNAPSHOT.jar:/app/java-libs/" >> run_bot.sh
 echo -n `ls -1 java-libs/ | tr '\n' ':' | sed 's,:,:/app/java-libs/,g' | sed 's,:/app/java-libs/$,,'` >> run_bot.sh
 echo "\" ovh.maddie480.randomstuff.backend.CrontabRunner /logs" >> run_bot.sh
