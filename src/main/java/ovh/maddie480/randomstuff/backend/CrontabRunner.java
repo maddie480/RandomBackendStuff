@@ -278,6 +278,9 @@ public class CrontabRunner {
     }
 
     private static void updaterLoop() {
+        logger.info("Registering Update Checker Tracker...");
+        EventListener.addEventListener(new UpdateCheckerTracker());
+
         while (true) {
             ZonedDateTime runUntil = ZonedDateTime.now(ZoneId.of("UTC")).plusHours(1)
                     .withMinute(0).withSecond(0).withNano(0);
@@ -299,11 +302,6 @@ public class CrontabRunner {
 
     private static void runUpdater(boolean fullUpdateCheck, ZonedDateTime giveUpAt) {
         runProcessAndAlertOnException("Everest Update Checker", giveUpAt, () -> {
-            if (fullUpdateCheck) {
-                logger.info("Registering Update Checker Tracker...");
-                EventListener.addEventListener(new UpdateCheckerTracker());
-            }
-
             if (!fullUpdateCheck) {
                 EverestVersionLister.checkEverestVersions();
                 OlympusVersionLister.checkOlympusVersions();
