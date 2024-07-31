@@ -1,10 +1,10 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.IOException;
@@ -48,6 +48,11 @@ public class UpdateOutgoingWebhooks {
 
             log.debug("Notified China mirror webhook of the end of the update!");
 
+            return null; // method signature
+        });
+
+        ConnectionUtils.runWithRetry(() -> {
+            OtobotMirror.getInstance().update();
             return null; // method signature
         });
 

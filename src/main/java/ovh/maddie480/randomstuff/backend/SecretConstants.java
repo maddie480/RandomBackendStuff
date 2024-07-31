@@ -98,8 +98,8 @@ public class SecretConstants {
     // URL used to update the China-accessible mirror of updater files
     public static String CHINA_MIRROR_UPDATE_WEBHOOK;
 
-    // File used to notify otobot's mirror about file list updates
-    public static String OTOBOT_MIRROR_UPDATE_WEBHOOK;
+    // Private key file to sign requests to celestemods.com (otobot's mirror)
+    public static String OTOBOT_WEBHOOK_PRIVATE_KEY;
 
     // Twitch credentials
     public static String TWITCH_CLIENT_ID;
@@ -194,7 +194,8 @@ public class SecretConstants {
         GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
 
         CHINA_MIRROR_UPDATE_WEBHOOK = secrets.getString("CHINA_MIRROR_UPDATE_WEBHOOK");
-        OTOBOT_MIRROR_UPDATE_WEBHOOK = secrets.getString("OTOBOT_MIRROR_UPDATE_WEBHOOK");
+
+        OTOBOT_WEBHOOK_PRIVATE_KEY = secrets.getString("OTOBOT_WEBHOOK_PRIVATE_KEY");
 
         TWITCH_CLIENT_ID = secrets.getString("TWITCH_CLIENT_ID");
         TWITCH_CLIENT_SECRET = secrets.getString("TWITCH_CLIENT_SECRET");

@@ -363,9 +363,6 @@ public class UpdateCheckerTracker extends EventListener {
                 // update Mod Structure Verifier maps
                 updateModStructureVerifierMaps();
 
-                // everest_update.yaml changed, so the files in it probably changed as well!
-                sendFileListToOtobotMirror();
-
                 everestUpdateSha256 = newEverestUpdateHash;
                 UpdateOutgoingWebhooks.changesHappened();
             }
@@ -719,37 +716,5 @@ public class UpdateCheckerTracker extends EventListener {
 
         log.info("Uploading new Update Checker status: {}", result);
         Files.writeString(Paths.get("/shared/celeste/updater/status.json"), result.toString(), UTF_8);
-    }
-
-    private static void sendFileListToOtobotMirror() throws IOException {
-        if (SecretConstants.OTOBOT_MIRROR_UPDATE_WEBHOOK.isEmpty()) return;
-
-        Set<String> fileList;
-
-        {
-            Map<String, Map<String, Object>> updaterDatabase;
-            try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-                updaterDatabase = YamlUtil.load(is);
-            }
-            fileList = updaterDatabase.values().stream()
-                    .map(mod -> (String) mod.get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL"))
-                    .collect(Collectors.toSet());
-        }
-
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(SecretConstants.OTOBOT_MIRROR_UPDATE_WEBHOOK);
-        connection.setRequestMethod("POST");
-        connection.setDoOutput(true);
-
-        try (OutputStream os = connection.getOutputStream();
-             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os, UTF_8))) {
-
-            new JSONArray(fileList).write(bw);
-        }
-
-        if (connection.getResponseCode() != 200) {
-            throw new IOException("Otobot Mirror responded with non-200 HTTP code: " + connection.getResponseCode());
-        }
-
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":loudspeaker: Otobot Mirror was notified of the update.");
     }
 }
