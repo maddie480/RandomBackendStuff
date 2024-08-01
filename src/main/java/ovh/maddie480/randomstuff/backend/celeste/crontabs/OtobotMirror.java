@@ -125,7 +125,6 @@ public class OtobotMirror {
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setRequestProperty("Authorization", authorizationHeader);
-        connection.setReadTimeout(300000); // mirroring is a synchronous operation
         connection.setDoOutput(true);
 
         try (OutputStream os = connection.getOutputStream()) {
