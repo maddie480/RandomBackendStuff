@@ -77,7 +77,6 @@ public class OtobotMirror {
         }
         return updaterDatabase.values().stream()
                 .map(mod -> (String) mod.get(Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL"))
-                .map(this::getFileName)
                 .collect(Collectors.toSet());
     }
 
@@ -89,7 +88,6 @@ public class OtobotMirror {
         return updaterDatabase.stream()
                 .map(mod -> mod.get("MirroredScreenshots"))
                 .flatMap(List::stream)
-                .map(this::getFileName)
                 .collect(Collectors.toSet());
     }
 
@@ -100,13 +98,9 @@ public class OtobotMirror {
         }
         Set<String> fileList = new HashSet<>();
         for (Object o : updaterDatabase) {
-            fileList.add(o + ".png");
+            fileList.add("https://celestemodupdater.0x0a.de/rich-presence-icons/" + o + ".png");
         }
         return fileList;
-    }
-
-    private String getFileName(String url) {
-        return url.substring(url.lastIndexOf("/") + 1);
     }
 
     private void callMirrorUpdateEndpoint(JSONObject body) throws IOException {
@@ -122,6 +116,7 @@ public class OtobotMirror {
         }
 
         HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://celestemods.com/api/gamebanana-mirror/update-webhook");
+        connection.setReadTimeout(60000);
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setRequestProperty("Authorization", authorizationHeader);
