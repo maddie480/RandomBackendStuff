@@ -1,9 +1,7 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.json.JSONArray;
 import org.json.JSONObject;
-import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.Main;
@@ -16,12 +14,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.PSSParameterSpec;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class OtobotMirror {
@@ -72,7 +75,7 @@ public class OtobotMirror {
 
     private Set<String> getMirroredMods() throws IOException {
         Map<String, Map<String, Object>> updaterDatabase;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
+        try (InputStream is = Files.newInputStream(Paths.get("uploads/everestupdate.yaml"))) {
             updaterDatabase = YamlUtil.load(is);
         }
         return updaterDatabase.values().stream()
@@ -81,26 +84,24 @@ public class OtobotMirror {
     }
 
     private Set<String> getMirroredScreenshots() throws IOException {
-        List<Map<String, List<String>>> updaterDatabase;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
-            updaterDatabase = YamlUtil.load(is);
+        List<Map<String, List<String>>> modSearchDatabase;
+        try (InputStream is = Files.newInputStream(Paths.get("uploads/modsearchdatabase.yaml"))) {
+            modSearchDatabase = YamlUtil.load(is);
         }
-        return updaterDatabase.stream()
+        return modSearchDatabase.stream()
                 .map(mod -> mod.get("MirroredScreenshots"))
                 .flatMap(List::stream)
                 .collect(Collectors.toSet());
     }
 
     private Set<String> getMirroredRichPresenceIcons() throws IOException {
-        JSONArray updaterDatabase;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater.0x0a.de/rich-presence-icons/list.json")) {
-            updaterDatabase = new JSONArray(new JSONTokener(is));
+        Map<String, Map<String, List<String>>> richPresenceIcons;
+        try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
+            richPresenceIcons = YamlUtil.load(is);
         }
-        Set<String> fileList = new HashSet<>();
-        for (Object o : updaterDatabase) {
-            fileList.add("https://celestemodupdater.0x0a.de/rich-presence-icons/" + o + ".png");
-        }
-        return fileList;
+        return richPresenceIcons.get("HashesToFiles").keySet().stream()
+                .map(hash -> "https://celestemodupdater.0x0a.de/rich-presence-icons/" + hash + ".png")
+                .collect(Collectors.toSet());
     }
 
     private void callMirrorUpdateEndpoint(JSONObject body) throws IOException {

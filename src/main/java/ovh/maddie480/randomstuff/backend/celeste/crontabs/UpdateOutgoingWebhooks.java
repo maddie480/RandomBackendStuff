@@ -52,7 +52,7 @@ public class UpdateOutgoingWebhooks {
         });
 
         ConnectionUtils.runWithRetry(() -> {
-            // OtobotMirror.getInstance().update();
+            OtobotMirror.getInstance().update();
             return null; // method signature
         });
 
