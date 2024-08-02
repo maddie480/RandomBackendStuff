@@ -378,7 +378,7 @@ public class WorldClockHealthCheck {
     public static void main(String[] args) throws IOException {
         // /world-clock health check
         MockCallback callback = new MockCallback();
-        BotEventListener.giveTimeForOtherPlace(callback, null, "washington", DiscordLocale.ENGLISH_US);
+        BotEventListener.giveTimeForOtherPlace(callback, null, "washington dc", DiscordLocale.ENGLISH_US);
 
         ZonedDateTime nowAtPlace = ZonedDateTime.now(ZoneId.of("America/New_York"));
         DateTimeFormatter format = DateTimeFormatter.ofPattern("MMM dd, HH:mm", Locale.ENGLISH);
