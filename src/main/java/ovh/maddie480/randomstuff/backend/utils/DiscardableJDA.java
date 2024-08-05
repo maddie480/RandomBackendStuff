@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.entities.sticker.StickerPack;
 import net.dv8tion.jda.api.entities.sticker.StickerSnowflake;
 import net.dv8tion.jda.api.entities.sticker.StickerUnion;
+import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.hooks.IEventManager;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
@@ -21,6 +22,7 @@ import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.*;
 import net.dv8tion.jda.api.requests.restaction.pagination.EntitlementPaginationAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
+import net.dv8tion.jda.api.utils.Once;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.utils.cache.CacheView;
 import net.dv8tion.jda.api.utils.cache.ChannelCacheView;
@@ -169,6 +171,12 @@ public class DiscardableJDA implements JDA, Closeable {
     @Override
     public List<Object> getRegisteredListeners() {
         return backingJDA.getRegisteredListeners();
+    }
+
+    @NotNull
+    @Override
+    public <E extends GenericEvent> Once.Builder<E> listenOnce(@NotNull Class<E> aClass) {
+        return backingJDA.listenOnce(aClass);
     }
 
     @NotNull
