@@ -315,6 +315,13 @@ public class CelesteStuffHealthCheck {
                 if (!bananaMirror.equals(everestUpdate)) {
                     throw new IOException("Banana Mirror contents at " + mirror + " don't match the mod updater database");
                 }
+
+                if ("https://celestemodupdater.0x0a.de".equals(mirror)) {
+                    bananaMirror = fetchFileListFromOtobotMirror("mods", "https://celestemodupdater.0x0a.de/banana-mirror/");
+                    if (!bananaMirror.equals(everestUpdate)) {
+                        throw new IOException("Otobot Mirror contents don't match the mod updater database");
+                    }
+                }
             }
 
             { // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror-images/
@@ -343,6 +350,13 @@ public class CelesteStuffHealthCheck {
 
                 if (!bananaMirrorImages.equals(modSearchDatabase)) {
                     throw new IOException("Banana Mirror Images contents at " + mirror + " don't match the mod updater database");
+                }
+
+                if ("https://celestemodupdater.0x0a.de".equals(mirror)) {
+                    bananaMirrorImages = fetchFileListFromOtobotMirror("screenshots", "https://celestemodupdater.0x0a.de/banana-mirror-images/");
+                    if (!bananaMirrorImages.equals(modSearchDatabase)) {
+                        throw new IOException("Otobot Mirror Images contents don't match the mod updater database");
+                    }
                 }
             }
 
@@ -400,8 +414,27 @@ public class CelesteStuffHealthCheck {
                 if (!richPresenceIcons.equals(richPresenceIconsLocal) || !richPresenceIcons.equals(richPresenceIconsList)) {
                     throw new IOException("Banana Mirror Rich Presence Icons contents at " + mirror + " don't match the ones we have saved locally");
                 }
+
+                if ("https://celestemodupdater.0x0a.de".equals(mirror)) {
+                    richPresenceIcons = fetchFileListFromOtobotMirror("richPresenceIcons", "https://celestemodupdater.0x0a.de/rich-presence-icons/");
+                    if (!richPresenceIcons.equals(richPresenceIconsLocal)) {
+                        throw new IOException("Otobot Mirror Rich Presence Icons contents don't match the mod updater database");
+                    }
+                }
             }
         }
+    }
+
+    private static List<String> fetchFileListFromOtobotMirror(String category, String prefix) throws IOException {
+        List<String> bananaMirror = new ArrayList<>();
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemods.com/api/gamebanana-mirror/mirror-contents/" + category)) {
+            JSONArray modList = new JSONArray(new JSONTokener(is));
+            for (Object o : modList) {
+                bananaMirror.add(prefix + o);
+            }
+        }
+        bananaMirror.sort(Comparator.naturalOrder());
+        return bananaMirror;
     }
 
     /**
