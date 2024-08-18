@@ -669,6 +669,12 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("RSS feed by category API failed");
         }
+
+        // mod IDs to names API
+        final String modIdToNames = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/mod_ids_to_names.json", UTF_8);
+        if (!modIdToNames.contains("\"MaxHelpingHand\":\"Maddie's Helping Hand\"")) {
+            throw new IOException("mod_ids_to_names.json check failed");
+        }
     }
 
     /**
