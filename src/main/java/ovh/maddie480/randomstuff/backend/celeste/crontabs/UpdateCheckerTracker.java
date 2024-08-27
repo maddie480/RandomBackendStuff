@@ -207,7 +207,7 @@ public class UpdateCheckerTracker extends EventListener {
             zip.stream()
                     .filter(entry -> entry.getName().endsWith("/everest.yaml"))
                     .findFirst()
-                    .ifPresent(entry -> message.set("contains an `everest.yaml`, but it is located at `"
+                    .ifPresent(entry -> message.set("has a file that contains an `everest.yaml`, but it is located at `"
                             + entry.getName() + "` instead of the root of the zip: " + fileUrl));
         } catch (Exception e) {
             log.warn("Error while checking if everest.yaml is in subfolder", e);
