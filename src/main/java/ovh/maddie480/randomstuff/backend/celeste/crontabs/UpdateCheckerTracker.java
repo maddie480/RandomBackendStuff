@@ -9,9 +9,7 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.EventListener;
-import ovh.maddie480.everest.updatechecker.Main;
-import ovh.maddie480.everest.updatechecker.Mod;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.everest.updatechecker.*;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
@@ -29,10 +27,12 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import static com.max480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker.ModInfo;
@@ -200,9 +200,22 @@ public class UpdateCheckerTracker extends EventListener {
 
     @Override
     public void modHasNoYamlFile(String gameBananaType, int gameBananaId, String fileUrl) {
+        AtomicReference<String> message = new AtomicReference<>("contains a file that has no `everest.yaml`: " + fileUrl);
+
+        // is the everest.yaml actually in a subfolder? the update checker's FileDownloader should still have the file for us to check
+        try (ZipFile zip = new ZipFile(FileDownloader.downloadFile(fileUrl).toFile())) {
+            zip.stream()
+                    .filter(entry -> entry.getName().endsWith("/everest.yaml"))
+                    .findFirst()
+                    .ifPresent(entry -> message.set("contains an `everest.yaml`, but it is located at `"
+                            + entry.getName() + "` instead of the root of the zip: " + fileUrl));
+        } catch (Exception e) {
+            log.warn("Error while checking if everest.yaml is in subfolder", e);
+        }
+
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
             executeWebhookAsBananaWatch(webhook, ":warning: Mod https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
-                    + " contains a file that has no `everest.yaml`: " + fileUrl);
+                    + " " + message.get());
         }
     }
 
