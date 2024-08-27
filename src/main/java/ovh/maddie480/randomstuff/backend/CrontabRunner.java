@@ -250,7 +250,6 @@ public class CrontabRunner {
             logger.info("Starting GameBanana automated checks");
             GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick();
             GameBananaAutomatedChecks.checkForForbiddenFiles();
-            GameBananaAutomatedChecks.checkForDuplicateModIds();
             GameBananaAutomatedChecks.checkForFilesBelongingToMultipleMods();
             GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator();
             GameBananaAutomatedChecks.checkPngFilesArePngFiles();

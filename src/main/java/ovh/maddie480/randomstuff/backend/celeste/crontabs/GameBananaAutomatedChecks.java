@@ -3,7 +3,6 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -50,7 +49,6 @@ public class GameBananaAutomatedChecks {
             "libEGL.dll", "libGLESv2.dll", "libjpeg-9.dll", "libpng16-16.dll", "lua53.dll", "steam_api.dll", "zlib1.dll", "Microsoft.Xna.Framework.dll",
             "Microsoft.Xna.Framework.Game.dll", "Microsoft.Xna.Framework.Graphics.dll");
 
-    private static final Pattern gamebananaLinkRegex = Pattern.compile(".*(https://gamebanana.com/mmdl/[0-9]+).*");
     private static final Pattern objDirectoryRegex = Pattern.compile(".*(?:/|^)obj/(Debug|Release)(?:/|$).*");
 
     /**
@@ -309,141 +307,6 @@ public class GameBananaAutomatedChecks {
                 }
             }
         }
-    }
-
-    /**
-     * Checks for any mod that is blacklisted due to having the same ID as another file... that does not belong to the same mod.
-     * This allows to catch if two different mods use the same ID.
-     * <p>
-     * Mods that are marked as Obsolete are excluded from the alerts.
-     */
-    public static void checkForDuplicateModIds() throws IOException {
-        Map<String, String> excludedFilesList;
-        try (InputStream is = new FileInputStream("uploads/everestupdateexcluded.yaml")) {
-            excludedFilesList = YamlUtil.load(is);
-        }
-
-        // the new file list is built from scratch (only files that still exist are copied over from the previous list).
-        List<String> alreadyCheckedNew = new ArrayList<>();
-
-        // and we want to load the previous state to be sure we don't handle already handled mods.
-        List<String> alreadyCheckedOld;
-        try (InputStream is = new FileInputStream("already_checked_for_duplicates.yaml")) {
-            alreadyCheckedOld = YamlUtil.load(is);
-        }
-
-        Set<Pair<String, String>> alreadyFoundConflicts = new HashSet<>();
-
-        for (Map.Entry<String, String> excludedFilesListEntry : excludedFilesList.entrySet()) {
-            alreadyCheckedNew.add(excludedFilesListEntry.getKey());
-            if (alreadyCheckedOld.contains(excludedFilesListEntry.getKey())) {
-                continue;
-            }
-
-            Matcher descriptionMatcher = gamebananaLinkRegex.matcher(excludedFilesListEntry.getValue());
-            if (descriptionMatcher.matches()) {
-                String gbLink = descriptionMatcher.group(1);
-
-                String fileId1 = excludedFilesListEntry.getKey().substring("https://gamebanana.com/mmdl/".length());
-                String fileId2 = gbLink.substring("https://gamebanana.com/mmdl/".length());
-
-                logger.debug("Checking whether {} and {} belong to different mods...", fileId1, fileId2);
-
-                // this method is quite inefficient (we are reading files from disk in a loop),
-                // but RAM is more of a constraint than time here...
-                Pair<String, String> mod1 = whichModDoesFileBelongTo(fileId1);
-                Pair<String, String> mod2 = whichModDoesFileBelongTo(fileId2);
-
-                if (!mod1.getValue().equals(mod2.getValue()) && !alreadyFoundConflicts.contains(Pair.of(mod1.getValue(), mod2.getValue()))) {
-                    // both files belong to different mods! this is fishy.
-                    String nameForUrl1 = mod1.getValue().split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod1.getValue().split("/")[1];
-                    String nameForUrl2 = mod2.getValue().split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod2.getValue().split("/")[1];
-
-                    // if one of the mods is a wip, check if they are linked.
-                    boolean modAndWipMatch = false;
-                    if (mod1.getValue().startsWith("Wip/") && !mod2.getValue().startsWith("Wip/")) {
-                        modAndWipMatch = modAndWipAreLinked(mod2.getValue(), mod1.getValue());
-                    } else if (!mod1.getValue().startsWith("Wip/") && mod2.getValue().startsWith("Wip/")) {
-                        modAndWipMatch = modAndWipAreLinked(mod1.getValue(), mod2.getValue());
-                    }
-
-                    if (!modAndWipMatch && !modIsObsolete(mod1.getValue()) && !modIsObsolete(mod2.getValue())) {
-                        sendAlertToWebhook(":warning: Mods **" + mod1.getKey() + "** and **" + mod2.getKey() + "** seem to be using the same mod ID! " +
-                                "This is illegal <:landeline:458158726558384149>\n:arrow_right: " +
-                                "https://gamebanana.com/" + nameForUrl1 + " and https://gamebanana.com/" + nameForUrl2);
-                    } else {
-                        logger.info(mod1.getValue() + " and " + mod2.getValue() + " use the same ID, but alert will not be sent" +
-                                " because at least one of them is obsolete.");
-                    }
-
-                    // avoid warning about this conflict again.
-                    alreadyFoundConflicts.add(Pair.of(mod1.getValue(), mod2.getValue()));
-                    alreadyFoundConflicts.add(Pair.of(mod2.getValue(), mod1.getValue()));
-                }
-            } else {
-                logger.debug("No link found in description of excluded file list entry {} ('{}')", excludedFilesListEntry.getKey(), excludedFilesListEntry.getValue());
-            }
-        }
-
-        try (OutputStream os = new FileOutputStream("already_checked_for_duplicates.yaml")) {
-            YamlUtil.dump(alreadyCheckedNew, os);
-        }
-    }
-
-    /**
-     * Calls GameBanana to check if the given mod is obsolete.
-     * If GameBanana is down, returns false (so that an alert gets sent no matter what).
-     *
-     * @param mod The mod to check, in the format used in modfilesdatabase/list.yaml (for example "Mod/53678")
-     * @return Whether the mod is obsolete or not (false if GameBanana is unreachable)
-     */
-    private static boolean modIsObsolete(String mod) {
-        try {
-            return ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_bIsObsolete")) {
-                    JSONObject modInfo = new JSONObject(new JSONTokener(is));
-                    return modInfo.getBoolean("_bIsObsolete");
-                }
-            });
-        } catch (IOException e) {
-            logger.error("Cannot get whether {} is obsolete or not, so we will assume it is not.", mod, e);
-            return false;
-        }
-    }
-
-    private static boolean modAndWipAreLinked(String mod, String wip) {
-        try {
-            return ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + mod + "?_csvProperties=_aWip")) {
-                    JSONObject modInfo = new JSONObject(new JSONTokener(is));
-
-                    // check that the mod has a linked wip, and that it is the wip we were given
-                    return !modInfo.isNull("_aWip") && wip.equals("Wip/" + modInfo.getJSONObject("_aWip").getInt("_idRow"));
-                }
-            });
-        } catch (IOException e) {
-            logger.error("Cannot get whether {} is linked to {}, so we will assume it is not.", mod, wip, e);
-            return false;
-        }
-    }
-
-    static Pair<String, String> whichModDoesFileBelongTo(String fileId) throws IOException {
-        for (String itemtype : new File("modfilesdatabase").list()) {
-            if (!new File("modfilesdatabase/" + itemtype).isDirectory()) continue;
-
-            for (String itemid : new File("modfilesdatabase/" + itemtype).list()) {
-                if (new File("modfilesdatabase/" + itemtype + "/" + itemid + "/" + fileId + ".yaml").exists()) {
-                    String modName;
-                    try (InputStream is = new FileInputStream("modfilesdatabase/" + itemtype + "/" + itemid + "/info.yaml")) {
-                        Map<String, Object> info = YamlUtil.load(is);
-                        modName = info.get("Name").toString();
-                    }
-                    return Pair.of(modName, itemtype + "/" + itemid);
-                }
-            }
-        }
-
-        return null;
     }
 
     public static void checkDuplicateModIdsCaseInsensitive() throws IOException {
@@ -766,7 +629,7 @@ public class GameBananaAutomatedChecks {
                     List<String> fileList = YamlUtil.load(is);
                     filesToCheck = fileList.stream()
                             .filter(fileName -> fileName.startsWith("Graphics/") && fileName.endsWith(".png"))
-                            .collect(Collectors.toList());
+                            .toList();
                 }
 
                 // skip downloading entirely if there is no PNG file (if the file is not a zip, the file listing will be empty)
