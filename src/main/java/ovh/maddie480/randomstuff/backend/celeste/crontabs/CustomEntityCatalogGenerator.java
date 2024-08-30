@@ -1,10 +1,5 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
-import ovh.maddie480.everest.updatechecker.ModFilesDatabaseBuilder;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 import org.apache.commons.collections4.keyvalue.AbstractKeyValue;
 import org.apache.commons.collections4.keyvalue.DefaultKeyValue;
 import org.apache.commons.io.FileUtils;
@@ -12,7 +7,11 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.Main;
+import ovh.maddie480.everest.updatechecker.ModFilesDatabaseBuilder;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -312,7 +311,7 @@ public class CustomEntityCatalogGenerator {
 
     private Map.Entry<String, Map<String, Object>> getUpdateCheckerDatabaseEntry(Map<String, Map<String, Object>> everestUpdateYaml, String fileId) {
         return everestUpdateYaml.entrySet()
-                .stream().filter(entry -> entry.getValue().get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL")
+                .stream().filter(entry -> entry.getValue().get("URL")
                         .equals("https://gamebanana.com/mmdl/" + fileId)).findFirst().orElse(null);
     }
 
@@ -373,8 +372,7 @@ public class CustomEntityCatalogGenerator {
         Set<String> mlpEffects = new HashSet<>();
 
         {
-            String downloadLink = (String) everestUpdateYaml.get("MoreLoennPlugins")
-                    .get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
+            String downloadLink = (String) everestUpdateYaml.get("MoreLoennPlugins").get("URL");
 
             ConnectionUtils.runWithRetry(() -> {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout(downloadLink)) {

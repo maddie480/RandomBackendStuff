@@ -13,7 +13,6 @@ import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
-import ovh.maddie480.everest.updatechecker.Main;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
@@ -297,8 +296,7 @@ public class CelesteStuffHealthCheck {
                     Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
                     everestUpdate = mapped.values()
                             .stream()
-                            .map(item -> item.get(Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL")
-                                    .toString().replace("https://celestemodupdater.0x0a.de", mirror))
+                            .map(item -> item.get("URL").toString().replace("https://gamebanana.com/mmdl", mirror + "/banana-mirror") + ".zip")
                             .sorted()
                             .collect(Collectors.toList());
                 }
@@ -692,7 +690,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // it matches what we have on disk
-        final String fileOnDisk = FileUtils.readFileToString(new File("uploads/everestupdate.yaml"), UTF_8);
+        final String fileOnDisk = FileUtils.readFileToString(new File("/shared/celeste/updater/everest-update.yaml"), UTF_8);
         if (!fileOnDisk.equals(everestUpdate)) {
             throw new IOException("everest_update.yaml on disk and on Cloud Storage don't match!");
         }
@@ -1005,25 +1003,33 @@ public class CelesteStuffHealthCheck {
         String url;
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
             Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
-            url = (String) mapped.get("Monika's D-Sides").get(Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL");
+            url = (String) mapped.get("Monika's D-Sides").get("URL");
         }
 
         Path mapToJson = Paths.get("/tmp/map.json");
         Path mapToBin = Paths.get("/tmp/map.bin");
         Path mapBackToJson = Paths.get("/tmp/map2.json");
 
-        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(url))) {
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                if ("Maps/nameguysdsidespack/0/10-Farewell.bin".equals(entry.getName())) {
-                    log.debug("Found map bin, sending...");
-                    binToJsonToBin("bin-to-json", zis, mapToJson);
-                    break;
-                }
-            }
+        {
+            byte[] mapBinInput = ConnectionUtils.runWithRetry(() -> {
+                try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout(url));
+                     ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 
-            if (entry == null) {
-                throw new IOException("The map bin to use as a test was not found!");
+                    ZipEntry entry;
+                    while ((entry = zis.getNextEntry()) != null) {
+                        if ("Maps/nameguysdsidespack/0/10-Farewell.bin".equals(entry.getName())) {
+                            log.debug("Found map bin, sending...");
+                            IOUtils.copy(zis, bos);
+                            return bos.toByteArray();
+                        }
+                    }
+
+                    throw new IOException("The map bin to use as a test was not found!");
+                }
+            });
+
+            try (ByteArrayInputStream mapBin = new ByteArrayInputStream(mapBinInput)) {
+                binToJsonToBin("bin-to-json", mapBin, mapToJson);
             }
         }
 

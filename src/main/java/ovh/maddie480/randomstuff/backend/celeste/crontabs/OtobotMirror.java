@@ -79,7 +79,7 @@ public class OtobotMirror {
             updaterDatabase = YamlUtil.load(is);
         }
         return updaterDatabase.values().stream()
-                .map(mod -> (String) mod.get(Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL"))
+                .map(mod -> (String) mod.get("MirrorURL"))
                 .collect(Collectors.toSet());
     }
 

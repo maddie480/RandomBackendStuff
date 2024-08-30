@@ -8,7 +8,6 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.Main;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -82,8 +81,7 @@ public class GameBananaAutomatedChecks {
             Map<String, Object> mod = modEntry.getValue();
 
             // does the file have a dll?
-            String fileName = mod.get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL")
-                    .toString().substring("https://gamebanana.com/mmdl/".length());
+            String fileName = mod.get("URL").toString().substring("https://gamebanana.com/mmdl/".length());
 
             if (oldResults.contains(fileName)) {
                 // skip scanning already scanned files.
@@ -101,7 +99,7 @@ public class GameBananaAutomatedChecks {
                     // file listing contains dll, so download!
                     logger.debug("Downloading mod {} (file id {})", modName, fileName);
 
-                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(mod.get(Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString())) {
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(mod.get("MirrorURL").toString())) {
                         FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.zip"));
                     }
 
@@ -362,7 +360,7 @@ public class GameBananaAutomatedChecks {
 
         for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
             String modName = modMap.getKey();
-            String url = modMap.getValue().get(Main.serverConfig.mainServerIsMirror ? "URL" : "MirrorURL").toString();
+            String url = modMap.getValue().get("MirrorURL").toString();
             if (!oldAlreadyChecked.contains(url)) {
                 logger.debug("Downloading {} ({}) for everest.yaml checking", url, modName);
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
@@ -465,7 +463,7 @@ public class GameBananaAutomatedChecks {
         Set<String> filesWeAlreadyWarnedAbout = new HashSet<>();
 
         for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
-            String url = modMap.getValue().get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL").toString();
+            String url = modMap.getValue().get("URL").toString();
 
             newAlreadyChecked.add(url);
             if (oldAlreadyChecked.contains(url)) {
@@ -480,7 +478,7 @@ public class GameBananaAutomatedChecks {
             // go through the database again to find all mods that have the same URL (including the mod we are checking itself)
             List<String> modNames = new ArrayList<>();
             for (Map.Entry<String, Map<String, Object>> otherModMap : updaterDatabase.entrySet()) {
-                String otherUrl = otherModMap.getValue().get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL").toString();
+                String otherUrl = otherModMap.getValue().get("URL").toString();
 
                 if (otherUrl.equals(url)) {
                     modNames.add(otherModMap.getKey());

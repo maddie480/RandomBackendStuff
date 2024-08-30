@@ -9,7 +9,9 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.EventListener;
-import ovh.maddie480.everest.updatechecker.*;
+import ovh.maddie480.everest.updatechecker.FileDownloader;
+import ovh.maddie480.everest.updatechecker.Mod;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
@@ -364,7 +366,15 @@ public class UpdateCheckerTracker extends EventListener {
 
             if (!newEverestUpdateHash.equals(everestUpdateSha256)) {
                 log.info("Reloading everest_update.yaml as hash changed: {} -> {}", everestUpdateSha256, newEverestUpdateHash);
-                Files.copy(Paths.get("uploads/everestupdate.yaml"), Paths.get("/shared/celeste/updater/everest-update.yaml"), StandardCopyOption.REPLACE_EXISTING);
+
+                try (InputStream is = Files.newInputStream(Paths.get("uploads/everestupdate.yaml"));
+                     OutputStream os = Files.newOutputStream(Paths.get("/shared/celeste/updater/everest-update.yaml"))) {
+
+                    Map<String, Map<String, Object>> yaml = YamlUtil.load(is);
+                    for (Map<String, Object> entry : yaml.values()) entry.remove("MirrorURL");
+                    YamlUtil.dump(yaml, os);
+                }
+
                 Files.writeString(Paths.get("/shared/celeste/updater/mod-dependency-graph.yaml"), convertModDependencyGraphToEverestYamlFormat(), UTF_8);
 
                 HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/everest-update-reload?key="
@@ -677,7 +687,7 @@ public class UpdateCheckerTracker extends EventListener {
 
         // go through the contents of each mod in the database, to list out its assets.
         for (Map.Entry<String, Map<String, Object>> entry : updaterDatabase.entrySet()) {
-            String depUrl = (String) entry.getValue().get(Main.serverConfig.mainServerIsMirror ? "MirrorURL" : "URL");
+            String depUrl = (String) entry.getValue().get("URL");
 
             if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
                 // to do this, we are going to use the mod files database.
