@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend;
 
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -38,6 +37,7 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -154,125 +154,121 @@ public class CrontabRunner {
     }
 
     private static void runDailyProcesses() {
-        // The 5-second breaks allow other processes to be run, to avoid getting stuck for too long...
-        // because those processes are long indeed.
+        // This test has a tendency to OOM, get it out of the way right away
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch()", () -> CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch());
 
-        runProcessAndAlertOnException("Daily processes - Update Tasks", () -> {
-            // This test has a tendency to OOM, get it out of the way right away
-            CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch();
+        // Update tasks
+        runProcessAndAlertOnException("AutoLeaver.main(null)", () -> AutoLeaver.main(null));
+        runProcessAndAlertOnException("CustomSlashCommandsCleanup.housekeep()", () -> CustomSlashCommandsCleanup.housekeep());
+        runProcessAndAlertOnException("ArbitraryModAppCacher.refreshArbitraryModAppCache()", () -> ArbitraryModAppCacher.refreshArbitraryModAppCache());
+        runProcessAndAlertOnException("CustomEntityCatalogGenerator.main(null)", () -> CustomEntityCatalogGenerator.main(null));
+        runProcessAndAlertOnException("ServerJanitorBot.main(null)", () -> ServerJanitorBot.main(null));
+        runProcessAndAlertOnException("housekeepArbitraryModApp()", () -> housekeepArbitraryModApp());
+        runProcessAndAlertOnException("AssetDriveService.listAllFiles()", () -> AssetDriveService.listAllFiles());
+        runProcessAndAlertOnException("AssetDriveService.rsyncFiles()", () -> AssetDriveService.rsyncFiles());
+        runProcessAndAlertOnException("AssetDriveService.classifyAssets()", () -> AssetDriveService.classifyAssets());
+        runProcessAndAlertOnException("ServerCountUploader.run()", () -> ServerCountUploader.run());
 
-            AutoLeaver.main(null);
-            CustomSlashCommandsCleanup.housekeep();
-            ArbitraryModAppCacher.refreshArbitraryModAppCache();
-            CustomEntityCatalogGenerator.main(null);
-            ServerJanitorBot.main(null);
-            housekeepArbitraryModApp();
-            AssetDriveService.listAllFiles();
-            AssetDriveService.rsyncFiles();
-            AssetDriveService.classifyAssets();
+        // Health Checks
+        runProcessAndAlertOnException("GameBananaAutomatedChecks.checkUnapprovedCategories()", () -> GameBananaAutomatedChecks.checkUnapprovedCategories());
+        runProcessAndAlertOnException("WorldClockHealthCheck.main(null)", () -> WorldClockHealthCheck.main(null));
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkEverestExists(true)", () -> CelesteStuffHealthCheck.checkEverestExists(true));
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkOlympusExists(true)", () -> CelesteStuffHealthCheck.checkOlympusExists(true));
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkLoennVersionsListAPI()", () -> CelesteStuffHealthCheck.checkLoennVersionsListAPI());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkFontGeneratorBMFont()", () -> CelesteStuffHealthCheck.checkFontGeneratorBMFont());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkFontGeneratorBMFontCustom()", () -> CelesteStuffHealthCheck.checkFontGeneratorBMFontCustom());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkModStructureVerifier()", () -> CelesteStuffHealthCheck.checkModStructureVerifier());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkMapTreeViewer()", () -> CelesteStuffHealthCheck.checkMapTreeViewer());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkFileSearcher()", () -> CelesteStuffHealthCheck.checkFileSearcher());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkDirectLinkService()", () -> CelesteStuffHealthCheck.checkDirectLinkService());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkStaticPages()", () -> CelesteStuffHealthCheck.checkStaticPages());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkGameBananaCategories()", () -> CelesteStuffHealthCheck.checkGameBananaCategories());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.everestYamlValidatorHealthCheck()", () -> CelesteStuffHealthCheck.everestYamlValidatorHealthCheck());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkSmallerGameBananaAPIs()", () -> CelesteStuffHealthCheck.checkSmallerGameBananaAPIs());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkSrcModUpdateNotificationsPage()", () -> CelesteStuffHealthCheck.checkSrcModUpdateNotificationsPage());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkDiscordBotsPage()", () -> CelesteStuffHealthCheck.checkDiscordBotsPage());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkCelesteNewsNetworkSubscriptionService()", () -> CelesteStuffHealthCheck.checkCelesteNewsNetworkSubscriptionService());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkCollabList()", () -> CelesteStuffHealthCheck.checkCollabList());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkCustomEntityCatalog()", () -> CelesteStuffHealthCheck.checkCustomEntityCatalog());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkOlympusNews()", () -> CelesteStuffHealthCheck.checkOlympusNews());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkAssetDriveBrowser()", () -> CelesteStuffHealthCheck.checkAssetDriveBrowser());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkWipeConverter()", () -> CelesteStuffHealthCheck.checkWipeConverter());
+        runProcessAndAlertOnException("checkArbitraryModApp()", () -> checkArbitraryModApp());
+        runProcessAndAlertOnException("checkRadioLNJ()", () -> checkRadioLNJ());
+        runProcessAndAlertOnException("LNJBot.healthCheck()", () -> LNJBot.healthCheck());
+        runProcessAndAlertOnException("checkLNJEmotes()", () -> checkLNJEmotes());
+        runProcessAndAlertOnException("checkChatProviderCanConnect(new TwitchChatProvider())", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
+        // runProcessAndAlertOnException("checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")))", () -> checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
 
-            // Make sure the frequent top.gg outages don't affect us by doing this last.
-            ServerCountUploader.run();
-        });
+        // Non-Celeste Stuff
+        runProcessAndAlertOnException("ChangeBGToRandom.run()", () -> ChangeBGToRandom.run());
+        runProcessAndAlertOnException("PurgePosts.run()", () -> PurgePosts.run());
+        runProcessAndAlertOnException("QuestCommunityWebsiteHealthCheck.run()", () -> QuestCommunityWebsiteHealthCheck.run());
+        runProcessAndAlertOnException("SlashCommandBotHealthCheck.checkSlashCommands()", () -> SlashCommandBotHealthCheck.checkSlashCommands());
 
-        unstoppableSleep(5000);
-
-        runProcessAndAlertOnException("Daily processes - Health Checks", () -> {
-            GameBananaAutomatedChecks.checkUnapprovedCategories();
-            WorldClockHealthCheck.main(null);
-            CelesteStuffHealthCheck.checkEverestExists(true);
-            CelesteStuffHealthCheck.checkOlympusExists(true);
-            CelesteStuffHealthCheck.checkLoennVersionsListAPI();
-            CelesteStuffHealthCheck.checkFontGeneratorBMFont();
-            CelesteStuffHealthCheck.checkFontGeneratorBMFontCustom();
-            CelesteStuffHealthCheck.checkModStructureVerifier();
-            CelesteStuffHealthCheck.checkMapTreeViewer();
-            CelesteStuffHealthCheck.checkFileSearcher();
-            CelesteStuffHealthCheck.checkDirectLinkService();
-            CelesteStuffHealthCheck.checkStaticPages();
-            CelesteStuffHealthCheck.checkGameBananaCategories();
-            CelesteStuffHealthCheck.everestYamlValidatorHealthCheck();
-            CelesteStuffHealthCheck.checkSmallerGameBananaAPIs();
-            CelesteStuffHealthCheck.checkSrcModUpdateNotificationsPage();
-            CelesteStuffHealthCheck.checkDiscordBotsPage();
-            CelesteStuffHealthCheck.checkCelesteNewsNetworkSubscriptionService();
-            CelesteStuffHealthCheck.checkCollabList();
-            CelesteStuffHealthCheck.checkCustomEntityCatalog();
-            CelesteStuffHealthCheck.checkOlympusNews();
-            CelesteStuffHealthCheck.checkAssetDriveBrowser();
-            CelesteStuffHealthCheck.checkWipeConverter();
-            checkArbitraryModApp();
-            checkRadioLNJ();
-            LNJBot.healthCheck();
-            checkLNJEmotes();
-            checkChatProviderCanConnect(new TwitchChatProvider());
-            // checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
-        });
-
-        unstoppableSleep(5000);
-
-        runProcessAndAlertOnException("Daily processes - Non-Celeste Stuff", () -> {
-            ChangeBGToRandom.run();
-            PurgePosts.run();
-            QuestCommunityWebsiteHealthCheck.run();
-            SlashCommandBotHealthCheck.checkSlashCommands();
-
+        runProcessAndAlertOnException("StonkUpdateChecker.postTo(client.getTextChannelById(551822297573490749L))", () -> {
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
                 StonkUpdateChecker.postTo(client.getTextChannelById(551822297573490749L));
             }
+        });
 
+        runProcessAndAlertOnException("PlatformBackup.run(client)", () -> {
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)) {
                 PlatformBackup.run(client);
             }
-
-            PrivateDiscordJanitor.runCleanup();
         });
+
+        runProcessAndAlertOnException("PrivateDiscordJanitor.runCleanup()", () -> PrivateDiscordJanitor.runCleanup());
     }
 
     private static void runHourlyProcesses() {
-        runProcessAndAlertOnException("Hourly processes", () -> {
-            // load #celeste_news_network state from disk
-            MastodonUpdateChecker.loadFile();
-            TwitterUpdateChecker.loadFile();
-            OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
+        // load #celeste_news_network state from disk
+        runProcessAndAlertOnException("MastodonUpdateChecker.loadFile()", () -> MastodonUpdateChecker.loadFile());
+        runProcessAndAlertOnException("TwitterUpdateChecker.loadFile()", () -> TwitterUpdateChecker.loadFile());
+        runProcessAndAlertOnException("OlympusNewsUpdateChecker.loadPreviouslyPostedNews()", () -> OlympusNewsUpdateChecker.loadPreviouslyPostedNews());
 
-            logger.info("Starting update tasks");
-            UpdateCheckerTracker.updatePrivateHelpersFromGitHub();
-            CollabAutoHider.run();
-            TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true);
-            TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log"));
-            UsageStatsService.writeWeeklyStatisticsToFile();
-            MastodonUpdateChecker.checkForUpdates();
-            TwitterUpdateChecker.checkForUpdates();
-            OlympusNewsUpdateChecker.checkForUpdates();
-            LoennVersionLister.update();
+        // Update tasks
+        runProcessAndAlertOnException("UpdateCheckerTracker.updatePrivateHelpersFromGitHub()", () -> UpdateCheckerTracker.updatePrivateHelpersFromGitHub());
+        runProcessAndAlertOnException("CollabAutoHider.run()", () -> CollabAutoHider.run());
+        runProcessAndAlertOnException("TempFolderCleanup.cleanUpFolder(\"/shared/temp\", 1, path -> true)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true));
+        runProcessAndAlertOnException("TempFolderCleanup.cleanUpFolder(\"/logs\", 30, path -> path.getFileName().toString().endsWith(\".backend.log\"))", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log")));
+        runProcessAndAlertOnException("UsageStatsService.writeWeeklyStatisticsToFile()", () -> UsageStatsService.writeWeeklyStatisticsToFile());
+        runProcessAndAlertOnException("MastodonUpdateChecker.checkForUpdates()", () -> MastodonUpdateChecker.checkForUpdates());
+        runProcessAndAlertOnException("TwitterUpdateChecker.checkForUpdates()", () -> TwitterUpdateChecker.checkForUpdates());
+        runProcessAndAlertOnException("OlympusNewsUpdateChecker.checkForUpdates()", () -> OlympusNewsUpdateChecker.checkForUpdates());
+        runProcessAndAlertOnException("LoennVersionLister.update()", () -> LoennVersionLister.update());
+        runProcessAndAlertOnException("TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook)", () -> TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook));
 
-            logger.info("Starting GameBanana automated checks");
-            GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick();
-            GameBananaAutomatedChecks.checkForForbiddenFiles();
-            GameBananaAutomatedChecks.checkForFilesBelongingToMultipleMods();
-            GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator();
-            GameBananaAutomatedChecks.checkPngFilesArePngFiles();
-            GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive();
+        // GameBanana automated checks
+        runProcessAndAlertOnException("GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick()", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick());
+        runProcessAndAlertOnException("GameBananaAutomatedChecks.checkForForbiddenFiles()", () -> GameBananaAutomatedChecks.checkForForbiddenFiles());
+        runProcessAndAlertOnException("GameBananaAutomatedChecks.checkForFilesBelongingToMultipleMods()", () -> GameBananaAutomatedChecks.checkForFilesBelongingToMultipleMods());
+        runProcessAndAlertOnException("GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator()", () -> GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator());
+        runProcessAndAlertOnException("GameBananaAutomatedChecks.checkPngFilesArePngFiles()", () -> GameBananaAutomatedChecks.checkPngFilesArePngFiles());
+        runProcessAndAlertOnException("GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive()", () -> GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive());
 
-            logger.info("Starting health checks");
-            CelesteStuffHealthCheck.updateCheckerHealthCheck();
-            CelesteStuffHealthCheck.checkEverestExists(false);
-            CelesteStuffHealthCheck.checkOlympusExists(false);
-            CelesteStuffHealthCheck.checkOlympusAPIs();
-            UsageStatsService.healthCheckCurl();
+        // Health checks
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.updateCheckerHealthCheck()", () -> CelesteStuffHealthCheck.updateCheckerHealthCheck());
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkEverestExists(false)", () -> CelesteStuffHealthCheck.checkEverestExists(false));
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkOlympusExists(false)", () -> CelesteStuffHealthCheck.checkOlympusExists(false));
+        runProcessAndAlertOnException("CelesteStuffHealthCheck.checkOlympusAPIs()", () -> CelesteStuffHealthCheck.checkOlympusAPIs());
+        runProcessAndAlertOnException("UsageStatsService.healthCheckCurl()", () -> UsageStatsService.healthCheckCurl());
 
-            logger.info("Starting Quest Community Bot stuff");
+        // Quest Community Bot stuff
+        runProcessAndAlertOnException("BusUpdateChecker.runCheckForUpdates(client.getTextChannelById(551822297573490749L))", () -> {
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
-                TextChannel webhookHell = client.getTextChannelById(551822297573490749L);
-
-                BusUpdateChecker.runCheckForUpdates(webhookHell);
-                new TemperatureChecker().checkForUpdates(webhookHell);
-                new TwitchUpdateChecker().checkForUpdates(webhookHell);
+                BusUpdateChecker.runCheckForUpdates(client.getTextChannelById(551822297573490749L));
             }
-
-            // Make sure the frequent top.gg outages don't affect us by doing this last.
-            TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook);
+        });
+        runProcessAndAlertOnException("new TemperatureChecker().checkForUpdates(client.getTextChannelById(551822297573490749L))", () -> {
+            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
+                new TemperatureChecker().checkForUpdates(client.getTextChannelById(551822297573490749L));
+            }
+        });
+        runProcessAndAlertOnException("new TwitchUpdateChecker().checkForUpdates(client.getTextChannelById(551822297573490749L))", () -> {
+            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
+                new TwitchUpdateChecker().checkForUpdates(client.getTextChannelById(551822297573490749L));
+            }
         });
     }
 
@@ -300,15 +296,11 @@ public class CrontabRunner {
     }
 
     private static void runUpdater(boolean fullUpdateCheck, ZonedDateTime giveUpAt) {
-        runProcessAndAlertOnException("Everest Update Checker", giveUpAt, () -> {
-            if (!fullUpdateCheck) {
-                EverestVersionLister.checkEverestVersions();
-                OlympusVersionLister.checkOlympusVersions();
-            }
+        runProcessAndAlertOnException("EverestVersionLister.checkEverestVersions()", giveUpAt, () -> EverestVersionLister.checkEverestVersions());
+        runProcessAndAlertOnException("OlympusVersionLister.checkOlympusVersions()", giveUpAt, () -> OlympusVersionLister.checkOlympusVersions());
 
-            Main.updateDatabase(fullUpdateCheck);
-            UpdateOutgoingWebhooks.notifyUpdate();
-        });
+        runProcessAndAlertOnException("Main.updateDatabase(fullUpdateCheck)", giveUpAt, () -> Main.updateDatabase(fullUpdateCheck));
+        runProcessAndAlertOnException("UpdateOutgoingWebhooks.notifyUpdate()", giveUpAt, () -> UpdateOutgoingWebhooks.notifyUpdate());
     }
 
     private static void housekeepArbitraryModApp() throws IOException {
@@ -439,17 +431,16 @@ public class CrontabRunner {
         logger.debug("Waiting for updater lock to be released...");
 
         Path lockFile = Paths.get("updater_lock");
-        while (Files.exists(lockFile)) {
-            unstoppableSleep(1000);
-
-            if (giveUpAt != null && ZonedDateTime.now().isAfter(giveUpAt)) {
-                logger.debug("Waited for too long! Aborting.");
-                return;
-            }
-        }
 
         try {
-            Files.createFile(lockFile);
+            while (!tryCreate(lockFile)) {
+                unstoppableSleep(1000);
+
+                if (giveUpAt != null && ZonedDateTime.now().isAfter(giveUpAt)) {
+                    logger.debug("Waited for too long! Aborting.");
+                    return;
+                }
+            }
             logger.debug("Acquired updater lock!");
         } catch (IOException e) {
             logger.error("Could not lock updater", e);
@@ -469,10 +460,20 @@ public class CrontabRunner {
         try {
             Files.delete(lockFile);
             logger.debug("Released updater lock!");
+            unstoppableSleep(1000);
         } catch (IOException e) {
             logger.error("Could not unlock updater", e);
             sendMessageToWebhook(":x: Could not unlock updater: " + e);
             return;
+        }
+    }
+
+    private static boolean tryCreate(Path file) throws IOException {
+        try {
+            Files.createFile(file);
+            return true;
+        } catch (FileAlreadyExistsException e) {
+            return false;
         }
     }
 
