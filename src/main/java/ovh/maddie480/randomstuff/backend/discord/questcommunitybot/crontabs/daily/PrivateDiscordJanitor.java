@@ -39,7 +39,6 @@ public class PrivateDiscordJanitor {
         try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
             PrivateDiscordJanitor j = new PrivateDiscordJanitor();
             j.botClient = questBot;
-            j.run();
             j.cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1));  // #crontab_logs
         }
     }
