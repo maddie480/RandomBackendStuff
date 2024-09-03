@@ -19,8 +19,8 @@ public class PrivateDiscordJanitor {
 
     private JDA botClient;
 
-    public static void runCleanup() throws IOException {
-        try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)) {
+    public static void runDaily() throws IOException {
+        try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
             logger.info("Running cleanup...");
             PrivateDiscordJanitor j = new PrivateDiscordJanitor();
             j.botClient = questBot;
@@ -35,11 +35,19 @@ public class PrivateDiscordJanitor {
         logger.info("Finished!");
     }
 
+    public static void runHourly() throws IOException {
+        try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
+            PrivateDiscordJanitor j = new PrivateDiscordJanitor();
+            j.botClient = questBot;
+            j.run();
+            j.cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1));  // #crontab_logs
+        }
+    }
+
     private void run() {
         cleanupChannel(498584991194808354L, OffsetDateTime.now().minusMonths(1)); // #quest_community_bot
         cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1)); // #update_checker_log
         cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1)); // #webhook_hell
-        cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1));  // #crontab_logs
         cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1)); // #poubelle
         cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1)); // #maddies_headspace
     }

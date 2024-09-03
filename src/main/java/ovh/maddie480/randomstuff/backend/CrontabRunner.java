@@ -218,7 +218,7 @@ public class CrontabRunner {
             }
         });
 
-        runProcessAndAlertOnException("PrivateDiscordJanitor.runCleanup()", () -> PrivateDiscordJanitor.runCleanup());
+        runProcessAndAlertOnException("PrivateDiscordJanitor.runDaily()", () -> PrivateDiscordJanitor.runDaily());
     }
 
     private static void runHourlyProcesses() {
@@ -238,6 +238,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("OlympusNewsUpdateChecker.checkForUpdates()", () -> OlympusNewsUpdateChecker.checkForUpdates());
         runProcessAndAlertOnException("LoennVersionLister.update()", () -> LoennVersionLister.update());
         runProcessAndAlertOnException("TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message))", () -> TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message)));
+        runProcessAndAlertOnException("PrivateDiscordJanitor.runHourly()", () -> PrivateDiscordJanitor.runHourly());
 
         // GameBanana automated checks
         runProcessAndAlertOnException("GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick()", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick());
