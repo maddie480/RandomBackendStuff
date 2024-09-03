@@ -65,7 +65,7 @@ public class CrontabRunner {
 
         if (arg.equals("--daily")) {
             runDailyProcesses();
-            sendMessageToWebhook(":white_check_mark: Daily processes completed!");
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Daily processes completed!");
             unstoppableSleep(60000);
             System.exit(0);
             return;
@@ -103,7 +103,7 @@ public class CrontabRunner {
             new SlashCommandBot().start();
         } catch (Exception e) {
             logger.error("Error while starting up the bots", e);
-            sendMessageToWebhook(":x: Could not start up the bots: " + e);
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not start up the bots: " + e);
         }
     }
 
@@ -237,7 +237,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("TwitterUpdateChecker.checkForUpdates()", () -> TwitterUpdateChecker.checkForUpdates());
         runProcessAndAlertOnException("OlympusNewsUpdateChecker.checkForUpdates()", () -> OlympusNewsUpdateChecker.checkForUpdates());
         runProcessAndAlertOnException("LoennVersionLister.update()", () -> LoennVersionLister.update());
-        runProcessAndAlertOnException("TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook)", () -> TopGGCommunicator.refreshVotes(CrontabRunner::sendMessageToWebhook));
+        runProcessAndAlertOnException("TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message))", () -> TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message)));
 
         // GameBanana automated checks
         runProcessAndAlertOnException("GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick()", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick());
@@ -299,8 +299,10 @@ public class CrontabRunner {
         runProcessAndAlertOnException("EverestVersionLister.checkEverestVersions()", giveUpAt, () -> EverestVersionLister.checkEverestVersions());
         runProcessAndAlertOnException("OlympusVersionLister.checkOlympusVersions()", giveUpAt, () -> OlympusVersionLister.checkOlympusVersions());
 
-        runProcessAndAlertOnException("Main.updateDatabase(fullUpdateCheck)", giveUpAt, () -> Main.updateDatabase(fullUpdateCheck));
-        runProcessAndAlertOnException("UpdateOutgoingWebhooks.notifyUpdate()", giveUpAt, () -> UpdateOutgoingWebhooks.notifyUpdate());
+        runProcessAndAlertOnException("Main.updateDatabase(fullUpdateCheck)", giveUpAt, () -> {
+            Main.updateDatabase(fullUpdateCheck);
+            UpdateOutgoingWebhooks.notifyUpdate();
+        });
     }
 
     private static void housekeepArbitraryModApp() throws IOException {
@@ -444,17 +446,20 @@ public class CrontabRunner {
             logger.debug("Acquired updater lock!");
         } catch (IOException e) {
             logger.error("Could not lock updater", e);
-            sendMessageToWebhook(":x: Could not lock updater: " + e);
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not lock updater: " + e);
             return;
         }
 
         try {
+            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`");
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
+            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`");
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
-            sendMessageToWebhook("Error while running " + name + ": " + e);
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `" + name + "`: " + e);
+            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :x: Fail `" + name + "`");
         }
 
         try {
@@ -463,7 +468,7 @@ public class CrontabRunner {
             unstoppableSleep(1000);
         } catch (IOException e) {
             logger.error("Could not unlock updater", e);
-            sendMessageToWebhook(":x: Could not unlock updater: " + e);
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not unlock updater: " + e);
             return;
         }
     }
@@ -477,10 +482,10 @@ public class CrontabRunner {
         }
     }
 
-    private static void sendMessageToWebhook(String message) {
+    private static void sendMessageToWebhook(String url, String message) {
         try {
             WebhookExecutor.executeWebhook(
-                    SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                    url,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/compute-engine.png",
                     "Crontab Runner",
                     message);
@@ -493,7 +498,7 @@ public class CrontabRunner {
         try {
             Thread.sleep(delay);
         } catch (InterruptedException e) {
-            sendMessageToWebhook(":x: Could not wait for lock: " + e);
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not wait for lock: " + e);
         }
     }
 }
