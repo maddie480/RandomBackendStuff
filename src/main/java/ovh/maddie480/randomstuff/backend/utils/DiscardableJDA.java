@@ -67,6 +67,7 @@ public class DiscardableJDA implements JDA, Closeable {
     public void close() throws IOException {
         try {
             log.info("Stopping discardable JDA...");
+            Thread.sleep(10000); // make extra sure no task is dropped
             shutdown();
             awaitShutdown();
             log.info("Discardable JDA stopped!");

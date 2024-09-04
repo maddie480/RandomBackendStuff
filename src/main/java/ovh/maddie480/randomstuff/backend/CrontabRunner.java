@@ -66,7 +66,6 @@ public class CrontabRunner {
         if (arg.equals("--daily")) {
             runDailyProcesses();
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Daily processes completed!");
-            unstoppableSleep(60000);
             System.exit(0);
             return;
         }
