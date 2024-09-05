@@ -63,7 +63,6 @@ public class SecretConstants {
 
     // secret used to call "reload" APIs on the frontend, when everest_update.yaml / mod_search_database.yaml is updated
     public static String RELOAD_SHARED_SECRET;
-    public static String HEALTH_CHECK_CURL_URL;
 
     // key that has to be used to access the speedrun.com update notifications setup
     public static String SRC_MOD_UPDATE_NOTIFICATIONS_KEY;
@@ -177,7 +176,6 @@ public class SecretConstants {
         NEXTCLOUD_HEALTHCHECK_TOKEN = secrets.getString("NEXTCLOUD_HEALTHCHECK_TOKEN");
 
         RELOAD_SHARED_SECRET = secrets.getString("RELOAD_SHARED_SECRET");
-        HEALTH_CHECK_CURL_URL = secrets.getString("HEALTH_CHECK_CURL_URL");
 
         SRC_MOD_UPDATE_NOTIFICATIONS_KEY = secrets.getString("SRC_MOD_UPDATE_NOTIFICATIONS_KEY");
 

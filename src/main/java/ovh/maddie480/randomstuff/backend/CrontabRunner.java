@@ -252,7 +252,6 @@ public class CrontabRunner {
         runProcessAndAlertOnException("CelesteStuffHealthCheck.checkEverestExists(false)", () -> CelesteStuffHealthCheck.checkEverestExists(false));
         runProcessAndAlertOnException("CelesteStuffHealthCheck.checkOlympusExists(false)", () -> CelesteStuffHealthCheck.checkOlympusExists(false));
         runProcessAndAlertOnException("CelesteStuffHealthCheck.checkOlympusAPIs()", () -> CelesteStuffHealthCheck.checkOlympusAPIs());
-        runProcessAndAlertOnException("UsageStatsService.healthCheckCurl()", () -> UsageStatsService.healthCheckCurl());
 
         // Quest Community Bot stuff
         runProcessAndAlertOnException("BusUpdateChecker.runCheckForUpdates(client.getTextChannelById(551822297573490749L))", () -> {

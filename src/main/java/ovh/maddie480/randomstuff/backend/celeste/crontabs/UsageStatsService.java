@@ -67,24 +67,6 @@ public class UsageStatsService {
         );
     }
 
-    public static void healthCheckCurl() throws IOException {
-        // health check curl is supposed to be called every 15 minutes Monday-Friday 8am-7pm
-        if (Arrays.asList(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(ZonedDateTime.now().getDayOfWeek())
-                || ZonedDateTime.now().getHour() <= 8 || ZonedDateTime.now().getHour() >= 19) {
-
-            log.debug("Skipping curl health check");
-            return;
-        }
-
-        ZonedDateTime after = ZonedDateTime.now().minusHours(1);
-        int callCount = countFrontendLogEntries(SecretConstants.HEALTH_CHECK_CURL_URL, after);
-        log.debug("{} calls to health check curl found after {}", callCount, after);
-
-        if (callCount == 0) {
-            throw new IOException("curl health check failed!");
-        }
-    }
-
     private static int countFrontendLogEntries(String path, ZonedDateTime after) {
         try (Stream<Path> frontendLogs = Files.list(Paths.get("/logs"))) {
             return frontendLogs
