@@ -20,8 +20,9 @@ public class ServerJanitorBot {
 
     public static void main(String[] args) throws IOException {
         try (DiscardableJDA jda = new DiscardableJDA(SecretConstants.SERVER_JANITOR_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
-            for (long channelId : SecretConstants.SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP) {
-                TextChannel channel = jda.getGuildById(SecretConstants.SUPPORT_SERVER_ID).getTextChannelById(channelId);
+            for (String serverAndChannelIdRaw : SecretConstants.SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP) {
+                String[] serverAndChannelId = serverAndChannelIdRaw.split(";");
+                TextChannel channel = jda.getGuildById(serverAndChannelId[0]).getTextChannelById(serverAndChannelId[1]);
 
                 log.debug("Checking for messages to delete in {}...", channel);
 

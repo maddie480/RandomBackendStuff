@@ -48,8 +48,7 @@ public class SecretConstants {
 
     // Server Manager bot credentials
     public static String SERVER_JANITOR_TOKEN;
-    public static Long SUPPORT_SERVER_ID;
-    public static List<Long> SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP;
+    public static List<String> SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP;
 
     // Raw content of the update_checker_config.yaml to pass to the Everest Update Checker
     public static String UPDATE_CHECKER_CONFIG;
@@ -117,12 +116,6 @@ public class SecretConstants {
     public static String STEAM_WEB_API_KEY;
     public static String REPOST_WEBHOOK_URL;
 
-    // Slash Command Bot secrets
-    public static String SLASH_COMMAND_BOT_TOKEN;
-    public static Map<String, String> SLASH_COMMAND_TO_TOKEN;
-    public static Map<String, String> PEOPLE_TO_DISCORD_IDS;
-    public static String EXPLOIT_PLANNING_URL;
-
     // Quest Community Bot crontabs
     public static String BUS_URL;
     public static String STONK_URL;
@@ -164,8 +157,7 @@ public class SecretConstants {
         EVEREST_YAMLS_FROM_GITHUB = getListOfStrings(secrets.getJSONArray("EVEREST_YAMLS_FROM_GITHUB"));
 
         SERVER_JANITOR_TOKEN = secrets.getString("SERVER_JANITOR_TOKEN");
-        SUPPORT_SERVER_ID = secrets.getLong("SUPPORT_SERVER_ID");
-        SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = getListOfLongs(secrets.getJSONArray("SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP"));
+        SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP = getListOfStrings(secrets.getJSONArray("SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP"));
 
         UPDATE_CHECKER_CONFIG = secrets.getString("UPDATE_CHECKER_CONFIG");
 
@@ -211,11 +203,6 @@ public class SecretConstants {
         STEAM_WEB_API_KEY = secrets.getString("STEAM_WEB_API_KEY");
         REPOST_WEBHOOK_URL = secrets.getString("REPOST_WEBHOOK_URL");
 
-        SLASH_COMMAND_BOT_TOKEN = secrets.getString("SLASH_COMMAND_BOT_TOKEN");
-        SLASH_COMMAND_TO_TOKEN = getMapOfStrings(secrets.getJSONObject("SLASH_COMMAND_TO_TOKEN"));
-        PEOPLE_TO_DISCORD_IDS = getMapOfStrings(secrets.getJSONObject("PEOPLE_TO_DISCORD_IDS"));
-        EXPLOIT_PLANNING_URL = secrets.getString("EXPLOIT_PLANNING_URL");
-
         BUS_URL = secrets.getString("BUS_URL");
         STONK_URL = secrets.getString("STONK_URL");
         WEATHER_WARNING_DOMAIN = secrets.getString("WEATHER_WARNING_DOMAIN");
@@ -227,14 +214,6 @@ public class SecretConstants {
         List<String> result = new ArrayList<>();
         for (int i = 0; i < array.length(); i++) {
             result.add(array.getString(i));
-        }
-        return result;
-    }
-
-    private static List<Long> getListOfLongs(JSONArray array) {
-        List<Long> result = new ArrayList<>();
-        for (int i = 0; i < array.length(); i++) {
-            result.add(array.getLong(i));
         }
         return result;
     }

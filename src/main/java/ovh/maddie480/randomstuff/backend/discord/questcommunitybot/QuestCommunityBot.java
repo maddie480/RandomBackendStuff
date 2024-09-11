@@ -121,7 +121,6 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
                         new RollCommand(),
                         new TimerCommand(),
                         new ChronoCommand(),
-                        new YuGiOhCommand(),
                         new TextEmoteCommand(),
                         new AsciiTextCommand(),
                         new SnowflakeCommand(),

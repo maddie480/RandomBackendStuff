@@ -8,7 +8,6 @@ import net.dv8tion.jda.api.utils.TimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
 import java.io.IOException;
@@ -22,27 +21,13 @@ public class PrivateDiscordJanitor {
 
     private JDA botClient;
 
-    public static void runDaily() throws IOException {
-        try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
-            logger.info("Running cleanup...");
-            PrivateDiscordJanitor j = new PrivateDiscordJanitor();
-            j.botClient = questBot;
-            j.run();
-        }
-
-        try (DiscardableJDA slashBot = new DiscardableJDA(SecretConstants.SLASH_COMMAND_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
-            logger.info("Running cleanup...");
-            SlashCommandBot.deleteOldMessages(slashBot);
-        }
-
-        logger.info("Finished!");
+    private PrivateDiscordJanitor(JDA botClient) {
+        this.botClient = botClient;
     }
 
-    public static void runHourly() throws IOException {
+    public static void runDaily() throws IOException {
         try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
-            PrivateDiscordJanitor j = new PrivateDiscordJanitor();
-            j.botClient = questBot;
-            j.cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1), true); // #crontab_logs
+            new PrivateDiscordJanitor(questBot).run();
         }
     }
 
@@ -53,6 +38,14 @@ public class PrivateDiscordJanitor {
         cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), false); // #poubelle
         cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), false); // #maddies_headspace
     }
+
+
+    public static void runHourly() throws IOException {
+        try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
+            new PrivateDiscordJanitor(questBot).cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1), true); // #crontab_logs
+        }
+    }
+
 
     private void cleanupChannel(final long channelId, final OffsetDateTime delay, boolean useBulkDelete) {
         TextChannel channel = botClient.getGuildById(443390765826179072L).getTextChannelById(channelId);

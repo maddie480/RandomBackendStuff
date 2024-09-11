@@ -209,12 +209,10 @@ public class TemperatureChecker {
 
         if (isLightMode) {
             server.getRoleById(443402541800226837L).getManager().setColor(new Color(89, 95, 111)).queue();
-            server.getRoleById(900178612802691113L).getManager().setColor(new Color(33, 35, 37)).queue();
             server.getRoleById(809579511451877397L).getManager().setColor(new Color(222, 178, 50)).queue();
             server.getRoleById(1053043478411624448L).getManager().setColor(new Color(142, 113, 90)).queue();
         } else {
             server.getRoleById(443402541800226837L).getManager().setColor(new Color(255, 224, 238)).queue();
-            server.getRoleById(900178612802691113L).getManager().setColor(new Color(244, 246, 250)).queue();
             server.getRoleById(809579511451877397L).getManager().setColor(new Color(255, 205, 58)).queue();
             server.getRoleById(1053043478411624448L).getManager().setColor(new Color(241, 187, 71)).queue();
         }

@@ -23,7 +23,6 @@ import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.dail
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
-import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.SlashCommandBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
@@ -93,13 +92,10 @@ public class CrontabRunner {
         }.start();
 
         try {
-            // start the Timezone Bot and Mod Structure Verifier
+            // start the Timezone Bot, Mod Structure Verifier and Quest Community Bot
             TimezoneBot.main(null);
             ModStructureVerifier.main(null);
-
-            // and those obscure bots as well
             new QuestCommunityBot();
-            new SlashCommandBot().start();
         } catch (Exception e) {
             logger.error("Error while starting up the bots", e);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not start up the bots: " + e);

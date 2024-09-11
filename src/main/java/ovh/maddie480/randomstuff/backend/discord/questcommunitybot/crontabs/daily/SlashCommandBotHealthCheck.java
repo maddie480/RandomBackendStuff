@@ -1,7 +1,6 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily;
 
 import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.discord.slashcommandbot.CommandsMovedFromWebsite;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -55,7 +54,5 @@ public class SlashCommandBotHealthCheck {
         if (!parrotQuickImporter.contains("\"Explody Parrot\"") || !parrotQuickImporter.contains("\"Zscaler Parrot\"")) {
             throw new IOException("Parrot Quick Importer est par terre ! :a:");
         }
-
-        new CommandsMovedFromWebsite().purgeVacances();
     }
 }
