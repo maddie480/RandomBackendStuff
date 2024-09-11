@@ -238,8 +238,6 @@ public class EverestVersionLister {
                             + (infoWithNative.get(0).containsKey("description") ? ": `" + infoWithNative.get(0).get("description") + "` by " + infoWithNative.get(0).get("author") + "." : "."),
                     ImmutableMap.of("X-Everest-Log", "true"));
         }
-
-        UpdateOutgoingWebhooks.changesHappened();
     }
 
     private static String getGitHubReleaseCommit(JSONObject release) throws IOException {

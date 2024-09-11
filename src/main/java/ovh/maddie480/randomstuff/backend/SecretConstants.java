@@ -94,9 +94,6 @@ public class SecretConstants {
     // header used to authenticate with the GitHub API
     public static String GITHUB_BASIC_AUTH;
 
-    // URL used to update the China-accessible mirror of updater files
-    public static String CHINA_MIRROR_UPDATE_WEBHOOK;
-
     // Private key file to sign requests to celestemods.com (otobot's mirror)
     public static String OTOBOT_WEBHOOK_PRIVATE_KEY;
 
@@ -184,8 +181,6 @@ public class SecretConstants {
         CRONTAB_LOGS_WEBHOOK_URL = secrets.getString("CRONTAB_LOGS_WEBHOOK_URL");
 
         GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
-
-        CHINA_MIRROR_UPDATE_WEBHOOK = secrets.getString("CHINA_MIRROR_UPDATE_WEBHOOK");
 
         OTOBOT_WEBHOOK_PRIVATE_KEY = secrets.getString("OTOBOT_WEBHOOK_PRIVATE_KEY");
 

@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Notifies other platforms about updates to the mod updater database or Everest versions.
- * Run at the end of the update loop, every 15 minutes.
+ * Run at the end of the update loop.
  */
 public class UpdateOutgoingWebhooks {
     private static final Logger log = LoggerFactory.getLogger(UpdateOutgoingWebhooks.class);
@@ -29,27 +29,6 @@ public class UpdateOutgoingWebhooks {
         if (!changesHappened) {
             return;
         }
-
-        // update China-accessible mirror of everest_update.yaml, mod_search_database.yaml and everest-versions
-        ConnectionUtils.runWithRetry(() -> {
-            HttpURLConnection urlConn = ConnectionUtils.openConnectionWithTimeout(SecretConstants.CHINA_MIRROR_UPDATE_WEBHOOK);
-            urlConn.setInstanceFollowRedirects(false);
-            urlConn.setRequestProperty("Content-Type", "application/json");
-            urlConn.setDoOutput(true);
-            urlConn.setRequestMethod("POST");
-
-            try (OutputStream os = urlConn.getOutputStream()) {
-                IOUtils.write("{}", os, StandardCharsets.UTF_8);
-            }
-
-            if (urlConn.getResponseCode() != 200) {
-                throw new IOException("Non-200 return code for Chinese mirror update: " + urlConn.getResponseCode());
-            }
-
-            log.debug("Notified China mirror webhook of the end of the update!");
-
-            return null; // method signature
-        });
 
         ConnectionUtils.runWithRetry(() -> {
             OtobotMirror.getInstance().update();
