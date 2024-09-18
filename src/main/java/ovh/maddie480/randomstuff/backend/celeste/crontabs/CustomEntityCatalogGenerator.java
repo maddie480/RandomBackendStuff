@@ -412,7 +412,8 @@ public class CustomEntityCatalogGenerator {
             List<String> files = (List<String>) fileInfo.get("Files");
 
             for (String file : files) {
-                if (getUpdateCheckerDatabaseEntry(everestUpdateYaml, file) != null) {
+                Map.Entry<String, Map<String, Object>> databaseEntry = getUpdateCheckerDatabaseEntry(everestUpdateYaml, file);
+                if (databaseEntry != null && !databaseEntry.getKey().equals("MoreLoennPlugins")) {
                     checkMapEditor("ahorn", mod, file, thisModInfo, mlpEntities, mlpTriggers, mlpEffects);
                     checkMapEditor("loenn", mod, file, thisModInfo, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
 
