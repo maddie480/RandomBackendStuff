@@ -815,10 +815,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
 
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.connectionToInputStream(connection), UTF_8))) {
-                    Path trashFile = Paths.get("/tmp/trash_file");
-                    Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntities(trashFile, br);
-                    Files.delete(trashFile);
-
+                    Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntitiesFromLangFile(br);
                     availableEntities.addAll(entities.getLeft());
                     availableTriggers.addAll(entities.getMiddle());
                     availableModEffects.addAll(entities.getRight());

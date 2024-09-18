@@ -387,11 +387,10 @@ public class CustomEntityCatalogGenerator {
                     ZipEntry entry = entries.nextElement();
                     if (!entry.isDirectory() && entry.getName().startsWith("Loenn/lang/") && entry.getName().endsWith(".lang")) {
                         try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(entry), UTF_8))) {
-                            Triple<Set<String>, Set<String>, Set<String>> allStuff = ModFilesDatabaseBuilder.extractLoennEntities(Paths.get("/tmp/trash.yaml"), br);
+                            Triple<Set<String>, Set<String>, Set<String>> allStuff = ModFilesDatabaseBuilder.extractLoennEntitiesFromLangFile(br);
                             mlpEntities.addAll(allStuff.getLeft());
                             mlpTriggers.addAll(allStuff.getMiddle());
                             mlpEffects.addAll(allStuff.getRight());
-                            FileUtils.forceDelete(new File("/tmp/trash.yaml"));
                         }
                     }
                 }
