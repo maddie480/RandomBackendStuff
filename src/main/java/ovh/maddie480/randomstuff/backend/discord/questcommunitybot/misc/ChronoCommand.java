@@ -1,13 +1,13 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.misc;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
 
 import java.io.IOException;
 import java.util.HashMap;

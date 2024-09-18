@@ -1,8 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.quest;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
@@ -10,6 +7,9 @@ import net.dv8tion.jda.api.utils.SplitUtil;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;

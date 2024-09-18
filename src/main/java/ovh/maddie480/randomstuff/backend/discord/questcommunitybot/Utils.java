@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -11,6 +10,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;

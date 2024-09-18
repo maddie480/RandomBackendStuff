@@ -1,12 +1,12 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.reminders;
 
-import ovh.maddie480.randomstuff.backend.SecretConstants;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
 
 import java.io.*;
 import java.time.DayOfWeek;

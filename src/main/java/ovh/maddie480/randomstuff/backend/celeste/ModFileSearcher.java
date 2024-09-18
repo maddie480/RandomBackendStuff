@@ -1,8 +1,8 @@
 package ovh.maddie480.randomstuff.backend.celeste;
 
-import ovh.maddie480.everest.updatechecker.YamlUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
 
 import java.io.FileInputStream;
 import java.io.IOException;

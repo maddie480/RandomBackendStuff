@@ -1,12 +1,12 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.admin;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;

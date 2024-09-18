@@ -1,8 +1,5 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.search;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -12,6 +9,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;

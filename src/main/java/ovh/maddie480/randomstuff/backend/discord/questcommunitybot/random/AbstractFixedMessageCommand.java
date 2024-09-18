@@ -1,7 +1,7 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.random;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 
 import java.io.IOException;
 

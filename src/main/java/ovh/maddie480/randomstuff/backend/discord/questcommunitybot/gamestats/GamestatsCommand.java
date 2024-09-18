@@ -1,10 +1,10 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.utils.SplitUtil;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 
 import java.io.IOException;
 

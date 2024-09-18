@@ -1,10 +1,10 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.quest;
 
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import org.apache.commons.lang3.StringUtils;
+import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 
 import java.io.IOException;
 import java.util.ArrayList;

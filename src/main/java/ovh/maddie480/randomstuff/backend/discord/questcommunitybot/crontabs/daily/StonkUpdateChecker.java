@@ -1,8 +1,8 @@
 package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily;
 
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
 
