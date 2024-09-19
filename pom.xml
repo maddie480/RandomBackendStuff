@@ -26,6 +26,13 @@
             <version>1.5.8</version>
         </dependency>
 
+        <!-- Update indirect dependency of JDA to fix vulnerability -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.5</version>
+        </dependency>
+
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
