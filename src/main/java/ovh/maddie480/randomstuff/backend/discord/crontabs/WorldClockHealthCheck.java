@@ -179,13 +179,18 @@ public class WorldClockHealthCheck {
         public ReplyCallbackAction mentionRoles(@NotNull Collection<String> collection) {
             return null;
         }
-        // </editor-fold>
 
         @NotNull
         @Override
         public ReplyCallbackAction setEphemeral(boolean b) {
             return this;
         }
+
+        @Override
+        public boolean isVoiceMessage() {
+            return false;
+        }
+        // </editor-fold>
     }
 
     /**
