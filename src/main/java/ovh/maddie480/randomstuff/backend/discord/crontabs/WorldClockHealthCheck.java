@@ -190,6 +190,12 @@ public class WorldClockHealthCheck {
         public boolean isVoiceMessage() {
             return false;
         }
+
+        @NotNull
+        @Override
+        public ReplyCallbackAction setVoiceMessage(boolean voiceMessage) {
+            return this;
+        }
         // </editor-fold>
     }
 
