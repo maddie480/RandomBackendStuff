@@ -186,11 +186,6 @@ public class WorldClockHealthCheck {
             return this;
         }
 
-        @Override
-        public boolean isVoiceMessage() {
-            return false;
-        }
-
         @NotNull
         @Override
         public ReplyCallbackAction setVoiceMessage(boolean voiceMessage) {
