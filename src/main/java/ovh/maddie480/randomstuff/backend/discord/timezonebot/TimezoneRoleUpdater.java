@@ -207,6 +207,12 @@ public class TimezoneRoleUpdater implements Runnable {
             existingRoles.stream().filter(role -> role.getIdLong() == timezoneOffsetRolesThisServer.get(timezone))
                     .findFirst()
                     .map(role -> {
+                        if (role.getIdLong() == 1077139996504506469L) {
+                            // this seems to be a case of ghost role, Discord reports it's there but only during session setup
+                            // so JDA is left extremely confused... just ignore it
+                            return role;
+                        }
+
                         logger.info("Removing role {}", role);
                         role.delete().reason("Nobody has this role anymore").queue();
                         return role;
