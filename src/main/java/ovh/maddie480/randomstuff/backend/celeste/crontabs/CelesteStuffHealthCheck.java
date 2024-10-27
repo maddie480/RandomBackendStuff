@@ -285,21 +285,60 @@ public class CelesteStuffHealthCheck {
      * Ran daily.
      */
     public static void checkBananaMirrorDatabaseMatch() throws IOException {
+        List<String> modDownloadsRef;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
+            Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
+            modDownloadsRef = mapped.values()
+                    .stream()
+                    .map(item -> item.get("URL").toString())
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+
+        List<String> mirroredScreenshotsRef;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
+            List<Map<String, Object>> mapped = YamlUtil.load(is);
+            mirroredScreenshotsRef = mapped.stream()
+                    .map(item -> (List<String>) item.get("MirroredScreenshots"))
+                    .flatMap(List::stream)
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+
+        List<String> richPresenceIconsRef;
+        try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
+            Map<String, Map<String, List<String>>> mapped = YamlUtil.load(is);
+
+            for (Map.Entry<String, List<String>> hashToFiles : mapped.get("HashesToFiles").entrySet()) {
+                for (String file : hashToFiles.getValue()) {
+                    if (!mapped.get("FilesToHashes").get(file).contains(hashToFiles.getKey())) {
+                        throw new IOException("Backwards link for " + hashToFiles.getKey() + " => " + file + " does not exist!");
+                    }
+                }
+            }
+            for (Map.Entry<String, List<String>> fileToHashes : mapped.get("FilesToHashes").entrySet()) {
+                for (String hash : fileToHashes.getValue()) {
+                    if (!mapped.get("HashesToFiles").get(hash).contains(fileToHashes.getKey())) {
+                        throw new IOException("Backwards link for " + fileToHashes.getKey() + " => " + hash + " does not exist!");
+                    }
+                }
+            }
+
+            richPresenceIconsRef = mapped.get("HashesToFiles").keySet().stream()
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+
         for (String mirror : Arrays.asList("https://celestemodupdater.0x0a.de", "https://celestemodupdater-storage.0x0a.de",
                 "https://celestemodupdater-conductor.0x0a.de", "https://celestemodupdater-mirror.papyrus.0x0a.de")) {
 
             log.debug("Checking Banana Mirror contents ({})...", mirror);
 
             { // === zips referenced in everest_update.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror/
-                List<String> everestUpdate;
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
-                    Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
-                    everestUpdate = mapped.values()
-                            .stream()
-                            .map(item -> item.get("URL").toString().replace("https://gamebanana.com/mmdl", mirror + "/banana-mirror") + ".zip")
-                            .sorted()
-                            .collect(Collectors.toList());
-                }
+                List<String> everestUpdate = modDownloadsRef.stream()
+                        .map(item -> item.replace("https://gamebanana.com/mmdl", mirror + "/banana-mirror") + ".zip")
+                        .toList();
 
                 List<String> bananaMirror = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror/")
                         .select("td.indexcolname a")
@@ -323,17 +362,9 @@ public class CelesteStuffHealthCheck {
             }
 
             { // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror-images/
-                List<String> modSearchDatabase;
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
-                    List<Map<String, Object>> mapped = YamlUtil.load(is);
-                    modSearchDatabase = mapped.stream()
-                            .map(item -> (List<String>) item.get("MirroredScreenshots"))
-                            .flatMap(List::stream)
-                            .distinct()
-                            .sorted()
-                            .map(i -> i.replace("https://celestemodupdater.0x0a.de", mirror))
-                            .collect(Collectors.toList());
-                }
+                List<String> modSearchDatabase = mirroredScreenshotsRef.stream()
+                        .map(i -> i.replace("https://celestemodupdater.0x0a.de", mirror))
+                        .toList();
 
                 List<String> bananaMirrorImages = ConnectionUtils.runWithRetry(() -> Jsoup.connect(mirror + "/banana-mirror-images/")
                                 .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
@@ -365,30 +396,9 @@ public class CelesteStuffHealthCheck {
             }
 
             { // === Rich Presence icons we saved locally should be present at https://celestemodupdater.0x0a.de/rich-presence-icons/
-                List<String> richPresenceIconsLocal;
-                try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
-                    Map<String, Map<String, List<String>>> mapped = YamlUtil.load(is);
-
-                    for (Map.Entry<String, List<String>> hashToFiles : mapped.get("HashesToFiles").entrySet()) {
-                        for (String file : hashToFiles.getValue()) {
-                            if (!mapped.get("FilesToHashes").get(file).contains(hashToFiles.getKey())) {
-                                throw new IOException("Backwards link for " + hashToFiles.getKey() + " => " + file + " does not exist!");
-                            }
-                        }
-                    }
-                    for (Map.Entry<String, List<String>> fileToHashes : mapped.get("FilesToHashes").entrySet()) {
-                        for (String hash : fileToHashes.getValue()) {
-                            if (!mapped.get("HashesToFiles").get(hash).contains(fileToHashes.getKey())) {
-                                throw new IOException("Backwards link for " + fileToHashes.getKey() + " => " + hash + " does not exist!");
-                            }
-                        }
-                    }
-
-                    richPresenceIconsLocal = mapped.get("HashesToFiles").keySet().stream()
-                            .map(a -> mirror + "/rich-presence-icons/" + a + ".png")
-                            .sorted()
-                            .collect(Collectors.toList());
-                }
+                List<String> richPresenceIconsLocal = richPresenceIconsRef.stream()
+                        .map(a -> mirror + "/rich-presence-icons/" + a + ".png")
+                        .toList();
 
                 List<String> richPresenceIcons = ConnectionUtils.jsoupGetWithRetry(mirror + "/rich-presence-icons/")
                         .select("td.indexcolname a")
