@@ -1,4 +1,3 @@
-# Edit this file to introduce tasks to be run by cron.
 #
 # Each task to run has to be defined through a single line indicating with
 # different fields when the task will be run and what command to run for
@@ -20,6 +19,7 @@
 # For more information see the manual pages of crontab(5) and cron(8)
 #
 # m          h dom mon dow command
- 15         17   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs
+ 15         18   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs
  45          *   *   *   * /home/debian/docker-run-with-logging.sh hourly-crontabs
- 30         11   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
+ 30         12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
+
