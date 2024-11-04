@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.concrete.*;
+import net.dv8tion.jda.api.entities.emoji.ApplicationEmoji;
 import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.entities.sticker.StickerPack;
 import net.dv8tion.jda.api.entities.sticker.StickerSnowflake;
@@ -109,7 +110,7 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public JDA awaitStatus(@NotNull Status status, @NotNull Status... failOn) throws InterruptedException {
+    public JDA awaitStatus(@NotNull Status status, Status @NotNull ... failOn) throws InterruptedException {
         return backingJDA.awaitStatus(status, failOn);
     }
 
@@ -159,12 +160,12 @@ public class DiscardableJDA implements JDA, Closeable {
     }
 
     @Override
-    public void addEventListener(@NotNull Object... listeners) {
+    public void addEventListener(Object @NotNull ... listeners) {
         backingJDA.addEventListener(listeners);
     }
 
     @Override
-    public void removeEventListener(@NotNull Object... listeners) {
+    public void removeEventListener(Object @NotNull ... listeners) {
         backingJDA.removeEventListener(listeners);
     }
 
@@ -254,7 +255,7 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public List<Guild> getMutualGuilds(@NotNull User... users) {
+    public List<Guild> getMutualGuilds(User @NotNull ... users) {
         return backingJDA.getMutualGuilds(users);
     }
 
@@ -321,6 +322,21 @@ public class DiscardableJDA implements JDA, Closeable {
     @Override
     public SnowflakeCacheView<RichCustomEmoji> getEmojiCache() {
         return backingJDA.getEmojiCache();
+    }
+
+    @Override
+    public @NotNull RestAction<ApplicationEmoji> createApplicationEmoji(@NotNull String s, @NotNull Icon icon) {
+        return backingJDA.createApplicationEmoji(s, icon);
+    }
+
+    @Override
+    public @NotNull RestAction<List<ApplicationEmoji>> retrieveApplicationEmojis() {
+        return backingJDA.retrieveApplicationEmojis();
+    }
+
+    @Override
+    public @NotNull RestAction<ApplicationEmoji> retrieveApplicationEmojiById(@NotNull String s) {
+        return backingJDA.retrieveApplicationEmojiById(s);
     }
 
     @NotNull
