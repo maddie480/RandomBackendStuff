@@ -179,6 +179,20 @@ public class CustomEntityCatalogGenerator {
      * @throws IOException If an error occurs while reading the database
      */
     private void reloadList() throws IOException {
+        // preload and prune the mod search database while the memory usage is relatively low
+        List<Map<String, Object>> modSearchDatabase;
+        try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
+            modSearchDatabase = YamlUtil.load(is);
+
+            final Set<String> toKeep = new HashSet<>(Arrays.asList("GameBananaType", "GameBananaId", "CategoryId", "CategoryName"));
+            modSearchDatabase = modSearchDatabase.stream()
+                    .map(el -> el.entrySet().stream()
+                            .filter(entry -> toKeep.contains(entry.getKey()))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
+                    .toList();
+            logger.debug("Loaded and pruned mod search database with {} entries.", modSearchDatabase.size());
+        }
+
         // download the custom entity catalog dictionary.
         {
             Map<String, String> tempdic = new HashMap<>();
@@ -186,10 +200,11 @@ public class CustomEntityCatalogGenerator {
                 tempdic = Arrays.stream(ConnectionUtils.toStringWithTimeout("https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/modcatalogdictionary.txt", UTF_8).split("\n"))
                         .collect(Collectors.toMap(a -> a.substring(0, a.lastIndexOf("=")), a -> a.substring(a.lastIndexOf("=") + 1)));
             } catch (Exception e) {
-                logger.warn("Could not fetch dictionary for entity names: " + e);
+                logger.warn("Could not fetch dictionary for entity names", e);
             }
             dictionary = tempdic;
             unusedDictionaryKeys = new HashSet<>(dictionary.keySet());
+            logger.debug("Loaded mod catalog dictionary with {} entries.", dictionary.size());
         }
 
         modInfo = new ArrayList<>();
@@ -237,14 +252,19 @@ public class CustomEntityCatalogGenerator {
                 }
             }
 
+            logger.debug("{} documentation links loaded.", documentationLinks.size());
+
             // get the dependency graph.
             Map<String, Map<String, Object>> dependencyGraphYaml;
             try (InputStream is = new FileInputStream("uploads/moddependencygraph.yaml")) {
                 dependencyGraphYaml = YamlUtil.load(is);
             }
 
+            logger.debug("Loaded mod dependency graph with {} entries.", documentationLinks.size());
+
             for (QueriedModInfo info : new HashSet<>(modInfo)) {
                 // find the mod name based on GameBanana file URL.
+                logger.debug("Attaching documentation entries, categories and dependent information for {}...", info.modName);
                 Map.Entry<String, Map<String, Object>> updateCheckerDatabaseEntry = getUpdateCheckerDatabaseEntry(everestUpdateYaml, info.fileId);
 
                 // if found, attach any docs to it.
@@ -277,11 +297,6 @@ public class CustomEntityCatalogGenerator {
         modInfo.sort(Comparator.comparing(a -> a.modName.toLowerCase(Locale.ROOT)));
 
         // fill out the category IDs for all mods.
-        List<Map<String, Object>> modSearchDatabase;
-        try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
-            modSearchDatabase = YamlUtil.load(is);
-        }
-
         for (QueriedModInfo modInfo : modInfo) {
             // by default, the category name will just be the item type.
             modInfo.categoryName = formatGameBananaItemtype(modInfo.itemtype);
@@ -297,7 +312,7 @@ public class CustomEntityCatalogGenerator {
             }
         }
 
-        logger.info("Found " + modInfo.size() + " mods.");
+        logger.info("Found {} mods.", modInfo.size());
         lastUpdated = ZonedDateTime.now();
 
         if (!unusedDictionaryKeys.isEmpty()) {
@@ -399,6 +414,8 @@ public class CustomEntityCatalogGenerator {
             FileUtils.forceDelete(new File("/tmp/mlp.zip"));
         }
 
+        logger.debug("Loaded {} entities, {} triggers and {} effects from More Loenn Plugins.", mlpEntities.size(), mlpTriggers.size(), mlpEffects.size());
+
         for (String mod : mods) {
             // load this mod's info
             Map<String, Object> fileInfo;
@@ -427,6 +444,7 @@ public class CustomEntityCatalogGenerator {
 
             // add the mod to the custom entity catalog if it has any entity.
             if (thisModInfo.fileId != null) {
+                logger.debug("Found {} entities, {} triggers and {} effects for {}", thisModInfo.entityList.size(), thisModInfo.triggerList.size(), thisModInfo.effectList.size(), thisModInfo.modName);
                 modInfo.add(thisModInfo);
             }
         }
