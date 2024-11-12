@@ -150,14 +150,14 @@ public class CrontabRunner {
     }
 
     private static void runDailyProcesses() {
-        // These tests have a tendency to OOM, get them out of the way right away
+        // This test has a tendency to OOM, get it out of the way right away
         runProcessAndAlertOnException("CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch()", () -> CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch());
-        runProcessAndAlertOnException("CustomEntityCatalogGenerator.main(null)", () -> CustomEntityCatalogGenerator.main(null));
 
         // Update tasks
         runProcessAndAlertOnException("AutoLeaver.main(null)", () -> AutoLeaver.main(null));
         runProcessAndAlertOnException("CustomSlashCommandsCleanup.housekeep()", () -> CustomSlashCommandsCleanup.housekeep());
         runProcessAndAlertOnException("ArbitraryModAppCacher.refreshArbitraryModAppCache()", () -> ArbitraryModAppCacher.refreshArbitraryModAppCache());
+        runProcessAndAlertOnException("CustomEntityCatalogGenerator.main(null)", () -> CustomEntityCatalogGenerator.main(null));
         runProcessAndAlertOnException("ServerJanitorBot.main(null)", () -> ServerJanitorBot.main(null));
         runProcessAndAlertOnException("housekeepArbitraryModApp()", () -> housekeepArbitraryModApp());
         runProcessAndAlertOnException("AssetDriveService.listAllFiles()", () -> AssetDriveService.listAllFiles());

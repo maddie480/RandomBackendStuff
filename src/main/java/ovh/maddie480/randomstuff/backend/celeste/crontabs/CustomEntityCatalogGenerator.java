@@ -14,6 +14,7 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
@@ -179,20 +180,6 @@ public class CustomEntityCatalogGenerator {
      * @throws IOException If an error occurs while reading the database
      */
     private void reloadList() throws IOException {
-        // preload and prune the mod search database while the memory usage is relatively low
-        List<Map<String, Object>> modSearchDatabase;
-        try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
-            modSearchDatabase = YamlUtil.load(is);
-
-            final Set<String> toKeep = new HashSet<>(Arrays.asList("GameBananaType", "GameBananaId", "CategoryId", "CategoryName"));
-            modSearchDatabase = modSearchDatabase.stream()
-                    .map(el -> el.entrySet().stream()
-                            .filter(entry -> toKeep.contains(entry.getKey()))
-                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-                    .toList();
-            logger.debug("Loaded and pruned mod search database with {} entries.", modSearchDatabase.size());
-        }
-
         // download the custom entity catalog dictionary.
         {
             Map<String, String> tempdic = new HashMap<>();
@@ -297,6 +284,9 @@ public class CustomEntityCatalogGenerator {
         modInfo.sort(Comparator.comparing(a -> a.modName.toLowerCase(Locale.ROOT)));
 
         // fill out the category IDs for all mods.
+        List<Map<String, Object>> modSearchDatabase = loadModSearchDatabase();
+        logger.debug("Loaded mod search database with {} entries.", modSearchDatabase.size());
+
         for (QueriedModInfo modInfo : modInfo) {
             // by default, the category name will just be the item type.
             modInfo.categoryName = formatGameBananaItemtype(modInfo.itemtype);
@@ -322,6 +312,42 @@ public class CustomEntityCatalogGenerator {
                     "Custom Entity Catalog Generator",
                     ":warning: The following keys are unused in the mod catalog dictionary: `" + String.join("`, `", unusedDictionaryKeys) + "`");
         }
+    }
+
+    private static List<Map<String, Object>> loadModSearchDatabase() throws IOException {
+        // instead of parsing the entire file and throwing away part of it, parse each entry individually
+        // to keep the memory usage as low as possible.
+        try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml");
+             BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+            List<Map<String, Object>> modSearchDatabase = new LinkedList<>();
+            StringBuilder entry = new StringBuilder();
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                if (!entry.isEmpty() && line.startsWith("- ")) {
+                    modSearchDatabase.add(parseModSearchDatabaseEntry(entry.toString()));
+                    entry.setLength(0);
+                }
+                entry.append(line).append('\n');
+            }
+
+            modSearchDatabase.add(parseModSearchDatabaseEntry(entry.toString()));
+            return modSearchDatabase;
+        }
+    }
+
+    private static Map<String, Object> parseModSearchDatabaseEntry(String entry) throws IOException {
+        final Set<String> toKeep = new HashSet<>(Arrays.asList("GameBananaType", "GameBananaId", "CategoryId", "CategoryName"));
+
+        List<Map<String, Object>> parsedEntry;
+        try (InputStream is = new ByteArrayInputStream(entry.getBytes(StandardCharsets.UTF_8))) {
+            parsedEntry = YamlUtil.load(is);
+        }
+
+        return parsedEntry.getFirst().entrySet().stream()
+                .filter(e -> toKeep.contains(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     private Map.Entry<String, Map<String, Object>> getUpdateCheckerDatabaseEntry(Map<String, Map<String, Object>> everestUpdateYaml, String fileId) {
