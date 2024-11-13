@@ -8,6 +8,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -25,7 +26,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -503,12 +503,7 @@ public class GameBananaAutomatedChecks {
     }
 
     public static void checkUnapprovedCategories() throws IOException {
-        List<Map<String, Object>> modSearchDatabase;
-        try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
-            modSearchDatabase = YamlUtil.load(is);
-        }
-
-        for (String itemtype : modSearchDatabase.stream().map(m -> (String) m.get("GameBananaType")).collect(Collectors.toSet())) {
+        for (String itemtype : DatabaseUpdater.VALID_CATEGORIES) {
             checkUnapprovedCategoriesFor(itemtype);
         }
     }
