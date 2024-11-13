@@ -163,7 +163,14 @@ public class AssetDriveService {
                     }
 
                     String matchingPath = yaml.get("Path");
-                    if (matchingPath.endsWith("*")) {
+                    String matchingPathRegex = yaml.get("PathRegex");
+
+                    if (matchingPathRegex != null) {
+                        // regex match
+                        if (!file.getString("name").matches(matchingPathRegex)) {
+                            continue;
+                        }
+                    } else if (matchingPath.endsWith("*")) {
                         // prefix match
                         if (!file.getString("name").startsWith(matchingPath.substring(0, matchingPath.length() - 1))) {
                             continue;
