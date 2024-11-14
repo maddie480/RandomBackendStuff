@@ -198,7 +198,7 @@ public class UsageStatsService {
                     return result;
                 }
 
-                if (item.has("repo")) {
+                if (item.has("repo") && item.has("public") && item.getBoolean("public")) {
                     String repoName = item.getJSONObject("repo").getString("name");
                     int count = result.getOrDefault(repoName, 0);
                     result.put(repoName, count + 1);
