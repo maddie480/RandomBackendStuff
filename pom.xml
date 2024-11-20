@@ -165,7 +165,7 @@
                             <workingDirectory>${project.build.directory}/</workingDirectory>
                             <arguments>
                                 <argument>-cp</argument>
-                                <argument>classes:dependency/commons-io-2.17.0.jar:dependency/json-20240303.jar</argument>
+                                <argument>classes:dependency/commons-io-2.18.0.jar:dependency/json-20240303.jar</argument>
                                 <argument>ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats.GameDBBuilder</argument>
                             </arguments>
                         </configuration>
@@ -225,7 +225,7 @@
                                     <workingDirectory>${project.build.directory}/</workingDirectory>
                                     <arguments>
                                         <argument>-cp</argument>
-                                        <argument>classes;dependency/commons-io-2.17.0.jar;dependency/json-20240303.jar</argument>
+                                        <argument>classes;dependency/commons-io-2.18.0.jar;dependency/json-20240303.jar</argument>
                                         <argument>ovh.maddie480.randomstuff.backend.discord.questcommunitybot.gamestats.GameDBBuilder</argument>
                                     </arguments>
                                 </configuration>
