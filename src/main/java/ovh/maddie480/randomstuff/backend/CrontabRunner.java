@@ -155,6 +155,7 @@ public class CrontabRunner {
 
         // Update tasks
         runProcessAndAlertOnException("AutoLeaver.main(null)", () -> AutoLeaver.main(null));
+        runProcessAndAlertOnException("TimezoneBot.leaveDeadServerIfNecessary()", () -> TimezoneBot.leaveDeadServerIfNecessary());
         runProcessAndAlertOnException("CustomSlashCommandsCleanup.housekeep()", () -> CustomSlashCommandsCleanup.housekeep());
         runProcessAndAlertOnException("ArbitraryModAppCacher.refreshArbitraryModAppCache()", () -> ArbitraryModAppCacher.refreshArbitraryModAppCache());
         runProcessAndAlertOnException("CustomEntityCatalogGenerator.main(null)", () -> CustomEntityCatalogGenerator.main(null));

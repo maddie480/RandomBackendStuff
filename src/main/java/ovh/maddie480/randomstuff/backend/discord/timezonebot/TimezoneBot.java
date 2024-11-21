@@ -6,9 +6,11 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.ErrorResponse;
+import net.dv8tion.jda.api.utils.TimeUtil;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -21,8 +23,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -289,6 +293,102 @@ public class TimezoneBot {
             // I/O error while saving to disk??
             logger.error("Error while writing file", e);
             if (event != null) event.reply(":x: A technical error occurred.").setEphemeral(true).queue();
+        }
+    }
+
+    /**
+     * Leaves one server if the 100 server limit was reached, to leave space for users that would like to invite the bot.
+     * Servers are immune to auto-leaving if:
+     * - they have at least one timezone role
+     * - or they have used the bot in the last 30 days
+     * Among the remaining servers, the one selected is the one with the oldest "activity date", which is the latest of:
+     * - bot join date
+     * - latest message published in any channel the bot has access to
+     * This aims to pick a server that has no timezone role, didn't use the bot for a while, and had no recent activity ("dead" server).
+     *
+     * @throws IOException If reading the list of timezone roles fails
+     */
+    public static void leaveDeadServerIfNecessary() throws IOException {
+        try (DiscardableJDA jda = new DiscardableJDA(SecretConstants.TIMEZONE_BOT_TOKEN)) {
+            List<Guild> guilds = jda.getGuilds();
+            if (guilds.size() < 100) {
+                logger.debug("We didn't reach the server limit yet ({}/100), no need to auto-leave!", guilds.size());
+                return;
+            }
+
+            Set<Long> serverIdsWithTimezoneRoles = new HashSet<>();
+            if (new File(SAVE_FILE_NAME).exists()) {
+                try (Stream<String> lines = Files.lines(Paths.get(SAVE_FILE_NAME))) {
+                    lines.forEach(line -> serverIdsWithTimezoneRoles.add(Long.parseLong(line.split(";")[0])));
+                }
+            }
+            logger.debug("Loaded list of servers with timezone roles: {}", serverIdsWithTimezoneRoles);
+
+            Set<Long> serverIdsThatUsedTheBot = new HashSet<>();
+            {
+                Pattern listCapturer = Pattern.compile(".*\\.BotEventListener - New command: .* by member .* guild=Guild:.*\\(id=([0-9]+)\\)\\).*");
+
+                try (Stream<Path> backendLogs = Files.list(Paths.get("/logs"))) {
+                    backendLogs
+                            .filter(p -> p.getFileName().toString().endsWith("_out.backend.log"))
+                            .forEach(p -> {
+                                logger.debug("Searching for bot usages in file {}", p.getFileName());
+                                try (Stream<String> lines = Files.lines(p)) {
+                                    lines.forEach(line -> {
+                                        Matcher matcher = listCapturer.matcher(line);
+                                        if (matcher.matches()) {
+                                            logger.debug("Captured {} from line: [[[{}]]]", matcher.group(1), line);
+                                            serverIdsThatUsedTheBot.add(Long.parseLong(matcher.group(1)));
+                                        }
+                                    });
+                                } catch (IOException e) {
+                                    logger.warn("Could not check backend log entries!", e);
+                                }
+                            });
+                }
+            }
+            logger.debug("Loaded list of servers that used the bot: {}", serverIdsThatUsedTheBot);
+
+            Guild deadestServer = null;
+            OffsetDateTime activityDateOfDeadestServer = null;
+
+            for (Guild guild : guilds) {
+                if (serverIdsWithTimezoneRoles.contains(guild.getIdLong())) {
+                    logger.debug("Server {} is spared because it has timezone roles", guild);
+                    continue;
+                }
+                if (serverIdsThatUsedTheBot.contains(guild.getIdLong())) {
+                    logger.debug("Server {} is spared because it used the bot over the last 30 days", guild);
+                    continue;
+                }
+
+                // determine activity date
+                OffsetDateTime activityDate;
+                {
+                    long latestMessageId = guild.getTextChannels().stream()
+                            .mapToLong(MessageChannel::getLatestMessageIdLong)
+                            .max().orElse(0);
+                    OffsetDateTime latestMessageDate = TimeUtil.getTimeCreated(latestMessageId);
+                    OffsetDateTime joinDate = guild.getSelfMember().getTimeJoined();
+                    activityDate = latestMessageDate.isAfter(joinDate) ? latestMessageDate : joinDate;
+                    logger.debug("Latest message on {} happened on {}, bot joined on {} => activity date is {}", guild, latestMessageDate, joinDate, activityDate);
+                }
+
+                if (activityDateOfDeadestServer == null || activityDate.isBefore(activityDateOfDeadestServer)) {
+                    logger.info("Server BEATS {} that has date {}", deadestServer, activityDateOfDeadestServer);
+                    deadestServer = guild;
+                    activityDateOfDeadestServer = activityDate;
+                } else {
+                    logger.debug("Server doesn't beat {} that has date {}", deadestServer, activityDateOfDeadestServer);
+                }
+            }
+
+            if (deadestServer == null) {
+                logger.warn("Found no dead server!");
+            } else {
+                logger.info("Leaving guild {}", deadestServer);
+                deadestServer.leave().complete();
+            }
         }
     }
 }
