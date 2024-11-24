@@ -686,7 +686,7 @@ public class GameBananaAutomatedChecks {
                     String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
                     badPngListMessage = ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files:\n" +
                             "```\n" +
-                            badPngListMessage +
+                            badPngListMessage + "\n" +
                             "```\n" +
                             "This is illegal <:landeline:458158726558384149>\n" +
                             ":arrow_right: https://gamebanana.com/" + nameForUrl;
