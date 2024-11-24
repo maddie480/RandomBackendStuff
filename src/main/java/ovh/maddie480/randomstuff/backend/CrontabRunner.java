@@ -229,6 +229,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("CollabAutoHider.run()", () -> CollabAutoHider.run());
         runProcessAndAlertOnException("TempFolderCleanup.cleanUpFolder(\"/shared/temp\", 1, path -> true)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true));
         runProcessAndAlertOnException("TempFolderCleanup.cleanUpFolder(\"/logs\", 30, path -> path.getFileName().toString().endsWith(\".backend.log\"))", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log")));
+        runProcessAndAlertOnException("TempFolderCleanup.cleanUpFolder(\"/logs\", 1, path -> path.getFileName().toString().endsWith(\".autodeploy.log\"))", () -> TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log")));
         runProcessAndAlertOnException("UsageStatsService.writeWeeklyStatisticsToFile()", () -> UsageStatsService.writeWeeklyStatisticsToFile());
         runProcessAndAlertOnException("MastodonUpdateChecker.checkForUpdates()", () -> MastodonUpdateChecker.checkForUpdates());
         runProcessAndAlertOnException("TwitterUpdateChecker.checkForUpdates()", () -> TwitterUpdateChecker.checkForUpdates());
