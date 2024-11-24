@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -40,7 +41,7 @@ public class GameBananaAutomatedChecks {
     private static final Logger logger = LoggerFactory.getLogger(GameBananaAutomatedChecks.class);
 
     // files that should trigger a warning when present in a mod (files that ship with Celeste or Everest)
-    private static final List<String> BAD_FILE_LIST = Arrays.asList("Celeste.exe",
+    private static final List<String> BAD_FILE_LIST = Arrays.asList(
             "CSteamworks.dll", "Celeste.Mod.mm.dll", "DotNetZip.dll", "FNA.dll", "I18N.CJK.dll", "I18N.MidEast.dll",
             "I18N.Other.dll", "I18N.Rare.dll", "I18N.West.dll", "I18N.dll", "Jdenticon.dll", "KeraLua.dll", "MMHOOK_Celeste.dll", "MojoShader.dll",
             "Mono.Cecil.Mdb.dll", "Mono.Cecil.Pdb.dll", "Mono.Cecil.Rocks.dll", "Mono.Cecil.dll", "MonoMod.RuntimeDetour.dll", "MonoMod.Utils.dll", "NLua.dll",
@@ -284,11 +285,34 @@ public class GameBananaAutomatedChecks {
                     contents = YamlUtil.load(is);
                 }
 
+                // check for EXE files
+                List<String> exeList = contents.stream()
+                        .filter(f -> f.toLowerCase().endsWith(".exe"))
+                        .toList();
+
+                String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
+
+                if (!exeList.isEmpty()) {
+                    String message = ":warning: The mod called **" + modName + "** contains an EXE file: `" + exeList.getFirst() + "`! " +
+                            "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl;
+
+                    for (int i = 2; i <= exeList.size(); i++) {
+                        String newMessage = ":warning: The mod called **" + modName + "** contains EXE files: `" +
+                                exeList.stream().limit(i - 1).collect(Collectors.joining("`, `")) + "` and `" + exeList.get(i - 1) + "`! " +
+                                "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl;
+
+                        if (newMessage.length() > 2000) break;
+                        message = newMessage;
+                    }
+
+                    sendAlertToWebhook(message);
+                }
+
+                // check against the bad file list (tm)
                 for (String entry : contents) {
                     for (String illegalFile : BAD_FILE_LIST) {
                         if (entry.equalsIgnoreCase(illegalFile) || entry.toLowerCase(Locale.ROOT).endsWith("/" + illegalFile.toLowerCase(Locale.ROOT))) {
                             // this file is illegal!
-                            String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** contains a file called `" + illegalFile + "`! " +
                                     "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl);
                             return;
@@ -297,7 +321,6 @@ public class GameBananaAutomatedChecks {
 
                     Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
                     if (objDirectoryMatcher.matches()) {
-                        String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
                         sendAlertToWebhook(":warning: The mod called **" + modName + "** contains an `obj/" + objDirectoryMatcher.group(1) + "` folder! " +
                                 "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl);
                         return;
