@@ -173,7 +173,7 @@ public class GameBananaAutomatedChecks {
                                         logger.warn("Mod {} might be using the IntPtr trick", modName);
                                         intPtrIssue = true;
                                     }
-                                    if (fullDecompile.contains("Console.WriteLine")) {
+                                    if (!Arrays.asList("FrostHelper", "MappingUtils").contains(modName) && fullDecompile.contains("Console.WriteLine")) {
                                         logger.warn("Mod {} contains Console.WriteLine", modName);
                                         consoleWriteLine = true;
                                     }
