@@ -656,21 +656,37 @@ public class GameBananaAutomatedChecks {
 
                 if (!badPngs.isEmpty()) {
                     // write the file listing to a file we will be able to attach to the alert.
+                    String badPngListMessage = String.join("\n", badPngs);
                     File tempListFile = new File("/tmp/bad_png_files.txt");
-                    FileUtils.writeStringToFile(tempListFile, String.join("\n", badPngs), UTF_8);
+                    FileUtils.writeStringToFile(tempListFile, badPngListMessage, UTF_8);
 
                     String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
+                    badPngListMessage = ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files:\n" +
+                            "```\n" +
+                            badPngListMessage +
+                            "```\n" +
+                            "This is illegal <:landeline:458158726558384149>\n" +
+                            ":arrow_right: https://gamebanana.com/" + nameForUrl;
 
                     for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-                        if (webhook.startsWith("https://discord.com/") && tempListFile.length() < 8_388_608L) {
-                            // Discord webhook: send the file with attachment
+                        if (badPngListMessage.length() <= 2000) {
+                            // list is short enough to fit in the message itself: just include it
+                            WebhookExecutor.executeWebhook(webhook,
+                                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                                    "Banana Watch",
+                                    badPngListMessage,
+                                    ImmutableMap.of("X-Everest-Log", "true")
+                            );
+                        } else if (webhook.startsWith("https://discord.com/") && tempListFile.length() <= 25 * 1024 * 1024) {
+                            // Discord webhook and list too long to be included in the message: send the file with attachment
                             WebhookExecutor.executeWebhook(webhook,
                                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                                     "Banana Watch",
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! You will find the list attached. " +
                                             "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl,
                                     false,
-                                    Collections.singletonList(tempListFile));
+                                    Collections.singletonList(tempListFile)
+                            );
                         } else {
                             // Discord-compatible webhook or file is too big(???): send the file with special header but without the attachment
                             WebhookExecutor.executeWebhook(webhook,
@@ -678,7 +694,8 @@ public class GameBananaAutomatedChecks {
                                     "Banana Watch",
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! " +
                                             "This is illegal <:landeline:458158726558384149>\n:arrow_right: https://gamebanana.com/" + nameForUrl,
-                                    ImmutableMap.of("X-Everest-Log", "true"));
+                                    ImmutableMap.of("X-Everest-Log", "true")
+                            );
                         }
                     }
 
