@@ -25,8 +25,12 @@ public class AutoLeaver {
 
             try (DiscardableJDA jda = new DiscardableJDA(token)) {
                 for (Guild guild : jda.getGuilds()) {
-                    logger.warn("{} is leaving guild {}!", jda.getSelfUser(), guild);
-                    guild.leave().queue();
+                    if (guild.getSelfMember().getEffectiveName().equals(jda.getSelfUser().getEffectiveName())) {
+                        logger.warn("{} is leaving guild {}!", jda.getSelfUser(), guild);
+                        guild.leave().queue();
+                    } else {
+                        logger.info("Staying in server {} since user \"{}\" was renamed to \"{}\"", guild, jda.getSelfUser().getEffectiveName(), guild.getSelfMember().getEffectiveName());
+                    }
                 }
             }
         }
