@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xeo pipefail
+set -x
 
 LOGFILE=/home/debian/logs/$(date +%Y%m%d_%H%M%S).autodeploy.log
 
