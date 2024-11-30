@@ -16,6 +16,7 @@ public class UpdateOutgoingWebhooks {
     private static final Logger log = LoggerFactory.getLogger(UpdateOutgoingWebhooks.class);
 
     private static boolean changesHappened = false;
+    private static boolean alreadyDone = false;
 
     public static void changesHappened() {
         changesHappened = true;
@@ -26,10 +27,13 @@ public class UpdateOutgoingWebhooks {
             return;
         }
 
-        /* ConnectionUtils.runWithRetry(() -> {
+        if (!alreadyDone) {
+            alreadyDone = true;
+        ConnectionUtils.runWithRetry(() -> {
             OtobotMirror.getInstance().update();
             return null; // method signature
-        }); */
+        });
+        }
 
         WebhookExecutor.executeWebhook(
                 SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
