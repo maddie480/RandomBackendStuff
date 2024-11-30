@@ -195,7 +195,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("LNJBot.healthCheck()", () -> LNJBot.healthCheck());
         runProcessAndAlertOnException("checkLNJEmotes()", () -> checkLNJEmotes());
         runProcessAndAlertOnException("checkChatProviderCanConnect(new TwitchChatProvider())", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
-       //  runProcessAndAlertOnException("checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info(\"Giving up!\")))", () -> checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
+        // runProcessAndAlertOnException("checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info(\"Giving up!\")))", () -> checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
 
         // Non-Celeste Stuff
         runProcessAndAlertOnException("ChangeBGToRandom.run()", () -> ChangeBGToRandom.run());
