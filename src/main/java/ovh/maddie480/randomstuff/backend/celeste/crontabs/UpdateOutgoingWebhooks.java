@@ -26,10 +26,10 @@ public class UpdateOutgoingWebhooks {
             return;
         }
 
-        ConnectionUtils.runWithRetry(() -> {
+        /* ConnectionUtils.runWithRetry(() -> {
             OtobotMirror.getInstance().update();
             return null; // method signature
-        });
+        }); */
 
         WebhookExecutor.executeWebhook(
                 SecretConstants.UPDATE_CHECKER_LOGS_HOOK,

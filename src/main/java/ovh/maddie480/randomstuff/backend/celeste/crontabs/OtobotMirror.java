@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.zip.GZIPOutputStream;
 
 public class OtobotMirror {
     private static final Logger log = LoggerFactory.getLogger(OtobotMirror.class);
@@ -120,14 +119,11 @@ public class OtobotMirror {
         connection.setReadTimeout(60000);
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("Content-Encoding", "gzip");
         connection.setRequestProperty("Authorization", authorizationHeader);
         connection.setDoOutput(true);
 
-        try (OutputStream os = connection.getOutputStream();
-             GZIPOutputStream gos = new GZIPOutputStream(os)) {
-
-            gos.write(bodyRaw);
+        try (OutputStream os = connection.getOutputStream()) {
+            os.write(bodyRaw);
         }
 
         int responseCode = connection.getResponseCode();
