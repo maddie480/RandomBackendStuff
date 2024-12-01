@@ -71,6 +71,7 @@ EmHelper/MonumentspikesUp=Monument Spikes Up
 EmHelper/Monumentswapblock=Monument Swap Block
 EmHelper/Monumentswitchblock=Monument Switch Block
 EmHelper/Switchtrigger=Switch Trigger
+Emhelper/Switchtrigger=Switch Trigger
 ExtendedVariantMode/FloatExtendedVariantFadeTrigger=Extended Variant Fade Trigger
 ExtendedVariantMode/JumpRefill=Recover Jump Refill
 ExtendedVariantMode/TheoCrystal=Extended Variant Theo Crystal
