@@ -180,6 +180,8 @@ public class CustomEntityCatalogGenerator {
      * @throws IOException If an error occurs while reading the database
      */
     private void reloadList() throws IOException {
+        dictionary = ModCatalogDictionaryGenerator.generateModCatalogDictionary();
+
         // download the custom entity catalog dictionary.
         {
             Map<String, String> tempdic = new HashMap<>();
@@ -189,9 +191,16 @@ public class CustomEntityCatalogGenerator {
             } catch (Exception e) {
                 logger.warn("Could not fetch dictionary for entity names", e);
             }
-            dictionary = tempdic;
-            unusedDictionaryKeys = new HashSet<>(dictionary.keySet());
-            logger.debug("Loaded mod catalog dictionary with {} entries.", dictionary.size());
+
+            unusedDictionaryKeys = new HashSet<>(tempdic.keySet());
+            logger.debug("Loaded mod catalog dictionary with {} entries.", tempdic.size());
+
+            for (Map.Entry<String, String> entry : tempdic.entrySet()) {
+                if (dictionary.containsKey(entry.getKey())) {
+                    logger.info("Value {} from modcatalogdictionary.txt overwrites value {} generated for key {}", entry.getValue(), dictionary.get(entry.getKey()), entry.getKey());
+                }
+                dictionary.put(entry.getKey(), entry.getValue());
+            }
         }
 
         modInfo = new ArrayList<>();
