@@ -469,6 +469,19 @@ public class CustomEntityCatalogGenerator {
                     checkMapEditor("ahorn", mod, file, thisModInfo, mlpEntities, mlpTriggers, mlpEffects);
                     checkMapEditor("loenn", mod, file, thisModInfo, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
 
+                    // filter out anything starting with "Sample Entity" and "Sample Trigger"
+                    String toRemove;
+                    while ((toRemove = thisModInfo.entityList.keySet().stream()
+                            .filter(l -> l.startsWith("Sample Entity"))
+                            .findFirst().orElse(null)) != null)
+                        thisModInfo.entityList.remove(toRemove);
+
+                    while ((toRemove = thisModInfo.triggerList.keySet().stream()
+                            .filter(l -> l.startsWith("Sample Trigger"))
+                            .findFirst().orElse(null)) != null)
+                        thisModInfo.triggerList.remove(toRemove);
+
+
                     // check if we found plugins!
                     if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
                         thisModInfo.fileId = file;
