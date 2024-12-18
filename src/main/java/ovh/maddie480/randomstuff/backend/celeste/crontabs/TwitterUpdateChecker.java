@@ -248,8 +248,8 @@ public class TwitterUpdateChecker {
                         if (connection.getHeaderField("Content-Length") != null) {
                             long contentLength = Long.parseLong(connection.getHeaderField("Content-Length"));
                             log.debug("File size for video at {}: {}", url, contentLength);
-                            // the "best" video is the biggest one that still fits within the 25 MB size limit.
-                            if (contentLength > filesize && contentLength <= 25 * 1024 * 1024) {
+                            // the "best" video is the biggest one that still fits within the 10 MB size limit.
+                            if (contentLength > filesize && contentLength <= 10 * 1024 * 1024) {
                                 bestUrl = url;
                                 filesize = contentLength;
                             }

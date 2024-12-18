@@ -259,8 +259,8 @@ public class FontGenerator {
             }
 
             // send the whole thing!
-            if (channel != null && tempDirectory.resolve("font.zip").toFile().length() > 25 * 1024 * 1024) {
-                channel.sendMessage(":x: The resulting file is more than 25 MB in size. Did you try generating the entire font or what? :thinking: Anyway, this does not fit in a Discord attachment.").queue();
+            if (channel != null && tempDirectory.resolve("font.zip").toFile().length() > 10 * 1024 * 1024) {
+                channel.sendMessage(":x: The resulting file is more than 10 MB in size. Did you try generating the entire font or what? :thinking: Anyway, this does not fit in a Discord attachment.").queue();
             } else if (stillMissingCharacters.isEmpty()) {
                 if (channel != null) {
                     channel.sendMessage(":white_check_mark: Here is the font you need to place in your `Mods/yourmod/Dialog/Fonts` folder:")

@@ -286,7 +286,7 @@ public class MastodonUpdateChecker {
         if (videoUrl != null) {
             boolean videoSent = false;
             File video = new File("/tmp/status_video" + getFileExtension(videoUrl));
-            if (video.exists() && video.length() <= 25 * 1024 * 1024) {
+            if (video.exists() && video.length() <= 10 * 1024 * 1024) {
                 // post the video as a file, to avoid having to post a long link
                 try {
                     WebhookExecutor.executeWebhook(webhook, profilePictureUrl, username, ":arrow_up: Video:", false, Collections.singletonList(video));

@@ -689,7 +689,7 @@ public class GameBananaAutomatedChecks {
                                     badPngListMessage,
                                     ImmutableMap.of("X-Everest-Log", "true")
                             );
-                        } else if (webhook.startsWith("https://discord.com/") && tempListFile.length() <= 25 * 1024 * 1024) {
+                        } else if (webhook.startsWith("https://discord.com/") && tempListFile.length() <= 10 * 1024 * 1024) {
                             // Discord webhook and list too long to be included in the message: send the file with attachment
                             WebhookExecutor.executeWebhook(webhook,
                                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
