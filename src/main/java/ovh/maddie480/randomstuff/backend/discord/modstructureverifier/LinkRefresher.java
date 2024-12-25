@@ -88,6 +88,15 @@ public class LinkRefresher {
                 throw e;
             }
 
+            if (origMessage.getAttachments().isEmpty()) {
+                log.warn("Forgetting message {} because the attachment was deleted", message.messageId());
+                continue;
+            }
+            if (embedMessage.getEmbeds().isEmpty()) {
+                log.warn("Forgetting message {} because the embed was deleted", message.messageId());
+                continue;
+            }
+
             log.info("Refreshing link of message {} that expired on {}", message.embedId(), linkExpiresAt);
 
             String url = origMessage.getAttachments().get(0).getUrl();
