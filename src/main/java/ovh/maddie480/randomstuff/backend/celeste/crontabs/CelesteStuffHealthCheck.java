@@ -1027,7 +1027,7 @@ public class CelesteStuffHealthCheck {
 
                     ZipEntry entry;
                     while ((entry = zis.getNextEntry()) != null) {
-                        if ("Maps/nameguysdsidespack/0/10-Farewell.bin".equals(entry.getName())) {
+                        if ("Maps/monikadsidespack/0/10-Farewell.bin".equals(entry.getName())) {
                             log.debug("Found map bin, sending...");
                             IOUtils.copy(zis, bos);
                             return bos.toByteArray();
