@@ -35,7 +35,12 @@ public class AssetDriveService {
     private static final String DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     private static final String FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
+    private static GoogleCredentials credential;
+
     public static void listAllFiles() throws IOException {
+        credential = GoogleCredentials.fromStream(new ByteArrayInputStream(SecretConstants.GOOGLE_DRIVE_OAUTH_CONFIG.getBytes(StandardCharsets.UTF_8)))
+                .createScoped(Collections.singletonList("https://www.googleapis.com/auth/drive.readonly"));
+
         JSONArray allFiles = listFilesInFolderRecursive(SecretConstants.ASSET_DRIVE_FOLDER_ID,
                 new HashSet<>(Arrays.asList("image/png", "font/ttf", "text/plain", "text/yaml", DOCX_MIME_TYPE, FOLDER_MIME_TYPE)), "");
 
@@ -262,9 +267,6 @@ public class AssetDriveService {
     public static void rsyncFiles() throws IOException {
         Path syncedFilesRepository = Paths.get("/shared/celeste/asset-drive/files");
 
-        GoogleCredentials credential = GoogleCredentials.fromStream(new ByteArrayInputStream(SecretConstants.GOOGLE_DRIVE_OAUTH_CONFIG.getBytes(StandardCharsets.UTF_8)))
-                .createScoped(Collections.singletonList("https://www.googleapis.com/auth/drive.readonly"));
-
         Set<String> missingFiles;
         try (Stream<Path> fileListing = Files.list(syncedFilesRepository)) {
             missingFiles = fileListing
@@ -388,13 +390,18 @@ public class AssetDriveService {
     }
 
     private static JSONObject listPageOfFilesInFolder(String folderId, String pageToken) throws IOException {
-        String url = "https://www.googleapis.com/drive/v3/files?key=" + SecretConstants.GOOGLE_DRIVE_API_KEY
-                + "&q=" + URLEncoder.encode("'" + folderId + "' in parents and trashed = false", StandardCharsets.UTF_8)
+        String url = "https://www.googleapis.com/drive/v3/files?"
+                + "q=" + URLEncoder.encode("'" + folderId + "' in parents and trashed = false", StandardCharsets.UTF_8)
                 + "&fields=" + URLEncoder.encode("files(id,mimeType,name,modifiedTime)", StandardCharsets.UTF_8)
                 + (pageToken == null ? "" : "&pageToken=" + pageToken);
 
         JSONObject result = ConnectionUtils.runWithRetry(() -> {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+            credential.refreshIfExpired();
+
+            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout(url);
+            conn.setRequestProperty("Authorization", "Bearer " + credential.getAccessToken().getTokenValue());
+
+            try (InputStream is = ConnectionUtils.connectionToInputStream(conn)) {
                 return new JSONObject(new JSONTokener(is));
             }
         });
