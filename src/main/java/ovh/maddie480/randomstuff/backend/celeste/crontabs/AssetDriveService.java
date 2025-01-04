@@ -393,10 +393,11 @@ public class AssetDriveService {
                 + "&fields=" + URLEncoder.encode("files(id,mimeType,name,modifiedTime)", StandardCharsets.UTF_8)
                 + (pageToken == null ? "" : "&pageToken=" + pageToken);
 
-        JSONObject result;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-            result = new JSONObject(new JSONTokener(is));
-        }
+        JSONObject result = ConnectionUtils.runWithRetry(() -> {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+                return new JSONObject(new JSONTokener(is));
+            }
+        });
 
         for (Object o : result.getJSONArray("files")) {
             JSONObject file = (JSONObject) o;
