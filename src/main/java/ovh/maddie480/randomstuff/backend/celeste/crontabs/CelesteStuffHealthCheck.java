@@ -1175,6 +1175,12 @@ public class CelesteStuffHealthCheck {
             throw new IOException("Direct Link Service did not redirect to mirror correctly!");
         }
 
+        connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/gb?id=MaxHelpingHand");
+        connection.setInstanceFollowRedirects(false);
+        if (!("https://gamebanana.com/mods/53687").equals(connection.getHeaderField("location"))) {
+            throw new IOException("Direct Link Service did not redirect to GameBanana page correctly!");
+        }
+
         connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/bundle-download?id=MaxHelpingHand");
         connection.setInstanceFollowRedirects(false);
         if (!("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand").equals(connection.getHeaderField("location"))) {
