@@ -14,7 +14,7 @@ RUN echo "fr_FR.UTF-8 UTF-8" > /etc/locale.gen && \
   apt-get update && \
   apt-get install -y software-properties-common && \
   add-apt-repository ppa:dotnet/backports && \
-  apt-get install dotnet-sdk-6.0 wine figlet ffmpeg python3 -y && \
+  apt-get install dotnet-sdk-8.0 wine figlet ffmpeg python3 -y && \
   apt-get upgrade -y && \
   apt-get remove -y software-properties-common && \
   apt-get autoremove -y && \
