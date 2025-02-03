@@ -6,9 +6,7 @@ import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.interactions.DiscordLocale;
-import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.InteractionType;
+import net.dv8tion.jda.api.interactions.*;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.components.LayoutComponent;
@@ -301,6 +299,16 @@ public class WorldClockHealthCheck {
         @Override
         public List<Entitlement> getEntitlements() {
             return Collections.emptyList();
+        }
+
+        @Override
+        public InteractionContextType getContext() {
+            return null;
+        }
+
+        @Override
+        public IntegrationOwners getIntegrationOwners() {
+            return null;
         }
 
         public JDA getJDA() {
