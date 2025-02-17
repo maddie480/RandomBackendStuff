@@ -786,8 +786,9 @@ public class ModStructureVerifier extends ListenerAdapter {
             entitiesList.get("Effects").stream().map(s -> s.toLowerCase(Locale.ROOT)).forEach(availableVanillaEffects::add);
         }
 
-        // parallax is an effect too!
+        // parallax and apply are special-case stylegrounds that aren't registered in the map editors like effects are.
         availableVanillaEffects.add("parallax");
+        availableVanillaEffects.add("apply");
 
         // grab the decals and stylegrounds that ship with the mod.
         fileListing.stream()
