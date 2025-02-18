@@ -188,7 +188,7 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
-     * Checks that an Olympus artifact is downloadable.
+     * Checks that an Olympus version is downloadable.
      */
     private static void checkOlympusVersionExists(String branch) throws IOException {
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
@@ -199,10 +199,18 @@ public class CelesteStuffHealthCheck {
 
                 if (branch.equals(versionObj.getString("branch"))) {
                     String namePrefix = "olympus-" + versionObj.getString("version") + "-";
-                    checkExists(versionObj.getString("windowsDownload"), namePrefix + "windows.zip");
-                    if (!namePrefix.startsWith("windows-")) {
-                        checkExists(versionObj.getString("macosDownload"), namePrefix + "macos.zip");
-                        checkExists(versionObj.getString("linuxDownload"), namePrefix + "linux.zip");
+
+                    // launcher-winforms - Windows-only artifact
+                    checkExists(versionObj.getString("windowsDownload").replace("windows.main", "launcher-winforms"), namePrefix + "windows-launcher.zip");
+
+                    // update to Lua part, common between OSes
+                    checkExists(versionObj.getString("windowsDownload").replace("windows.main", "update"), namePrefix + "common-update.zip");
+
+                    // Platform-specific artifacts (complete install + updates to C# part)
+                    for (String os : Arrays.asList("windows", "macos", "linux")) {
+                        checkExists(versionObj.getString(os + "Download"), namePrefix + os + "-install.zip");
+                        checkExists(versionObj.getString(os + "Download").replace("main", "update"), namePrefix + os + "-update.zip");
+                        if (branch.startsWith("windows-")) break; // macos and linux artifacts aren't relevant
                     }
                     break;
                 }
@@ -236,7 +244,7 @@ public class CelesteStuffHealthCheck {
      * Checks that a link is downloadable, and... downloads it.
      */
     private static void checkExists(String link, String fileName) throws IOException {
-        log.debug("Trying to download {}...", link);
+        log.debug("Trying to download {} to {}...", link, fileName);
 
         Path target = Paths.get("/tmp/everest-versions", fileName);
         Files.createDirectories(target.getParent());
