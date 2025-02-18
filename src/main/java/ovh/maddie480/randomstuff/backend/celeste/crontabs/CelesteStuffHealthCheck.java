@@ -121,6 +121,7 @@ public class CelesteStuffHealthCheck {
         String latestStable = "";
         String latestMain = "";
         String latestWindowsInit = "";
+        String latestWindowsSplit = "";
 
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
             JSONArray versionList = new JSONArray(new JSONTokener(is));
@@ -129,8 +130,8 @@ public class CelesteStuffHealthCheck {
                 JSONObject versionObj = (JSONObject) version;
 
                 switch (versionObj.getString("branch")) {
-                    case "windows-init" ->
-                            latestWindowsInit = maxString(latestWindowsInit, versionObj.getString("version"));
+                    case "windows-init" -> latestWindowsInit = maxString(latestWindowsInit, versionObj.getString("version"));
+                    case "windows-split" -> latestWindowsSplit = maxString(latestWindowsSplit, versionObj.getString("version"));
                     case "main" -> latestMain = maxString(latestMain, versionObj.getString("version"));
                     case "stable" -> latestStable = maxString(latestStable, versionObj.getString("version"));
                 }
@@ -149,11 +150,16 @@ public class CelesteStuffHealthCheck {
             throw new IOException("There is no Olympus windows-init version :a:");
         }
         log.debug("Latest Olympus windows-init version: " + latestWindowsInit);
+        if (latestWindowsSplit.isEmpty()) {
+            throw new IOException("There is no Olympus windows-split version :a:");
+        }
+        log.debug("Latest Olympus windows-split version: " + latestWindowsSplit);
 
         if (daily) {
             checkOlympusVersionExists("main");
             checkOlympusVersionExists("stable");
             checkOlympusVersionExists("windows-init");
+            checkOlympusVersionExists("windows-split");
         }
     }
 
@@ -194,8 +200,10 @@ public class CelesteStuffHealthCheck {
                 if (branch.equals(versionObj.getString("branch"))) {
                     String namePrefix = "olympus-" + versionObj.getString("version") + "-";
                     checkExists(versionObj.getString("windowsDownload"), namePrefix + "windows.zip");
-                    checkExists(versionObj.getString("macosDownload"), namePrefix + "macos.zip");
-                    checkExists(versionObj.getString("linuxDownload"), namePrefix + "linux.zip");
+                    if (!namePrefix.startsWith("windows-")) {
+                        checkExists(versionObj.getString("macosDownload"), namePrefix + "macos.zip");
+                        checkExists(versionObj.getString("linuxDownload"), namePrefix + "linux.zip");
+                    }
                     break;
                 }
             }

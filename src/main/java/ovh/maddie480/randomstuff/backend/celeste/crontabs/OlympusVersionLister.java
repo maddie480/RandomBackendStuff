@@ -48,9 +48,9 @@ public class OlympusVersionLister {
             }
         }
 
-        // get the latest Azure builds for main, stable and windows-init branches
+        // get the latest Azure builds for main, stable, windows-init and windows-split branches
         List<Integer> currentAzureBuilds = new ArrayList<>();
-        for (String branch : Arrays.asList("main", "stable", "windows-init")) {
+        for (String branch : Arrays.asList("main", "stable", "windows-init", "windows-split")) {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds?definitions=4&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
                 currentAzureBuilds.addAll(new JSONObject(new JSONTokener(is)).getJSONArray("value")
                         .toList().stream()
@@ -76,7 +76,7 @@ public class OlympusVersionLister {
     private static void updateOlympusVersions() throws IOException {
         List<Map<String, Object>> info = new ArrayList<>();
 
-        for (String branch : Arrays.asList("main", "stable", "windows-init")) {
+        for (String branch : Arrays.asList("main", "stable", "windows-init", "windows-split")) {
             JSONObject azureBuilds;
             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds?definitions=4&branchName=refs/heads/" + branch + "&statusFilter=completed&resultFilter=succeeded&api-version=5.0")) {
                 azureBuilds = new JSONObject(new JSONTokener(is));
@@ -93,6 +93,7 @@ public class OlympusVersionLister {
 
                 for (String os : Arrays.asList("windows", "macos", "linux")) {
                     entry.put(os + "Download", "https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds/" + build.getInt("id") + "/artifacts?artifactName=" + os + ".main&api-version=5.0&%24format=zip");
+                    if (branch.startsWith("windows-")) break;
                 }
 
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://raw.githubusercontent.com/EverestAPI/Olympus/" + build.getString("sourceVersion") + "/changelog.txt")) {
