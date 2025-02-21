@@ -154,7 +154,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch()", () -> CelesteStuffHealthCheck.checkBananaMirrorDatabaseMatch());
 
         // Update tasks
-        runProcessAndAlertOnException("AutoLeaver.main(null)", () -> AutoLeaver.main(null));
+        runProcessAndAlertOnException("MembershipNotifier.main(null)", () -> MembershipNotifier.main(null));
         runProcessAndAlertOnException("TimezoneBot.leaveDeadServerIfNecessary()", () -> TimezoneBot.leaveDeadServerIfNecessary());
         runProcessAndAlertOnException("CustomSlashCommandsCleanup.housekeep()", () -> CustomSlashCommandsCleanup.housekeep());
         runProcessAndAlertOnException("ArbitraryModAppCacher.refreshArbitraryModAppCache()", () -> ArbitraryModAppCacher.refreshArbitraryModAppCache());
