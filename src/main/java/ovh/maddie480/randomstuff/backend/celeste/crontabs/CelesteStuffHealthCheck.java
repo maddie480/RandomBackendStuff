@@ -121,7 +121,6 @@ public class CelesteStuffHealthCheck {
         String latestStable = "";
         String latestMain = "";
         String latestWindowsInit = "";
-        String latestWindowsSplit = "";
 
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/olympus-versions.json"))) {
             JSONArray versionList = new JSONArray(new JSONTokener(is));
@@ -131,7 +130,6 @@ public class CelesteStuffHealthCheck {
 
                 switch (versionObj.getString("branch")) {
                     case "windows-init" -> latestWindowsInit = maxString(latestWindowsInit, versionObj.getString("version"));
-                    case "windows-split" -> latestWindowsSplit = maxString(latestWindowsSplit, versionObj.getString("version"));
                     case "main" -> latestMain = maxString(latestMain, versionObj.getString("version"));
                     case "stable" -> latestStable = maxString(latestStable, versionObj.getString("version"));
                 }
@@ -150,16 +148,11 @@ public class CelesteStuffHealthCheck {
             throw new IOException("There is no Olympus windows-init version :a:");
         }
         log.debug("Latest Olympus windows-init version: " + latestWindowsInit);
-        if (latestWindowsSplit.isEmpty()) {
-            throw new IOException("There is no Olympus windows-split version :a:");
-        }
-        log.debug("Latest Olympus windows-split version: " + latestWindowsSplit);
 
         if (daily) {
             checkOlympusVersionExists("main");
             checkOlympusVersionExists("stable");
             checkOlympusVersionExists("windows-init");
-            checkOlympusVersionExists("windows-split");
         }
     }
 
@@ -210,8 +203,9 @@ public class CelesteStuffHealthCheck {
                     for (String os : Arrays.asList("windows", "macos", "linux")) {
                         checkExists(versionObj.getString(os + "Download"), namePrefix + os + "-install.zip");
                         checkExists(versionObj.getString(os + "Download").replace("main", "update"), namePrefix + os + "-update.zip");
-                        if (branch.startsWith("windows-")) break; // macos and linux artifacts aren't relevant
+                        if (branch.equals("windows-init")) break; // macos and linux artifacts do exist, but aren't really relevant
                     }
+
                     break;
                 }
             }
