@@ -20,13 +20,11 @@ import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.BusUpdateChecker;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
-import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
@@ -253,11 +251,6 @@ public class CrontabRunner {
         runProcessAndAlertOnException("CelesteStuffHealthCheck.checkOlympusAPIs()", () -> CelesteStuffHealthCheck.checkOlympusAPIs());
 
         // Quest Community Bot stuff
-        runProcessAndAlertOnException("BusUpdateChecker.runCheckForUpdates(client.getTextChannelById(551822297573490749L))", () -> {
-            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
-                BusUpdateChecker.runCheckForUpdates(client.getTextChannelById(551822297573490749L));
-            }
-        });
         runProcessAndAlertOnException("new TemperatureChecker().checkForUpdates(client.getTextChannelById(551822297573490749L))", () -> {
             try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
                 new TemperatureChecker().checkForUpdates(client.getTextChannelById(551822297573490749L));

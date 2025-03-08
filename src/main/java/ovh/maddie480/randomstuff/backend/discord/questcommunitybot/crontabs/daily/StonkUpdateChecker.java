@@ -8,10 +8,12 @@ import java.io.IOException;
 
 public class StonkUpdateChecker {
     public static void postTo(MessageChannel target) throws IOException {
-        String stonk = ConnectionUtils.jsoupGetWithRetry(SecretConstants.STONK_URL)
-                .select(".digest-header .header-devise")
-                .text().trim();
+        for (String url : SecretConstants.STONK_URL.split(",")) {
+            String stonk = ConnectionUtils.jsoupGetWithRetry(url)
+                    .select(".digest-header .header-devise")
+                    .text().trim();
 
-        target.sendMessage(":chart: " + stonk).queue();
+            target.sendMessage(":chart: " + stonk).queue();
+        }
     }
 }

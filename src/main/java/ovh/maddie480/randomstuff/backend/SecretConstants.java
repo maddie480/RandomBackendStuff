@@ -114,7 +114,6 @@ public class SecretConstants {
     public static String REPOST_WEBHOOK_URL;
 
     // Quest Community Bot crontabs
-    public static String BUS_URL;
     public static String STONK_URL;
     public static String WEATHER_WARNING_DOMAIN;
     public static String WEATHER_PLACE;
@@ -198,7 +197,6 @@ public class SecretConstants {
         STEAM_WEB_API_KEY = secrets.getString("STEAM_WEB_API_KEY");
         REPOST_WEBHOOK_URL = secrets.getString("REPOST_WEBHOOK_URL");
 
-        BUS_URL = secrets.getString("BUS_URL");
         STONK_URL = secrets.getString("STONK_URL");
         WEATHER_WARNING_DOMAIN = secrets.getString("WEATHER_WARNING_DOMAIN");
         WEATHER_PLACE = secrets.getString("WEATHER_PLACE");
