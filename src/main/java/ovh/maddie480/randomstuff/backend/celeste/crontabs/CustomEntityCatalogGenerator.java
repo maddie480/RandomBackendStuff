@@ -44,6 +44,10 @@ public class CustomEntityCatalogGenerator {
         output.put("lastUpdated", gen.lastUpdated);
 
         Files.writeString(Paths.get("/shared/celeste/custom-entity-catalog.json"), output.toString(), UTF_8);
+        Files.writeString(Paths.get("/shared/celeste/custom-entity-dictionary.csv"),
+                gen.fullDictionary.entrySet().stream()
+                        .map(entry -> entry.getKey() + ";" + entry.getValue())
+                        .collect(Collectors.joining("\n")), UTF_8);
     }
 
     public static class QueriedModInfo {
@@ -122,6 +126,7 @@ public class CustomEntityCatalogGenerator {
 
     private Map<String, String> dictionary;
     private Set<String> unusedDictionaryKeys;
+    private Map<String, String> fullDictionary; // includes generated names, populated as they are assigned
 
     /**
      * Formats an entity ID: FrostHelper/KeyIce => Key Ice
@@ -133,8 +138,11 @@ public class CustomEntityCatalogGenerator {
         if (dictionary.containsKey(input)) {
             // the plugin name is in the dictionary
             unusedDictionaryKeys.remove(input);
+            if (!dictionary.get(input).isEmpty()) fullDictionary.put(input, dictionary.get(input));
             return dictionary.get(input);
         }
+
+        String origInput = input;
 
         // trim the helper prefix
         if (input.contains("/")) {
@@ -160,6 +168,7 @@ public class CustomEntityCatalogGenerator {
 
         String result = builder.toString();
         result = result.substring(0, 1).toUpperCase() + result.substring(1);
+        fullDictionary.put(origInput, result);
 
         return result;
     }
@@ -180,6 +189,7 @@ public class CustomEntityCatalogGenerator {
      * @throws IOException If an error occurs while reading the database
      */
     private void reloadList() throws IOException {
+        fullDictionary = new TreeMap<>();
         dictionary = ModCatalogDictionaryGenerator.generateModCatalogDictionary();
 
         // download the custom entity catalog dictionary.
@@ -519,6 +529,7 @@ public class CustomEntityCatalogGenerator {
 
             for (String entity : entityList.get("Entities")) {
                 String formatted = formatName(entity);
+                if (formatted.isEmpty()) continue;
                 if (!modInfo.entityList.containsKey(formatted)) {
                     modInfo.entityList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
@@ -530,6 +541,7 @@ public class CustomEntityCatalogGenerator {
             }
             for (String trigger : entityList.get("Triggers")) {
                 String formatted = formatName(trigger);
+                if (formatted.isEmpty()) continue;
                 if (!modInfo.triggerList.containsKey(formatted)) {
                     modInfo.triggerList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
@@ -541,6 +553,7 @@ public class CustomEntityCatalogGenerator {
             }
             for (String effect : entityList.get("Effects")) {
                 String formatted = formatName(effect);
+                if (formatted.isEmpty()) continue;
                 if (!modInfo.effectList.containsKey(formatted)) {
                     modInfo.effectList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
