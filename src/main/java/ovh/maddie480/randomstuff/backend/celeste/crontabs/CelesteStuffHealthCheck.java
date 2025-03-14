@@ -287,6 +287,13 @@ public class CelesteStuffHealthCheck {
 
             throw new IOException("The latest refresh date of the Custom Entity Catalog JSON is not \"" + expectedRefreshDate + "\" :a:");
         }
+
+        log.debug("Loading custom entity dictionary...");
+        if (!ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/custom-entity-dictionary.csv", UTF_8)
+                .contains("\nFrostHelper/IceSpinner;Custom Spinner / Custom Spinner (Rainbow Spinner Texture)\n")) {
+
+            throw new IOException("The custom entity dictionary doesn't contain the example entry displayed on the website!");
+        }
     }
 
     /**
