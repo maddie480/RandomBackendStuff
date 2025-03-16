@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -46,9 +45,8 @@ public class DiscardableJDA implements JDA, Closeable {
 
     public DiscardableJDA(String token, GatewayIntent intent, GatewayIntent... intents) {
         try {
-            log.info("Starting discardable JDA with intents {}...", EnumSet.of(intent, intents));
             backingJDA = JDABuilder.createLight(token, intent, intents).build().awaitReady();
-            log.info("Discardable JDA started!");
+            log.info("Discardable JDA started with intents {}!", EnumSet.of(intent, intents));
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -56,25 +54,17 @@ public class DiscardableJDA implements JDA, Closeable {
 
     public DiscardableJDA(String token) {
         try {
-            log.info("Starting discardable JDA with no intents...");
             backingJDA = JDABuilder.createLight(token, Collections.emptySet()).build().awaitReady();
-            log.info("Discardable JDA started!");
+            log.info("Discardable JDA started with no intents!");
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public void close() throws IOException {
-        try {
-            log.info("Stopping discardable JDA...");
-            Thread.sleep(10000); // make extra sure no task is dropped
-            shutdown();
-            awaitShutdown();
-            log.info("Discardable JDA stopped!");
-        } catch (InterruptedException e) {
-            throw new IOException(e);
-        }
+    public void close() {
+        shutdown();
+        log.info("Discardable JDA stopped!");
     }
 
     // <editor-fold desc="Methods Redirected to backingJDA">

@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -388,6 +389,12 @@ public class TimezoneBot {
             } else {
                 logger.info("Leaving guild {}", deadestServer);
                 deadestServer.leave().complete();
+
+                WebhookExecutor.executeWebhook(
+                        SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
+                        "https://maddie480.ovh/img/timezone-bot-logo.png",
+                        "Timezone Bot",
+                        "I left server **" + deadestServer.getName() + "** (`" + deadestServer.getId() + "`) to get back below 100 servers.");
             }
         }
     }

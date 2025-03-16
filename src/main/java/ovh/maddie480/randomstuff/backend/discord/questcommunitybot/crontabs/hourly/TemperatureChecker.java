@@ -2,6 +2,7 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hou
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONArray;
@@ -11,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
 import java.awt.*;
 import java.io.*;
@@ -19,8 +21,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.*;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -170,7 +172,7 @@ public class TemperatureChecker {
                 server.addRoleToMember(server.getSelfMember(), r).complete();
             }
 
-            target.sendMessage(":warning: Les vigilances météo ont été mises à jour !").queue();
+            target.sendMessage(":warning: Les vigilances météo ont été mises à jour !").complete();
         }
     }
 
@@ -208,13 +210,13 @@ public class TemperatureChecker {
         Guild server = target.getGuild();
 
         if (isLightMode) {
-            server.getRoleById(443402541800226837L).getManager().setColor(new Color(89, 95, 111)).queue();
-            server.getRoleById(809579511451877397L).getManager().setColor(new Color(222, 178, 50)).queue();
-            server.getRoleById(1053043478411624448L).getManager().setColor(new Color(142, 113, 90)).queue();
+            server.getRoleById(443402541800226837L).getManager().setColor(new Color(89, 95, 111)).complete();
+            server.getRoleById(809579511451877397L).getManager().setColor(new Color(222, 178, 50)).complete();
+            server.getRoleById(1053043478411624448L).getManager().setColor(new Color(142, 113, 90)).complete();
         } else {
-            server.getRoleById(443402541800226837L).getManager().setColor(new Color(255, 224, 238)).queue();
-            server.getRoleById(809579511451877397L).getManager().setColor(new Color(255, 205, 58)).queue();
-            server.getRoleById(1053043478411624448L).getManager().setColor(new Color(241, 187, 71)).queue();
+            server.getRoleById(443402541800226837L).getManager().setColor(new Color(255, 224, 238)).complete();
+            server.getRoleById(809579511451877397L).getManager().setColor(new Color(255, 205, 58)).complete();
+            server.getRoleById(1053043478411624448L).getManager().setColor(new Color(241, 187, 71)).complete();
         }
 
         ZonedDateTime zonedDaylightStart = daylightStart.atZoneSameInstant(ZoneId.of("Europe/Paris"));
@@ -233,8 +235,8 @@ public class TemperatureChecker {
             sunrise = zonedDaylightStart.format(timeFormatter);
             sunset = zonedDaylightEnd.format(timeFormatter);
 
-            target.sendMessage(":information_source: Change la programmation du light theme de **" + sunrise + "** à **" + sunset + "** !")
-                    .queue(message -> message.pin().queue());
+            Message message = target.sendMessage(":information_source: Change la programmation du light theme de **" + sunrise + "** à **" + sunset + "** !").complete();
+            message.pin().complete();
 
             try (BufferedWriter bw = new BufferedWriter(new FileWriter("daylight_settings.txt"))) {
                 bw.write(sunrise + "\n" + sunset);
@@ -242,7 +244,13 @@ public class TemperatureChecker {
         }
     }
 
-    public void checkForUpdates(TextChannel target) throws IOException {
+    public void checkForUpdates() throws IOException {
+        try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
+            checkForUpdates(client.getTextChannelById(551822297573490749L));
+        }
+    }
+
+    private void checkForUpdates(TextChannel target) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
             loadFile();
 
@@ -264,7 +272,7 @@ public class TemperatureChecker {
         Member selfMember = target.getGuild().getSelfMember();
 
         if (!selfMember.getEffectiveName().equals(nickname)) {
-            selfMember.modifyNickname(nickname).queue();
+            selfMember.modifyNickname(nickname).complete();
         }
     }
 }

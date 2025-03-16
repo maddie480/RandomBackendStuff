@@ -1,6 +1,5 @@
 package ovh.maddie480.randomstuff.backend;
 
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
@@ -27,7 +26,6 @@ import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import javax.imageio.ImageIO;
@@ -201,19 +199,8 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] PurgePosts", PurgePosts::run);
         runProcessAndAlertOnException("[Daily] QuestCommunityWebsiteHealthCheck", QuestCommunityWebsiteHealthCheck::run);
         runProcessAndAlertOnException("[Daily] SlashCommandBotHealthCheck", SlashCommandBotHealthCheck::checkSlashCommands);
-
-        runProcessAndAlertOnException("[Daily] StonkUpdateChecker", () -> {
-            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
-                StonkUpdateChecker.postTo(client.getTextChannelById(551822297573490749L));
-            }
-        });
-
-        runProcessAndAlertOnException("[Daily] PlatformBackup", () -> {
-            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)) {
-                PlatformBackup.run(client);
-            }
-        });
-
+        runProcessAndAlertOnException("[Daily] StonkUpdateChecker", StonkUpdateChecker::post);
+        runProcessAndAlertOnException("[Daily] PlatformBackup", PlatformBackup::run);
         runProcessAndAlertOnException("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily);
     }
 
@@ -251,16 +238,8 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] checkOlympusAPIs", CelesteStuffHealthCheck::checkOlympusAPIs);
 
         // Quest Community Bot stuff
-        runProcessAndAlertOnException("[Hourly] TemperatureChecker", () -> {
-            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
-                new TemperatureChecker().checkForUpdates(client.getTextChannelById(551822297573490749L));
-            }
-        });
-        runProcessAndAlertOnException("[Hourly] TwitchUpdateChecker", () -> {
-            try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
-                new TwitchUpdateChecker().checkForUpdates(client.getTextChannelById(551822297573490749L));
-            }
-        });
+        runProcessAndAlertOnException("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates());
+        runProcessAndAlertOnException("[Hourly] TwitchUpdateChecker", () -> new TwitchUpdateChecker().checkForUpdates());
     }
 
     private static void updaterLoop() {

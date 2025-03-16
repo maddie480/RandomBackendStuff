@@ -4,10 +4,13 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.File;
@@ -23,8 +26,10 @@ import java.util.List;
 public class PlatformBackup {
     private static final Logger logger = LoggerFactory.getLogger(PlatformBackup.class);
 
-    public static void run(JDA client) throws IOException {
-        runMessageDump(client);
+    public static void run() throws IOException {
+        try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.MESSAGE_CONTENT)) {
+            runMessageDump(client);
+        }
 
         try {
             Process p = OutputStreamLogger.redirectAllOutput(logger,

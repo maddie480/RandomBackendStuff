@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -23,7 +24,13 @@ public class TwitchUpdateChecker {
     private Map<String, String> streamingTitles = new HashMap<>();
     private Map<String, String> streamingGames = new HashMap<>();
 
-    public void checkForUpdates(TextChannel target) throws IOException {
+    public void checkForUpdates() throws IOException {
+        try (DiscardableJDA client = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN)) {
+            checkForUpdates(client.getTextChannelById(551822297573490749L));
+        }
+    }
+
+    private void checkForUpdates(TextChannel target) throws IOException {
         Path stateFile = Paths.get("twitch_update_checker_state.ser");
 
         // load state
@@ -113,6 +120,6 @@ public class TwitchUpdateChecker {
     }
 
     private static void sendMessage(TextChannel target, String message) {
-        target.sendMessage(message).queue();
+        target.sendMessage(message).complete();
     }
 }
