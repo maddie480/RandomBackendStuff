@@ -212,11 +212,9 @@ public class TemperatureChecker {
         if (isLightMode) {
             server.getRoleById(443402541800226837L).getManager().setColor(new Color(89, 95, 111)).complete();
             server.getRoleById(809579511451877397L).getManager().setColor(new Color(222, 178, 50)).complete();
-            server.getRoleById(1053043478411624448L).getManager().setColor(new Color(142, 113, 90)).complete();
         } else {
             server.getRoleById(443402541800226837L).getManager().setColor(new Color(255, 224, 238)).complete();
             server.getRoleById(809579511451877397L).getManager().setColor(new Color(255, 205, 58)).complete();
-            server.getRoleById(1053043478411624448L).getManager().setColor(new Color(241, 187, 71)).complete();
         }
 
         ZonedDateTime zonedDaylightStart = daylightStart.atZoneSameInstant(ZoneId.of("Europe/Paris"));
