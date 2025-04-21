@@ -31,11 +31,13 @@ public class UpdateOutgoingWebhooks {
             return null; // method signature
         });
 
-        WebhookExecutor.executeWebhook(
-                SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
-                "Everest Update Checker",
-                ":tada: Update Checker data was refreshed.");
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            WebhookExecutor.executeWebhook(
+                    webhook,
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
+                    "Everest Update Checker",
+                    ":tada: Update Checker data was refreshed.");
+        }
 
         changesHappened = false;
     }
