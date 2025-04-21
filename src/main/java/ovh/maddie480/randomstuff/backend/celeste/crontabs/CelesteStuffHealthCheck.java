@@ -1058,6 +1058,15 @@ public class CelesteStuffHealthCheck {
             try (ByteArrayInputStream mapBin = new ByteArrayInputStream(mapBinInput)) {
                 binToJsonToBin("bin-to-json", mapBin, mapToJson);
             }
+
+            try {
+                // the _package attribute is dropped, but it isn't a big deal
+                OutputStreamLogger.redirectAllOutput(log,
+                        new ProcessBuilder("sed", "-i", "s/\"_package\":\"NameguysGoodbye\",//",
+                                mapToJson.toAbsolutePath().toString()).start()).waitFor();
+            } catch (InterruptedException e) {
+                throw new IOException(e);
+            }
         }
 
         try (InputStream is = Files.newInputStream(mapToJson)) {
