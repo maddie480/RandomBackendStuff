@@ -2,6 +2,7 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -547,7 +548,9 @@ public class UpdateCheckerTracker extends EventListener {
     }
 
     private static String[] tokenize(String string) {
-        string = string.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9* ]", "");
+        string = StringUtils.stripAccents(string.toLowerCase(Locale.ROOT)) // "Pokémon" => "pokemon"
+                .replace("'", "") // "Maddie's Helping Hand" => "maddies helping hand"
+                .replaceAll("[^a-z0-9* ]", " "); // "The D-Sides Pack" => "the d sides pack"
         while (string.contains("  ")) string = string.replace("  ", " ");
         return string.split(" ");
     }
