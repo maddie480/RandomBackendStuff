@@ -32,11 +32,11 @@ public class PrivateDiscordJanitor {
     }
 
     private void run() {
-        cleanupChannel(498584991194808354L, OffsetDateTime.now().minusMonths(1), false); // #quest_community_bot
-        cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1), false); // #update_checker_log
-        cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1), false); // #webhook_hell
-        cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), false); // #poubelle
-        cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), false); // #maddies_headspace
+        cleanupChannel(498584991194808354L, OffsetDateTime.now().minusMonths(1), false);
+        cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1), false);
+        cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1), false);
+        cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), false);
+        cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), false);
     }
 
 
@@ -55,10 +55,10 @@ public class PrivateDiscordJanitor {
         List<Message> pins = channel.retrievePinnedMessages().complete();
 
         long[] messagesToDelete = channel.getIterableHistory()
-                .skipTo(TimeUtil.getDiscordTimestamp(delay.toInstant().toEpochMilli())).stream()
-                .filter(message -> // messages older than the specified date and not pinned
-                        message.getTimeCreated().isBefore(delay)
-                            && pins.stream().noneMatch(pin -> pin.getIdLong() == message.getIdLong()))
+                .skipTo(TimeUtil.getDiscordTimestamp((channelId == 445631337315958796L ? OffsetDateTime.now() : delay)
+                        .toInstant().toEpochMilli()))
+                .stream()
+                .filter(message -> shouldPurge(message, pins, delay))
                 .mapToLong(Message::getIdLong)
                 .toArray();
 
@@ -78,5 +78,12 @@ public class PrivateDiscordJanitor {
                 channel.deleteMessageById(messageId).complete();
             }
         }
+    }
+
+    private boolean shouldPurge(Message message, List<Message> pins, OffsetDateTime delay) {
+        boolean old = message.getTimeCreated().isBefore(delay);
+        boolean spammy = message.getChannel().getIdLong() == 445631337315958796L && message.getAuthor().getEffectiveName().startsWith("L");
+        boolean pinned = pins.stream().anyMatch(pin -> pin.getIdLong() == message.getIdLong());
+        return (old || spammy) && !pinned;
     }
 }
