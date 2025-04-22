@@ -1,5 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
+import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -36,7 +37,8 @@ public class UpdateOutgoingWebhooks {
                     webhook,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
-                    ":tada: Update Checker data was refreshed.");
+                    ":tada: Update Checker data was refreshed.",
+                    ImmutableMap.of("X-Everest-Log", "true"));
         }
 
         changesHappened = false;
