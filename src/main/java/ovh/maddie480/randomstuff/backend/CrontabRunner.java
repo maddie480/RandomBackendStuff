@@ -24,6 +24,7 @@ import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
+import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
@@ -192,7 +193,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] LNJBot.healthCheck", LNJBot::healthCheck);
         runProcessAndAlertOnException("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes);
         runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(Twitch)", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
-        // runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () -> checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
+        runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () -> checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
 
         // Non-Celeste Stuff
         runProcessAndAlertOnException("[Daily] ChangeBGToRandom", ChangeBGToRandom::run);

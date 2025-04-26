@@ -22,6 +22,5 @@
 #  m   h dom mon dow command
   15  18   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs
   45   *   *   *   * /home/debian/docker-run-with-logging.sh hourly-crontabs
-# 30  12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
+  30  12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
 */10   *   *   *   * cd /home/debian && ./magic-auto-deploy.sh
-
