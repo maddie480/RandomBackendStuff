@@ -786,9 +786,8 @@ public class ModStructureVerifier extends ListenerAdapter {
             entitiesList.get("Effects").stream().map(s -> s.toLowerCase(Locale.ROOT)).forEach(availableVanillaEffects::add);
         }
 
-        // parallax and apply are special-case stylegrounds that aren't registered in the map editors like effects are.
+        // parallax is an effect too!
         availableVanillaEffects.add("parallax");
-        availableVanillaEffects.add("apply");
 
         // grab the decals and stylegrounds that ship with the mod.
         fileListing.stream()
@@ -984,6 +983,22 @@ public class ModStructureVerifier extends ListenerAdapter {
     private static void checkForMissingEntities(Set<String> availableEntities, Set<String> availableEntitiesCaseInsensitive, String jsonPath, Set<String> badEntities, JSONObject binAsJSON) {
         // list all the <entities> tags.
         List<JSONObject> entityList = getElementsAt(binAsJSON, jsonPath, "$");
+
+        if (jsonPath.startsWith("$.celestemap.style.")) {
+            // stylegrounds called "apply" are actually groups of stylegrounds, we need to "flatten" them!
+            List<JSONObject> toRemove = new ArrayList<>();
+            List<JSONObject> toAdd = new ArrayList<>();
+            for (JSONObject entity : entityList) {
+                if ("apply".equals(entity.getString("name"))) {
+                    toRemove.add(entity);
+                    for (Object child : entity.getJSONArray("children")) toAdd.add((JSONObject) child);
+                }
+            }
+            entityList.removeAll(toRemove);
+            entityList.addAll(toAdd);
+            logger.debug("Flattened {} apply(s)", toRemove.size());
+        }
+
         for (JSONObject entity : entityList) {
             // ... and check if this is an entity that exists.
             String entityName = entity.getString("name");
