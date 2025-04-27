@@ -86,7 +86,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         liveChatId = getLiveChatId(liveStreamVideoId);
         log.debug("The ID of the chat of the current YouTube live stream is {}", liveChatId);
 
-        allEmotes = getEmotes(liveStreamVideoId);
+        allEmotes = getEmotes();
         log.debug("Got emotes: {}", allEmotes);
 
         fixedMessages = getMoobotCommands();
@@ -136,16 +136,14 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         }
     }
 
-    private Map<String, String> getEmotes(String liveStreamVideoId) {
+    private Map<String, String> getEmotes() {
         try {
-            // we sure love spoofing Firefox because YouTube doesn't have official APIs for this
-            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://www.youtube.com/live_chat?v=" + liveStreamVideoId);
-            connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
-            connection.setRequestProperty("User-Agent", "Firefox/99");
-
+            // page retrieved by being logged in and visiting page: https://www.youtube.com/live_chat?v=<anylivevideo>
+            // but: retrieving the same page while logged out doesn't return emojis
+            // and retrieving the same page with a bot access token gives a "something went wrong" page
+            // ... so the manual way will do, not like LNJ streams very often anyway
             JSONObject json;
-
-            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
+            try (InputStream is = Files.newInputStream(Paths.get("youtube_sludge.html"))) {
                 String page = IOUtils.toString(is, StandardCharsets.UTF_8);
                 page = page.substring(page.indexOf("window[\"ytInitialData\"] = ") + 26);
                 page = page.substring(0, page.indexOf(";</script>"));
