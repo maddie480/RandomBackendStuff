@@ -271,12 +271,10 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                 && messageCountSinceLastTimedPost >= 10) {
 
             lastTimedMessagePosted++;
-            lastTimedMessagePosted %= 2;
+            lastTimedMessagePosted %= 1;
 
             String message = switch (lastTimedMessagePosted) {
                 case 0 ->
-                        "NOUVEL HORAIRE DE LIVE : tous les dimanches à 14h (on va tester ce nouveau créneau) ! Suivez la chaîne pour ne pas rater les prochains lives !";
-                case 1 ->
                         "Tapez !clip pour créer automatiquement un clip des 30 dernières sec de stream ! Merci Maddie pour la création de cette commande !";
                 default -> "cpt";
             };
