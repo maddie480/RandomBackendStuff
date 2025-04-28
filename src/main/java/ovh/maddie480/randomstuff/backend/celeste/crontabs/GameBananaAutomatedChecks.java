@@ -204,7 +204,7 @@ public class GameBananaAutomatedChecks {
 
                         if (fishyProcessStuff) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to be using `Process` APIs!" +
-                                    " Make sure that it isn't doing anything fishy with it :fish:\n:arrow_right: https://gamebanana.com/"
+                                    " Make sure that it isn't doing anything fishy with them :fish:\n:arrow_right: https://gamebanana.com/"
                                     + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
                         }
 
