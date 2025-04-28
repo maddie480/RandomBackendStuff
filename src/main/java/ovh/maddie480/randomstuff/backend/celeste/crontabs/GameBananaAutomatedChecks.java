@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -121,6 +122,7 @@ public class GameBananaAutomatedChecks {
 
                         boolean yieldReturnIssue = false;
                         boolean consoleWriteLine = false;
+                        boolean fishyProcessStuff = false;
                         boolean dllEntryFoundInYaml = false;
 
                         // read "DLL" fields for each everest.yaml entry
@@ -173,6 +175,12 @@ public class GameBananaAutomatedChecks {
                                         logger.warn("Mod {} contains Console.WriteLine", modName);
                                         consoleWriteLine = true;
                                     }
+                                    if (Stream.of("ProcessStartInfo", "Process.Start", "new Process", "UseShellExecute")
+                                            .anyMatch(fullDecompile::contains)) {
+
+                                        logger.warn("Mod {} contains Process usage", modName);
+                                        fishyProcessStuff = true;
+                                    }
 
                                     logger.debug("Deleting temporary DLL");
                                     FileUtils.forceDelete(new File("/tmp/mod_yield_police.dll"));
@@ -191,6 +199,12 @@ public class GameBananaAutomatedChecks {
                         if (consoleWriteLine) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `Console.WriteLine`!" +
                                     " This might pollute the logs <:faintshiro:463773786819264512>\n:arrow_right: https://gamebanana.com/"
+                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                        }
+
+                        if (fishyProcessStuff) {
+                            sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to be using `Process` APIs!" +
+                                    " Make sure that it isn't doing anything fishy with it :fish:\n:arrow_right: https://gamebanana.com/"
                                     + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
                         }
 
