@@ -189,13 +189,14 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkAssetDriveBrowser", CelesteStuffHealthCheck::checkAssetDriveBrowser);
         runProcessAndAlertOnException("[Daily] checkWipeConverter", CelesteStuffHealthCheck::checkWipeConverter);
         runProcessAndAlertOnException("[Daily] checkArbitraryModApp", CrontabRunner::checkArbitraryModApp);
+        runProcessAndAlertOnException("[Daily] GitHubActionsChecker", () -> GitHubActionsChecker.main(null));
+
+        // Non-Celeste Stuff
         runProcessAndAlertOnException("[Daily] checkRadioLNJ", CrontabRunner::checkRadioLNJ);
         runProcessAndAlertOnException("[Daily] LNJBot.healthCheck", LNJBot::healthCheck);
         runProcessAndAlertOnException("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes);
         runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(Twitch)", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
         runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () -> checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
-
-        // Non-Celeste Stuff
         runProcessAndAlertOnException("[Daily] ChangeBGToRandom", ChangeBGToRandom::run);
         runProcessAndAlertOnException("[Daily] PurgePosts", PurgePosts::run);
         runProcessAndAlertOnException("[Daily] QuestCommunityWebsiteHealthCheck", QuestCommunityWebsiteHealthCheck::run);

@@ -256,7 +256,7 @@ public class EverestVersionLister {
         return tagInfo.getJSONObject("object").getString("sha");
     }
 
-    private static InputStream authenticatedGitHubRequest(String url) throws IOException {
+    static InputStream authenticatedGitHubRequest(String url) throws IOException {
         HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout(url);
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
         return ConnectionUtils.connectionToInputStream(connAuth);
