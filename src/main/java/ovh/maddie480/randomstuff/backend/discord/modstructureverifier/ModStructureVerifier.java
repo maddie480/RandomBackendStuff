@@ -38,6 +38,7 @@ import ovh.maddie480.everest.updatechecker.ModFilesDatabaseBuilder;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.crontabs.GameBananaAutomatedChecks;
 import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
@@ -547,6 +548,22 @@ public class ModStructureVerifier extends ListenerAdapter {
                                 " If you want to be able to use them, you can use this bot's `--generate-font [language]` command to add them to the game."));
                 websiteProblemList.add("missingfonts");
             }
+
+            // scan for fake PNGs
+            parseProblematicPaths(problemList, websiteProblemList, "badpngs",
+                    "Your mod contains invalid PNG files, make sure you didn't rename those files to \"convert\" them from another format",
+                    zipFile.stream()
+                            .filter(e -> e.getName().startsWith("Graphics/") && e.getName().endsWith(".png"))
+                            .filter(e -> {
+                                try {
+                                    return !GameBananaAutomatedChecks.checkPngSignature(zipFile, e);
+                                } catch (IOException ex) {
+                                    logger.warn("Failed to check PNG signature of {}", e.getName(), ex);
+                                    return false; // this is a bug, so we don't want false flags
+                                }
+                            })
+                            .map(ZipEntry::getName)
+                            .toList(), isHtml);
 
             if (problemList.isEmpty()) {
                 if (event != null) {

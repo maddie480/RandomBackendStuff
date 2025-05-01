@@ -738,7 +738,7 @@ public class GameBananaAutomatedChecks {
         }
     }
 
-    static boolean checkPngSignature(ZipFile file, ZipEntry entry) throws IOException {
+    public static boolean checkPngSignature(ZipFile file, ZipEntry entry) throws IOException {
         logger.debug("Checking file {}", entry.getName());
 
         try (InputStream is = file.getInputStream(entry)) {

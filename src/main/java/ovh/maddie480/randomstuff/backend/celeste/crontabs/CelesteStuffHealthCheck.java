@@ -1308,7 +1308,7 @@ public class CelesteStuffHealthCheck {
     }
 
     /**
-     * Checks that the static pages still responds (since they're not *that* static).
+     * Checks that the static pages still respond (since they're not *that* static).
      * Run daily.
      */
     public static void checkStaticPages() throws IOException {
@@ -1316,7 +1316,8 @@ public class CelesteStuffHealthCheck {
                 "https://maddie480.ovh/",
                 "https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone",
                 "https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help",
-                "https://maddie480.ovh/discord-bots/terms-and-privacy"
+                "https://maddie480.ovh/discord-bots/terms-and-privacy",
+                "https://maddie480.ovh/celeste/mod-structure-verifier-help?collabName=CollabName&collabMapName=CollabMapName&assets&xmls&nomap&multiplemaps&badmappath&badenglish&misplacedyaml&noyaml&yamlinvalid&multiyaml&missingassets&missingentities&missingfonts&badpngs"
         )) {
             log.debug("Checking response code of {}", url);
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
