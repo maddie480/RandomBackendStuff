@@ -8,6 +8,7 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneRoleUpdater;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
@@ -20,6 +21,7 @@ import java.net.HttpURLConnection;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * This class checks the health of multiple platforms (the website, the bot, the mirror and GameBanana)
@@ -31,6 +33,13 @@ public class ContinuousHealthChecks {
 
     private static final Map<String, Integer> servicesHealth = new HashMap<>();
     private static final Map<String, Boolean> servicesStatus = new HashMap<>();
+
+    public static String getDownServicesList() {
+        return servicesStatus.entrySet().stream()
+                .filter(e -> !e.getValue())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.joining(", "));
+    }
 
     private static final Map<String, Integer> servicesMaxHP = ImmutableMap.of(
             "Banana Mirror", 1,
@@ -178,6 +187,7 @@ public class ContinuousHealthChecks {
                     for (String webhook : webhookUrls) {
                         executeWebhookSafe(webhook, ":white_check_mark: **" + serviceName + "** is up again.");
                     }
+                    FrontendTaskReceiver.forceRefreshStatus();
                 }
             }
         } else {
@@ -192,6 +202,7 @@ public class ContinuousHealthChecks {
                     for (String webhook : webhookUrls) {
                         executeWebhookSafe(webhook, ":x: **" + serviceName + "** is down!");
                     }
+                    FrontendTaskReceiver.forceRefreshStatus();
                 }
             }
         }

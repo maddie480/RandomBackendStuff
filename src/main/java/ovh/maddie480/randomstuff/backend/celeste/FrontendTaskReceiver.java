@@ -10,6 +10,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.celeste.crontabs.ContinuousHealthChecks;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.FontGenerator;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 
@@ -193,6 +194,9 @@ public class FrontendTaskReceiver {
         FrontendTaskReceiver.setUptimeStatus = setUptimeStatus;
     }
 
+    public static void forceRefreshStatus() {
+        handleCrontabStatusChange(latestRequestedMessage);
+    }
     private static void handleCrontabStatusChange(String newStatus) {
         if (crontabReporterBot == null) {
             log.warn("Cannot change crontab reporter status because the bot wasn't initialized");
@@ -212,13 +216,19 @@ public class FrontendTaskReceiver {
                 return;
             }
 
-            if (newStatus.isEmpty()) {
+            String badServices = ContinuousHealthChecks.getDownServicesList();
+            if (!badServices.isEmpty()) {
+                log.debug("Services are down, changing status to: \"{}\"", badServices);
+                badServices = "Services down! (" + badServices + ")";
+                badServices = badServices.length() > 128 ? badServices.substring(0, 125) + "..." : badServices;
+                crontabReporterBot.getPresence().setPresence(OnlineStatus.DO_NOT_DISTURB, Activity.customStatus(badServices));
+            } else if (newStatus.isEmpty()) {
                 log.debug("Clearing status");
                 setUptimeStatus.accept(crontabReporterBot);
             } else {
                 String setStatus = newStatus.length() > 128 ? newStatus.substring(0, 125) + "..." : newStatus;
                 log.debug("Changing status to: \"{}\"", setStatus);
-                crontabReporterBot.getPresence().setPresence(OnlineStatus.ONLINE, Activity.customStatus(setStatus));
+                crontabReporterBot.getPresence().setPresence(OnlineStatus.ONLINE, Activity.playing(setStatus));
             }
         }).start();
     }
