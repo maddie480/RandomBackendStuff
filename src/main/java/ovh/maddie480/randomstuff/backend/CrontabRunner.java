@@ -33,6 +33,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -424,9 +426,11 @@ public class CrontabRunner {
 
         try {
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`");
+            sendCrontabStatusEvent(name);
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
+            sendCrontabStatusEvent("");
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`");
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
@@ -471,6 +475,25 @@ public class CrontabRunner {
             Thread.sleep(delay);
         } catch (InterruptedException e) {
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not wait for lock: " + e);
+        }
+    }
+
+    private static void sendCrontabStatusEvent(String status) {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("taskType", "crontabStatusChange");
+            message.put("newStatus", status);
+
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress("backend", 44480));
+                try (OutputStream os = socket.getOutputStream();
+                     OutputStreamWriter bw = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
+
+                    message.write(bw);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Error while sending update crontab status event", e);
         }
     }
 }

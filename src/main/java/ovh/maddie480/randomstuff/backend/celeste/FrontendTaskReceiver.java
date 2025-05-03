@@ -1,5 +1,8 @@
 package ovh.maddie480.randomstuff.backend.celeste;
 
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.entities.Activity;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
@@ -19,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * When a user asks for mod structure verifying or for font generating with BMFont on the website,
@@ -81,6 +85,7 @@ public class FrontendTaskReceiver {
                         log.error("Error while searching file for request {}", o, e);
                     }
                 }
+                case "crontabStatusChange" -> handleCrontabStatusChange(o.getString("newStatus"));
                 default -> log.error("Received invalid task type {}!", o.getString("taskType"));
             }
         } catch (JSONException e) {
@@ -177,5 +182,44 @@ public class FrontendTaskReceiver {
         Path target = Paths.get("/shared/temp/" + taskName + "-" + file.getName());
         Files.move(file.toPath(), target);
         return target.getFileName().toString();
+    }
+
+    private static JDA crontabReporterBot;
+    private static Consumer<JDA> setUptimeStatus;
+    private static String latestRequestedMessage = "";
+
+    public static void setCrontabReporterParameters(JDA crontabReporterBot, Consumer<JDA> setUptimeStatus) {
+        FrontendTaskReceiver.crontabReporterBot = crontabReporterBot;
+        FrontendTaskReceiver.setUptimeStatus = setUptimeStatus;
+    }
+
+    private static void handleCrontabStatusChange(String newStatus) {
+        if (crontabReporterBot == null) {
+            log.warn("Cannot change crontab reporter status because the bot wasn't initialized");
+            return;
+        }
+
+        latestRequestedMessage = newStatus;
+        new Thread(() -> {
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                log.warn("Sleep interrupted! Going on.", e);
+            }
+
+            if (!latestRequestedMessage.equals(newStatus)) {
+                log.debug("Another message got queued up, dropping \"{}\"", newStatus);
+                return;
+            }
+
+            if (newStatus.isEmpty()) {
+                log.debug("Clearing status");
+                setUptimeStatus.accept(crontabReporterBot);
+            } else {
+                String setStatus = newStatus.length() > 128 ? newStatus.substring(0, 125) + "..." : newStatus;
+                log.debug("Changing status to: \"{}\"", setStatus);
+                crontabReporterBot.getPresence().setPresence(OnlineStatus.ONLINE, Activity.customStatus(setStatus));
+            }
+        }).start();
     }
 }

@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.admin.PingCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.admin.ShutdownCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.admin.UptimeCommand;
@@ -73,7 +74,6 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
         steamCommand.loadFile(questGuild);
 
         UptimeCommand uptimeCommand = new UptimeCommand();
-        uptimeCommand.run(client);
 
         commandCategories = ImmutableMap.of(
                 "Mods et outils Quest", Arrays.asList(
@@ -143,6 +143,8 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
                 ),
                 "Plus d'infos", Collections.singletonList(this)
         );
+
+        FrontendTaskReceiver.setCrontabReporterParameters(client, uptimeCommand::setBotStatus);
     }
 
     @Override
