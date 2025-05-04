@@ -8,7 +8,6 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneRoleUpdater;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
@@ -187,7 +186,6 @@ public class ContinuousHealthChecks {
                     for (String webhook : webhookUrls) {
                         executeWebhookSafe(webhook, ":white_check_mark: **" + serviceName + "** is up again.");
                     }
-                    FrontendTaskReceiver.forceRefreshStatus();
                 }
             }
         } else {
@@ -202,7 +200,6 @@ public class ContinuousHealthChecks {
                     for (String webhook : webhookUrls) {
                         executeWebhookSafe(webhook, ":x: **" + serviceName + "** is down!");
                     }
-                    FrontendTaskReceiver.forceRefreshStatus();
                 }
             }
         }

@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
@@ -187,23 +188,20 @@ public class FrontendTaskReceiver {
 
     private static JDA crontabReporterBot;
     private static Consumer<JDA> setUptimeStatus;
-    private static String latestRequestedMessage = "";
+    private static final AtomicInteger lastMessageHandle = new AtomicInteger();
 
     public static void setCrontabReporterParameters(JDA crontabReporterBot, Consumer<JDA> setUptimeStatus) {
         FrontendTaskReceiver.crontabReporterBot = crontabReporterBot;
         FrontendTaskReceiver.setUptimeStatus = setUptimeStatus;
     }
 
-    public static void forceRefreshStatus() {
-        handleCrontabStatusChange(latestRequestedMessage);
-    }
     private static void handleCrontabStatusChange(String newStatus) {
         if (crontabReporterBot == null) {
             log.warn("Cannot change crontab reporter status because the bot wasn't initialized");
             return;
         }
 
-        latestRequestedMessage = newStatus;
+        int myHandle = lastMessageHandle.incrementAndGet();
         new Thread(() -> {
             try {
                 Thread.sleep(10000);
@@ -211,7 +209,7 @@ public class FrontendTaskReceiver {
                 log.warn("Sleep interrupted! Going on.", e);
             }
 
-            if (!latestRequestedMessage.equals(newStatus)) {
+            if (lastMessageHandle.get() != myHandle) {
                 log.debug("Another message got queued up, dropping \"{}\"", newStatus);
                 return;
             }
