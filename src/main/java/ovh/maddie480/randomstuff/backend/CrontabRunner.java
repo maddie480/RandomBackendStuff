@@ -218,8 +218,9 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub);
         runProcessAndAlertOnException("[Hourly] CollabAutoHider", CollabAutoHider::run);
         runProcessAndAlertOnException("[Hourly] cleanUpFolder(/shared/temp)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true));
-        runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs)", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log")));
+        runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs)", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log.gz")));
         runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs, autodeploy)", () -> TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log")));
+        runProcessAndAlertOnException("[Hourly] zipUpOldFiles(/logs)", () -> TempFolderCleanup.zipUpOldFiles("/logs", 8, path -> path.getFileName().toString().endsWith(".backend.log")));
         runProcessAndAlertOnException("[Hourly] MastodonUpdateChecker", MastodonUpdateChecker::checkForUpdates);
         runProcessAndAlertOnException("[Hourly] TwitterUpdateChecker", TwitterUpdateChecker::checkForUpdates);
         runProcessAndAlertOnException("[Hourly] OlympusNewsUpdateChecker", OlympusNewsUpdateChecker::checkForUpdates);

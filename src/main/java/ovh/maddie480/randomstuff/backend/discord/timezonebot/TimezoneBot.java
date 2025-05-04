@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import net.dv8tion.jda.api.utils.TimeUtil;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -19,10 +20,7 @@ import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 
 /**
  * This file is the entrypoint, it sets up the bot and contains some shared methods.
@@ -331,17 +330,41 @@ public class TimezoneBot {
 
                 try (Stream<Path> backendLogs = Files.list(Paths.get("/logs"))) {
                     backendLogs
-                            .filter(p -> p.getFileName().toString().endsWith("_out.backend.log"))
+                            .filter(p -> p.getFileName().toString().endsWith("_out.backend.log")
+                                    || p.getFileName().toString().endsWith("_out.backend.log.gz"))
                             .forEach(p -> {
-                                logger.debug("Searching for bot usages in file {}", p.getFileName());
-                                try (Stream<String> lines = Files.lines(p)) {
-                                    lines.forEach(line -> {
-                                        Matcher matcher = listCapturer.matcher(line);
-                                        if (matcher.matches()) {
-                                            logger.debug("Captured {} from line: [[[{}]]]", matcher.group(1), line);
-                                            serverIdsThatUsedTheBot.add(Long.parseLong(matcher.group(1)));
+                                try {
+                                    boolean temp = false;
+                                    if (p.getFileName().toString().endsWith(".gz")) {
+                                        Path destination = p.getParent().resolve(p.getFileName().toString().replace(".gz", ""));
+
+                                        logger.debug("Unpacking {} to {}", p.toAbsolutePath(), destination.toAbsolutePath());
+                                        try (InputStream is = Files.newInputStream(p);
+                                             GZIPInputStream gis = new GZIPInputStream(is);
+                                             OutputStream os = Files.newOutputStream(destination)) {
+
+                                            IOUtils.copy(gis, os);
                                         }
-                                    });
+
+                                        p = destination;
+                                        temp = true;
+                                    }
+
+                                    logger.debug("Searching for bot usages in file {}", p.getFileName());
+                                    try (Stream<String> lines = Files.lines(p)) {
+                                        lines.forEach(line -> {
+                                            Matcher matcher = listCapturer.matcher(line);
+                                            if (matcher.matches()) {
+                                                logger.debug("Captured {} from line: [[[{}]]]", matcher.group(1), line);
+                                                serverIdsThatUsedTheBot.add(Long.parseLong(matcher.group(1)));
+                                            }
+                                        });
+                                    }
+
+                                    if (temp) {
+                                        logger.debug("Deleting temp file {}", p.toAbsolutePath());
+                                        Files.delete(p);
+                                    }
                                 } catch (IOException e) {
                                     logger.warn("Could not check backend log entries!", e);
                                 }
