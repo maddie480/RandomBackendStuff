@@ -197,8 +197,8 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public CommandEditAction editCommandById(@NotNull String id) {
-        return backingJDA.editCommandById(id);
+    public CommandEditAction editCommandById(@NotNull Command.Type type, @NotNull String id) {
+        return backingJDA.editCommandById(type, id);
     }
 
     @NotNull
