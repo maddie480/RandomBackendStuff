@@ -1317,7 +1317,8 @@ public class CelesteStuffHealthCheck {
                 "https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone",
                 "https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help",
                 "https://maddie480.ovh/discord-bots/terms-and-privacy",
-                "https://maddie480.ovh/celeste/mod-structure-verifier-help?collabName=CollabName&collabMapName=CollabMapName&assets&xmls&nomap&multiplemaps&badmappath&badenglish&misplacedyaml&noyaml&yamlinvalid&multiyaml&missingassets&missingentities&missingfonts&badpngs"
+                "https://maddie480.ovh/celeste/mod-structure-verifier-help?collabName=CollabName&collabMapName=CollabMapName&assets&xmls&nomap&multiplemaps&badmappath&badenglish&misplacedyaml&noyaml&yamlinvalid&multiyaml&missingassets&missingentities&missingfonts&badpngs",
+                "https://maddie480.ovh/static/unicode-mirror/emoji/charts/emoji-zwj-sequences.html"
         )) {
             log.debug("Checking response code of {}", url);
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
