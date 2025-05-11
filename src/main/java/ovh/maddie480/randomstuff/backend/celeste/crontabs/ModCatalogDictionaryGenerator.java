@@ -7,15 +7,15 @@ import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -25,7 +25,7 @@ public class ModCatalogDictionaryGenerator {
     private static final Pattern regex = Pattern.compile("^(?:entities|triggers|style\\.effects)\\.([^.]+)\\.(?:placements\\.)?name(?:\\.[^=]+)?=(.*)$", Pattern.MULTILINE);
     private static final Logger logger = LoggerFactory.getLogger(ModCatalogDictionaryGenerator.class);
 
-    static Map<String, String> generateModCatalogDictionary() throws IOException {
+    static Map<String, Map<String, String>> generateModCatalogDictionary() throws IOException {
         List<String> toCheck;
         try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
             toCheck = YamlUtil.<Map<String, Map<String, Object>>>load(is)
@@ -41,8 +41,7 @@ public class ModCatalogDictionaryGenerator {
                     .toList();
         }
 
-        Map<String, Set<String>> dictionary = new TreeMap<>();
-
+        Map<String, Map<String, String>> dictionary = new TreeMap<>();
         Path tempZip = Paths.get("/tmp/catalogscanner.zip");
 
         for (String url : toCheck) {
@@ -60,24 +59,34 @@ public class ModCatalogDictionaryGenerator {
                 try (InputStream is = file.getInputStream(entry)) {
                     Matcher matcher = regex.matcher(IOUtils.toString(is, StandardCharsets.UTF_8));
                     while (matcher.find()) {
-                        if (dictionary.containsKey(matcher.group(1))) {
-                            logger.debug("Adding {} => {}", matcher.group(1), matcher.group(2).trim());
-                            dictionary.get(matcher.group(1)).add(matcher.group(2).trim());
-                        } else {
-                            logger.debug("Found {} => {}", matcher.group(1), matcher.group(2).trim());
-                            dictionary.put(matcher.group(1), new LinkedHashSet<>(Collections.singleton(matcher.group(2).trim())));
+                        String descriptionKey = matcher.group();
+                        descriptionKey = descriptionKey.substring(0, descriptionKey.indexOf("=") + 1).replaceFirst("\\.name\\.", ".description.");
+                        String description = null;
+                        try (InputStream is2 = file.getInputStream(entry);
+                             BufferedReader br2 = new BufferedReader(new InputStreamReader(is2, StandardCharsets.UTF_8))) {
+
+                            String s;
+                            while ((s = br2.readLine()) != null) {
+                                if (s.startsWith(descriptionKey)) {
+                                    description = s.substring(descriptionKey.length()).trim();
+                                    break;
+                                }
+                            }
                         }
+
+                        if (dictionary.containsKey(matcher.group(1))) {
+                            logger.debug("Adding {} => {} / {}", matcher.group(1), matcher.group(2).trim(), description);
+                        } else {
+                            logger.debug("Found {} => {} / {}", matcher.group(1), matcher.group(2).trim(), description);
+                            dictionary.put(matcher.group(1), new LinkedHashMap<>());
+                        }
+                        dictionary.get(matcher.group(1)).put(matcher.group(2).trim(), description);
                     }
                 }
             }
         }
 
         Files.delete(tempZip);
-
-        Map<String, String> result = new TreeMap<>();
-        for (Map.Entry<String, Set<String>> entry : dictionary.entrySet()) {
-            result.put(entry.getKey(), String.join(" / ", entry.getValue()));
-        }
-        return result;
+        return dictionary;
     }
 }

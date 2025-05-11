@@ -3,6 +3,7 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 import org.apache.commons.collections4.keyvalue.AbstractKeyValue;
 import org.apache.commons.collections4.keyvalue.DefaultKeyValue;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -41,6 +42,7 @@ public class CustomEntityCatalogGenerator {
 
         JSONObject output = new JSONObject();
         output.put("modInfo", gen.modInfo);
+        output.put("entityDescriptions", gen.entityDescriptions);
         output.put("lastUpdated", gen.lastUpdated);
 
         Files.writeString(Paths.get("/shared/celeste/custom-entity-catalog.json"), output.toString(), UTF_8);
@@ -122,9 +124,10 @@ public class CustomEntityCatalogGenerator {
     }
 
     private List<QueriedModInfo> modInfo = null;
+    private Map<String, Map<String, Map<String, String>>> entityDescriptions = null;
     private ZonedDateTime lastUpdated = null;
 
-    private Map<String, String> dictionary;
+    private Map<String, Map<String, String>> dictionary;
     private Set<String> unusedDictionaryKeys;
     private Map<String, String> fullDictionary; // includes generated names, populated as they are assigned
 
@@ -132,14 +135,16 @@ public class CustomEntityCatalogGenerator {
      * Formats an entity ID: FrostHelper/KeyIce => Key Ice
      *
      * @param input The entity ID
-     * @return The name from dictionary if present, or an automatically formatted name
+     * @return The name from dictionary if present, or an automatically formatted name,
+     * and a map associating each name with its description
      */
-    private String formatName(String input) {
+    private Pair<String, Map<String, String>> lookUpInDictionary(String input) {
         if (dictionary.containsKey(input)) {
             // the plugin name is in the dictionary
             unusedDictionaryKeys.remove(input);
-            if (!dictionary.get(input).isEmpty()) fullDictionary.put(input, dictionary.get(input));
-            return dictionary.get(input);
+            String dictionaryEntry = String.join(" / ", dictionary.get(input).keySet());
+            if (!dictionary.get(input).isEmpty()) fullDictionary.put(input, dictionaryEntry);
+            return Pair.of(dictionaryEntry, dictionary.get(input));
         }
 
         String origInput = input;
@@ -170,7 +175,7 @@ public class CustomEntityCatalogGenerator {
         result = result.substring(0, 1).toUpperCase() + result.substring(1);
         fullDictionary.put(origInput, result);
 
-        return result;
+        return Pair.of(result, Collections.emptyMap());
     }
 
     /**
@@ -206,10 +211,12 @@ public class CustomEntityCatalogGenerator {
             logger.debug("Loaded mod catalog dictionary with {} entries.", tempdic.size());
 
             for (Map.Entry<String, String> entry : tempdic.entrySet()) {
+                Map<String, String> newEntry = new LinkedHashMap<>();
+                newEntry.put(entry.getValue(), null);
                 if (dictionary.containsKey(entry.getKey())) {
-                    logger.info("Value {} from modcatalogdictionary.txt overwrites value {} generated for key {}", entry.getValue(), dictionary.get(entry.getKey()), entry.getKey());
+                    logger.info("Value {} from modcatalogdictionary.txt overwrites value {} generated for key {}", newEntry, dictionary.get(entry.getKey()), entry.getKey());
                 }
-                dictionary.put(entry.getKey(), entry.getValue());
+                dictionary.put(entry.getKey(), newEntry);
             }
         }
 
@@ -461,6 +468,8 @@ public class CustomEntityCatalogGenerator {
 
         logger.debug("Loaded {} entities, {} triggers and {} effects from More Loenn Plugins.", mlpEntities.size(), mlpTriggers.size(), mlpEffects.size());
 
+        entityDescriptions = new HashMap<>();
+
         for (String mod : mods) {
             // load this mod's info
             Map<String, Object> fileInfo;
@@ -528,8 +537,10 @@ public class CustomEntityCatalogGenerator {
             }
 
             for (String entity : entityList.get("Entities")) {
-                String formatted = formatName(entity);
+                Pair<String, Map<String, String>> dictionaryEntry = lookUpInDictionary(entity);
+                String formatted = dictionaryEntry.getLeft();
                 if (formatted.isEmpty()) continue;
+                addEntityDescriptionsFrom(mod, formatted, dictionaryEntry.getRight());
                 if (!modInfo.entityList.containsKey(formatted)) {
                     modInfo.entityList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
@@ -540,8 +551,10 @@ public class CustomEntityCatalogGenerator {
                 }
             }
             for (String trigger : entityList.get("Triggers")) {
-                String formatted = formatName(trigger);
+                Pair<String, Map<String, String>> dictionaryEntry = lookUpInDictionary(trigger);
+                String formatted = dictionaryEntry.getLeft();
                 if (formatted.isEmpty()) continue;
+                addEntityDescriptionsFrom(mod, formatted, dictionaryEntry.getRight());
                 if (!modInfo.triggerList.containsKey(formatted)) {
                     modInfo.triggerList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
@@ -552,8 +565,10 @@ public class CustomEntityCatalogGenerator {
                 }
             }
             for (String effect : entityList.get("Effects")) {
-                String formatted = formatName(effect);
+                Pair<String, Map<String, String>> dictionaryEntry = lookUpInDictionary(effect);
+                String formatted = dictionaryEntry.getLeft();
                 if (formatted.isEmpty()) continue;
+                addEntityDescriptionsFrom(mod, formatted, dictionaryEntry.getRight());
                 if (!modInfo.effectList.containsKey(formatted)) {
                     modInfo.effectList.put(formatted, new ArrayList<>(Collections.singletonList(editor)));
                 } else {
@@ -563,6 +578,16 @@ public class CustomEntityCatalogGenerator {
                     modInfo.effectList.get(formatted).add("mlp");
                 }
             }
+        }
+    }
+
+    private void addEntityDescriptionsFrom(String mod, String fullKey, Map<String, String> namesAndDescriptions) {
+        for (Map.Entry<String, String> nameDescriptionPair : namesAndDescriptions.entrySet()) {
+            if (nameDescriptionPair.getValue() == null) continue;
+
+            if (!entityDescriptions.containsKey(mod)) entityDescriptions.put(mod, new HashMap<>());
+            if (!entityDescriptions.get(mod).containsKey(fullKey)) entityDescriptions.get(mod).put(fullKey, new HashMap<>());
+            entityDescriptions.get(mod).get(fullKey).put(nameDescriptionPair.getKey(), nameDescriptionPair.getValue());
         }
     }
 }
