@@ -67,7 +67,7 @@ public class ModCatalogDictionaryGenerator {
 
                             String s;
                             while ((s = br2.readLine()) != null) {
-                                if (s.startsWith(descriptionKey)) {
+                                if (s.toLowerCase().startsWith(descriptionKey.toLowerCase())) {
                                     description = s.substring(descriptionKey.length()).trim();
                                     break;
                                 }
