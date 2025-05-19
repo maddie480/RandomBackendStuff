@@ -636,7 +636,7 @@ public class UpdateCheckerTracker extends EventListener {
         for (String extraYaml : SecretConstants.EVEREST_YAMLS_FROM_GITHUB) {
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(extraYaml);
             connection.setRequestProperty("Accept", "application/vnd.github.v3.raw");
-            connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
+            connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_MAIN_ACCOUNT_BASIC_AUTH);
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
                 List<Map<String, Object>> contents = YamlUtil.load(is);

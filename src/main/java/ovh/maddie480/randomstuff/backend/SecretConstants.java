@@ -91,8 +91,12 @@ public class SecretConstants {
     public static String PERSONAL_NOTIFICATION_WEBHOOK_URL;
     public static String CRONTAB_LOGS_WEBHOOK_URL;
 
-    // header used to authenticate with the GitHub API
+    // header used to authenticate to the bot account @maddie480-bot with the GitHub API
     public static String GITHUB_BASIC_AUTH;
+
+    // header used to authenticate to the main account @maddie480 with the GitHub API
+    // (only used to access private resources only the main account can access)
+    public static String GITHUB_MAIN_ACCOUNT_BASIC_AUTH;
 
     // Private key file to sign requests to celestemods.com (otobot's mirror)
     public static String OTOBOT_WEBHOOK_PRIVATE_KEY;
@@ -180,6 +184,7 @@ public class SecretConstants {
         CRONTAB_LOGS_WEBHOOK_URL = secrets.getString("CRONTAB_LOGS_WEBHOOK_URL");
 
         GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
+        GITHUB_MAIN_ACCOUNT_BASIC_AUTH = secrets.getString("GITHUB_MAIN_ACCOUNT_BASIC_AUTH");
 
         OTOBOT_WEBHOOK_PRIVATE_KEY = secrets.getString("OTOBOT_WEBHOOK_PRIVATE_KEY");
 
