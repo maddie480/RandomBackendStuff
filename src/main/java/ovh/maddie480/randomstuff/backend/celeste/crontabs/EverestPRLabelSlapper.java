@@ -106,18 +106,12 @@ public class EverestPRLabelSlapper {
                                 .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
                                 .withLocale(Locale.ENGLISH)) + """
                          UTC**, after which the pull request will be able to be merged.
-
-                        _This is an automated comment._
                         """;
             }
             endOfLastCallWindowsNew.put(prNumber, verdict.endOfLastCallWindow);
         }
         if (verdict.label.equals(BOT_MANAGED_LABELS.get(3)) && !existingLabels.contains(verdict.label)) {
-            comment = """
-                    The last-call window for this pull request ended. It can now be merged if no blockers were brought up.
-
-                    _This is an automated comment._
-                    """;
+            comment = "The last-call window for this pull request ended. It can now be merged if no blockers were brought up.";
         }
 
         if (comment != null) {
