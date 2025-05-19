@@ -150,7 +150,7 @@ public class CrontabRunner {
 
     private static void runDailyProcesses() {
         Path dailyLock = Paths.get("daily_lock");
-        Files.createFile(dailyLock);
+        runProcessAndAlertOnException("[Daily] Files.createFile(dailyLock)", () -> Files.createFile(dailyLock));
 
         // This test has a tendency to OOM, get it out of the way right away
         runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
@@ -210,7 +210,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] PlatformBackup", PlatformBackup::run);
         runProcessAndAlertOnException("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily);
 
-        Files.delete(dailyLock);
+        runProcessAndAlertOnException("[Daily] Files.delete(dailyLock)", () -> Files.delete(dailyLock));
     }
 
     private static void runHourlyProcesses() {
