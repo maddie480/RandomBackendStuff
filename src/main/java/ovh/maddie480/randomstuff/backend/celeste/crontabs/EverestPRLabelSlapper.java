@@ -24,13 +24,18 @@ import java.util.*;
 import static ovh.maddie480.randomstuff.backend.celeste.crontabs.EverestVersionLister.authenticatedGitHubRequest;
 
 /**
- * An hourly crontab that slaps labels on Everest pull requests:
- * "review needed", "last call window", and "ready to merge".
+ * An hourly crontab that slaps labels on Everest pull requests to make their status clearer,
+ * and posts updates about the status of the 5-day last call window as PR comments.
  */
 public class EverestPRLabelSlapper {
     private static final Logger log = LoggerFactory.getLogger(EverestPRLabelSlapper.class);
 
-    private static final List<String> BOT_MANAGED_LABELS = Arrays.asList("review needed", "changes requested", "last call window", "ready to merge");
+    private static final String LABEL_REVIEW_NEEDED = "review needed";
+    private static final String LABEL_CHANGES_REQUESTED = "changes requested";
+    private static final String LABEL_LAST_CALL_WINDOW = "last call window";
+    private static final String LABEL_READY_TO_MERGE = "ready to merge";
+    private static final Set<String> BOT_MANAGED_LABELS = new HashSet<>(Arrays.asList(LABEL_REVIEW_NEEDED, LABEL_CHANGES_REQUESTED, LABEL_LAST_CALL_WINDOW, LABEL_READY_TO_MERGE));
+
     private static final LocalDate ROLLING_RELEASE_DATE = LocalDate.parse("2025-05-17");
     private static final ZoneId UTC = ZoneId.of("UTC");
     private static final int APPROVALS_NEEDED = 2;
@@ -96,7 +101,7 @@ public class EverestPRLabelSlapper {
         log.trace("Existing labels on PR: {}", existingLabels);
 
         String comment = null;
-        if (verdict.label.equals(BOT_MANAGED_LABELS.get(2))) {
+        if (verdict.label.equals(LABEL_LAST_CALL_WINDOW)) {
             if (!verdict.endOfLastCallWindow.equals(endOfLastCallWindowsOld.get(prNumber))) {
                 comment = """
                         The pull request was approved and entered the 5-day last-call window.
@@ -110,7 +115,7 @@ public class EverestPRLabelSlapper {
             }
             endOfLastCallWindowsNew.put(prNumber, verdict.endOfLastCallWindow);
         }
-        if (verdict.label.equals(BOT_MANAGED_LABELS.get(3)) && !existingLabels.contains(verdict.label)) {
+        if (verdict.label.equals(LABEL_READY_TO_MERGE) && !existingLabels.contains(verdict.label)) {
             comment = "The last-call window for this pull request ended. It can now be merged if no blockers were brought up.";
         }
 
@@ -235,12 +240,12 @@ public class EverestPRLabelSlapper {
                 log.trace("Last call window pushed forward at {} because of rolling release", endOfLastCallWindow);
             }
 
-            String verdict = endOfLastCallWindow.isBefore(ZonedDateTime.now()) ? BOT_MANAGED_LABELS.get(3) : BOT_MANAGED_LABELS.get(2);
-            log.trace("The PR state is {}", verdict);
+            String verdict = endOfLastCallWindow.isBefore(ZonedDateTime.now()) ? LABEL_READY_TO_MERGE : LABEL_LAST_CALL_WINDOW;
+            log.trace("The PR state is \"{}\"", verdict);
             return new Verdict(verdict, endOfLastCallWindow);
         } else {
-            String verdict = changesRequested ? BOT_MANAGED_LABELS.get(1) : BOT_MANAGED_LABELS.get(0);
-            log.trace("Verdict: PR is NOT approved, PR state is {}", verdict);
+            String verdict = changesRequested ? LABEL_CHANGES_REQUESTED : LABEL_REVIEW_NEEDED;
+            log.trace("Verdict: PR is NOT approved, PR state is \"{}\"", verdict);
             return new Verdict(verdict, null);
         }
     }
