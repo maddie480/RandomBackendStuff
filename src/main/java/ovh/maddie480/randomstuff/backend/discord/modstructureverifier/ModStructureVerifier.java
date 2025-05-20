@@ -828,7 +828,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 // this is a helper from some GitHub repository! read the Lönn plugins it might have.
                 HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(SecretConstants.LOENN_ENTITIES_FROM_GITHUB.get(dep));
                 connection.setRequestProperty("Accept", "application/vnd.github.v3.raw");
-                connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
+                connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_MAIN_ACCOUNT_BASIC_AUTH);
 
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.connectionToInputStream(connection), UTF_8))) {
                     Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntitiesFromLangFile(br);
