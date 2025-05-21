@@ -129,6 +129,7 @@ public class GameBananaAutomatedChecks {
                         boolean yieldReturnIssue = false;
                         boolean consoleWriteLine = false;
                         boolean fishyProcessStuff = false;
+                        boolean mightBeDotnet8 = false;
                         boolean dllEntryFoundInYaml = false;
 
                         // read "DLL" fields for each everest.yaml entry
@@ -187,6 +188,10 @@ public class GameBananaAutomatedChecks {
                                         logger.warn("Mod {} contains Process usage", modName);
                                         fishyProcessStuff = true;
                                     }
+                                    if (fullDecompile.contains("NullableContext")) {
+                                        logger.warn("Mod {} uses NullableContext which is dotnet8+ only", modName);
+                                        mightBeDotnet8 = true;
+                                    }
 
                                     logger.debug("Deleting temporary DLL");
                                     FileUtils.forceDelete(new File("/tmp/mod_yield_police.dll"));
@@ -211,6 +216,12 @@ public class GameBananaAutomatedChecks {
                         if (fishyProcessStuff) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to be using `Process` APIs!" +
                                     " Make sure that it isn't doing anything fishy with them :fish:\n:arrow_right: https://gamebanana.com/"
+                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                        }
+
+                        if (mightBeDotnet8) {
+                            sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `NullableContext`, which is only available in .NET 8 and later!" +
+                                    " Everest stable is still on .NET 7, so the mod is likely to explode for a lot of players :boom:\n:arrow_right: https://gamebanana.com/"
                                     + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
                         }
 
