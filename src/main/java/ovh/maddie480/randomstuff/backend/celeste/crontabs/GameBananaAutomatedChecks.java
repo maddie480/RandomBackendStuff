@@ -188,8 +188,8 @@ public class GameBananaAutomatedChecks {
                                         logger.warn("Mod {} contains Process usage", modName);
                                         fishyProcessStuff = true;
                                     }
-                                    if (fullDecompile.contains("NullableContext")) {
-                                        logger.warn("Mod {} uses NullableContext which is dotnet8+ only", modName);
+                                    if (fullDecompile.contains("TargetFramework(\".NETCoreApp,Version=v8")) {
+                                        logger.warn("Mod {} seems to target .NET 8", modName);
                                         mightBeDotnet8 = true;
                                     }
 
@@ -220,8 +220,8 @@ public class GameBananaAutomatedChecks {
                         }
 
                         if (mightBeDotnet8) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `NullableContext`, which is only available in .NET 8 and later!" +
-                                    " Everest stable is still on .NET 7, so the mod is likely to explode for a lot of players :boom:\n:arrow_right: https://gamebanana.com/"
+                            sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to target .NET 8!" +
+                                    " The mod might explode on Everest stable since it's still on .NET 7 :boom:\n:arrow_right: https://gamebanana.com/"
                                     + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
                         }
 
