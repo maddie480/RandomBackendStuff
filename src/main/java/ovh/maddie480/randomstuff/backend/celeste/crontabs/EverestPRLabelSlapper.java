@@ -25,7 +25,7 @@ import static ovh.maddie480.randomstuff.backend.celeste.crontabs.EverestVersionL
 
 /**
  * An hourly crontab that slaps labels on Everest pull requests to make their status clearer,
- * and posts updates about the status of the 5-day last call window as PR comments.
+ * and posts updates about the status of the last call window as PR comments.
  */
 public class EverestPRLabelSlapper {
     private static final Logger log = LoggerFactory.getLogger(EverestPRLabelSlapper.class);
@@ -35,15 +35,20 @@ public class EverestPRLabelSlapper {
     private static final String LABEL_LAST_CALL_WINDOW = "last call window";
     private static final String LABEL_READY_TO_MERGE = "ready to merge";
     private static final Set<String> BOT_MANAGED_LABELS = new HashSet<>(Arrays.asList(LABEL_REVIEW_NEEDED, LABEL_CHANGES_REQUESTED, LABEL_LAST_CALL_WINDOW, LABEL_READY_TO_MERGE));
-
+    
     private static final LocalDate ROLLING_RELEASE_DATE = LocalDate.parse("2025-05-17");
-    private static final ZoneId UTC = ZoneId.of("UTC");
+    private static final int ROLLING_RELEASE_INTERVAL_WEEKS = 2;
+
     private static final int APPROVALS_NEEDED = 2;
+    private static final int LAST_CALL_WINDOW_DAYS = 5;
+    private static final int RELEASE_FREEZE_PERIOD_DAYS = 5;
+
+    private static final ZoneId UTC = ZoneId.of("UTC");
 
     private static LocalDate getNextRollingReleaseDate() {
-        LocalDate result = ROLLING_RELEASE_DATE.plusDays(0);
+        LocalDate result = ROLLING_RELEASE_DATE;
         while (result.isBefore(LocalDate.now())) {
-            result = result.plusWeeks(2);
+            result = result.plusWeeks(ROLLING_RELEASE_INTERVAL_WEEKS);
         }
         return result;
     }
@@ -103,15 +108,13 @@ public class EverestPRLabelSlapper {
         String comment = null;
         if (verdict.label.equals(LABEL_LAST_CALL_WINDOW)) {
             if (!verdict.endOfLastCallWindow.equals(endOfLastCallWindowsOld.get(prNumber))) {
-                comment = """
-                        The pull request was approved and entered the 5-day last-call window.
-                        If no further reviews happen, it will end on **"""
+                comment = "The pull request was approved and entered the " + LAST_CALL_WINDOW_DAYS 
+                        + "-day last-call window.\nIf no further reviews happen, it will end on **"
                         + verdict.endOfLastCallWindow
-                        .format(DateTimeFormatter
-                                .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
-                                .withLocale(Locale.ENGLISH)) + """
-                         UTC**, after which the pull request will be able to be merged.
-                        """;
+                            .format(DateTimeFormatter
+                                    .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+                                    .withLocale(Locale.ENGLISH))
+                        + " UTC**, after which the pull request will be able to be merged.";
             }
             endOfLastCallWindowsNew.put(prNumber, verdict.endOfLastCallWindow);
         }
@@ -232,10 +235,10 @@ public class EverestPRLabelSlapper {
         if (approvalCount >= APPROVALS_NEEDED && !changesRequested) {
             log.trace("Verdict: PR is approved");
 
-            ZonedDateTime endOfLastCallWindow = lastApproval.withZoneSameInstant(ZoneId.of("UTC")).plusDays(5);
+            ZonedDateTime endOfLastCallWindow = lastApproval.withZoneSameInstant(ZoneId.of("UTC")).plusDays(LAST_CALL_WINDOW_DAYS);
             log.trace("Last call window ends at {}", endOfLastCallWindow);
 
-            if (endOfLastCallWindow.plusDays(5).isAfter(getNextRollingReleaseDate().atStartOfDay(UTC))) {
+            if (endOfLastCallWindow.plusDays(RELEASE_FREEZE_PERIOD_DAYS).isAfter(getNextRollingReleaseDate().atStartOfDay(UTC))) {
                 endOfLastCallWindow = getNextRollingReleaseDate().atStartOfDay(UTC).plusDays(1);
                 log.trace("Last call window pushed forward at {} because of rolling release", endOfLastCallWindow);
             }
