@@ -40,8 +40,8 @@ public class EverestPRLabelSlapper {
     private static final int ROLLING_RELEASE_INTERVAL_WEEKS = 2;
 
     private static final int APPROVALS_NEEDED = 2;
-    private static final int LAST_CALL_WINDOW_DAYS = 5;
-    private static final int RELEASE_FREEZE_PERIOD_DAYS = 5;
+    private static final int LAST_CALL_WINDOW_DAYS = 3;
+    private static final int RELEASE_FREEZE_PERIOD_DAYS = 3;
 
     private static final ZoneId UTC = ZoneId.of("UTC");
 
