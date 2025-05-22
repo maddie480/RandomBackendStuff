@@ -108,7 +108,7 @@ public class EverestPRLabelSlapper {
         String comment = null;
         if (verdict.label.equals(LABEL_LAST_CALL_WINDOW)) {
             if (!verdict.endOfLastCallWindow.equals(endOfLastCallWindowsOld.get(prNumber))) {
-                comment = "The pull request was approved and entered the " + LAST_CALL_WINDOW_DAYS 
+                comment = "The pull request was approved and entered the " + LAST_CALL_WINDOW_DAYS
                         + "-day last-call window.\nIf no further reviews happen, it will end on **"
                         + verdict.endOfLastCallWindow
                             .format(DateTimeFormatter
