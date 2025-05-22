@@ -35,7 +35,7 @@ public class EverestPRLabelSlapper {
     private static final String LABEL_LAST_CALL_WINDOW = "last call window";
     private static final String LABEL_READY_TO_MERGE = "ready to merge";
     private static final Set<String> BOT_MANAGED_LABELS = new HashSet<>(Arrays.asList(LABEL_REVIEW_NEEDED, LABEL_CHANGES_REQUESTED, LABEL_LAST_CALL_WINDOW, LABEL_READY_TO_MERGE));
-    
+
     private static final LocalDate ROLLING_RELEASE_DATE = LocalDate.parse("2025-05-17");
     private static final int ROLLING_RELEASE_INTERVAL_WEEKS = 2;
 
