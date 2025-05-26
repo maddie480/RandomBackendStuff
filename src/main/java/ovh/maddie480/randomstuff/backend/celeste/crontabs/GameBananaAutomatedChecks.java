@@ -155,9 +155,33 @@ public class GameBananaAutomatedChecks {
                                     Process p = OutputStreamLogger.redirectErrorOutput(logger,
                                             new ProcessBuilder("/home/ubuntu/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start());
 
-                                    String fullDecompile;
-                                    try (InputStream is = p.getInputStream()) {
-                                        fullDecompile = IOUtils.toString(is, StandardCharsets.UTF_8);
+                                    int lines = 0;
+
+                                    try (InputStream is = p.getInputStream();
+                                        BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
+
+                                        String line;
+                                        while ((line = br.readLine()) != null) {
+                                            lines++;
+                                            if (line.contains("yield return orig.Invoke")) {
+                                                logger.warn("Mod {} uses yield return orig(self)!", modName);
+                                                yieldReturnIssue = true;
+                                            }
+                                            if (!Arrays.asList("FrostHelper", "MappingUtils").contains(modName) && line.contains("Console.WriteLine")) {
+                                                logger.warn("Mod {} contains Console.WriteLine", modName);
+                                                consoleWriteLine = true;
+                                            }
+                                            if (Stream.of("ProcessStartInfo", "Process.Start", "new Process", "UseShellExecute")
+                                                    .anyMatch(line::contains)) {
+
+                                                logger.warn("Mod {} contains Process usage", modName);
+                                                fishyProcessStuff = true;
+                                            }
+                                            if (line.contains("TargetFramework(\".NETCoreApp,Version=v8")) {
+                                                logger.warn("Mod {} seems to target .NET 8", modName);
+                                                mightBeDotnet8 = true;
+                                            }
+                                        }
                                     }
 
                                     try {
@@ -170,28 +194,7 @@ public class GameBananaAutomatedChecks {
                                         throw new IOException("ilspycmd returned exit code " + p.exitValue());
                                     }
 
-                                    logger.debug("Decompiled {} lines of code",
-                                            fullDecompile.chars().filter(c -> c == '\n').count());
-
-                                    // search for anything looking like yield return orig(self)
-                                    if (fullDecompile.contains("yield return orig.Invoke")) {
-                                        logger.warn("Mod {} uses yield return orig(self)!", modName);
-                                        yieldReturnIssue = true;
-                                    }
-                                    if (!Arrays.asList("FrostHelper", "MappingUtils").contains(modName) && fullDecompile.contains("Console.WriteLine")) {
-                                        logger.warn("Mod {} contains Console.WriteLine", modName);
-                                        consoleWriteLine = true;
-                                    }
-                                    if (Stream.of("ProcessStartInfo", "Process.Start", "new Process", "UseShellExecute")
-                                            .anyMatch(fullDecompile::contains)) {
-
-                                        logger.warn("Mod {} contains Process usage", modName);
-                                        fishyProcessStuff = true;
-                                    }
-                                    if (fullDecompile.contains("TargetFramework(\".NETCoreApp,Version=v8")) {
-                                        logger.warn("Mod {} seems to target .NET 8", modName);
-                                        mightBeDotnet8 = true;
-                                    }
+                                    logger.debug("Decompiled {} lines of code", lines);
 
                                     logger.debug("Deleting temporary DLL");
                                     FileUtils.forceDelete(new File("/tmp/mod_yield_police.dll"));
