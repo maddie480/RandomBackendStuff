@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +87,10 @@ public class LinkRefresher {
                 }
 
                 throw e;
+
+            } catch (InsufficientPermissionException e) {
+                log.warn("Forgetting message {} because we don't have access to it", message.messageId(), e);
+                continue;
             }
 
             if (origMessage.getAttachments().isEmpty()) {
