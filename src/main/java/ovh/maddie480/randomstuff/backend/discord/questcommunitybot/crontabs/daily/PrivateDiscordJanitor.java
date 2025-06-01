@@ -82,7 +82,8 @@ public class PrivateDiscordJanitor {
 
     private boolean shouldPurge(Message message, List<Message> pins, OffsetDateTime delay) {
         boolean old = message.getTimeCreated().isBefore(delay);
-        boolean spammy = message.getChannel().getIdLong() == 445631337315958796L && message.getAuthor().getEffectiveName().startsWith("L");
+        boolean spammy = (message.getChannel().getIdLong() == 445631337315958796L && message.getAuthor().getEffectiveName().startsWith("L"))
+                || (message.getChannel().getIdLong() == 445236692136230943L && message.getAuthor().getIdLong() == 1378823407013072988L);
         boolean pinned = pins.stream().anyMatch(pin -> pin.getIdLong() == message.getIdLong());
         return (old || spammy) && !pinned;
     }
