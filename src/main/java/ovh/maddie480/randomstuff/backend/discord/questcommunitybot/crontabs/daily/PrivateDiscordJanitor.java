@@ -32,22 +32,23 @@ public class PrivateDiscordJanitor {
     }
 
     private void run() {
-        cleanupChannel(498584991194808354L, OffsetDateTime.now().minusMonths(1), false);
-        cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1), false);
-        cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1), false);
-        cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), false);
-        cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), false);
+        cleanupChannel(498584991194808354L, OffsetDateTime.now().minusMonths(1), false, false);
+        cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1), false, false);
+        cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1), false, false);
+        cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), false, true);
+        cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), false, true);
     }
 
 
-    public static void runHourly() throws IOException {
+    public static void runHourly() {
         try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
-            new PrivateDiscordJanitor(questBot).cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1), true); // #crontab_logs
+            new PrivateDiscordJanitor(questBot)
+                    .cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1), true, false);
         }
     }
 
 
-    private void cleanupChannel(final long channelId, final OffsetDateTime delay, boolean useBulkDelete) {
+    private void cleanupChannel(final long channelId, final OffsetDateTime delay, boolean useBulkDelete, boolean scanAll) {
         TextChannel channel = botClient.getGuildById(443390765826179072L).getTextChannelById(channelId);
 
         logger.debug("Récupération des messages à supprimer dans {}...", channel);
@@ -55,7 +56,7 @@ public class PrivateDiscordJanitor {
         List<Message> pins = channel.retrievePinnedMessages().complete();
 
         long[] messagesToDelete = channel.getIterableHistory()
-                .skipTo(TimeUtil.getDiscordTimestamp((channelId == 445631337315958796L ? OffsetDateTime.now() : delay)
+                .skipTo(TimeUtil.getDiscordTimestamp((scanAll ? OffsetDateTime.now() : delay)
                         .toInstant().toEpochMilli()))
                 .stream()
                 .filter(message -> shouldPurge(message, pins, delay))
