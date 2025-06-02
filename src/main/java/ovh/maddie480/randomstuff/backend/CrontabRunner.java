@@ -201,7 +201,11 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] LNJBot.healthCheck", LNJBot::healthCheck);
         runProcessAndAlertOnException("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes);
         runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(Twitch)", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
-        runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () -> checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
+        runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () -> {
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "You have 5 minutes to execute the YouTube Token Exchange Ritual!");
+            Thread.sleep(300000);
+            checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
+        });
         runProcessAndAlertOnException("[Daily] ChangeBGToRandom", ChangeBGToRandom::run);
         runProcessAndAlertOnException("[Daily] PurgePosts", PurgePosts::run);
         runProcessAndAlertOnException("[Daily] QuestCommunityWebsiteHealthCheck", QuestCommunityWebsiteHealthCheck::run);
