@@ -2,7 +2,6 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -19,7 +18,6 @@ import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -158,7 +156,7 @@ public class GameBananaAutomatedChecks {
                                     int lines = 0;
 
                                     try (InputStream is = p.getInputStream();
-                                        BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
+                                         BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
 
                                         String line;
                                         while ((line = br.readLine()) != null) {
@@ -439,10 +437,11 @@ public class GameBananaAutomatedChecks {
 
                     logger.debug("Checking result");
                     if (resultBody.has("parseError")) {
-                        sendAlertToWebhook(":warning: The mod called **" + modName + "** has an everest.yaml file with invalid syntax:\n```\n"
-                                + resultBody.getString("parseError")
-                                + "\n```\n:arrow_right: https://gamebanana.com/"
-                                + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
+                        handleEverestYamlInvalidSyntax(destination, resultBody.getString("parseError"),
+                                ":warning: The mod called **" + modName + "** has an everest.yaml file with invalid syntax:\n```\n"
+                                        + resultBody.getString("parseError")
+                                        + "\n```\n:arrow_right: https://gamebanana.com/"
+                                        + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
                     } else if (resultBody.has("validationErrors")) {
                         List<String> allErrors = new ArrayList<>();
                         for (Object o : resultBody.getJSONArray("validationErrors")) {
@@ -492,6 +491,64 @@ public class GameBananaAutomatedChecks {
         try (OutputStream os = new FileOutputStream("already_validated_yaml_files.yaml")) {
             YamlUtil.dump(newAlreadyChecked, os);
         }
+    }
+
+    private static void handleEverestYamlInvalidSyntax(Path yaml, String error, String message) throws IOException {
+        sendAlertToWebhook(message);
+
+        if (!error.matches("^Cannot parse Dependencies for .*: No Version is specified for Everest$")) return;
+
+        // I might be able to help! First, let's figure out which version we should add.
+        int latestEverestStable;
+        try (BufferedReader br = Files.newBufferedReader(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
+            latestEverestStable = new JSONObject(new JSONTokener(br)).getInt("stable");
+        }
+
+        // create a new folder, so that the file can just be called everest.yaml for simplicity's sake
+        Path fixedFile = Paths.get("/tmp/banana_watch_helps_out/everest.yaml");
+        Files.createDirectories(fixedFile.getParent());
+
+        try {
+            List<Map<String, Object>> yamlFile;
+            try (InputStream is = Files.newInputStream(yaml)) {
+                yamlFile = YamlUtil.load(is);
+            }
+
+            // look for mods that have a Dependencies entry with Name: Everest and no Version, and add it
+            boolean changed = false;
+            for (Map<String, Object> mod : yamlFile) {
+                List<Map<String, String>> dependencies = (List<Map<String, String>>) mod.get("Dependencies");
+                if (dependencies == null) continue;
+                for (Map<String, String> dependency : dependencies) {
+                    if ("Everest".equals(dependency.get("Name")) && !dependency.containsKey("Version")) {
+                        dependency.put("Version", "1." + latestEverestStable + ".0");
+                        changed = true;
+                    }
+                }
+            }
+            if (!changed) return;
+
+            // write back the file to be used for the webhook
+            try (OutputStream os = Files.newOutputStream(fixedFile)) {
+                YamlUtil.dump(yamlFile, os);
+            }
+        } catch (Exception e) {
+            logger.warn("I tried to help with the Everest version error, but it didn't work!!!", e);
+            return;
+        }
+
+        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+            if (!webhook.startsWith("https://discord.com/")) continue;
+
+            WebhookExecutor.executeWebhook(webhook,
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                    "Banana Watch",
+                    "Here is a fixed file with the Everest dependency added:",
+                    false,
+                    Collections.singletonList(fixedFile.toFile()));
+        }
+
+        FileUtils.deleteDirectory(fixedFile.getParent().toFile());
     }
 
     public static void checkForFilesBelongingToMultipleMods() throws IOException {
