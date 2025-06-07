@@ -30,6 +30,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -204,14 +205,18 @@ public class UpdateCheckerTracker extends EventListener {
     @Override
     public void modHasNoYamlFile(String gameBananaType, int gameBananaId, String fileUrl) {
         AtomicReference<String> message = new AtomicReference<>("contains a file that has no `everest.yaml`: " + fileUrl);
+        AtomicBoolean sendFollowup = new AtomicBoolean(false);
 
         // is the everest.yaml actually in a subfolder? the update checker's FileDownloader should still have the file for us to check
         try (ZipFile zip = new ZipFile(FileDownloader.downloadFile(fileUrl).toFile())) {
             zip.stream()
                     .filter(entry -> entry.getName().endsWith("/everest.yaml"))
                     .findFirst()
-                    .ifPresent(entry -> message.set("has a file that contains an `everest.yaml`, but it is located at `"
-                            + entry.getName() + "` instead of the root of the zip: " + fileUrl));
+                    .ifPresent(entry -> {
+                        message.set("has a file that contains an `everest.yaml`, but it is located at `"
+                                + entry.getName() + "` instead of the root of the zip: " + fileUrl);
+                        sendFollowup.set(true);
+                    });
         } catch (Exception e) {
             log.warn("Error while checking if everest.yaml is in subfolder", e);
         }
@@ -219,6 +224,9 @@ public class UpdateCheckerTracker extends EventListener {
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
             executeWebhookAsBananaWatch(webhook, ":warning: Mod https://gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
                     + " " + message.get());
+            if (sendFollowup.get()) {
+                executeWebhookAsBananaWatch(webhook, "Make sure to zip the folder properly to avoid this: https://maddie480.ovh/img/zip.png");
+            }
         }
     }
 
