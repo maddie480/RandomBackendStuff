@@ -30,11 +30,12 @@ import static ovh.maddie480.randomstuff.backend.celeste.crontabs.EverestVersionL
 public class EverestPRLabelSlapper {
     private static final Logger log = LoggerFactory.getLogger(EverestPRLabelSlapper.class);
 
+    private static final String LABEL_DRAFT = "draft";
     private static final String LABEL_REVIEW_NEEDED = "review needed";
     private static final String LABEL_CHANGES_REQUESTED = "changes requested";
     private static final String LABEL_LAST_CALL_WINDOW = "last call window";
     private static final String LABEL_READY_TO_MERGE = "ready to merge";
-    private static final Set<String> BOT_MANAGED_LABELS = new HashSet<>(Arrays.asList(LABEL_REVIEW_NEEDED, LABEL_CHANGES_REQUESTED, LABEL_LAST_CALL_WINDOW, LABEL_READY_TO_MERGE));
+    private static final Set<String> BOT_MANAGED_LABELS = new HashSet<>(Arrays.asList(LABEL_DRAFT, LABEL_REVIEW_NEEDED, LABEL_CHANGES_REQUESTED, LABEL_LAST_CALL_WINDOW, LABEL_READY_TO_MERGE));
 
     private static final LocalDate ROLLING_RELEASE_DATE = LocalDate.parse("2025-05-17");
     private static final int ROLLING_RELEASE_INTERVAL_WEEKS = 2;
@@ -192,6 +193,10 @@ public class EverestPRLabelSlapper {
     }
 
     private static Verdict computePRState(JSONObject pr) throws IOException {
+        if (pr.getBoolean("draft")) {
+            return new Verdict(LABEL_DRAFT, null);
+        }
+
         JSONArray reviews = ConnectionUtils.runWithRetry(() -> {
             try (InputStream is = authenticatedGitHubRequest("https://api.github.com/repos/EverestAPI/Everest/pulls/" + pr.getInt("number") + "/reviews")) {
                 return new JSONArray(new JSONTokener(is));
