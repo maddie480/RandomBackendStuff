@@ -165,13 +165,16 @@ public class GameBananaAutomatedChecks {
                                                 logger.warn("Mod {} uses yield return orig(self)!", modName);
                                                 yieldReturnIssue = true;
                                             }
-                                            if (!Arrays.asList("FrostHelper", "MappingUtils").contains(modName) && line.contains("Console.WriteLine")) {
+                                            if (line.contains("Console.WriteLine")) {
                                                 logger.warn("Mod {} contains Console.WriteLine", modName);
                                                 consoleWriteLine = true;
                                             }
                                             if (Stream.of("ProcessStartInfo", "Process.Start", "new Process", "UseShellExecute")
-                                                    .anyMatch(line::contains)) {
-
+                                                    .anyMatch(line::contains)
+                                                    && !"CelesteTAS".equals(modName) // Celeste Studio
+                                                    && !"Vidcutter".equals(modName) // ffmpeg
+                                                    && !"ChroniaHelper".equals(modName) // Open URL Trigger
+                                            ) {
                                                 logger.warn("Mod {} contains Process usage", modName);
                                                 fishyProcessStuff = true;
                                             }
