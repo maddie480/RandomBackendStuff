@@ -55,7 +55,7 @@ public class CelesteStuffHealthCheck {
         int latestBeta = -1;
         int latestDev = -1;
 
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions.json"))) {
             JSONArray versionList = new JSONArray(new JSONTokener(is));
 
             for (Object version : versionList) {
@@ -164,7 +164,7 @@ public class CelesteStuffHealthCheck {
      * Checks that all artifacts of an Everest version are downloadable.
      */
     private static void checkEverestVersionExists(int versionNumber) throws IOException {
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions.json"))) {
             JSONArray versionList = new JSONArray(new JSONTokener(is));
 
             for (Object version : versionList) {
@@ -569,7 +569,7 @@ public class CelesteStuffHealthCheck {
         try (BufferedReader br = Files.newBufferedReader(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
             latestDev = new JSONObject(new JSONTokener(br)).getInt("dev");
         }
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest-versions?supportsNativeBuilds=true"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest-versions"), UTF_8)
                 .contains("\"version\":" + latestDev)) {
 
             throw new IOException("Everest versions test failed");

@@ -96,8 +96,7 @@ public class EverestVersionLister {
     }
 
     private static void updateEverestVersions() throws IOException {
-        List<Map<String, Object>> infoNoNative = new ArrayList<>();
-        List<Map<String, Object>> infoWithNative = new ArrayList<>();
+        List<Map<String, Object>> info = new ArrayList<>();
 
         // === GitHub Releases: for stable builds
 
@@ -141,9 +140,7 @@ public class EverestVersionLister {
 
                 boolean isNative = isNative((String) entry.get("olympusBuildDownload"));
                 entry.put("isNative", isNative);
-
-                if (!isNative) infoNoNative.add(entry);
-                infoWithNative.add(entry);
+                info.add(entry);
             }
         }
 
@@ -207,19 +204,13 @@ public class EverestVersionLister {
 
                 boolean isNative = isNative((String) entry.get("olympusBuildDownload"));
                 entry.put("isNative", isNative);
-
-                if (!isNative) infoNoNative.add(entry);
-                infoWithNative.add(entry);
+                info.add(entry);
             }
         }
 
-        // sort the versions by descending number
-        infoNoNative.sort(Comparator.comparingInt(build -> -((int) build.get("version"))));
-        infoWithNative.sort(Comparator.comparingInt(build -> -((int) build.get("version"))));
-
-        // push to Cloud Storage
-        Files.writeString(Paths.get("/shared/celeste/everest-versions.json"), new JSONArray(infoNoNative).toString(), StandardCharsets.UTF_8);
-        Files.writeString(Paths.get("/shared/celeste/everest-versions-with-native.json"), new JSONArray(infoWithNative).toString(), StandardCharsets.UTF_8);
+        // sort the versions by descending number and save to storage
+        info.sort(Comparator.comparingInt(build -> -((int) build.get("version"))));
+        Files.writeString(Paths.get("/shared/celeste/everest-versions.json"), new JSONArray(info).toString(), StandardCharsets.UTF_8);
 
         // update the frontend cache
         HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/everest-versions-reload?key="
@@ -233,9 +224,9 @@ public class EverestVersionLister {
             WebhookExecutor.executeWebhook(webhook,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
-                    ":sparkles: Everest versions were updated. There are now **" + infoWithNative.size() + "** versions on record.\n" +
-                            "Latest Everest version is **" + infoWithNative.get(0).get("version") + "** (" + infoWithNative.get(0).get("branch") + ")"
-                            + (infoWithNative.get(0).containsKey("description") ? ": `" + infoWithNative.get(0).get("description") + "` by " + infoWithNative.get(0).get("author") + "." : "."),
+                    ":sparkles: Everest versions were updated. There are now **" + info.size() + "** versions on record.\n" +
+                            "Latest Everest version is **" + info.get(0).get("version") + "** (" + info.get(0).get("branch") + ")"
+                            + (info.get(0).containsKey("description") ? ": `" + info.get(0).get("description") + "` by " + info.get(0).get("author") + "." : "."),
                     ImmutableMap.of("X-Everest-Log", "true"));
         }
     }
@@ -356,7 +347,7 @@ public class EverestVersionLister {
      * since this is way faster than redownloading the Everest version to check its size or contents.
      */
     private static <T> Optional<T> getPreviouslyCalculatedValue(String fieldToMatch, String valueToMatch, Function<JSONObject, T> getter) throws IOException {
-        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions-with-native.json"))) {
+        try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/everest-versions.json"))) {
             JSONArray versions = new JSONArray(new JSONTokener(is));
 
             for (int i = 0; i < versions.length(); i++) {
