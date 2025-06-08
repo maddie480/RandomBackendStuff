@@ -218,11 +218,6 @@ public class CrontabRunner {
     }
 
     private static void runHourlyProcesses() {
-        // load #celeste_news_network state from disk
-        runProcessAndAlertOnException("[Hourly] MastodonUpdateChecker.loadFile", MastodonUpdateChecker::loadFile);
-        runProcessAndAlertOnException("[Hourly] TwitterUpdateChecker.loadFile", TwitterUpdateChecker::loadFile);
-        runProcessAndAlertOnException("[Hourly] loadPreviouslyPostedNews", OlympusNewsUpdateChecker::loadPreviouslyPostedNews);
-
         // Update tasks
         runProcessAndAlertOnException("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub);
         runProcessAndAlertOnException("[Hourly] CollabAutoHider", CollabAutoHider::run);
@@ -230,9 +225,14 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs)", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log.gz")));
         runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs, autodeploy)", () -> TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log")));
         runProcessAndAlertOnException("[Hourly] zipUpOldFiles(/logs)", () -> TempFolderCleanup.zipUpOldFiles("/logs", 8, path -> path.getFileName().toString().endsWith(".backend.log")));
-        runProcessAndAlertOnException("[Hourly] MastodonUpdateChecker", MastodonUpdateChecker::checkForUpdates);
-        runProcessAndAlertOnException("[Hourly] TwitterUpdateChecker", TwitterUpdateChecker::checkForUpdates);
-        runProcessAndAlertOnException("[Hourly] OlympusNewsUpdateChecker", OlympusNewsUpdateChecker::checkForUpdates);
+        runProcessAndAlertOnException("[Hourly] MastodonUpdateChecker", () -> {
+            MastodonUpdateChecker.loadFile();
+            MastodonUpdateChecker.checkForUpdates();
+        });
+        runProcessAndAlertOnException("[Hourly] OlympusNewsUpdateChecker", () -> {
+            OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
+            OlympusNewsUpdateChecker.checkForUpdates();
+        });
         runProcessAndAlertOnException("[Hourly] LoennVersionLister", LoennVersionLister::update);
         runProcessAndAlertOnException("[Hourly] TopGGCommunicator.refreshVotes", () -> TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message)));
         runProcessAndAlertOnException("[Hourly] PrivateDiscordJanitor", PrivateDiscordJanitor::runHourly);

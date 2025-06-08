@@ -31,9 +31,7 @@ COPY --chown=ubuntu:ubuntu games.json /app/static/games.json
 RUN cd /app/static && \
   chmod -c u+x /app/run_bot.sh *.sh && \
   dotnet tool install -g ilspycmd && \
-  wine cmd /c echo success && \
-  curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./youtube-dl && \
-  chmod -c a+rx ./youtube-dl
+  wine cmd /c echo success
 
 VOLUME /logs
 VOLUME /backend
