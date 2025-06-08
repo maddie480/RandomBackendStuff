@@ -541,11 +541,12 @@ public class CelesteStuffHealthCheck {
         }
 
         // subcategories list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-subcategories?itemtype=Mod&categoryId=6800"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-subcategories"), UTF_8)
                 .contains("""
-                        - id: 6803
-                          name: Collab/Contest
-                          count:\s""")) {
+                          - id: 6803
+                            name: Collab/Contest
+                            count: \
+                        """)) {
 
             throw new IOException("Subcategories list API failed");
         }
