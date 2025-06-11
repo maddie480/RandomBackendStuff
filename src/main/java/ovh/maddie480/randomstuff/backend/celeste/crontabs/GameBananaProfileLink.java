@@ -29,11 +29,14 @@ public class GameBananaProfileLink {
 
             int i = 1;
             while (true) {
-                JSONArray page;
-                logger.debug("Querying {} page {}, got {} cats and {} submitters so far", itemtype, i, categoryIconsForType.length(), submitterInfo.length());
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + itemtype + "/ByGame?_aGameRowIds[]=6460&_csvProperties=_aCategory,_aSubmitter&_nPage=" + i + "&_nPerpage=50")) {
-                    page = new JSONArray(new JSONTokener(is));
-                }
+                int pageNumber = i;
+                logger.debug("Querying {} page {}, got {} cats and {} submitters so far", itemtype, pageNumber, categoryIconsForType.length(), submitterInfo.length());
+                JSONArray page = ConnectionUtils.runWithRetry(() -> {
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + itemtype + "/ByGame?_aGameRowIds[]=6460&_csvProperties=_aCategory,_aSubmitter&_nPage=" + pageNumber + "&_nPerpage=50")) {
+                        return new JSONArray(new JSONTokener(is));
+                    }
+                });
+
                 if (page.isEmpty()) break;
                 for (Object o : page) {
                     JSONObject item = (JSONObject) o;
