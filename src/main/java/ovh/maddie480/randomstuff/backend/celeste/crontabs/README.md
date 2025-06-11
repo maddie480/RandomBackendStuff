@@ -21,6 +21,7 @@ These classes have methods that are run periodically, and take part in the opera
   - if the updater database contains multiple mods associated with the same file, a warning is sent: this means this file contains multiple mods, which can cause weirdness when it gets updated (multiple entries for the same file appearing in the updater).
   - existence of all categories is also checked, because categories not existing means they were not approved by site admins, and that requires sorting out.
 - `LoennVersionLister`: Mirrors the Lönn versions list API from GitHub once an hour. The GitHub API is severely rate-limited, which causes issues for users of shared networks.
+- `GameBananaProfileLink`: grabs some information that will be useful to generate embeds for GameBanana: category icon links, user profile links, and user avatar links.
 - `MastodonUpdateChecker`: a bot that checks every hour for new posts on several Mastodon accounts, and posts to various places through webhooks if it happens.
 - `ModCatalogDictionaryGenerator`: a utility that checks language files in entity plugins in order to build a dictionary (ID => name). It is used when the [Custom Entity Catalog](https://maddie480.ovh/celeste/custom-entity-catalog) is generated.
 - `OlympusNewsUpdateChecker`: checks the [Olympus](https://github.com/EverestAPI/Olympus) news feed (that comes from [the `olympusnews` folder of the EverestAPI.github.io repository](https://github.com/EverestAPI/EverestAPI.github.io/tree/main/olympusnews)), and posts new entries to Discord webhooks.

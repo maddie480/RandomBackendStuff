@@ -168,6 +168,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] AssetDriveService.classifyAssets", AssetDriveService::classifyAssets);
         runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
         runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
+        runProcessAndAlertOnException("[Daily] GameBananaProfileLink", () -> GameBananaProfileLink.main(null));
 
         // Health Checks
         runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);
