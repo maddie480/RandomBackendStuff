@@ -6,9 +6,11 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
+import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -57,6 +59,17 @@ public class GameBananaProfileLink {
              BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
 
             glob.write(bw);
+        }
+    }
+
+    public static void checkEmbedBuilder() throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(
+                "https://maddie480.ovh/discord/bananabot-embed-builder-check?key=" + SecretConstants.RELOAD_SHARED_SECRET);
+        connection.setRequestMethod("POST");
+        connection.setReadTimeout(300_000);
+
+        if (connection.getResponseCode() != 200) {
+            throw new IOException("BananaBot embed builder check failed!");
         }
     }
 }

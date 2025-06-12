@@ -196,6 +196,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkWipeConverter", CelesteStuffHealthCheck::checkWipeConverter);
         runProcessAndAlertOnException("[Daily] checkArbitraryModApp", CrontabRunner::checkArbitraryModApp);
         runProcessAndAlertOnException("[Daily] GitHubActionsChecker", () -> GitHubActionsChecker.main(null));
+        runProcessAndAlertOnException("[Daily] checkEmbedBuilder", GameBananaProfileLink::checkEmbedBuilder);
 
         // Non-Celeste Stuff
         runProcessAndAlertOnException("[Daily] checkRadioLNJ", CrontabRunner::checkRadioLNJ);
