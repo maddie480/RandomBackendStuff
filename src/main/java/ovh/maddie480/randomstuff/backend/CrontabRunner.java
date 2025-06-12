@@ -156,6 +156,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
 
         // Update tasks
+        runProcessAndAlertOnException("[Daily] GameBananaProfileLink", () -> GameBananaProfileLink.main(null));
         runProcessAndAlertOnException("[Daily] MembershipNotifier", () -> MembershipNotifier.main(null));
         runProcessAndAlertOnException("[Daily] TimezoneBot.leaveDeadServerIfNecessary", TimezoneBot::leaveDeadServerIfNecessary);
         runProcessAndAlertOnException("[Daily] CustomSlashCommandsCleanup", CustomSlashCommandsCleanup::housekeep);
@@ -168,7 +169,6 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] AssetDriveService.classifyAssets", AssetDriveService::classifyAssets);
         runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
         runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
-        runProcessAndAlertOnException("[Daily] GameBananaProfileLink", () -> GameBananaProfileLink.main(null));
 
         // Health Checks
         runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);
