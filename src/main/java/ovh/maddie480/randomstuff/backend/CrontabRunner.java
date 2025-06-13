@@ -208,6 +208,7 @@ public class CrontabRunner {
             Thread.sleep(300000);
             checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
         });
+        runProcessAndAlertOnException("[Daily] checkEnhancedBananaEmbeds()", CrontabRunner::checkEnhancedBananaEmbeds);
         runProcessAndAlertOnException("[Daily] ChangeBGToRandom", ChangeBGToRandom::run);
         runProcessAndAlertOnException("[Daily] PurgePosts", PurgePosts::run);
         runProcessAndAlertOnException("[Daily] QuestCommunityWebsiteHealthCheck", QuestCommunityWebsiteHealthCheck::run);
@@ -404,6 +405,61 @@ public class CrontabRunner {
         } finally {
             logger.info("Disconnecting from {}...", chatProvider.getClass().getName());
             chatProvider.disconnect();
+        }
+    }
+
+    private static void checkEnhancedBananaEmbeds() throws IOException {
+        {
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/gamebanana.com/mods/53687");
+            connection.setRequestProperty("User-Agent", "Discordbot (actually-health-check)");
+            String result;
+            try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
+                result = IOUtils.toString(is, UTF_8);
+            }
+            if (!result.equals("""
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                <title>Maddie's Helping Hand</title>
+                <link rel="canonical" href="https://gamebanana.com/mods/53687"/>
+                <meta property="og:url" content="https://gamebanana.com/mods/53687"/>
+                <meta property="og:title" content="Maddie's Helping Hand"/>
+                <meta property="og:description" content="A grab bag of requests"/>
+                <meta property="og:image" content="https://images.gamebanana.com/img/ss/mods/5f5d1f3d880bd.jpg"/>
+                <meta property="theme-color" content="#FFE033"/>
+                <meta property="twitter:card" content="summary_large_image"/>
+                <link rel="alternate" type="application/json+oembed" href="https://maddie480.ovh/celeste/banana-oembed/mod-53687.json" title="maddie480"/>
+                </head>
+                <body>
+                Hi! What are you doing here?
+                </body>
+                </html>""")) {
+
+                throw new IOException("Enhanced embed HTML didn't match expected!");
+            }
+        }
+
+        {
+            String result;
+            try (InputStream is = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/banana-oembed/mod-53687.json")) {
+                result = IOUtils.toString(is, UTF_8);
+            }
+            if (!result.startsWith("{\"author_name\":\"maddie480\",\"author_url\":\"https://gamebanana.com/members/1698143\",\"provider_name\":\"GameBanana \\u2013 ")
+                || !result.endsWith("\",\"title\":\"Embed\",\"type\":\"rich\",\"version\":\"1.0\"}")) {
+
+                throw new IOException("Enhanced embed JSON didn't match expected!");
+            }
+        }
+
+        {
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/gamebanana.com/mods/53687");
+            connection.setInstanceFollowRedirects(false);
+            if (connection.getResponseCode() != 302) {
+                throw new IOException("Enhanced embed URL does not redirect!");
+            }
+            if (!"https://gamebanana.com/mods/53687".equals(connection.getHeaderField("Location"))) {
+                throw new IOException("Enhanced embed URL does not redirect to the expected place!");
+            }
         }
     }
 
