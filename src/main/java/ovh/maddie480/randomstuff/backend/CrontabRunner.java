@@ -441,7 +441,7 @@ public class CrontabRunner {
 
         {
             String result;
-            try (InputStream is = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/banana-oembed/mod-53687.json")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/banana-oembed/mod-53687.json")) {
                 result = IOUtils.toString(is, UTF_8);
             }
             if (!result.startsWith("{\"author_name\":\"maddie480\",\"author_url\":\"https://gamebanana.com/members/1698143\",\"provider_name\":\"GameBanana \\u2013 ")
