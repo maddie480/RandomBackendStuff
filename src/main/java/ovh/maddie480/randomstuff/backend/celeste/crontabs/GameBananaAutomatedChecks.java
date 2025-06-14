@@ -50,6 +50,15 @@ public class GameBananaAutomatedChecks {
 
     private static final Pattern objDirectoryRegex = Pattern.compile(".*(?:/|^)obj/(Debug|Release)(?:/|$).*");
 
+    private static String getMaskedEnhancedEmbedLink(Map<String, Object> mod) {
+        return getMaskedEnhancedEmbedLink((String) mod.get("GameBananaType"), (int) mod.get("GameBananaId"));
+    }
+
+    static String getMaskedEnhancedEmbedLink(String itemtype, int itemid) {
+        String link = "gamebanana.com/" + itemtype.toLowerCase() + "s/" + itemid;
+        return "[" + link + "](https://maddie480.ovh/" + link + ")";
+    }
+
     /**
      * Downloads every mod with a DLL and decompiles it looking for a "yield return orig.Invoke",
      * because mods shouldn't use those.
@@ -207,32 +216,27 @@ public class GameBananaAutomatedChecks {
 
                         if (yieldReturnIssue) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `yield return orig(self)`!" +
-                                    " This might change timings and desync TASes <:UnimpressedPoggersGuneline:971378034441601034>\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                                    " This might change timings and desync TASes <:UnimpressedPoggersGuneline:971378034441601034>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
                         }
 
                         if (consoleWriteLine) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `Console.WriteLine`!" +
-                                    " This might pollute the logs <:faintshiro:463773786819264512>\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                                    " This might pollute the logs <:faintshiro:463773786819264512>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
                         }
 
                         if (fishyProcessStuff) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to be using `Process` APIs!" +
-                                    " Make sure that it isn't doing anything fishy with them :fish:\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                                    " Make sure that it isn't doing anything fishy with them :fish:\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
                         }
 
                         if (mightBeDotnet8) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to target .NET 8!" +
-                                    " The mod might explode on Everest stable since it's still on .NET 7 :boom:\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                                    " The mod might explode on Everest stable since it's still on .NET 7 :boom:\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
                         }
 
                         if (!dllEntryFoundInYaml) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** ships with DLLs, but does not refer to any in its everest.yaml." +
-                                    " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                    + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"));
+                                    " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
                         }
                     } catch (ZipException e) {
                         logger.warn("Error while reading zip. Adding to the whitelist so that it isn't retried.", e);
@@ -243,7 +247,7 @@ public class GameBananaAutomatedChecks {
                                 "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                                 "Banana Watch",
                                 "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
-                                        ":arrow_right: https://maddie480.ovh/gamebanana.com/" + mod.get("GameBananaType").toString().toLowerCase() + "s/" + mod.get("GameBananaId"),
+                                        ":arrow_right: " + getMaskedEnhancedEmbedLink(mod),
                                 SecretConstants.OWNER_ID);
                     }
 
@@ -314,16 +318,17 @@ public class GameBananaAutomatedChecks {
                         .filter(f -> f.toLowerCase().endsWith(".exe"))
                         .toList();
 
-                String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
+                String itemtype = mod.split("/")[0];
+                int itemid = Integer.parseInt(mod.split("/")[1]);
 
                 if (!exeList.isEmpty()) {
                     String message = ":warning: The mod called **" + modName + "** contains an EXE file: `" + exeList.getFirst() + "`! " +
-                            "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: https://maddie480.ovh/gamebanana.com/" + nameForUrl;
+                            "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid);
 
                     for (int i = 2; i <= exeList.size(); i++) {
                         String newMessage = ":warning: The mod called **" + modName + "** contains EXE files: `" +
                                 exeList.stream().limit(i - 1).collect(Collectors.joining("`, `")) + "` and `" + exeList.get(i - 1) + "`! " +
-                                "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: https://maddie480.ovh/gamebanana.com/" + nameForUrl;
+                                "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid);
 
                         if (newMessage.length() > 2000) break;
                         message = newMessage;
@@ -338,7 +343,7 @@ public class GameBananaAutomatedChecks {
                         if (entry.equalsIgnoreCase(illegalFile) || entry.toLowerCase(Locale.ROOT).endsWith("/" + illegalFile.toLowerCase(Locale.ROOT))) {
                             // this file is illegal!
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** contains a file called `" + illegalFile + "`! " +
-                                    "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: https://maddie480.ovh/gamebanana.com/" + nameForUrl);
+                                    "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid));
                             return;
                         }
                     }
@@ -346,7 +351,7 @@ public class GameBananaAutomatedChecks {
                     Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
                     if (objDirectoryMatcher.matches()) {
                         sendAlertToWebhook(":warning: The mod called **" + modName + "** contains an `obj/" + objDirectoryMatcher.group(1) + "` folder! " +
-                                "It makes the zip bigger for no reason, and might contain publicized Celeste <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: https://maddie480.ovh/gamebanana.com/" + nameForUrl);
+                                "It makes the zip bigger for no reason, and might contain publicized Celeste <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid));
                         return;
                     }
                 }
@@ -443,8 +448,7 @@ public class GameBananaAutomatedChecks {
                         handleEverestYamlInvalidSyntax(destination, resultBody.getString("parseError"),
                                 ":warning: The mod called **" + modName + "** has an everest.yaml file with invalid syntax:\n```\n"
                                         + resultBody.getString("parseError")
-                                        + "\n```\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                        + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
+                                        + "\n```\n:arrow_right: " + getMaskedEnhancedEmbedLink(modMap.getValue()));
                     } else if (resultBody.has("validationErrors")) {
                         List<String> allErrors = new ArrayList<>();
                         for (Object o : resultBody.getJSONArray("validationErrors")) {
@@ -452,8 +456,7 @@ public class GameBananaAutomatedChecks {
                         }
                         sendAlertToWebhook(":warning: The mod called **" + modName + "** does not pass the everest.yaml validator:\n- "
                                 + String.join("\n- ", allErrors)
-                                + "\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
+                                + "\n:arrow_right: " + getMaskedEnhancedEmbedLink(modMap.getValue()));
                     } else {
                         // let's check that it refers to DLLs that actually exist.
                         List<Map<String, Object>> yamlFile;
@@ -475,8 +478,7 @@ public class GameBananaAutomatedChecks {
 
                         if (problem) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** has an everest.yaml file that refers to a DLL that does not exist." +
-                                    " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: https://maddie480.ovh/gamebanana.com/"
-                                    + modMap.getValue().get("GameBananaType").toString().toLowerCase(Locale.ROOT) + "s/" + modMap.getValue().get("GameBananaId"));
+                                    " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: " + getMaskedEnhancedEmbedLink(modMap.getValue()));
                         }
                     }
 
@@ -766,13 +768,15 @@ public class GameBananaAutomatedChecks {
                     File tempListFile = new File("/tmp/bad_png_files.txt");
                     FileUtils.writeStringToFile(tempListFile, badPngListMessage, UTF_8);
 
-                    String nameForUrl = mod.split("/")[0].toLowerCase(Locale.ROOT) + "s/" + mod.split("/")[1];
+                    String itemtype = mod.split("/")[0];
+                    int itemid = Integer.parseInt(mod.split("/")[1]);
+
                     badPngListMessage = ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files:\n" +
                             "```\n" +
                             badPngListMessage + "\n" +
                             "```\n" +
                             "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
-                            ":arrow_right: https://maddie480.ovh/gamebanana.com/" + nameForUrl;
+                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid);
 
                     for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
                         if (badPngListMessage.length() <= 2000) {
@@ -790,7 +794,7 @@ public class GameBananaAutomatedChecks {
                                     "Banana Watch",
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! You will find the list attached.\n" +
                                             "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
-                                            ":arrow_right: https://maddie480.ovh/gamebanana.com/" + nameForUrl,
+                                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid),
                                     false,
                                     Collections.singletonList(tempListFile)
                             );
@@ -801,7 +805,7 @@ public class GameBananaAutomatedChecks {
                                     "Banana Watch",
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files!\n" +
                                             "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
-                                            ":arrow_right: https://maddie480.ovh/gamebanana.com/" + nameForUrl,
+                                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid),
                                     ImmutableMap.of("X-Everest-Log", "true")
                             );
                         }

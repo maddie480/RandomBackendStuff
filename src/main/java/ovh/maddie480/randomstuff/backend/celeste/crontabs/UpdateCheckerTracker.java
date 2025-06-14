@@ -41,6 +41,7 @@ import java.util.zip.ZipOutputStream;
 
 import static com.max480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker.ModInfo;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static ovh.maddie480.randomstuff.backend.celeste.crontabs.GameBananaAutomatedChecks.getMaskedEnhancedEmbedLink;
 
 /**
  * A service that follows the Update Checker logs and re-posts them to a Discord channel.
@@ -222,8 +223,7 @@ public class UpdateCheckerTracker extends EventListener {
         }
 
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://maddie480.ovh/gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
-                    + " " + message.get());
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod " + getMaskedEnhancedEmbedLink(gameBananaType, gameBananaId) + " " + message.get());
             if (sendFollowup.get()) {
                 executeWebhookAsBananaWatch(webhook, "Make sure to zip the folder properly to avoid this: https://maddie480.ovh/img/zip.png");
             }
@@ -239,7 +239,7 @@ public class UpdateCheckerTracker extends EventListener {
     @Override
     public void zipFileIsUnreadable(String gameBananaType, int gameBananaId, String fileUrl, IOException e) {
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://maddie480.ovh/gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod " + getMaskedEnhancedEmbedLink(gameBananaType, gameBananaId)
                     + " contains a file that could not be read as a ZIP file: " + fileUrl);
         }
         postExceptionToWebhook(e);
@@ -247,7 +247,7 @@ public class UpdateCheckerTracker extends EventListener {
 
     @Override
     public void zipFileIsUnreadableForFileListing(String gameBananaType, int gameBananaId, String fileUrl, Exception e) {
-        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: Mod https://maddie480.ovh/gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+        executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: Mod " + getMaskedEnhancedEmbedLink(gameBananaType, gameBananaId)
                 + " contains a file that could not be read as a ZIP file for file listing: " + fileUrl);
         postExceptionToWebhook(e);
     }
@@ -261,7 +261,7 @@ public class UpdateCheckerTracker extends EventListener {
     @Override
     public void currentVersionBelongsToAnotherMod(String gameBananaType, int gameBananaId, String fileUrl, Mod otherMod) {
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://maddie480.ovh/gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod " + getMaskedEnhancedEmbedLink(gameBananaType, gameBananaId)
                     + " contains a file that has the same ID **" + otherMod.getName() + "** as mod https://gamebanana.com/" + otherMod.getGameBananaType().toLowerCase(Locale.ROOT) + "s/" + otherMod.getGameBananaId() + " : "
                     + fileUrl);
         }
@@ -275,7 +275,7 @@ public class UpdateCheckerTracker extends EventListener {
     @Override
     public void yamlFileIsUnreadable(String gameBananaType, int gameBananaId, String fileUrl, Exception e) {
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            executeWebhookAsBananaWatch(webhook, ":warning: Mod https://maddie480.ovh/gamebanana.com/" + gameBananaType.toLowerCase(Locale.ROOT) + "s/" + gameBananaId
+            executeWebhookAsBananaWatch(webhook, ":warning: Mod " + getMaskedEnhancedEmbedLink(gameBananaType, gameBananaId)
                     + " contains an `everest.yaml` file that could not be parsed: " + fileUrl);
         }
         postExceptionToWebhook(e);
