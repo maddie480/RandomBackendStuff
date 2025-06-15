@@ -896,13 +896,10 @@ public class GameBananaAutomatedChecks {
                             String itemtype = pair.getLeft().substring(0, 1).toUpperCase() + pair.getLeft().substring(1);
                             int itemid = pair.getRight();
 
-                            try {
-                                logger.debug("Loading mod search database to prepare alert embed for {} {}", itemtype, itemid);
-                                List<Map<String, Object>> modSearchDatabase;
-                                try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
-                                    modSearchDatabase = YamlUtil.load(is);
-                                }
-                                for (Map<String, Object> modCandidate : modSearchDatabase) {
+                            try (ModSearchDatabaseIterator iterator = new ModSearchDatabaseIterator()) {
+                                logger.debug("Looking for {} {} in mod search database...", itemtype, itemid);
+                                Map<String, Object> modCandidate;
+                                while ((modCandidate = iterator.next()) != null) {
                                     if (itemtype.equals(modCandidate.get("GameBananaType")) && itemid == (int) modCandidate.get("GameBananaId")) {
                                         logger.debug("Mod info found! The mod is called: {}", modCandidate.get("Name"));
 
@@ -931,5 +928,34 @@ public class GameBananaAutomatedChecks {
             embeds.add(element.getRight());
         }
         return Pair.of(body, embeds);
+    }
+
+    /**
+     * A memory-friendly way to iterate through the mod search database.
+     */
+    private static class ModSearchDatabaseIterator implements AutoCloseable {
+        private final BufferedReader reader;
+        private String previous;
+
+        public ModSearchDatabaseIterator() throws IOException {
+            reader = Files.newBufferedReader(Paths.get("uploads/modsearchdatabase.yaml"), UTF_8);
+        }
+
+        public Map<String, Object> next() throws IOException {
+            if (previous == null) previous = reader.readLine();
+            if (previous == null) return null; // reached end of stream
+            StringBuilder buffer = new StringBuilder(previous);
+            while ((previous = reader.readLine()) != null && !previous.startsWith("- ")) {
+                buffer.append('\n').append(previous);
+            }
+            try (ByteArrayInputStream is = new ByteArrayInputStream(buffer.toString().getBytes(UTF_8))) {
+                return YamlUtil.<List<Map<String, Object>>>load(is).getFirst();
+            }
+        }
+
+        @Override
+        public void close() throws Exception {
+            reader.close();
+        }
     }
 }
