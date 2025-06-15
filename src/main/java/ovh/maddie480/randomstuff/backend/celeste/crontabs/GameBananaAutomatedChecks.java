@@ -135,7 +135,6 @@ public class GameBananaAutomatedChecks {
                         boolean yieldReturnIssue = false;
                         boolean consoleWriteLine = false;
                         boolean fishyProcessStuff = false;
-                        boolean mightBeDotnet8 = false;
                         boolean dllEntryFoundInYaml = false;
 
                         // read "DLL" fields for each everest.yaml entry
@@ -186,10 +185,6 @@ public class GameBananaAutomatedChecks {
                                                 logger.warn("Mod {} contains Process usage", modName);
                                                 fishyProcessStuff = true;
                                             }
-                                            if (line.contains("TargetFramework(\".NETCoreApp,Version=v8")) {
-                                                logger.warn("Mod {} seems to target .NET 8", modName);
-                                                mightBeDotnet8 = true;
-                                            }
                                         }
                                     }
 
@@ -226,11 +221,6 @@ public class GameBananaAutomatedChecks {
                         if (fishyProcessStuff) {
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to be using `Process` APIs!" +
                                     " Make sure that it isn't doing anything fishy with them :fish:\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
-                        }
-
-                        if (mightBeDotnet8) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to target .NET 8!" +
-                                    " The mod might explode on Everest stable since it's still on .NET 7 :boom:\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
                         }
 
                         if (!dllEntryFoundInYaml) {
