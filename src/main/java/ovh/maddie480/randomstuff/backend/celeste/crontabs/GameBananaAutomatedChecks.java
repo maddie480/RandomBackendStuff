@@ -2,6 +2,8 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -11,10 +13,7 @@ import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
-import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
+import ovh.maddie480.randomstuff.backend.utils.*;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -382,9 +381,9 @@ public class GameBananaAutomatedChecks {
 
                     if (!oldDuplicateList.contains(pair) && !newDuplicateList.contains(pair)) {
                         sendAlertToWebhook(":warning: Mods " +
-                                "https://gamebanana.com/" + everestUpdate.get(name1).get("GameBananaType").toString().toLowerCase() + "s/" + everestUpdate.get(name1).get("GameBananaId") +
+                                getMaskedEnhancedEmbedLink((String) everestUpdate.get(name1).get("GameBananaType"), (int) everestUpdate.get(name1).get("GameBananaId")) +
                                 " (**" + name1 + "**) and " +
-                                "https://gamebanana.com/" + everestUpdate.get(name2).get("GameBananaType").toString().toLowerCase() + "s/" + everestUpdate.get(name2).get("GameBananaId") +
+                                getMaskedEnhancedEmbedLink((String) everestUpdate.get(name2).get("GameBananaType"), (int) everestUpdate.get(name2).get("GameBananaId")) +
                                 " (**" + name2 + "**) have the same mod ID with different cases.\nThis will cause them to overwrite each other when downloading both on Windows!"
                         );
                     }
@@ -781,32 +780,21 @@ public class GameBananaAutomatedChecks {
                     for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
                         if (badPngListMessage.length() <= 2000) {
                             // list is short enough to fit in the message itself: just include it
-                            WebhookExecutor.executeWebhook(webhook,
-                                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
-                                    "Banana Watch",
-                                    badPngListMessage,
-                                    ImmutableMap.of("X-Everest-Log", "true")
-                            );
+                            executeEnhancedWebhook(webhook, badPngListMessage);
                         } else if (webhook.startsWith("https://discord.com/") && tempListFile.length() <= 10 * 1024 * 1024) {
                             // Discord webhook and list too long to be included in the message: send the file with attachment
-                            WebhookExecutor.executeWebhook(webhook,
-                                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
-                                    "Banana Watch",
+                            executeEnhancedWebhook(webhook,
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files! You will find the list attached.\n" +
                                             "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
                                             ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid),
-                                    false,
                                     Collections.singletonList(tempListFile)
                             );
                         } else {
                             // Discord-compatible webhook or file is too big(???): send the file with special header but without the attachment
-                            WebhookExecutor.executeWebhook(webhook,
-                                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
-                                    "Banana Watch",
+                            executeEnhancedWebhook(webhook,
                                     ":warning: The file at " + url + " (mod **" + modName + "**) has invalid PNG files!\n" +
                                             "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
-                                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid),
-                                    ImmutableMap.of("X-Everest-Log", "true")
+                                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid)
                             );
                         }
                     }
@@ -841,13 +829,107 @@ public class GameBananaAutomatedChecks {
         }
     }
 
-    private static void sendAlertToWebhook(String message) throws IOException {
-        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            WebhookExecutor.executeWebhook(webhook,
+    public static void executeEnhancedWebhook(String webhookUrl, String body, List<File> attachments) throws IOException {
+        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(body);
+        if (enhanced.getRight().isEmpty() || !webhookUrl.startsWith("https://discord.com/")) {
+            WebhookExecutor.executeWebhook(webhookUrl,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                     "Banana Watch",
-                    message,
-                    ImmutableMap.of("X-Everest-Log", "true"));
+                    body,
+                    false,
+                    attachments);
+        } else {
+            WebhookExecutor.executeWebhook(webhookUrl,
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                    "Banana Watch",
+                    enhanced.getLeft(),
+                    attachments,
+                    enhanced.getRight());
         }
+    }
+
+    public static void executeEnhancedWebhook(String webhookUrl, String body) throws IOException {
+        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(body);
+        if (enhanced.getRight().isEmpty() || !webhookUrl.startsWith("https://discord.com/")) {
+            WebhookExecutor.executeWebhook(webhookUrl,
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                    "Banana Watch",
+                    body,
+                    ImmutableMap.of("X-Everest-Log", "true"));
+        } else {
+            WebhookExecutor.executeWebhook(webhookUrl,
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                    "Banana Watch",
+                    enhanced.getLeft(),
+                    enhanced.getRight());
+        }
+    }
+
+    private static void sendAlertToWebhook(String message) throws IOException {
+        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(message);
+        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+            if (enhanced.getRight().isEmpty() || !webhook.startsWith("https://discord.com/")) {
+                WebhookExecutor.executeWebhook(webhook,
+                        "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                        "Banana Watch",
+                        message,
+                        ImmutableMap.of("X-Everest-Log", "true"));
+            } else {
+                WebhookExecutor.executeWebhook(webhook,
+                        "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                        "Banana Watch",
+                        enhanced.getLeft(),
+                        enhanced.getRight());
+            }
+        }
+    }
+
+    private static Pair<String, List<Map<String, Object>>> enhanceYourWebhook(String body) {
+        String bananaRegex = "gamebanana\\.com/([a-z]+)s/([0-9]+)";
+        List<Triple<String, String, Map<String, Object>>> stuffToEnhance =
+                Pattern.compile("\\[" + bananaRegex + "]\\(https://maddie480\\.ovh/" + bananaRegex + "\\)")
+                        .matcher(body)
+                        .results()
+                        .map(result -> Pair.of(result.group(1), Integer.parseInt(result.group(2))))
+                        .distinct()
+                        .map(pair -> {
+                            String itemtype = pair.getLeft().substring(0, 1).toUpperCase() + pair.getLeft().substring(1);
+                            int itemid = pair.getRight();
+
+                            try {
+                                logger.debug("Loading mod search database to prepare alert embed for {} {}", itemtype, itemid);
+                                List<Map<String, Object>> modSearchDatabase;
+                                try (InputStream is = new FileInputStream("uploads/modsearchdatabase.yaml")) {
+                                    modSearchDatabase = YamlUtil.load(is);
+                                }
+                                for (Map<String, Object> modCandidate : modSearchDatabase) {
+                                    if (itemtype.equals(modCandidate.get("GameBananaType")) && itemid == (int) modCandidate.get("GameBananaId")) {
+                                        logger.debug("Mod info found! The mod is called: {}", modCandidate.get("Name"));
+
+                                        String bananaLink = "gamebanana.com/" + itemtype.toLowerCase() + "s/" + itemid;
+                                        String bananaFallbackLink = "[" + bananaLink + "](https://maddie480.ovh/" + bananaLink + ")";
+                                        bananaLink = "<https://" + bananaLink + ">";
+
+                                        JSONArray a = EmbedBuilder.buildEmbedFor(modCandidate);
+                                        return Triple.of(bananaFallbackLink, bananaLink, a.getJSONObject(0).toMap());
+                                    }
+                                }
+
+                                logger.error("Mod wasn't found in mod search database, we won't enhance it!");
+                                return null;
+                            } catch (Exception e) {
+                                logger.error("Could not generate enhanced embed in webhook, we won't enhance it!", e);
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
+                        .toList();
+
+        List<Map<String, Object>> embeds = new ArrayList<>();
+        for (Triple<String, String, Map<String, Object>> element : stuffToEnhance) {
+            body = body.replace(element.getLeft(), element.getMiddle());
+            embeds.add(element.getRight());
+        }
+        return Pair.of(body, embeds);
     }
 }
