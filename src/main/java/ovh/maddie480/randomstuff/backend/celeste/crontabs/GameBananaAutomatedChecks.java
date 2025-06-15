@@ -884,7 +884,7 @@ public class GameBananaAutomatedChecks {
         }
     }
 
-    private static Pair<String, List<Map<String, Object>>> enhanceYourWebhook(String body) {
+    static Pair<String, List<Map<String, Object>>> enhanceYourWebhook(String body) {
         String bananaRegex = "gamebanana\\.com/([a-z]+)s/([0-9]+)";
         List<Triple<String, String, Map<String, Object>>> stuffToEnhance =
                 Pattern.compile("\\[" + bananaRegex + "]\\(https://maddie480\\.ovh/" + bananaRegex + "\\)")

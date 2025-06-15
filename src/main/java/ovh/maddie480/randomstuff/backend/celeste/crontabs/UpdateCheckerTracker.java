@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -41,6 +42,7 @@ import java.util.zip.ZipOutputStream;
 
 import static com.max480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker.ModInfo;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static ovh.maddie480.randomstuff.backend.celeste.crontabs.GameBananaAutomatedChecks.enhanceYourWebhook;
 import static ovh.maddie480.randomstuff.backend.celeste.crontabs.GameBananaAutomatedChecks.getMaskedEnhancedEmbedLink;
 
 /**
@@ -475,6 +477,13 @@ public class UpdateCheckerTracker extends EventListener {
      */
     private static void executeWebhook(String url, String message, String avatar, String nickname) {
         try {
+            if (url.startsWith("https://discord.com/")) {
+                Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(message);
+                if (!enhanced.getRight().isEmpty()) {
+                    WebhookExecutor.executeWebhook(url, avatar, nickname, enhanced.getLeft(), enhanced.getRight());
+                    return;
+                }
+            }
             WebhookExecutor.executeWebhook(url, avatar, nickname, message, ImmutableMap.of("X-Everest-Log", "true"));
         } catch (IOException e) {
             log.error("Error while sending log message", e);
