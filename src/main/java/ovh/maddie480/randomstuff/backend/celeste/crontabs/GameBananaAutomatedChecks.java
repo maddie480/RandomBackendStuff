@@ -181,6 +181,7 @@ public class GameBananaAutomatedChecks {
                                                     && !"CelesteTAS".equals(modName) // Celeste Studio
                                                     && !"Vidcutter".equals(modName) // ffmpeg
                                                     && !"ChroniaHelper".equals(modName) // Open URL Trigger
+                                                    && !"Head2Head".equals(modName) // Open Control Panel option
                                             ) {
                                                 logger.warn("Mod {} contains Process usage", modName);
                                                 fishyProcessStuff = true;
