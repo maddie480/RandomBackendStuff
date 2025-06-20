@@ -2,7 +2,6 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.function.IOSupplier;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
@@ -18,7 +17,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -43,7 +45,6 @@ public class ContinuousHealthChecks {
     private static final Map<String, Integer> servicesMaxHP = ImmutableMap.of(
             "Banana Mirror", 1,
             "CelesteNet", 1,
-            "CelesteNet UDP", 1,
             "Update Checker", 1,
             "Timezone Role Updater", 1,
             "Nextcloud", 1,
@@ -65,8 +66,6 @@ public class ContinuousHealthChecks {
                                 "Banana Mirror", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
                         checkURL("https://celestenet.0x0a.de/api/status", "\"StartupTime\":",
                                 "CelesteNet", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
-                        checkHealth(ContinuousHealthChecks::checkCelesteNetUDP,
-                                "CelesteNet UDP", SecretConstants.JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // maddie480.ovh health checks
                         checkURL("https://maddie480.ovh/celeste/everest_update.yaml", "SpringCollab2020:",
@@ -121,26 +120,6 @@ public class ContinuousHealthChecks {
 
             return false;
         }, serviceName, webhookUrls);
-    }
-
-    private static boolean checkCelesteNetUDP() throws IOException {
-        // first, check whether there was no UDP traffic in both directions for the last minute.
-        for (String chart : Arrays.asList("CelesteNet_v2.udpDownlinkPpS", "CelesteNet_v2.udpUplinkPpS")) {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=" + chart + "&after=-60&group=sum&points=1")) {
-                JSONObject resp = new JSONObject(new JSONTokener(is));
-                JSONArray data = resp.getJSONArray("data").getJSONArray(0);
-                if (data.getInt(1) != 0) {
-                    return true;
-                }
-            }
-        }
-
-        // if this is the case and there were 3 or more online players in the last minute, we got a problem!
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://netdata.0x0a.de/api/v1/data?chart=CelesteNet_v2.online&after=-60&group=max&points=1")) {
-            JSONObject resp = new JSONObject(new JSONTokener(is));
-            JSONArray data = resp.getJSONArray("data").getJSONArray(0);
-            return data.getInt(1) < 3;
-        }
     }
 
     private static boolean checkNextcloudSpace() throws IOException {
