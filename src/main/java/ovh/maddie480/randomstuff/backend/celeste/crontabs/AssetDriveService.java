@@ -392,7 +392,7 @@ public class AssetDriveService {
     private static JSONObject listPageOfFilesInFolder(String folderId, String pageToken) throws IOException {
         String url = "https://www.googleapis.com/drive/v3/files?"
                 + "q=" + URLEncoder.encode("'" + folderId + "' in parents and trashed = false", StandardCharsets.UTF_8)
-                + "&fields=" + URLEncoder.encode("files(id,mimeType,name,modifiedTime)", StandardCharsets.UTF_8)
+                + "&fields=" + URLEncoder.encode("files(id,mimeType,name,modifiedTime),nextPageToken", StandardCharsets.UTF_8)
                 + (pageToken == null ? "" : "&pageToken=" + pageToken);
 
         JSONObject result = ConnectionUtils.runWithRetry(() -> {
