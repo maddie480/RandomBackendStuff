@@ -538,7 +538,7 @@ public class GameBananaAutomatedChecks {
             WebhookExecutor.executeWebhook(webhook,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                     "Banana Watch",
-                    "Here is a fixed file with the Everest dependency added:",
+                    "Here is a fixed file with the Everest version added:",
                     false,
                     Collections.singletonList(fixedFile.toFile()));
         }
