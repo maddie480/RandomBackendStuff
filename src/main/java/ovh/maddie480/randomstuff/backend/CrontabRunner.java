@@ -22,10 +22,12 @@ import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.dail
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
+/* #if LNJ_BOT
 import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
+#endif */
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.EmbedBuilder;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
@@ -201,15 +203,17 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkEmbedBuilder", GameBananaProfileLink::checkEmbedBuilder);
 
         // Non-Celeste Stuff
-        runProcessAndAlertOnException("[Daily] checkRadioLNJ", CrontabRunner::checkRadioLNJ);
+        /* #if LNJ_BOT
         runProcessAndAlertOnException("[Daily] LNJBot.healthCheck", LNJBot::healthCheck);
-        runProcessAndAlertOnException("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes);
         runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(Twitch)", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
         runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () -> {
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "You have 5 minutes to execute the YouTube Token Exchange Ritual!");
             Thread.sleep(300000);
             checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
         });
+        #endif */
+        runProcessAndAlertOnException("[Daily] checkRadioLNJ", CrontabRunner::checkRadioLNJ);
+        runProcessAndAlertOnException("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes);
         runProcessAndAlertOnException("[Daily] checkEnhancedBananaEmbeds()", CrontabRunner::checkEnhancedBananaEmbeds);
         runProcessAndAlertOnException("[Daily] ChangeBGToRandom", ChangeBGToRandom::run);
         runProcessAndAlertOnException("[Daily] PurgePosts", PurgePosts::run);
@@ -400,6 +404,7 @@ public class CrontabRunner {
      * This doubles as a way to refresh tokens more regularly than once a week... just in case,
      * since they sometimes expire, especially on YouTube's side.
      */
+    /* #if LNJ_BOT
     private static void checkChatProviderCanConnect(IChatProvider<?> chatProvider) throws IOException {
         try {
             logger.info("Trying to connect with {}...", chatProvider.getClass().getName());
@@ -409,6 +414,7 @@ public class CrontabRunner {
             chatProvider.disconnect();
         }
     }
+    #endif */
 
     private static void checkEnhancedBananaEmbeds() throws IOException {
         {

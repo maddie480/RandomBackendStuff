@@ -63,6 +63,9 @@
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.github.twitch4j/twitch4j-chat -->
+        <!-- https://mvnrepository.com/artifact/org.java-websocket/Java-WebSocket -->
+        <!-- https://mvnrepository.com/artifact/com.google.auth/google-auth-library-oauth2-http -->
+        <!-- #if LNJ_BOT
         <dependency>
             <groupId>com.github.twitch4j</groupId>
             <artifactId>twitch4j-chat</artifactId>
@@ -73,13 +76,17 @@
             <artifactId>twitch4j-helix</artifactId>
             <version>1.25.0</version>
         </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.java-websocket/Java-WebSocket -->
         <dependency>
             <groupId>org.java-websocket</groupId>
             <artifactId>Java-WebSocket</artifactId>
             <version>1.6.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.37.1</version>
+        </dependency>
+        #endif -->
 
         <!-- https://mvnrepository.com/artifact/org.apache.poi/poi -->
         <dependency>
@@ -100,12 +107,6 @@
             <version>1.81</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/com.google.auth/google-auth-library-oauth2-http -->
-        <dependency>
-            <groupId>com.google.auth</groupId>
-            <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.37.1</version>
-        </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.google.api-client/google-api-client -->
         <dependency>
@@ -156,7 +157,25 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.1</version>
                 <executions>
+                    <!-- #if !LNJ_BOT -->
                     <execution>
+                        <id>exclude LNJ Bot</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${project.build.directory}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>cd ../src/main/java/ovh/maddie480/randomstuff/backend &amp;&amp; mv -v streams /tmp/ &amp;&amp; mkdir -pv streams/features &amp;&amp; cp -v /tmp/streams/features/CommandParser.java streams/features/</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- #endif -->
+                    <execution>
+                        <id>generate run_bot.sh</id>
                         <phase>package</phase>
                         <goals>
                             <goal>exec</goal>
