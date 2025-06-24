@@ -101,7 +101,7 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public JDA awaitStatus(@NotNull Status status, Status @NotNull ... failOn) throws InterruptedException {
+    public JDA awaitStatus(@NotNull Status status, Status ... failOn) throws InterruptedException {
         return backingJDA.awaitStatus(status, failOn);
     }
 
@@ -151,12 +151,12 @@ public class DiscardableJDA implements JDA, Closeable {
     }
 
     @Override
-    public void addEventListener(Object @NotNull ... listeners) {
+    public void addEventListener(Object ... listeners) {
         backingJDA.addEventListener(listeners);
     }
 
     @Override
-    public void removeEventListener(Object @NotNull ... listeners) {
+    public void removeEventListener(Object ... listeners) {
         backingJDA.removeEventListener(listeners);
     }
 
@@ -246,7 +246,7 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public List<Guild> getMutualGuilds(User @NotNull ... users) {
+    public List<Guild> getMutualGuilds(User ... users) {
         return backingJDA.getMutualGuilds(users);
     }
 
