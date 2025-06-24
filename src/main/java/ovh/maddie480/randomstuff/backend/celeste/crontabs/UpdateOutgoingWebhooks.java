@@ -8,6 +8,9 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Notifies other platforms about updates to the mod updater database or Everest versions.
@@ -39,6 +42,12 @@ public class UpdateOutgoingWebhooks {
                     "Everest Update Checker",
                     ":tada: Update Checker data was refreshed.",
                     ImmutableMap.of("X-Everest-Log", "true"));
+        }
+
+        Path signalFile = Paths.get("updater_stuff_happened");
+        if (!Files.exists(signalFile)) {
+            log.debug("Creating signal file");
+            Files.createFile(signalFile);
         }
 
         changesHappened = false;

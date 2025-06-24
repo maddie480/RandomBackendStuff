@@ -46,6 +46,7 @@ import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -248,12 +249,23 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null));
 
         // GameBanana automated checks
-        runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
-        runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", GameBananaAutomatedChecks::checkForForbiddenFiles);
-        runProcessAndAlertOnException("[Hourly] checkForFilesBelongingToMultipleMods", GameBananaAutomatedChecks::checkForFilesBelongingToMultipleMods);
-        runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
-        runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", GameBananaAutomatedChecks::checkPngFilesArePngFiles);
-        runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", GameBananaAutomatedChecks::checkDuplicateModIdsCaseInsensitive);
+        AtomicBoolean updaterStuffHappened = new AtomicBoolean(false);
+        runProcessAndAlertOnException("[Hourly] Files.exists(signalFile)", () -> {
+            Path signalFile = Paths.get("updater_stuff_happened");
+            if (Files.exists(signalFile)) {
+                logger.info("Updater stuff happened, we need to check updated mods!");
+                Files.delete(signalFile);
+                updaterStuffHappened.set(true);
+            }
+        });
+        if (updaterStuffHappened.get()) {
+            runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
+            runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", GameBananaAutomatedChecks::checkForForbiddenFiles);
+            runProcessAndAlertOnException("[Hourly] checkForFilesBelongingToMultipleMods", GameBananaAutomatedChecks::checkForFilesBelongingToMultipleMods);
+            runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
+            runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", GameBananaAutomatedChecks::checkPngFilesArePngFiles);
+            runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", GameBananaAutomatedChecks::checkDuplicateModIdsCaseInsensitive);
+        }
 
         // Health checks
         runProcessAndAlertOnException("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck);
