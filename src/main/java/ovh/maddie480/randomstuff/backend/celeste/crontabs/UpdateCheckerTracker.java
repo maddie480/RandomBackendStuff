@@ -264,7 +264,7 @@ public class UpdateCheckerTracker extends EventListener {
     public void currentVersionBelongsToAnotherMod(String gameBananaType, int gameBananaId, String fileUrl, Mod otherMod) {
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
             executeWebhookAsBananaWatch(webhook, ":warning: Mod " + getMaskedEnhancedEmbedLink(gameBananaType, gameBananaId)
-                    + " contains a file that has the same ID **" + otherMod.getName() + "** as mod https://gamebanana.com/" + otherMod.getGameBananaType().toLowerCase(Locale.ROOT) + "s/" + otherMod.getGameBananaId() + " : "
+                    + " contains a file that has the same ID **" + otherMod.getName() + "** as mod " + getMaskedEnhancedEmbedLink(otherMod.getGameBananaType(), otherMod.getGameBananaId()) + " : "
                     + fileUrl);
         }
     }
