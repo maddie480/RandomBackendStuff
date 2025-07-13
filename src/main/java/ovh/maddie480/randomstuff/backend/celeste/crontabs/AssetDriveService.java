@@ -1,6 +1,7 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import org.apache.commons.io.EndianUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.extractor.POITextExtractor;
@@ -135,6 +136,17 @@ public class AssetDriveService {
             mappedObject.put("author", author);
             mappedObject.put("id", file.getString("id"));
             mappedObject.put("folder", file.getString("folder"));
+
+            {
+                Path path = Paths.get("/shared/celeste/asset-drive/files").resolve(file.getString("id") + ".png");
+                if (Files.exists(path)) {
+                    Size pngSize = getPngSize(path);
+                    if (size.width() != 0 && size.height() != 0) {
+                        mappedObject.put("width", size.width());
+                        mappedObject.put("height", size.height());
+                    }
+                }
+            }
 
             String fileNameWithoutExtension = file.getString("folder") + "/" + file.getString("name");
             if (fileNameWithoutExtension.contains(".")) {
@@ -425,5 +437,46 @@ public class AssetDriveService {
         }
 
         return result;
+    }
+
+    private record Size(int width, int height) {}
+
+    private static Size getPngSize(Path file) {
+        try (InputStream is = Files.newInputStream(file)) {
+            byte[] signature = new byte[8];
+            int readBytes = is.read(signature);
+
+            boolean signatureValid = (readBytes == 8
+                    && signature[0] == -119 // 0x89
+                    && signature[1] == 0x50
+                    && signature[2] == 0x4E
+                    && signature[3] == 0x47
+                    && signature[4] == 0x0D
+                    && signature[5] == 0x0A
+                    && signature[6] == 0x1A
+                    && signature[7] == 0x0A);
+                    
+            if (!signatureValid) {
+                log.debug("Bad PNG signature for {}, skipping", file.getFileName());
+                return new Size(0, 0);
+            }
+
+            readBytes = is.read(signature);
+            if (readBytes != 8) {
+                log.debug("Unexpected end of stream for {}, skipping", file.getFileName());
+                return new Size(0, 0);
+            }
+
+            Size result = new Size(
+                EndianUtils.readSwappedInt(is),
+                EndianUtils.readSwappedInt(is)
+            );
+            log.debug("Read size for {}: {}x{}", file.getFileName(), result.width(), result.height());
+            return result;
+
+        } catch (Exception e) {
+            log.warn("Exception while reading PNG dimensions for {}", e, file.getFileName());
+            return new Size(0, 0);
+        }
     }
 }
