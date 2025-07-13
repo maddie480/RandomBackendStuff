@@ -1,7 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.auth.oauth2.GoogleCredentials;
-import org.apache.commons.io.EndianUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.extractor.POITextExtractor;
@@ -467,10 +466,7 @@ public class AssetDriveService {
                 return new Size(0, 0);
             }
 
-            Size result = new Size(
-                EndianUtils.readSwappedInteger(is),
-                EndianUtils.readSwappedInteger(is)
-            );
+            Size result = new Size(readInt(is), readInt(is));
             log.debug("Read size for {}: {}x{}", file.getFileName(), result.width(), result.height());
             return result;
 
@@ -478,5 +474,22 @@ public class AssetDriveService {
             log.warn("Exception while reading PNG dimensions for {}", e, file.getFileName());
             return new Size(0, 0);
         }
+    }
+
+    private static int readInt(InputStream is) throws IOException {
+        byte[] buf = new byte[4];
+        if (is.read(buf) != 4) throw new IOException("Read fewer bytes than expected!");
+        return (unsignedByteToInt(buf[0]) << 24)
+            + (unsignedByteToInt(buf[1]) << 16)
+            + (unsignedByteToInt(buf[2]) << 8)
+            + unsignedByteToInt(buf[3]);
+    }
+
+    private static int unsignedByteToInt(byte b) {
+        // for instance, "-92" is 0xA4, which for an unsigned byte is 164.
+        // -92 + 256 = 164
+        int i = b;
+        if (i < 0) i += 256;
+        return i;
     }
 }
