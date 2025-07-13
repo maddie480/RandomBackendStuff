@@ -141,9 +141,9 @@ public class AssetDriveService {
                 Path path = Paths.get("/shared/celeste/asset-drive/files").resolve(file.getString("id") + ".png");
                 if (Files.exists(path)) {
                     Size pngSize = getPngSize(path);
-                    if (size.width() != 0 && size.height() != 0) {
-                        mappedObject.put("width", size.width());
-                        mappedObject.put("height", size.height());
+                    if (pngSize.width() != 0 && pngSize.height() != 0) {
+                        mappedObject.put("width", pngSize.width());
+                        mappedObject.put("height", pngSize.height());
                     }
                 }
             }
@@ -468,8 +468,8 @@ public class AssetDriveService {
             }
 
             Size result = new Size(
-                EndianUtils.readSwappedInt(is),
-                EndianUtils.readSwappedInt(is)
+                EndianUtils.readSwappedInteger(is),
+                EndianUtils.readSwappedInteger(is)
             );
             log.debug("Read size for {}: {}x{}", file.getFileName(), result.width(), result.height());
             return result;
