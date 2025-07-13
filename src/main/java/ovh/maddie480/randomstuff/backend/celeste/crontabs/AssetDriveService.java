@@ -455,7 +455,7 @@ public class AssetDriveService {
                     && signature[5] == 0x0A
                     && signature[6] == 0x1A
                     && signature[7] == 0x0A);
-                    
+
             if (!signatureValid) {
                 log.debug("Bad PNG signature for {}, skipping", file.getFileName());
                 return new Size(0, 0);
