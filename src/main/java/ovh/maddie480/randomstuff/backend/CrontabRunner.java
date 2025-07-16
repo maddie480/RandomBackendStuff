@@ -43,11 +43,12 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -173,6 +174,9 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] AssetDriveService.classifyAssets", AssetDriveService::classifyAssets);
         runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
         runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
+        runProcessAndAlertOnException("[Daily] TASCheckUpdate", () -> {
+            if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.SATURDAY) TASCheckUpdate.main(null);
+        });
 
         // Health Checks
         runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);
@@ -437,23 +441,23 @@ public class CrontabRunner {
                 result = IOUtils.toString(is, UTF_8);
             }
             if (!result.equals("""
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                <title>Maddie's Helping Hand</title>
-                <link rel="canonical" href="https://gamebanana.com/mods/53687"/>
-                <meta property="og:url" content="https://gamebanana.com/mods/53687"/>
-                <meta property="og:title" content="Maddie's Helping Hand"/>
-                <meta property="og:description" content="A grab bag of requests"/>
-                <meta property="og:image" content="https://images.gamebanana.com/img/ss/mods/5f5d1f3d880bd.jpg"/>
-                <meta property="theme-color" content="#FFE033"/>
-                <meta property="twitter:card" content="summary_large_image"/>
-                <link rel="alternate" type="application/json+oembed" href="https://maddie480.ovh/celeste/banana-oembed/mod-53687.json" title="maddie480"/>
-                </head>
-                <body>
-                Hi! What are you doing here?
-                </body>
-                </html>""")) {
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                    <title>Maddie's Helping Hand</title>
+                    <link rel="canonical" href="https://gamebanana.com/mods/53687"/>
+                    <meta property="og:url" content="https://gamebanana.com/mods/53687"/>
+                    <meta property="og:title" content="Maddie's Helping Hand"/>
+                    <meta property="og:description" content="A grab bag of requests"/>
+                    <meta property="og:image" content="https://images.gamebanana.com/img/ss/mods/5f5d1f3d880bd.jpg"/>
+                    <meta property="theme-color" content="#FFE033"/>
+                    <meta property="twitter:card" content="summary_large_image"/>
+                    <link rel="alternate" type="application/json+oembed" href="https://maddie480.ovh/celeste/banana-oembed/mod-53687.json" title="maddie480"/>
+                    </head>
+                    <body>
+                    Hi! What are you doing here?
+                    </body>
+                    </html>""")) {
 
                 throw new IOException("Enhanced embed HTML didn't match expected!");
             }
@@ -465,7 +469,7 @@ public class CrontabRunner {
                 result = IOUtils.toString(is, UTF_8);
             }
             if (!result.startsWith("{\"author_name\":\"maddie480\",\"author_url\":\"https://gamebanana.com/members/1698143\",\"provider_name\":\"GameBanana \\u2013 ")
-                || !result.endsWith("\",\"title\":\"Embed\",\"type\":\"rich\",\"version\":\"1.0\"}")) {
+                    || !result.endsWith("\",\"title\":\"Embed\",\"type\":\"rich\",\"version\":\"1.0\"}")) {
 
                 throw new IOException("Enhanced embed JSON didn't match expected!");
             }

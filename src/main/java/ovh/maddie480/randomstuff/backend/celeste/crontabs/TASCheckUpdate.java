@@ -6,6 +6,9 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.BananaMirrorUploader;
+import ovh.maddie480.everest.updatechecker.Main;
+import ovh.maddie480.everest.updatechecker.ServerConfig;
+import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
@@ -180,7 +183,7 @@ fi
             log.debug("Previous: {}", previousFields);
 
             boolean somethingChanged = false;
-            for (Map.Entry<String, String> field : fields.entrySet()) {
+            for (Map.Entry<String, String> field : new HashMap<>(fields).entrySet()) {
                 boolean fieldChanged = !field.getValue().equals(previousFields.get(field.getKey()));
                 fields.put("{{compare:" + field.getKey().substring(2),
                         fieldChanged ? "updated :arrow_up:" : "up-to-date :white_check_mark:");
@@ -197,8 +200,18 @@ fi
         }
 
         try {
+            if (fields.get("{{compare:StrawberryJamBundle-CRC}}").equals("updated :arrow_up:")) {
+                // load update checker config from secret constants
+                ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
+                Map<String, Object> config = YamlUtil.load(is);
+                Main.serverConfig = new ServerConfig(config);
+
+                log.debug("Uploading new version of the Strawberry Jam bundle...");
+                String filename = "StrawberryJam2021-Bundle-" + fields.get("{{StrawberryJamBundle-CRC}}") + ".zip";
+                BananaMirrorUploader.uploadFile(SJ_BUNDLE, "pinned-mods", filename);
+            }
+
             log.debug("Preparing git repository...");
-            GitOperator.sshInit();
             GitOperator.init();
 
             log.debug("Applying changes...");
@@ -210,12 +223,6 @@ fi
                     content = content.replace(field.getKey(), field.getValue());
                 }
                 Files.writeString(file, content, StandardCharsets.UTF_8);
-            }
-
-            if (fields.get("{{compare:StrawberryJamBundle-CRC}}").equals("updated :arrow_up:")) {
-                log.debug("Uploading new version of the Strawberry Jam bundle...");
-                String filename = "StrawberryJam2021-Bundle-" + fields.get("{{StrawberryJamBundle-CRC}}") + ".zip";
-                BananaMirrorUploader.uploadFile(SJ_BUNDLE, "pinned-mods", filename);
             }
 
             log.debug("Committing changes...");
@@ -265,6 +272,12 @@ fi
         req.put("body", description);
         req.put("head", "maddie480-bot:dev");
         req.put("base", "dev");
+
+        try (OutputStream os = connAuth.getOutputStream();
+             BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
+
+            req.write(bw);
+        }
 
         try (InputStream is = ConnectionUtils.connectionToInputStream(connAuth)) {
             JSONObject resp = new JSONObject(new JSONTokener(is));
