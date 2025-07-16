@@ -94,6 +94,11 @@ public class SecretConstants {
     // header used to authenticate to the bot account @maddie480-bot with the GitHub API
     public static String GITHUB_BASIC_AUTH;
 
+    // SSH credentials for @maddie480-bot
+    public static String GITHUB_SSH_PRIVATE_KEY;
+    public static String GITHUB_SSH_PUBLIC_KEY;
+    public static String GITHUB_SSH_KNOWN_HOSTS;
+
     // header used to authenticate to the main account @maddie480 with the GitHub API
     // (only used to access private resources only the main account can access)
     public static String GITHUB_MAIN_ACCOUNT_BASIC_AUTH;
@@ -184,6 +189,11 @@ public class SecretConstants {
         CRONTAB_LOGS_WEBHOOK_URL = secrets.getString("CRONTAB_LOGS_WEBHOOK_URL");
 
         GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
+
+        GITHUB_SSH_PRIVATE_KEY = secrets.getString("GITHUB_SSH_PRIVATE_KEY");
+        GITHUB_SSH_PUBLIC_KEY = secrets.getString("GITHUB_SSH_PUBLIC_KEY");
+        GITHUB_SSH_KNOWN_HOSTS = secrets.getString("GITHUB_SSH_KNOWN_HOSTS");
+
         GITHUB_MAIN_ACCOUNT_BASIC_AUTH = secrets.getString("GITHUB_MAIN_ACCOUNT_BASIC_AUTH");
 
         OTOBOT_WEBHOOK_PRIVATE_KEY = secrets.getString("OTOBOT_WEBHOOK_PRIVATE_KEY");
