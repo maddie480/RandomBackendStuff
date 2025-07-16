@@ -230,7 +230,7 @@ fi
 
             log.debug("Opening pull request...");
             String prDescription = """
-                    - CelesteTAS: {{compare:CelesteTAS-Ver}} @ [v3.45.2](https://github.com/EverestAPI/CelesteTAS-EverestInterop/releases/tag/{{CelesteTAS-Ver}})
+                    - CelesteTAS: {{compare:CelesteTAS-Ver}} @ [{{CelesteTAS-Ver}}](https://github.com/EverestAPI/CelesteTAS-EverestInterop/releases/tag/{{CelesteTAS-Ver}})
                     - Celeste TAS files: {{compare:CelesteTAS-SHA}} @ https://github.com/VampireFlower/CelesteTAS/commit/{{CelesteTAS-SHA}}
                     - Strawberry Jam TAS files: {{compare:StrawberryJamTAS-SHA}} @ https://github.com/VampireFlower/StrawberryJamTAS/commit/{{StrawberryJamTAS-SHA}}
                     - Strawberry Jam bundle: {{compare:StrawberryJamBundle-CRC}} @ [{{StrawberryJamBundle-CRC}}](https://celestemodupdater.0x0a.de/pinned-mods/StrawberryJam2021-Bundle-{{StrawberryJamBundle-CRC}}.zip) (crc32 of the zip)
