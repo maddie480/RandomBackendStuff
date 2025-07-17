@@ -43,7 +43,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -174,9 +173,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] AssetDriveService.classifyAssets", AssetDriveService::classifyAssets);
         runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
         runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
-        runProcessAndAlertOnException("[Daily] TASCheckUpdate", () -> {
-            if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.SATURDAY) TASCheckUpdate.main(null);
-        });
+        runProcessAndAlertOnException("[Daily] TASCheckUpdate", () -> TASCheckUpdate.main(null));
 
         // Health Checks
         runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);

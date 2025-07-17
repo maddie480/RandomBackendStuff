@@ -19,9 +19,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.CRC32;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import static ovh.maddie480.randomstuff.backend.celeste.crontabs.EverestVersionLister.authenticatedGitHubRequest;
 
@@ -307,11 +308,22 @@ fi
         }
 
         CRC32 crc = new CRC32();
-        byte[] buffer = new byte[4096];
-        try (InputStream is = Files.newInputStream(SJ_BUNDLE)) {
-            int read;
-            while ((read = is.read(buffer)) != -1) {
-                crc.update(buffer, 0, read);
+
+        // to get a stable crc32, we hash the contents of the zip in alphabetic order
+        // instead of just hashing the zip itself
+        try (ZipFile file = new ZipFile(SJ_BUNDLE.toFile())) {
+            List<ZipEntry> sortedEntries = new ArrayList<>();
+            file.entries().asIterator().forEachRemaining(sortedEntries::add);
+            sortedEntries.sort(Comparator.comparing(ZipEntry::getName));
+
+            for (ZipEntry entry : sortedEntries) {
+                byte[] buffer = new byte[4096];
+                try (InputStream is = file.getInputStream(entry)) {
+                    int read;
+                    while ((read = is.read(buffer)) != -1) {
+                        crc.update(buffer, 0, read);
+                    }
+                }
             }
         }
 
