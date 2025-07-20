@@ -19,8 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.DayOfWeek;
-import java.time.ZonedDateTime;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
@@ -163,8 +162,8 @@ fi
     };
 
     public static void main(String[] args) throws Exception {
-        if (ZonedDateTime.now().getDayOfWeek() != DayOfWeek.SATURDAY) {
-            log.info("This isn't Saturday, skipping");
+        if (!LocalDate.now().equals(EverestPRLabelSlapper.getNextRollingReleaseDate())) {
+            log.info("This isn't rolling release day, skipping");
             return;
         }
 

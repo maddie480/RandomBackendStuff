@@ -46,7 +46,7 @@ public class EverestPRLabelSlapper {
 
     private static final ZoneId UTC = ZoneId.of("UTC");
 
-    private static LocalDate getNextRollingReleaseDate() {
+    static LocalDate getNextRollingReleaseDate() {
         LocalDate result = ROLLING_RELEASE_DATE;
         while (result.isBefore(LocalDate.now())) {
             result = result.plusWeeks(ROLLING_RELEASE_INTERVAL_WEEKS);
