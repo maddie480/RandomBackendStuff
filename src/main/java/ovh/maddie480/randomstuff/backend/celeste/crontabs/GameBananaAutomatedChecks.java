@@ -910,8 +910,14 @@ public class GameBananaAutomatedChecks {
                                 return null;
                             }
                         })
-                        .filter(Objects::nonNull)
                         .toList();
+
+        if (stuffToEnhance.contains(null)) {
+            // passing our own embeds prevents Discord from generating its own,
+            // and we don't want that to happen if we couldn't generate embeds for some of the links...
+            logger.warn("One of the links couldn't be enhanced, we won't enhance anything!");
+            return Pair.of(body, Collections.emptyList());
+        }
 
         List<Map<String, Object>> embeds = new ArrayList<>();
         for (Triple<String, String, Map<String, Object>> element : stuffToEnhance) {
