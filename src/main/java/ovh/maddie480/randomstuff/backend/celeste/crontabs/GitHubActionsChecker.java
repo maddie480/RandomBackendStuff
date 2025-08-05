@@ -28,9 +28,26 @@ public class GitHubActionsChecker {
             return;
         }
 
-        OffsetDateTime oneDayAgo = OffsetDateTime.now().minusDays(1);
-        for (String repo : Arrays.asList("maddie480/RandomStuffWebsite", "maddie480/EverestInDocker",
-                "EverestAPI/Resources", "EverestAPI/ModResources")) {
+        OffsetDateTime twoDaysAgo = OffsetDateTime.now().minusDays(2);
+        for (String repo : Arrays.asList(
+                // all repositories with Actions and Dependabot updates
+                "maddie480/BazarLNJ",
+                "maddie480/CelestePico8MapEditor",
+                "maddie480/DashCountMod",
+                "maddie480/EverestInDocker",
+                "maddie480/EverestUpdateCheckerServer",
+                "maddie480/ExtendedVariantMode",
+                "maddie480/JungleHelper",
+                "maddie480/MaddieHelpingHand",
+                "maddie480/MergeRequestReportGenerator",
+                "maddie480/RandomBackendStuff",
+                "maddie480/RandomStuffWebsite",
+                "maddie480/SaveFilePortraits",
+                "maddie480/SmallCelesteModCollection",
+                "maddie480/SpamKick",
+                // the Wiki Quality Checks scheduled actions
+                "EverestAPI/Resources",
+                "EverestAPI/ModResources")) {
 
             OffsetDateTime lastRun = ConnectionUtils.runWithRetry(() -> {
                 JSONObject response;
@@ -45,7 +62,7 @@ public class GitHubActionsChecker {
 
             log.debug("Latest run of GitHub Actions on {} happened at {}", repo, lastRun);
 
-            if (lastRun == null || lastRun.isBefore(oneDayAgo)) {
+            if (lastRun == null || lastRun.isBefore(twoDaysAgo)) {
                 throw new IOException("GitHub Actions did not run on " + repo + " for at least 1 day!");
             }
         }
