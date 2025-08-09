@@ -203,6 +203,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkArbitraryModApp", CrontabRunner::checkArbitraryModApp);
         runProcessAndAlertOnException("[Daily] GitHubActionsChecker", () -> GitHubActionsChecker.main(null));
         runProcessAndAlertOnException("[Daily] checkEmbedBuilder", GameBananaProfileLink::checkEmbedBuilder);
+        runProcessAndAlertOnException("[Daily] BadCharactersChecker", () -> BadCharactersChecker.main(null));
 
         // Non-Celeste Stuff
         /* #if LNJ_BOT
