@@ -324,6 +324,11 @@ public class TimezoneBot {
             }
             logger.debug("Loaded list of servers with timezone roles: {}", serverIdsWithTimezoneRoles);
 
+            if (guilds.stream().allMatch(server -> serverIdsWithTimezoneRoles.contains(server.getIdLong()))) {
+                logger.warn("Seems like all servers have timezone roles, we can't leave any!");
+                return;
+            }
+
             Set<Long> serverIdsThatUsedTheBot = new HashSet<>();
             {
                 Pattern listCapturer = Pattern.compile(".*\\.BotEventListener - New command: .* by member .* guild=Guild:.*\\(id=([0-9]+)\\)\\).*");
