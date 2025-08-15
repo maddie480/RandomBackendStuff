@@ -204,6 +204,8 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] GitHubActionsChecker", () -> GitHubActionsChecker.main(null));
         runProcessAndAlertOnException("[Daily] checkEmbedBuilder", GameBananaProfileLink::checkEmbedBuilder);
         runProcessAndAlertOnException("[Daily] BadCharactersChecker", () -> BadCharactersChecker.main(null));
+        runProcessAndAlertOnException("[Daily] checkMilestoneIsInTheFuture", EverestRepositoriesRitualCheck::checkMilestoneIsInTheFuture);
+        runProcessAndAlertOnException("[Daily] checkLatestVersionsArePinned", EverestRepositoriesRitualCheck::checkLatestVersionsArePinned);
 
         // Non-Celeste Stuff
         /* #if LNJ_BOT
