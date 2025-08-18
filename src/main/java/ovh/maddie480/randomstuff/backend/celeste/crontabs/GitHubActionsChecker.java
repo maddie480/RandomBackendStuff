@@ -23,8 +23,8 @@ public class GitHubActionsChecker {
     private static final Logger log = LoggerFactory.getLogger(GitHubActionsChecker.class);
 
     public static void main(String[] args) throws IOException {
-        if (!Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY).contains(ZonedDateTime.now().getDayOfWeek())) {
-            log.debug("Today is not a Wiki Quality Check day, skipping");
+        if (!Arrays.asList(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY, DayOfWeek.SATURDAY).contains(ZonedDateTime.now().getDayOfWeek())) {
+            log.debug("Yesterday was not a Wiki Quality Check day, skipping");
             return;
         }
 
