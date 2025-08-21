@@ -39,7 +39,7 @@ jobs:
         key: games-json-${{ hashFiles('src/main/java/ovh/maddie480/randomstuff/backend/discord/questcommunitybot/gamestats/GameDBBuilder.java') }}
 
     - name: Set up JDK 21
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '21'
         distribution: 'temurin'
