@@ -1315,6 +1315,7 @@ public class CelesteStuffHealthCheck {
     public static void checkStaticPages() throws IOException {
         for (String url : Arrays.asList(
                 "https://maddie480.ovh/",
+                "https://maddie480.ovh/robots.txt",
                 "https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone",
                 "https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help",
                 "https://maddie480.ovh/discord-bots/terms-and-privacy",
