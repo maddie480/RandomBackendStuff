@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -36,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import javax.annotation.Nonnull;
 import java.io.*;
@@ -132,7 +134,38 @@ public class BotEventListener extends ListenerAdapter {
     }
 
     @Override
+    public void onGuildJoin(@NotNull GuildJoinEvent event) {
+        logger.info("Just joined server {}", event.getGuild());
+
+        try {
+            WebhookExecutor.executeWebhook(
+                    SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
+                    "https://maddie480.ovh/img/timezone-bot-logo.png",
+                    "Timezone Bot",
+                    "<@" + SecretConstants.OWNER_ID + "> I just joined a new server! I am now in **" + event.getJDA().getGuilds().size() + "** servers.",
+                    SecretConstants.OWNER_ID
+            );
+        } catch (IOException e) {
+            logger.warn("Could not post server join alert!", e);
+        }
+    }
+
+    @Override
     public void onGuildLeave(@NotNull GuildLeaveEvent event) {
+        logger.info("Just left server {}", event.getGuild());
+
+        try {
+            WebhookExecutor.executeWebhook(
+                    SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
+                    "https://maddie480.ovh/img/timezone-bot-logo.png",
+                    "Timezone Bot",
+                    "<@" + SecretConstants.OWNER_ID + "> I was just kicked from a server. I am now in **" + event.getJDA().getGuilds().size() + "** servers.",
+                    SecretConstants.OWNER_ID
+            );
+        } catch (IOException e) {
+            logger.warn("Could not post server leave alert!", e);
+        }
+
         // if it was a server with time, running the cleanup process will make us delete its ID.
         logger.info("Cleaning servers with time list after leaving guild {}", event.getGuild());
         TimezoneBot.removeNonExistingServersFromServersWithTime();
