@@ -2,6 +2,7 @@ package ovh.maddie480.randomstuff.backend.utils;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOSupplier;
+import org.json.JSONException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -108,7 +109,7 @@ public final class ConnectionUtils {
         for (int i = 1; i < 3; i++) {
             try {
                 return task.get();
-            } catch (IOException e) {
+            } catch (IOException | JSONException e) { // GameBanana sometimes sends empty 200 responses
                 logger.warn("I/O exception while doing networking operation (try {}/3).", i, e);
 
                 // wait a bit before retrying
