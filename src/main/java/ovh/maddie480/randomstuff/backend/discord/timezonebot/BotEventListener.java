@@ -142,8 +142,7 @@ public class BotEventListener extends ListenerAdapter {
                     SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
                     "https://maddie480.ovh/img/timezone-bot-logo.png",
                     "Timezone Bot",
-                    "<@" + SecretConstants.OWNER_ID + "> I just joined a new server! I am now in **" + event.getJDA().getGuilds().size() + "** servers.",
-                    SecretConstants.OWNER_ID
+                    "I just joined a new server! I am now in **" + event.getJDA().getGuilds().size() + "** servers."
             );
         } catch (IOException e) {
             logger.warn("Could not post server join alert!", e);
@@ -159,8 +158,7 @@ public class BotEventListener extends ListenerAdapter {
                     SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL,
                     "https://maddie480.ovh/img/timezone-bot-logo.png",
                     "Timezone Bot",
-                    "<@" + SecretConstants.OWNER_ID + "> I was just kicked from a server. I am now in **" + event.getJDA().getGuilds().size() + "** servers.",
-                    SecretConstants.OWNER_ID
+                    "I was just kicked from a server. I am now in **" + event.getJDA().getGuilds().size() + "** servers."
             );
         } catch (IOException e) {
             logger.warn("Could not post server leave alert!", e);
