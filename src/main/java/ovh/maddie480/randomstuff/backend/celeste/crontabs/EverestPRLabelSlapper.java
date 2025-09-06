@@ -48,7 +48,7 @@ public class EverestPRLabelSlapper {
 
     static LocalDate getNextRollingReleaseDate() {
         LocalDate result = ROLLING_RELEASE_DATE;
-        while (result.isBefore(LocalDate.now())) {
+        while (result.isBefore(LocalDate.now(UTC))) {
             result = result.plusWeeks(ROLLING_RELEASE_INTERVAL_WEEKS);
         }
         return result;
