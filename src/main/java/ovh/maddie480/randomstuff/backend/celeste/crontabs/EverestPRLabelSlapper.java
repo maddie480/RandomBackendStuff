@@ -109,8 +109,11 @@ public class EverestPRLabelSlapper {
         String comment = null;
         if (verdict.label.equals(LABEL_LAST_CALL_WINDOW)) {
             if (!verdict.endOfLastCallWindow.equals(endOfLastCallWindowsOld.get(prNumber))) {
-                comment = "The pull request was approved and entered the " + LAST_CALL_WINDOW_DAYS
-                        + "-day last-call window.\nIf no further reviews happen, it will end on **"
+                comment = "The pull request was approved and entered the " + LAST_CALL_WINDOW_DAYS + "-day last-call window."
+                        + (verdict.delayedDueToRollingRelease ?
+                            (" Since no PR should be merged within " + RELEASE_FREEZE_PERIOD_DAYS
+                                + " days of the next rolling release, the last-call window is extended further.") : "")
+                        + "\nIf no further reviews happen, it will end on **"
                         + verdict.endOfLastCallWindow
                             .format(DateTimeFormatter
                                     .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
@@ -189,12 +192,12 @@ public class EverestPRLabelSlapper {
         });
     }
 
-    private record Verdict(String label, ZonedDateTime endOfLastCallWindow) {
+    private record Verdict(String label, ZonedDateTime endOfLastCallWindow, boolean delayedDueToRollingRelease) {
     }
 
     private static Verdict computePRState(JSONObject pr) throws IOException {
         if (pr.getBoolean("draft")) {
-            return new Verdict(LABEL_DRAFT, null);
+            return new Verdict(LABEL_DRAFT, null, false);
         }
 
         JSONArray reviews = ConnectionUtils.runWithRetry(() -> {
@@ -222,8 +225,7 @@ public class EverestPRLabelSlapper {
             }
 
             log.trace("Review by {} was updated to {} @ {}", authorName, reviewResult, reviewedAt);
-            userVerdicts.put(authorName, new Verdict(reviewResult, reviewedAt));
-
+            userVerdicts.put(authorName, new Verdict(reviewResult, reviewedAt, false));
         }
 
         List<ZonedDateTime> approvalDates = userVerdicts.values().stream()
@@ -243,18 +245,23 @@ public class EverestPRLabelSlapper {
             ZonedDateTime endOfLastCallWindow = lastApproval.withZoneSameInstant(ZoneId.of("UTC")).plusDays(LAST_CALL_WINDOW_DAYS);
             log.trace("Last call window ends at {}", endOfLastCallWindow);
 
+            boolean pushedBack = false;
             if (endOfLastCallWindow.plusDays(RELEASE_FREEZE_PERIOD_DAYS).isAfter(getNextRollingReleaseDate().atStartOfDay(UTC))) {
-                endOfLastCallWindow = getNextRollingReleaseDate().atStartOfDay(UTC).plusDays(1);
-                log.trace("Last call window pushed forward at {} because of rolling release", endOfLastCallWindow);
+                ZonedDateTime newEndOfLastCallWindow = getNextRollingReleaseDate().atStartOfDay(UTC).plusDays(1);
+                if (newEndOfLastCallWindow.isAfter(endOfLastCallWindow)) {
+                    endOfLastCallWindow = newEndOfLastCallWindow;
+                    log.trace("Last call window pushed forward at {} because of rolling release", endOfLastCallWindow);
+                    pushedBack = true;
+                }
             }
 
             String verdict = endOfLastCallWindow.isBefore(ZonedDateTime.now()) ? LABEL_READY_TO_MERGE : LABEL_LAST_CALL_WINDOW;
             log.trace("The PR state is \"{}\"", verdict);
-            return new Verdict(verdict, endOfLastCallWindow);
+            return new Verdict(verdict, endOfLastCallWindow, pushedBack);
         } else {
             String verdict = changesRequested ? LABEL_CHANGES_REQUESTED : LABEL_REVIEW_NEEDED;
             log.trace("Verdict: PR is NOT approved, PR state is \"{}\"", verdict);
-            return new Verdict(verdict, null);
+            return new Verdict(verdict, null, false);
         }
     }
 }
