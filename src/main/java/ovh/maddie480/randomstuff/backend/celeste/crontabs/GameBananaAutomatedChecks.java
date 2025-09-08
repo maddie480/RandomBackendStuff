@@ -69,12 +69,6 @@ public class GameBananaAutomatedChecks {
      * Otherwise, webhooks will be called to warn some people about the mod.
      */
     public static void checkYieldReturnOrigAndIntPtrTrick() throws IOException {
-        // do not run the test during the daily crontabs, we might run out of memory and crash the server!
-        if (Files.exists(Paths.get("daily_lock"))) {
-            logger.debug("Skipping code mod check because the daily processes are running");
-            return;
-        }
-
         // the new file list is built from scratch (only files that still exist are copied over from the previous list).
         List<String> newResults = new ArrayList<>();
 

@@ -232,6 +232,14 @@ public class CrontabRunner {
     }
 
     private static void runHourlyProcesses() {
+        AtomicBoolean dailyLocked = new AtomicBoolean(false);
+        runProcessAndAlertOnException("[Hourly] Files.exists(dailyLock)", () -> {
+            if (Files.exists(Paths.get("daily_lock"))) {
+                logger.info("Daily locked, we will need to skip checkYieldReturnOrigAndIntPtrTrick");
+                dailyLocked.set(true);
+            }
+        });
+
         // Update tasks
         runProcessAndAlertOnException("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub);
         runProcessAndAlertOnException("[Hourly] CollabAutoHider", CollabAutoHider::run);
@@ -262,8 +270,9 @@ public class CrontabRunner {
                 updaterStuffHappened.set(true);
             }
         });
+
         if (updaterStuffHappened.get()) {
-            runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
+            if (!dailyLocked.get()) runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
             runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", GameBananaAutomatedChecks::checkForForbiddenFiles);
             runProcessAndAlertOnException("[Hourly] checkForFilesBelongingToMultipleMods", GameBananaAutomatedChecks::checkForFilesBelongingToMultipleMods);
             runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
