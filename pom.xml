@@ -65,7 +65,7 @@
         <!-- https://mvnrepository.com/artifact/com.github.twitch4j/twitch4j-chat -->
         <!-- https://mvnrepository.com/artifact/org.java-websocket/Java-WebSocket -->
         <!-- https://mvnrepository.com/artifact/com.google.auth/google-auth-library-oauth2-http -->
-        <!-- #if LNJ_BOT
+        <!-- #if LNJ_BOT -->
         <dependency>
             <groupId>com.github.twitch4j</groupId>
             <artifactId>twitch4j-chat</artifactId>
@@ -86,7 +86,7 @@
             <artifactId>google-auth-library-oauth2-http</artifactId>
             <version>1.37.1</version>
         </dependency>
-        #endif -->
+        <!-- #endif -->
 
         <!-- https://mvnrepository.com/artifact/org.apache.poi/poi -->
         <dependency>
@@ -169,7 +169,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.1</version>
                 <executions>
-                    <!-- #if !LNJ_BOT -->
+                    <!-- #if !LNJ_BOT
                     <execution>
                         <id>exclude LNJ Bot</id>
                         <phase>process-sources</phase>
@@ -185,7 +185,7 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!-- #endif -->
+                    #endif -->
                     <execution>
                         <id>generate run_bot.sh</id>
                         <phase>package</phase>
