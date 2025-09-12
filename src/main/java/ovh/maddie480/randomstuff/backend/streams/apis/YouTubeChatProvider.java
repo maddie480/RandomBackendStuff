@@ -152,7 +152,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
             Map<String, String> emojis = new HashMap<>();
 
-            for (Object o : json.getJSONObject("contents").getJSONObject("liveChatRenderer").getJSONArray("emojis")) {
+            for (Object o : json.getJSONObject("continuationContents").getJSONObject("liveChatContinuation").getJSONArray("emojis")) {
                 JSONObject rawEmoji = (JSONObject) o;
 
                 for (Object shortcut : rawEmoji.getJSONArray("shortcuts")) {
