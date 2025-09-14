@@ -112,7 +112,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
     }
 
     private String getLiveStreamVideoId() throws IOException {
-        for (String type : Arrays.asList("upcoming", "live")) {
+        for (String type : Arrays.asList("live", "upcoming")) {
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://www.googleapis.com/youtube/v3/search?channelId=" + CHANNEL_ID + "&part=snippet&type=video&eventType=" + type);
             connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
 
