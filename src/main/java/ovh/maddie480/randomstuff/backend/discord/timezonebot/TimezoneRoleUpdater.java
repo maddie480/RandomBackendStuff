@@ -150,6 +150,11 @@ public class TimezoneRoleUpdater implements Runnable {
                 } else {
                     // we need to create a new timezone role for this user.
                     // it will be created with a throw-away name
+                    if (server.getRoles().size() >= 250) {
+                        logger.info("Cannot create role for timezone offset {}, reached 250 role limit on server!", offset);
+                        continue;
+                    }
+
                     logger.info("Creating role for timezone offset {}", offset);
                     targetRole = server.createRole().setName("timezone role for " + offset).setPermissions(0L)
                             .reason("User has non currently existing timezone " + offset).complete();
