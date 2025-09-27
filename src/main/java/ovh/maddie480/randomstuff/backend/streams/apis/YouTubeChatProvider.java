@@ -8,7 +8,6 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.DataStoreFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
-import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
@@ -86,7 +85,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         liveChatId = getLiveChatId(liveStreamVideoId);
         log.debug("The ID of the chat of the current YouTube live stream is {}", liveChatId);
 
-        allEmotes = getEmotes();
+        allEmotes = YouTubeEmoteDatabase.getEmotes();
         log.debug("Got emotes: {}", allEmotes);
 
         fixedMessages = getMoobotCommands();
@@ -133,39 +132,6 @@ public class YouTubeChatProvider implements IChatProvider<String> {
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
             JSONObject response = new JSONObject(new JSONTokener(is));
             return response.getJSONArray("items").getJSONObject(0).getJSONObject("liveStreamingDetails").getString("activeLiveChatId");
-        }
-    }
-
-    private Map<String, String> getEmotes() {
-        try {
-            // page retrieved by being logged in and visiting page: https://www.youtube.com/live_chat?v=<anylivevideo>
-            // but: retrieving the same page while logged out doesn't return emojis
-            // and retrieving the same page with a bot access token gives a "something went wrong" page
-            // ... so the manual way will do, not like LNJ streams very often anyway
-            JSONObject json;
-            try (InputStream is = Files.newInputStream(Paths.get("youtube_sludge.html"))) {
-                String page = IOUtils.toString(is, StandardCharsets.UTF_8);
-                page = page.substring(page.indexOf("window[\"ytInitialData\"] = ") + 26);
-                page = page.substring(0, page.indexOf(";</script>"));
-                json = new JSONObject(page);
-            }
-
-            Map<String, String> emojis = new HashMap<>();
-
-            for (Object o : json.getJSONObject("continuationContents").getJSONObject("liveChatContinuation").getJSONArray("emojis")) {
-                JSONObject rawEmoji = (JSONObject) o;
-
-                for (Object shortcut : rawEmoji.getJSONArray("shortcuts")) {
-                    emojis.put((String) shortcut, rawEmoji.getJSONObject("image").getJSONArray("thumbnails").getJSONObject(0).getString("url"));
-                }
-            }
-
-            return emojis;
-        } catch (Exception e) {
-            // since this is using undocumented APIs :sparkles:, we're just doing our best to retrieve them.
-            // not a big deal if we don't manage to.
-            log.warn("Could not parse YouTube emotes!", e);
-            return Collections.emptyMap();
         }
     }
 
