@@ -24,5 +24,5 @@
   45   *   *   *   * /home/debian/docker-run-hourly-crontabs.sh
 */10   *   *   *   * cd /home/debian && ./magic-auto-deploy.sh
 #if LNJ_BOT
-  30  11   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
+# 30  11   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
 #endif
