@@ -48,7 +48,6 @@ public class PlatformBackup {
     private static void runMessageDump(JDA client) throws IOException {
         Files.createDirectories(Paths.get("/tmp/backup-discord-pins"));
 
-        dumpMessagesFrom(client, 498584991194808354L);
         dumpMessagesFrom(client, 791795741919674388L);
         dumpMessagesFrom(client, 551822297573490749L);
         dumpMessagesFrom(client, 445236692136230943L);
