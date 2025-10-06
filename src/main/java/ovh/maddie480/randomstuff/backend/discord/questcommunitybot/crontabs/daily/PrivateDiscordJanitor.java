@@ -32,7 +32,6 @@ public class PrivateDiscordJanitor {
     }
 
     private void run() {
-        cleanupChannel(498584991194808354L, OffsetDateTime.now().minusMonths(1), false, false);
         cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1), false, false);
         cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1), false, false);
         cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), false, true);
