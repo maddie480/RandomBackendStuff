@@ -74,8 +74,8 @@ public class ContinuousHealthChecks {
                                 "Update Checker", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // GameBanana health checks
-                        checkURL("https://gamebanana.com/games/6460", "Celeste",
-                                "GameBanana Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
+                        // checkURL("https://gamebanana.com/games/6460", "Celeste",
+                        //         "GameBanana Website", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
                         checkURL("https://files.gamebanana.com/bitpit/check.txt", "The check passed!",
                                 "GameBanana File Server", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
                         checkURL("https://gamebanana.com/apiv8/Mod/150813?_csvProperties=@gbprofile", "\"https:\\/\\/gamebanana.com\\/dl\\/484937\"",
