@@ -4,6 +4,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.function.IOConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -28,9 +29,12 @@ public class TempFolderCleanup {
     private static final Logger logger = LoggerFactory.getLogger(TempFolderCleanup.class);
 
     public static void cleanUpFolder(String folder, int delayDays, Predicate<Path> extraFilter) throws IOException {
-        doStuffOnOldFiles(folder, delayDays, extraFilter, path -> {
-            logger.info("Deleting file {} because it was last modified on {}", path.toAbsolutePath(), Files.getLastModifiedTime(path).toInstant());
-            Files.delete(path);
+        ConnectionUtils.runWithRetry(() -> {
+            doStuffOnOldFiles(folder, delayDays, extraFilter, path -> {
+                logger.info("Deleting file {} because it was last modified on {}", path.toAbsolutePath(), Files.getLastModifiedTime(path).toInstant());
+                Files.delete(path);
+            });
+            return null;
         });
     }
 
