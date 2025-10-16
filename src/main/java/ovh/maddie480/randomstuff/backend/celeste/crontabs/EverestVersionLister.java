@@ -38,7 +38,7 @@ public class EverestVersionLister {
     private static final Pattern PULL_REQUEST_MERGE = Pattern.compile("^Merge pull request #([0-9]+) from .*$");
     private static final Pattern VERSION_NUMBER_IN_RELEASE_NAME = Pattern.compile("^[^0-9]*([0-9]+)$");
     private static final Pattern COMMIT_SHA = Pattern.compile("^[0-9a-f]{40}$");
-    private static final Pattern LINK_HEADER_NEXT_PAGE = Pattern.compile("^ ?rel=\"next\", <(.*)>$");
+    private static final Pattern LINK_HEADER_NEXT_PAGE = Pattern.compile("^ ?<(.*)>; rel=\"next\"$");
 
     private static List<Integer> latestAzureBuilds = new ArrayList<>();
     private static List<String> latestGitHubReleases = new ArrayList<>();
@@ -268,7 +268,7 @@ public class EverestVersionLister {
 
             String linkHeader = connAuth.getHeaderField("link");
             if (linkHeader != null) {
-                String nextPage = Arrays.stream(linkHeader.split(";"))
+                String nextPage = Arrays.stream(linkHeader.split(","))
                         .map(field -> {
                             Matcher matcher = LINK_HEADER_NEXT_PAGE.matcher(field);
                             return matcher.matches() ? matcher.group(1) : null;
