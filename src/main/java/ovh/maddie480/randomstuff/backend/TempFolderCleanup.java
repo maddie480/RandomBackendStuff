@@ -10,6 +10,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,25 +72,28 @@ public class TempFolderCleanup {
     }
 
     private static void doStuffOnOldFiles(String folder, int delayDays, Predicate<Path> extraFilter, IOConsumer<Path> stuff) throws IOException {
-        List<Path> filesToDelete;
+           List<Path> filesToDelete;
 
-        try (Stream<Path> walker = Files.walk(Paths.get(folder))) {
-            filesToDelete = walker
-                    .filter(Files::isRegularFile)
-                    .filter(path -> {
-                        try {
-                            return Files.getLastModifiedTime(path).toInstant().isBefore(Instant.now().minus(delayDays, ChronoUnit.DAYS));
-                        } catch (IOException e) {
-                            logger.warn("Could not read last modified time of file {}!", path.toAbsolutePath(), e);
-                            return false;
-                        }
-                    })
-                    .filter(extraFilter)
-                    .toList();
-        }
+           try (Stream<Path> walker = Files.walk(Paths.get(folder))) {
+               filesToDelete = walker
+                       .filter(Files::isRegularFile)
+                       .filter(path -> {
+                           try {
+                               return Files.getLastModifiedTime(path).toInstant().isBefore(Instant.now().minus(delayDays, ChronoUnit.DAYS));
+                           } catch (IOException e) {
+                               throw new UncheckedIOException(e);
+                           }
+                       })
+                       .filter(extraFilter)
+                       .toList();
+            }
 
-        for (Path path : filesToDelete) {
-            stuff.accept(path);
+            for (Path path : filesToDelete) {
+                stuff.accept(path);
+            }
+        } catch (UncheckedIOException e) {
+            // make sure to trigger a retry, since most crashes come from unlucky timing
+            throw new IOException(e);
         }
     }
 }
