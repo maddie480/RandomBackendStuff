@@ -72,20 +72,21 @@ public class TempFolderCleanup {
     }
 
     private static void doStuffOnOldFiles(String folder, int delayDays, Predicate<Path> extraFilter, IOConsumer<Path> stuff) throws IOException {
-           List<Path> filesToDelete;
+        try {
+            List<Path> filesToDelete;
 
-           try (Stream<Path> walker = Files.walk(Paths.get(folder))) {
-               filesToDelete = walker
-                       .filter(Files::isRegularFile)
-                       .filter(path -> {
-                           try {
-                               return Files.getLastModifiedTime(path).toInstant().isBefore(Instant.now().minus(delayDays, ChronoUnit.DAYS));
-                           } catch (IOException e) {
-                               throw new UncheckedIOException(e);
-                           }
-                       })
-                       .filter(extraFilter)
-                       .toList();
+            try (Stream<Path> walker = Files.walk(Paths.get(folder))) {
+                filesToDelete = walker
+                        .filter(Files::isRegularFile)
+                        .filter(path -> {
+                            try {
+                                return Files.getLastModifiedTime(path).toInstant().isBefore(Instant.now().minus(delayDays, ChronoUnit.DAYS));
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            }
+                        })
+                        .filter(extraFilter)
+                        .toList();
             }
 
             for (Path path : filesToDelete) {
