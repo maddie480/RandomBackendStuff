@@ -3,6 +3,7 @@ package ovh.maddie480.randomstuff.backend.discord.serverjanitor;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.requests.restaction.pagination.PinnedMessagePaginationAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -26,12 +27,12 @@ public class ServerJanitorBot {
 
                 log.debug("Checking for messages to delete in {}...", channel);
 
-                List<Message> pins = channel.retrievePinnedMessages().complete();
+                List<PinnedMessagePaginationAction.PinnedMessage> pins = channel.retrievePinnedMessages().stream().toList();
 
                 // delete all messages that are not pinned and older than a month
                 long[] messagesToDelete = channel.getIterableHistory().stream()
                         .filter(message -> (message.getTimeCreated().isBefore(OffsetDateTime.now().minusMonths(1))
-                                && pins.stream().noneMatch(pin -> pin.getIdLong() == message.getIdLong())))
+                                && pins.stream().noneMatch(pin -> pin.getMessage().getIdLong() == message.getIdLong())))
                         .mapToLong(Message::getIdLong)
                         .toArray();
 

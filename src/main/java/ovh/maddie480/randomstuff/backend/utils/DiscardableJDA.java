@@ -21,7 +21,10 @@ import net.dv8tion.jda.api.managers.DirectAudioController;
 import net.dv8tion.jda.api.managers.Presence;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.RestAction;
-import net.dv8tion.jda.api.requests.restaction.*;
+import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
+import net.dv8tion.jda.api.requests.restaction.CommandEditAction;
+import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
+import net.dv8tion.jda.api.requests.restaction.TestEntitlementCreateAction;
 import net.dv8tion.jda.api.requests.restaction.pagination.EntitlementPaginationAction;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.Once;
@@ -101,7 +104,7 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public JDA awaitStatus(@NotNull Status status, Status ... failOn) throws InterruptedException {
+    public JDA awaitStatus(@NotNull Status status, Status... failOn) throws InterruptedException {
         return backingJDA.awaitStatus(status, failOn);
     }
 
@@ -151,12 +154,12 @@ public class DiscardableJDA implements JDA, Closeable {
     }
 
     @Override
-    public void addEventListener(Object ... listeners) {
+    public void addEventListener(Object... listeners) {
         backingJDA.addEventListener(listeners);
     }
 
     @Override
-    public void removeEventListener(Object ... listeners) {
+    public void removeEventListener(Object... listeners) {
         backingJDA.removeEventListener(listeners);
     }
 
@@ -222,18 +225,6 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public GuildAction createGuild(@NotNull String name) {
-        return backingJDA.createGuild(name);
-    }
-
-    @NotNull
-    @Override
-    public RestAction<Void> createGuildFromTemplate(@NotNull String code, @NotNull String name, @Nullable Icon icon) {
-        return backingJDA.createGuildFromTemplate(code, name, icon);
-    }
-
-    @NotNull
-    @Override
     public CacheView<AudioManager> getAudioManagerCache() {
         return backingJDA.getAudioManagerCache();
     }
@@ -246,14 +237,14 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
-    public List<Guild> getMutualGuilds(User ... users) {
-        return backingJDA.getMutualGuilds(users);
+    public List<Guild> getMutualGuilds(@NotNull UserSnowflake... userSnowflakes) {
+        return backingJDA.getMutualGuilds(userSnowflakes);
     }
 
     @NotNull
     @Override
-    public List<Guild> getMutualGuilds(@NotNull Collection<User> users) {
-        return backingJDA.getMutualGuilds(users);
+    public List<Guild> getMutualGuilds(@NotNull Collection<? extends UserSnowflake> collection) {
+        return backingJDA.getMutualGuilds(collection);
     }
 
     @NotNull
@@ -315,18 +306,21 @@ public class DiscardableJDA implements JDA, Closeable {
         return backingJDA.getEmojiCache();
     }
 
+    @NotNull
     @Override
-    public @NotNull RestAction<ApplicationEmoji> createApplicationEmoji(@NotNull String s, @NotNull Icon icon) {
+    public RestAction<ApplicationEmoji> createApplicationEmoji(@NotNull String s, @NotNull Icon icon) {
         return backingJDA.createApplicationEmoji(s, icon);
     }
 
+    @NotNull
     @Override
-    public @NotNull RestAction<List<ApplicationEmoji>> retrieveApplicationEmojis() {
+    public RestAction<List<ApplicationEmoji>> retrieveApplicationEmojis() {
         return backingJDA.retrieveApplicationEmojis();
     }
 
+    @NotNull
     @Override
-    public @NotNull RestAction<ApplicationEmoji> retrieveApplicationEmojiById(@NotNull String s) {
+    public RestAction<ApplicationEmoji> retrieveApplicationEmojiById(@NotNull String s) {
         return backingJDA.retrieveApplicationEmojiById(s);
     }
 
@@ -472,8 +466,9 @@ public class DiscardableJDA implements JDA, Closeable {
         return backingJDA.retrieveWebhookById(webhookId);
     }
 
+    @NotNull
     @Override
-    public @NotNull ApplicationManager getApplicationManager() {
+    public ApplicationManager getApplicationManager() {
         return backingJDA.getApplicationManager();
     }
 

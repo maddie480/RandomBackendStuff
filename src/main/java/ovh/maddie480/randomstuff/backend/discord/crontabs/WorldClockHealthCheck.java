@@ -1,6 +1,8 @@
 package ovh.maddie480.randomstuff.backend.discord.crontabs;
 
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.components.MessageTopLevelComponent;
+import net.dv8tion.jda.api.components.MessageTopLevelComponentUnion;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
@@ -9,7 +11,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.interactions.*;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.commands.Command;
-import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
@@ -43,57 +44,87 @@ public class WorldClockHealthCheck {
      */
     private static class MockReplyCallbackAction implements ReplyCallbackAction {
         // <editor-fold desc="Stub Methods">
+        @NotNull
+        @Override
         public ReplyCallbackAction closeResources() {
             return null;
         }
 
+        @NotNull
+        @Override
         public JDA getJDA() {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction setCheck(@Nullable BooleanSupplier booleanSupplier) {
             return null;
         }
 
+        @Override
         public void queue(@Nullable Consumer<? super InteractionHook> consumer, @Nullable Consumer<? super Throwable> consumer1) {
         }
 
+        @Override
         public InteractionHook complete(boolean b) {
             return null;
         }
 
+        @NotNull
+        @Override
         public CompletableFuture<InteractionHook> submit(boolean b) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction addContent(@NotNull String s) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction addEmbeds(@NotNull Collection<? extends MessageEmbed> collection) {
             return null;
         }
 
-        public ReplyCallbackAction addComponents(@NotNull Collection<? extends LayoutComponent> collection) {
+        @NotNull
+        @Override
+        public ReplyCallbackAction addComponents(@NotNull Collection<? extends MessageTopLevelComponent> collection) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction addFiles(@NotNull Collection<? extends FileUpload> collection) {
             return null;
         }
 
+        @NotNull
+        @Override
         public String getContent() {
             return null;
         }
 
+        @NotNull
+        @Override
         public List<MessageEmbed> getEmbeds() {
             return null;
         }
 
-        public List<LayoutComponent> getComponents() {
-            return null;
+        @Override
+        public @NotNull List<MessageTopLevelComponentUnion> getComponents() {
+            return List.of();
         }
 
+        @Override
+        public boolean isUsingComponentsV2() {
+            return false;
+        }
+
+        @NotNull
+        @Override
         public List<FileUpload> getAttachments() {
             return null;
         }
@@ -110,70 +141,106 @@ public class WorldClockHealthCheck {
             return null;
         }
 
+        @Override
         public boolean isSuppressEmbeds() {
             return false;
         }
 
+        @NotNull
+        @Override
         public Set<String> getMentionedUsers() {
             return null;
         }
 
+        @NotNull
+        @Override
         public Set<String> getMentionedRoles() {
             return null;
         }
 
+        @NotNull
+        @Override
         public EnumSet<Message.MentionType> getAllowedMentions() {
             return null;
         }
 
+        @Override
         public boolean isMentionRepliedUser() {
             return false;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction setTTS(boolean b) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction setContent(@Nullable String s) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction setEmbeds(@NotNull Collection<? extends MessageEmbed> collection) {
             return null;
         }
 
-        public ReplyCallbackAction setComponents(@NotNull Collection<? extends LayoutComponent> collection) {
+        @Override
+        public @NotNull ReplyCallbackAction setComponents(@NotNull Collection<? extends MessageTopLevelComponent> collection) {
             return null;
         }
 
+        @Override
+        public @NotNull ReplyCallbackAction useComponentsV2(boolean b) {
+            return null;
+        }
+
+        @NotNull
+        @Override
         public ReplyCallbackAction setSuppressEmbeds(boolean b) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction setSuppressedNotifications(boolean b) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction setFiles(@Nullable Collection<? extends FileUpload> collection) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction mentionRepliedUser(boolean b) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction setAllowedMentions(@Nullable Collection<Message.MentionType> collection) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction mention(@NotNull Collection<? extends IMentionable> collection) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction mentionUsers(@NotNull Collection<String> collection) {
             return null;
         }
 
+        @NotNull
+        @Override
         public ReplyCallbackAction mentionRoles(@NotNull Collection<String> collection) {
             return null;
         }
@@ -197,6 +264,8 @@ public class WorldClockHealthCheck {
      */
     private static class MockCallback implements IReplyCallback {
         // <editor-fold desc="Stub Methods">
+        @NotNull
+        @Override
         public ReplyCallbackAction deferReply() {
             return null;
         }
@@ -213,10 +282,13 @@ public class WorldClockHealthCheck {
             return IReplyCallback.super.reply(message);
         }
 
+        @NotNull
+        @Override
         public InteractionHook getHook() {
             return null;
         }
 
+        @Override
         public int getTypeRaw() {
             return 0;
         }
@@ -227,10 +299,13 @@ public class WorldClockHealthCheck {
             return IReplyCallback.super.getType();
         }
 
+        @NotNull
+        @Override
         public String getToken() {
             return null;
         }
 
+        @Override
         public Guild getGuild() {
             return null;
         }
@@ -246,18 +321,23 @@ public class WorldClockHealthCheck {
             return IReplyCallback.super.getChannelType();
         }
 
+        @NotNull
+        @Override
         public User getUser() {
             return null;
         }
 
+        @Override
         public Member getMember() {
             return null;
         }
 
+        @Override
         public boolean isAcknowledged() {
             return false;
         }
 
+        @Override
         public Channel getChannel() {
             return null;
         }
@@ -285,6 +365,8 @@ public class WorldClockHealthCheck {
             return IReplyCallback.super.getMessageChannel();
         }
 
+        @NotNull
+        @Override
         public DiscordLocale getUserLocale() {
             return null;
         }
@@ -301,16 +383,20 @@ public class WorldClockHealthCheck {
             return Collections.emptyList();
         }
 
+        @NotNull
         @Override
         public InteractionContextType getContext() {
             return null;
         }
 
+        @NotNull
         @Override
         public IntegrationOwners getIntegrationOwners() {
             return null;
         }
 
+        @NotNull
+        @Override
         public JDA getJDA() {
             return null;
         }
@@ -321,6 +407,7 @@ public class WorldClockHealthCheck {
             return IReplyCallback.super.getId();
         }
 
+        @Override
         public long getIdLong() {
             return 0;
         }
@@ -342,18 +429,6 @@ public class WorldClockHealthCheck {
         @Override
         public ReplyCallbackAction replyEmbeds(@NotNull MessageEmbed embed, @NotNull MessageEmbed... embeds) {
             return IReplyCallback.super.replyEmbeds(embed, embeds);
-        }
-
-        @NotNull
-        @Override
-        public ReplyCallbackAction replyComponents(@NotNull Collection<? extends LayoutComponent> components) {
-            return IReplyCallback.super.replyComponents(components);
-        }
-
-        @NotNull
-        @Override
-        public ReplyCallbackAction replyComponents(@NotNull LayoutComponent component, @NotNull LayoutComponent... other) {
-            return IReplyCallback.super.replyComponents(component, other);
         }
 
         @NotNull

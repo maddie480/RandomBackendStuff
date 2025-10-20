@@ -1,6 +1,11 @@
 package ovh.maddie480.randomstuff.backend.discord.timezonebot;
 
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.components.buttons.ButtonStyle;
+import net.dv8tion.jda.api.components.selections.SelectOption;
+import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -17,11 +22,6 @@ import net.dv8tion.jda.api.interactions.DiscordLocale;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
-import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
-import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -215,7 +215,7 @@ public class BotEventListener extends ListenerAdapter {
 
     @Override
     public void onStringSelectInteraction(@NotNull StringSelectInteractionEvent event) {
-        if ("discord-timestamp".equals(event.getComponent().getId())) {
+        if ("discord-timestamp".equals(event.getComponent().getCustomId())) {
             logger.info("New interaction with discord-timestamp selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
 
             // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
@@ -228,7 +228,7 @@ public class BotEventListener extends ListenerAdapter {
                     .build()).queue();
         }
 
-        if ("timezone-dropdown".equals(event.getComponent().getId())) {
+        if ("timezone-dropdown".equals(event.getComponent().getCustomId())) {
             logger.info("New interaction with timezone-dropdown selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
 
             // the user picked a timezone in the dropdown! we should act exactly like the /timezone command, actually.
@@ -846,8 +846,8 @@ public class BotEventListener extends ListenerAdapter {
             if (asTextFile) {
                 reply = reply.addFiles(FileUpload.fromData(timezonesList.getBytes(StandardCharsets.UTF_8), "timezone_list.txt"));
             } else {
-                reply = reply.addActionRow(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file" + namesToUse,
-                        localizeMessage(locale, "Get as text file", "Convertir en fichier texte"), Emoji.fromUnicode("\uD83D\uDCC4")));
+                reply = reply.addComponents(ActionRow.of(Button.of(ButtonStyle.SECONDARY, "list-timezones-to-file" + namesToUse,
+                        localizeMessage(locale, "Get as text file", "Convertir en fichier texte"), Emoji.fromUnicode("\uD83D\uDCC4"))));
             }
             reply.queue();
         }
@@ -1049,7 +1049,7 @@ public class BotEventListener extends ListenerAdapter {
                                 **Pick a timezone role here!**
                                 If your timezone does not match any of those, run the `/timezone [tz_name]` command.
                                 To remove your timezone role, run the `/remove-timezone` command.""")
-                        .addActionRow(StringSelectMenu.create("timezone-dropdown").addOptions(options).build())
+                        .addComponents(ActionRow.of(StringSelectMenu.create("timezone-dropdown").addOptions(options).build()))
                         .queue();
             }
         }

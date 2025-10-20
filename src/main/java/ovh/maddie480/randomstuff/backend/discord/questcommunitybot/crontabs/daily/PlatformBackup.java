@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.requests.restaction.pagination.PinnedMessagePaginationAction;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,15 +59,16 @@ public class PlatformBackup {
         TextChannel channel = client.getTextChannelById(channelId);
         logger.debug("Dump des pins de {}", channel);
 
-        List<Message> pinnedMessages = channel.retrievePinnedMessages().complete();
+        List<PinnedMessagePaginationAction.PinnedMessage> pinnedMessages = channel.retrievePinnedMessages().stream().toList();
         logger.debug("{} messages récupérés", pinnedMessages.size());
 
         if (pinnedMessages.isEmpty()) return;
 
-        OffsetDateTime date = pinnedMessages.get(0).getTimeCreated();
+        OffsetDateTime date = pinnedMessages.getFirst().getMessage().getTimeCreated();
 
         try (PrintWriter printWriter = new PrintWriter("/tmp/backup-discord-pins/dump_" + channel.getName() + ".txt")) {
-            for (Message message : pinnedMessages) {
+            for (PinnedMessagePaginationAction.PinnedMessage pinnedMessage : pinnedMessages) {
+                Message message = pinnedMessage.getMessage();
                 logger.debug("Current message: {} from {} at {}", message.getContentDisplay(),
                         message.getAuthor().getName(), message.getTimeCreated());
 

@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.requests.restaction.pagination.PinnedMessagePaginationAction;
 import net.dv8tion.jda.api.utils.TimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +53,7 @@ public class PrivateDiscordJanitor {
 
         logger.debug("Récupération des messages à supprimer dans {}...", channel);
 
-        List<Message> pins = channel.retrievePinnedMessages().complete();
+        List<PinnedMessagePaginationAction.PinnedMessage> pins = channel.retrievePinnedMessages().stream().toList();
 
         long[] messagesToDelete = channel.getIterableHistory()
                 .skipTo(TimeUtil.getDiscordTimestamp((scanAll ? OffsetDateTime.now() : delay)
@@ -80,10 +81,10 @@ public class PrivateDiscordJanitor {
         }
     }
 
-    private boolean shouldPurge(Message message, List<Message> pins, OffsetDateTime delay) {
+    private boolean shouldPurge(Message message, List<PinnedMessagePaginationAction.PinnedMessage> pins, OffsetDateTime delay) {
         boolean old = message.getTimeCreated().isBefore(delay);
         boolean spammy = (message.getChannel().getIdLong() == 445631337315958796L && Arrays.asList("H", "J").contains(message.getAuthor().getEffectiveName().substring(0, 1)));
-        boolean pinned = pins.stream().anyMatch(pin -> pin.getIdLong() == message.getIdLong());
+        boolean pinned = pins.stream().anyMatch(pin -> pin.getMessage().getIdLong() == message.getIdLong());
         return (old || spammy) && !pinned;
     }
 }
