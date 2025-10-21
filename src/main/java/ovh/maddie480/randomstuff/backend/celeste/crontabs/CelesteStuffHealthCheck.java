@@ -1035,8 +1035,6 @@ public class CelesteStuffHealthCheck {
         }
 
         Path mapToJson = Paths.get("/tmp/map.json");
-        Path mapToBin = Paths.get("/tmp/map.bin");
-        Path mapBackToJson = Paths.get("/tmp/map2.json");
 
         {
             byte[] mapBinInput = ConnectionUtils.runWithRetry(() -> {
@@ -1070,24 +1068,7 @@ public class CelesteStuffHealthCheck {
             }
         }
 
-        try (InputStream is = Files.newInputStream(mapToJson)) {
-            binToJsonToBin("json-to-bin", is, mapToBin);
-        }
-        try (InputStream is = Files.newInputStream(mapToBin)) {
-            binToJsonToBin("bin-to-json", is, mapBackToJson);
-        }
-
-        String a, b;
-        try (InputStream is = Files.newInputStream(mapToJson)) {
-            a = DigestUtils.sha512Hex(is);
-        }
-        try (InputStream is = Files.newInputStream(mapBackToJson)) {
-            b = DigestUtils.sha512Hex(is);
-        }
-
-        if (!a.equals(b)) {
-            throw new IOException("Back-and-forth bin-to-json conversions modified the map!");
-        }
+        convertBackAndForthAndCompare(mapToJson);
 
         Process p = OutputStreamLogger.redirectAllOutput(log,
                 new ProcessBuilder("grep", "-q", "\"texture\":\"bgs/nameguysdsides_stylegrounds/celeste_2_oldsite_bgsky_noheart\"",
@@ -1104,8 +1085,52 @@ public class CelesteStuffHealthCheck {
         }
 
         Files.delete(mapToJson);
-        Files.delete(mapToBin);
-        Files.delete(mapBackToJson);
+    }
+
+    public static void checkMapTreeViewerWithWackyEncoding() throws IOException {
+        Path mapToJson = Paths.get("/tmp/map.json");
+
+        try (InputStream is = CelesteStuffHealthCheck.class.getResourceAsStream("/two-byte-tileset-test-map.bin")) {
+            binToJsonToBin("bin-to-json", is, mapToJson);
+        }
+        try {
+            // the _package attribute is dropped, but it isn't a big deal
+            OutputStreamLogger.redirectAllOutput(log,
+                    new ProcessBuilder("sed", "-i", "s/\"_package\":\"\",//",
+                            mapToJson.toAbsolutePath().toString()).start()).waitFor();
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
+
+        convertBackAndForthAndCompare(mapToJson);
+        Files.delete(mapToJson);
+    }
+
+    private static void convertBackAndForthAndCompare(Path sourceJson) throws IOException {
+        Path bin = Paths.get("/tmp/map.bin");
+        Path targetJson = Paths.get("/tmp/map2.json");
+
+        try (InputStream is = Files.newInputStream(sourceJson)) {
+            binToJsonToBin("json-to-bin", is, bin);
+        }
+        try (InputStream is = Files.newInputStream(bin)) {
+            binToJsonToBin("bin-to-json", is, targetJson);
+        }
+
+        String a, b;
+        try (InputStream is = Files.newInputStream(sourceJson)) {
+            a = DigestUtils.sha512Hex(is);
+        }
+        try (InputStream is = Files.newInputStream(targetJson)) {
+            b = DigestUtils.sha512Hex(is);
+        }
+
+        if (!a.equals(b)) {
+            throw new IOException("Back-and-forth bin-to-json conversions modified the map!");
+        }
+
+        Files.delete(bin);
+        Files.delete(targetJson);
     }
 
     private static void binToJsonToBin(String url, InputStream input, Path output) throws IOException {

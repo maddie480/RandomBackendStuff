@@ -184,7 +184,10 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkFontGeneratorBMFont", CelesteStuffHealthCheck::checkFontGeneratorBMFont);
         runProcessAndAlertOnException("[Daily] checkFontGeneratorBMFontCustom", CelesteStuffHealthCheck::checkFontGeneratorBMFontCustom);
         runProcessAndAlertOnException("[Daily] checkModStructureVerifier", CelesteStuffHealthCheck::checkModStructureVerifier);
-        runProcessAndAlertOnException("[Daily] checkMapTreeViewer", CelesteStuffHealthCheck::checkMapTreeViewer);
+        runProcessAndAlertOnException("[Daily] checkMapTreeViewer", () -> {
+            CelesteStuffHealthCheck.checkMapTreeViewer();
+            CelesteStuffHealthCheck.checkMapTreeViewerWithWackyEncoding();
+        });
         runProcessAndAlertOnException("[Daily] checkFileSearcher", CelesteStuffHealthCheck::checkFileSearcher);
         runProcessAndAlertOnException("[Daily] checkDirectLinkService", CelesteStuffHealthCheck::checkDirectLinkService);
         runProcessAndAlertOnException("[Daily] checkStaticPages", CelesteStuffHealthCheck::checkStaticPages);
