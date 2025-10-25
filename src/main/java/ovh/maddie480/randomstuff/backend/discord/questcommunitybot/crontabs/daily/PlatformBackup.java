@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -33,14 +34,32 @@ public class PlatformBackup {
         }
 
         try {
-            Process p = OutputStreamLogger.redirectAllOutput(logger,
-                    new ProcessBuilder("/app/static/backup-platform.sh").start());
-
-            p.waitFor();
-
-            if (p.exitValue() != 0) {
-                throw new IOException("backup-platform.sh quit with exit code " + p.exitValue());
+            { // create a package with a backup of the platform
+                Process p = OutputStreamLogger.redirectAllOutput(logger,
+                        new ProcessBuilder("/app/static/backup-platform.sh").start());
+                p.waitFor();
+                if (p.exitValue() != 0) {
+                    throw new IOException("backup-platform.sh quit with exit code " + p.exitValue());
+                }
             }
+
+            { // upload it to cloud storage
+                Process p = OutputStreamLogger.redirectAllOutput(logger,
+                        new ProcessBuilder("curl",
+                                "--fail",
+                                "-u", SecretConstants.NEXTCLOUD_LOGIN,
+                                "--header", "X-Requested-With: XMLHttpRequest",
+                                "-T", "/shared/temp/RandomStuffBackend.tar.gz",
+                                SecretConstants.NEXTCLOUD_UPLOAD_TARGET.replace("%d", LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)),
+                                "-v").start());
+                p.waitFor();
+                if (p.exitValue() != 0) {
+                    throw new IOException("curl to nextcloud quit with exit code " + p.exitValue());
+                }
+            }
+
+            // delete it
+            Files.delete(Paths.get("/shared/temp/RandomStuffBackend.tar.gz"));
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
