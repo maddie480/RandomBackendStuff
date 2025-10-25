@@ -20,9 +20,9 @@
 # For more information see the manual pages of crontab(5) and cron(8)
 #
 #  m   h dom mon dow command
-  15  18   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs
+  15  19   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs
   45   *   *   *   * /home/debian/docker-run-hourly-crontabs.sh
 */10   *   *   *   * cd /home/debian && ./magic-auto-deploy.sh
 #if LNJ_BOT
-# 30  11   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
+# 30  12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
 #endif
