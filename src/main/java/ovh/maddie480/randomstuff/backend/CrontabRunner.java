@@ -312,7 +312,7 @@ public class CrontabRunner {
             while (ZonedDateTime.now().isBefore(runUntil)) {
                 runUpdater(full, runUntil);
                 full = false;
-                unstoppableSleep(3_600_000);
+                unstoppableSleep(120_000);
             }
         }
     }
