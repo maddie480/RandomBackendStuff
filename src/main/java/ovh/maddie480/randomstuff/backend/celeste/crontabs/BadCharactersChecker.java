@@ -21,7 +21,7 @@ public class BadCharactersChecker {
     private static final Logger log = LoggerFactory.getLogger(BadCharactersChecker.class);
 
     public static void main(String[] args) throws Exception {
-        Set<Integer> allowlist = "  /-_.,=$~()'!+[]#{}%&;?@^（）\\`".codePoints().boxed().collect(Collectors.toSet());
+        Set<Integer> allowlist = "  /-_.,=$~()'\"!+[]#{}%&;?@^（）\\`".codePoints().boxed().collect(Collectors.toSet());
 
         boolean noGood = false;
 
