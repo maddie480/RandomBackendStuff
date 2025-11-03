@@ -126,7 +126,6 @@ public class SecretConstants {
     public static String STONK_URL;
     public static String WEATHER_WARNING_DOMAIN;
     public static String WEATHER_PLACE;
-    public static List<String> SLASH_COMMAND_BOT_HEALTHCHECKS;
 
     // Nextcloud URL to upload backups to
     public static String NEXTCLOUD_LOGIN;
@@ -219,7 +218,6 @@ public class SecretConstants {
         STONK_URL = secrets.getString("STONK_URL");
         WEATHER_WARNING_DOMAIN = secrets.getString("WEATHER_WARNING_DOMAIN");
         WEATHER_PLACE = secrets.getString("WEATHER_PLACE");
-        SLASH_COMMAND_BOT_HEALTHCHECKS = getListOfStrings(secrets.getJSONArray("SLASH_COMMAND_BOT_HEALTHCHECKS"));
 
         NEXTCLOUD_LOGIN = secrets.getString("NEXTCLOUD_LOGIN");
         NEXTCLOUD_UPLOAD_TARGET = secrets.getString("NEXTCLOUD_UPLOAD_TARGET");

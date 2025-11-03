@@ -226,7 +226,6 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] ChangeBGToRandom", ChangeBGToRandom::run);
         runProcessAndAlertOnException("[Daily] PurgePosts", PurgePosts::run);
         runProcessAndAlertOnException("[Daily] QuestCommunityWebsiteHealthCheck", QuestCommunityWebsiteHealthCheck::run);
-        runProcessAndAlertOnException("[Daily] SlashCommandBotHealthCheck", SlashCommandBotHealthCheck::checkSlashCommands);
         runProcessAndAlertOnException("[Daily] StonkUpdateChecker", StonkUpdateChecker::post);
         runProcessAndAlertOnException("[Daily] PlatformBackup", PlatformBackup::run);
         runProcessAndAlertOnException("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily);
