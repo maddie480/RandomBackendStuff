@@ -54,7 +54,22 @@ public class PlatformBackup {
                                 "-v").start());
                 p.waitFor();
                 if (p.exitValue() != 0) {
-                    throw new IOException("curl to nextcloud quit with exit code " + p.exitValue());
+                    throw new IOException("curl POST to nextcloud quit with exit code " + p.exitValue());
+                }
+            }
+
+            { // delete the file created 1 week ago
+                Process p = OutputStreamLogger.redirectAllOutput(logger,
+                        new ProcessBuilder("curl",
+                                "--fail",
+                                "-u", SecretConstants.NEXTCLOUD_LOGIN,
+                                "--header", "X-Requested-With: XMLHttpRequest",
+                                "-X", "DELETE",
+                                SecretConstants.NEXTCLOUD_UPLOAD_TARGET.replace("%d", LocalDate.now().minusDays(7).format(DateTimeFormatter.ISO_LOCAL_DATE)),
+                                "-v").start());
+                p.waitFor();
+                if (p.exitValue() != 0) {
+                    throw new IOException("curl DELETE to nextcloud quit with exit code " + p.exitValue());
                 }
             }
 
