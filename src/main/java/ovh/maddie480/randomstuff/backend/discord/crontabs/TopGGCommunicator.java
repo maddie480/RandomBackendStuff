@@ -1,5 +1,6 @@
 package ovh.maddie480.randomstuff.backend.discord.crontabs;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
@@ -104,12 +105,12 @@ public class TopGGCommunicator {
 
     private static void getAndUpdateBotScore(String botId, String botToken, Consumer<String> messagePoster, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
-            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://top.gg/api/bots/" + botId);
+            HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://top.gg/api/bots/" + botId + "/votes");
             connection.setRequestProperty("Authorization", botToken);
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
-                JSONObject response = new JSONObject(new JSONTokener(is));
-                updateBotScore(messagePoster, response.getInt("points"), response.getInt("monthlyPoints"), botName, oldCount, newCount);
+                JSONArray response = new JSONArray(new JSONTokener(is));
+                updateBotScore(messagePoster, response.length(), botName, oldCount, newCount);
             }
 
             // fulfill method signature
@@ -117,12 +118,11 @@ public class TopGGCommunicator {
         });
     }
 
-    private static void updateBotScore(Consumer<String> messagePoster, int points, int monthlyPoints, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
+    private static void updateBotScore(Consumer<String> messagePoster, int points, String botName, Supplier<Integer> oldCount, Consumer<Integer> newCount) {
         logger.debug("Got the top.gg score for {}: {}", botName, points);
         if (oldCount.get() != -1 && points != oldCount.get()) {
             logger.info("Score changed for {}! {} => {}", botName, oldCount.get(), points);
-            messagePoster.accept("The score for **" + botName + "** evolved! We now have **" + points + "** point" + (points == 1 ? "" : "s")
-                    + " (**" + monthlyPoints + "** point" + (monthlyPoints == 1 ? "" : "s") + " this month).");
+            messagePoster.accept("The score for **" + botName + "** evolved! We now have **" + points + "** point" + (points == 1 ? "" : "s") + "**.");
         }
         newCount.accept(points);
     }
