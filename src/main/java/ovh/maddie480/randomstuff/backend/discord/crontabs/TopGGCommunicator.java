@@ -122,7 +122,7 @@ public class TopGGCommunicator {
         logger.debug("Got the top.gg score for {}: {}", botName, points);
         if (oldCount.get() != -1 && points != oldCount.get()) {
             logger.info("Score changed for {}! {} => {}", botName, oldCount.get(), points);
-            messagePoster.accept("The score for **" + botName + "** evolved! We now have **" + points + "** point" + (points == 1 ? "" : "s") + "**.");
+            messagePoster.accept("The score for **" + botName + "** evolved! We now have **" + points + "** point" + (points == 1 ? "" : "s") + ".");
         }
         newCount.accept(points);
     }
