@@ -500,7 +500,7 @@ public class GameBananaAutomatedChecks {
         try {
             List<Map<String, Object>> yamlFile;
             try (InputStream is = Files.newInputStream(yaml)) {
-                yamlFile = YamlUtil.load(is);
+                yamlFile = YamlUtil.loadNoFloats(is);
             }
 
             // look for mods that have a Dependencies entry with Name: Everest and no Version, and add it
