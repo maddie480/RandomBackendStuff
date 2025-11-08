@@ -11,6 +11,7 @@ import ovh.maddie480.everest.updatechecker.ServerConfig;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.GitOperator;
 import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 
 import java.io.*;
@@ -219,7 +220,7 @@ fi
             }
 
             log.debug("Preparing git repository...");
-            GitOperator.init();
+            GitOperator.init("git@github.com:EverestAPI/Everest.git", "dev", "git@github.com:maddie480-bot/Everest.git");
 
             log.debug("Applying changes...");
             for (int i = 0; i < FILE_TEMPLATES.length; i++) {
@@ -233,7 +234,7 @@ fi
             }
 
             log.debug("Committing changes...");
-            GitOperator.commitChanges();
+            GitOperator.commitChanges(".github", "Bump TAS Check dependencies", "mine");
 
             log.debug("Opening pull request...");
             String prDescription = """

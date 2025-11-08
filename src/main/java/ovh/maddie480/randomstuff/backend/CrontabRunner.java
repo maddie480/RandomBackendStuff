@@ -209,6 +209,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] BadCharactersChecker", () -> BadCharactersChecker.main(null));
         runProcessAndAlertOnException("[Daily] checkMilestoneIsInTheFuture", EverestRepositoriesRitualCheck::checkMilestoneIsInTheFuture);
         runProcessAndAlertOnException("[Daily] checkLatestVersionsArePinned", EverestRepositoriesRitualCheck::checkLatestVersionsArePinned);
+        runProcessAndAlertOnException("[Daily] checkEverestGitHubAPIMirrorMatch", CelesteStuffHealthCheck::checkEverestGitHubAPIMirrorMatch);
 
         // Non-Celeste Stuff
         /* #if LNJ_BOT

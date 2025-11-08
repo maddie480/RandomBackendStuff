@@ -450,6 +450,39 @@ public class CelesteStuffHealthCheck {
         }
     }
 
+    public static void checkEverestGitHubAPIMirrorMatch() throws IOException {
+        for (String s : Arrays.asList("everest_update.yaml", "mod_search_database.yaml", "mod_dependency_graph.yaml")) {
+            try (InputStream is1 = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/" + s);
+                 InputStream is2 = ConnectionUtils.openStreamWithTimeout("https://everestapi.github.io/updatermirror/" + s)) {
+
+                log.debug("Comparing {} files...", s);
+
+                int i1 = 0, i2;
+                while (i1 != -1) {
+                    i1 = is1.read();
+                    i2 = is2.read();
+                    if (i1 != i2) throw new IOException(s + " files don't match on maddie480.ovh and everestapi.github.io!");
+                }
+            }
+        }
+
+        for (Map.Entry<String, String> pair : ImmutableMap.of(
+                "https://maddie480.ovh/celeste/everest-versions", "https://everestapi.github.io/updatermirror/everest_versions.json",
+                "https://maddie480.ovh/celeste/olympus-versions", "https://everestapi.github.io/updatermirror/olympus_versions.json"
+        ).entrySet()) {
+            log.debug("Comparing {} and {}...", pair.getKey(), pair.getValue());
+
+            JSONArray left, right;
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(pair.getKey())) {
+                left = new JSONArray(new JSONTokener(is));
+            }
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(pair.getValue())) {
+                right = new JSONArray(new JSONTokener(is));
+            }
+            if (!left.toList().equals(right.toList())) throw new IOException(pair.getKey() + " and " + pair.getValue() + " don't match!");
+        }
+    }
+
     private static List<String> fetchFileListFromOtobotMirror(String category, String prefix) throws IOException {
         List<String> bananaMirror = new ArrayList<>();
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemods.com/api/gamebanana-mirror/mirror-contents/" + category)) {

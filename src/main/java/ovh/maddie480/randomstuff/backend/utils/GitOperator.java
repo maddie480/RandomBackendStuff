@@ -1,4 +1,4 @@
-package ovh.maddie480.randomstuff.backend.celeste.crontabs;
+package ovh.maddie480.randomstuff.backend.utils;
 
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -47,51 +47,58 @@ public final class GitOperator {
         });
     }
 
-    public static void init() throws IOException {
+    public static void init(String originUrl, String branch, String mineUrl) throws IOException {
         try {
             log.info("Cloning git repository...");
             sshInit();
             gitRepository = Git.cloneRepository()
                     .setDirectory(gitDirectory.toFile())
-                    .setBranch("dev")
+                    .setBranch(branch)
                     .setDepth(1)
-                    .setURI("git@github.com:EverestAPI/Everest.git")
+                    .setURI(originUrl)
                     .setCloneSubmodules(true)
                     .call();
 
-            gitRepository.remoteAdd()
-                    .setName("mine")
-                    .setUri(new URIish("git@github.com:maddie480-bot/Everest.git"))
-                    .call();
+            if (mineUrl != null) {
+                gitRepository.remoteAdd()
+                        .setName("mine")
+                        .setUri(new URIish("git@github.com:maddie480-bot/Everest.git"))
+                        .call();
 
-            sshInit();
-            gitRepository.push()
-                    .setForce(true)
-                    .setRemote("mine")
-                    .call();
+                sshInit();
+                gitRepository.push()
+                        .setForce(true)
+                        .setRemote("mine")
+                        .call();
+            }
         } catch (GitAPIException | URISyntaxException e) {
             throw new IOException(e);
         }
     }
 
-    public static void commitChanges() throws IOException {
+    public static void commitChanges(String files, String commitMessage, String remote) throws IOException {
         try {
             log.info("Adding");
             gitRepository.add()
-                    .addFilepattern(".github")
+                    .addFilepattern(files)
                     .call();
+
+            if (gitRepository.status().call().getAdded().isEmpty()) {
+                log.info("No files changed, skipping");
+                return;
+            }
 
             log.info("Committing");
             gitRepository.commit()
                     .setAll(true)
                     .setAuthor("maddie480-bot", "212421949+maddie480-bot@users.noreply.github.com")
                     .setCommitter("maddie480-bot", "212421949+maddie480-bot@users.noreply.github.com")
-                    .setMessage("Bump TAS Check dependencies")
+                    .setMessage(commitMessage)
                     .call();
 
             log.info("Pushing");
             sshInit();
-            gitRepository.push().setRemote("mine").call();
+            gitRepository.push().setRemote(remote).call();
         } catch (GitAPIException e) {
             throw new IOException(e);
         }

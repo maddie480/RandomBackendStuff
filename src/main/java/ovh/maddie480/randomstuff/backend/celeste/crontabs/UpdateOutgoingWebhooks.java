@@ -35,6 +35,8 @@ public class UpdateOutgoingWebhooks {
             return null; // method signature
         });
 
+        GitHubMirror.main(null);
+
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
             WebhookExecutor.executeWebhook(
                     webhook,
