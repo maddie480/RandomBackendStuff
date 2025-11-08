@@ -30,6 +30,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -466,20 +467,30 @@ public class CelesteStuffHealthCheck {
             }
         }
 
-        for (Map.Entry<String, String> pair : ImmutableMap.of(
-                "https://maddie480.ovh/celeste/everest-versions", "https://everestapi.github.io/updatermirror/everest_versions.json",
-                "https://maddie480.ovh/celeste/olympus-versions", "https://everestapi.github.io/updatermirror/olympus_versions.json"
-        ).entrySet()) {
-            log.debug("Comparing {} and {}...", pair.getKey(), pair.getValue());
+        List<String> jsonsToCheck = Arrays.asList("everest-versions", "olympus-versions", "mod_ids_to_names.json");
+        List<Function<JSONTokener, Object>> getJavaObject = Arrays.asList(
+                t -> new JSONArray(t).toList(),
+                t -> new JSONArray(t).toList(),
+                t -> new JSONObject(t).toMap()
+        );
+        for (int i = 0; i < jsonsToCheck.size(); i++) {
+            String s = jsonsToCheck.get(i);
+            String source1 = "https://maddie480.ovh/celeste/" + s;
+            String source2 = "https://everestapi.github.io/updatermirror/" + s.replace("-", "_");
+            if (!source2.endsWith(".json")) source2 += ".json";
 
-            JSONArray left, right;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(pair.getKey())) {
-                left = new JSONArray(new JSONTokener(is));
+            log.debug("Comparing {} files...", s);
+
+            Function<JSONTokener, Object> getter = getJavaObject.get(i);
+
+            Object object1, object2;
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(source1)) {
+                object1 = getter.apply(new JSONTokener(is));
             }
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(pair.getValue())) {
-                right = new JSONArray(new JSONTokener(is));
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(source2)) {
+                object2 = getter.apply(new JSONTokener(is));
             }
-            if (!left.toList().equals(right.toList())) throw new IOException(pair.getKey() + " and " + pair.getValue() + " don't match!");
+            if (!object1.equals(object2)) throw new IOException(s + " files don't match on maddie480.ovh and everestapi.github.io!");
         }
     }
 

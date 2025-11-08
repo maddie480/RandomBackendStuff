@@ -83,7 +83,7 @@ public final class GitOperator {
                     .addFilepattern(files)
                     .call();
 
-            if (gitRepository.status().call().getAdded().isEmpty()) {
+            if (gitRepository.status().call().getChanged().isEmpty()) {
                 log.info("No files changed, skipping");
                 return;
             }
