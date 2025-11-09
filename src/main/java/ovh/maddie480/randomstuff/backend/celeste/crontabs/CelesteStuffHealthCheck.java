@@ -452,9 +452,19 @@ public class CelesteStuffHealthCheck {
     }
 
     public static void checkEverestGitHubAPIMirrorMatch() throws IOException {
-        for (String s : Arrays.asList("everest_update.yaml", "mod_search_database.yaml", "mod_dependency_graph.yaml")) {
-            try (InputStream is1 = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/" + s);
-                 InputStream is2 = ConnectionUtils.openStreamWithTimeout("https://everestapi.github.io/updatermirror/" + s)) {
+        for (String s : Arrays.asList(
+                "everest_update.yaml",
+                "mod_search_database.yaml",
+                "mod_dependency_graph.yaml",
+                "gamebanana-categories",
+                "gamebanana-subcategories"
+        )) {
+            String source1 = "https://maddie480.ovh/celeste/" + s;
+            String source2 = "https://everestapi.github.io/updatermirror/" + s.replace("-", "_");
+            if (!source2.endsWith(".yaml")) source2 += ".yaml";
+
+            try (InputStream is1 = ConnectionUtils.openStreamWithTimeout(source1);
+                 InputStream is2 = ConnectionUtils.openStreamWithTimeout(source2)) {
 
                 log.debug("Comparing {} files...", s);
 
@@ -467,10 +477,18 @@ public class CelesteStuffHealthCheck {
             }
         }
 
-        List<String> jsonsToCheck = Arrays.asList("everest-versions", "olympus-versions", "mod_ids_to_names.json");
+        List<String> jsonsToCheck = Arrays.asList(
+                "gamebanana-featured",
+                "everest-versions",
+                "olympus-versions",
+                "loenn-versions",
+                "mod_ids_to_names.json"
+        );
         List<Function<JSONTokener, Object>> getJavaObject = Arrays.asList(
                 t -> new JSONArray(t).toList(),
                 t -> new JSONArray(t).toList(),
+                t -> new JSONArray(t).toList(),
+                t -> new JSONObject(t).toMap(),
                 t -> new JSONObject(t).toMap()
         );
         for (int i = 0; i < jsonsToCheck.size(); i++) {
