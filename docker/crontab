@@ -20,6 +20,7 @@
 # For more information see the manual pages of crontab(5) and cron(8)
 #
 #  m   h dom mon dow command
+   0  19   *   *   * /home/debian/docker-run-with-logging.sh full-update-check
   15  19   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs
   45   *   *   *   * /home/debian/docker-run-hourly-crontabs.sh
 */10   *   *   *   * cd /home/debian && ./magic-auto-deploy.sh

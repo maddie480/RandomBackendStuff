@@ -78,6 +78,11 @@ public class CrontabRunner {
             return;
         }
 
+        if (arg.equals("--updater")) {
+            runUpdater(true);
+            return;
+        }
+
         // redirect logs to a file
         redirectLogsToFile(args[0]);
 
@@ -91,7 +96,10 @@ public class CrontabRunner {
         new Thread("Update Checker") {
             @Override
             public void run() {
-                updaterLoop();
+                while (true) {
+                    runUpdater(false);
+                    unstoppableSleep(120_000);
+                }
             }
         }.start();
 
@@ -294,36 +302,20 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] TwitchUpdateChecker", () -> new TwitchUpdateChecker().checkForUpdates());
     }
 
-    private static void updaterLoop() {
-        logger.info("Registering Update Checker Tracker...");
-        EventListener.addEventListener(new UpdateCheckerTracker());
-
-        while (true) {
-            ZonedDateTime runUntil = ZonedDateTime.now(ZoneId.of("UTC")).plusHours(1)
-                    .withMinute(0).withSecond(0).withNano(0);
-
-            while (runUntil.getHour() % 6 != 1) {
-                runUntil = runUntil.plusHours(1);
-            }
-
-            logger.info("Starting updater loop, will stop on {}", runUntil.withZoneSameInstant(ZoneId.systemDefault()));
-            boolean full = true;
-
-            while (ZonedDateTime.now().isBefore(runUntil)) {
-                runUpdater(full, runUntil);
-                full = false;
-                unstoppableSleep(120_000);
-            }
+    private static void runUpdater(boolean fullUpdateCheck) {
+        if (!fullUpdateCheck) {
+            runProcessAndAlertOnException("[Updater] checkEverestVersions", EverestVersionLister::checkEverestVersions);
+            runProcessAndAlertOnException("[Updater] checkOlympusVersions", OlympusVersionLister::checkOlympusVersions);
         }
-    }
 
-    private static void runUpdater(boolean fullUpdateCheck, ZonedDateTime giveUpAt) {
-        runProcessAndAlertOnException("[Updater] checkEverestVersions", giveUpAt, EverestVersionLister::checkEverestVersions);
-        runProcessAndAlertOnException("[Updater] checkOlympusVersions", giveUpAt, OlympusVersionLister::checkOlympusVersions);
+        runProcessAndAlertOnException("[Updater] updateDatabase(full: " + fullUpdateCheck + ")", () -> {
+            UpdateCheckerTracker tracker = new UpdateCheckerTracker();
+            EventListener.addEventListener(tracker);
 
-        runProcessAndAlertOnException("[Updater] updateDatabase(full: " + fullUpdateCheck + ")", giveUpAt, () -> {
             Main.updateDatabase(fullUpdateCheck);
             UpdateOutgoingWebhooks.notifyUpdate();
+
+            EventListener.removeEventListener(tracker);
         });
     }
 
@@ -505,23 +497,12 @@ public class CrontabRunner {
     }
 
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
-        runProcessAndAlertOnException(name, null, process);
-    }
-
-    private static void runProcessAndAlertOnException(String name, ZonedDateTime giveUpAt, ExplodyMethod process) {
         logger.debug("Waiting for updater lock to be released...");
 
         Path lockFile = Paths.get("updater_lock");
 
         try {
-            while (!tryCreate(lockFile)) {
-                unstoppableSleep(1000);
-
-                if (giveUpAt != null && ZonedDateTime.now().isAfter(giveUpAt)) {
-                    logger.debug("Waited for too long! Aborting.");
-                    return;
-                }
-            }
+            while (!tryCreate(lockFile)) unstoppableSleep(1000);
             logger.debug("Acquired updater lock!");
         } catch (IOException e) {
             logger.error("Could not lock updater", e);
