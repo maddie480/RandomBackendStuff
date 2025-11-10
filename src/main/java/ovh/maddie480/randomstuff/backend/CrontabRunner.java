@@ -312,10 +312,12 @@ public class CrontabRunner {
             UpdateCheckerTracker tracker = new UpdateCheckerTracker();
             EventListener.addEventListener(tracker);
 
-            Main.updateDatabase(fullUpdateCheck);
-            UpdateOutgoingWebhooks.notifyUpdate();
-
-            EventListener.removeEventListener(tracker);
+            try {
+                Main.updateDatabase(fullUpdateCheck);
+                UpdateOutgoingWebhooks.notifyUpdate();
+            } finally {
+                EventListener.removeEventListener(tracker);
+            }
         });
     }
 
