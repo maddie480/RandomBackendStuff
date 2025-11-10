@@ -12,8 +12,9 @@ The [CrontabRunner](src/main/java/ovh/maddie480/randomstuff/backend/CrontabRunne
   - The Mod Structure Verifier bot
   - A health check bot
   - A socket server the frontend can use to trigger backend tasks
-  - The [Everest Update Checker](https://github.com/maddie480/EverestUpdateCheckerServer), with full updates every day at 1:00, 7:00, 13:00 and 19:00 UTC, and fast updates every 2 minutes
+  - The [Everest Update Checker](https://github.com/maddie480/EverestUpdateCheckerServer), with fast updates every 2 minutes
 
 - for scheduled processes, it is called by a crontab with different arguments:
-  - `--daily`: called every day at 19:15 UTC
+  - `--daily`: called every day at 7pm UTC
   - `--hourly`: called every hour when the minute is 45
+  - `--updater`: runs a full mod update, called everyday at 12pm UTC

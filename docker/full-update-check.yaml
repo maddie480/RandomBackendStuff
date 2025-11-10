@@ -1,5 +1,5 @@
 services:
-  daily-crontabs:
+  full-update-check:
     image: max480/random-stuff-backend
     command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/CrontabRunner --updater/' /app/run_bot.sh && sed -i 's/-Xmx256m/-Xmx128m/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants_backend
