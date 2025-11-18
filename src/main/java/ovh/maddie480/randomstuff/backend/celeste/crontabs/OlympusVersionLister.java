@@ -86,9 +86,6 @@ public class OlympusVersionLister {
                 Map<String, Object> entry = new HashMap<>();
                 JSONObject build = (JSONObject) b;
 
-                // Azure won't let me delete those, wtf
-                if (Arrays.asList("25.11.15.04", "25.11.15.05").contains(build.getString("buildNumber"))) continue;
-
                 // most of the fields can be determined straight from the build number
                 entry.put("branch", branch);
                 entry.put("date", build.getString("finishTime"));
