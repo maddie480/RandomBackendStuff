@@ -72,7 +72,7 @@ jobs:
     name: ${{ matrix.tas.name }}
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
