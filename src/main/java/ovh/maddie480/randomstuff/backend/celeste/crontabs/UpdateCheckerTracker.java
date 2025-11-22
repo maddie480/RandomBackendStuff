@@ -404,7 +404,7 @@ public class UpdateCheckerTracker extends EventListener {
             if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
                 log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
 
-                Path modSearchDatabase = Paths.get("uploads/mod_search_database.yaml");
+                Path modSearchDatabase = Paths.get("uploads/modsearchdatabase.yaml");
 
                 { // sort the mod search database in a predictable order
                     List<Map<String, Object>> database;
