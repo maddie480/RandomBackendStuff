@@ -37,6 +37,7 @@ public class GitHubMirror {
         mirror("https://maddie480.ovh/celeste/olympus-versions", "olympus_versions.json", GitHubMirror::prettyPrintJSONArray);
         mirror("https://maddie480.ovh/celeste/loenn-versions", "loenn_versions.json", GitHubMirror::prettyPrintJSONObject);
         mirror("https://maddie480.ovh/celeste/mod_ids_to_names.json", "mod_ids_to_names.json", GitHubMirror::prettyPrintJSONObject);
+        mirror("https://maddie480.ovh/celeste/mod_ids_to_categories.json", "mod_ids_to_categories.json", GitHubMirror::prettyPrintJSONObject);
 
         GitOperator.commitChanges("updatermirror", "Update files mirrored from maddie480.ovh", "origin");
         FileUtils.deleteDirectory(new File("/tmp/Everest"));
