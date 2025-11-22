@@ -429,7 +429,7 @@ public class UpdateCheckerTracker extends EventListener {
                     throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
                 }
 
-                modSearchDatabaseSha256 = newModSearchDatabaseHash;
+                modSearchDatabaseSha256 = hash("uploads/modsearchdatabase.yaml");
                 UpdateOutgoingWebhooks.changesHappened();
             }
 
