@@ -404,7 +404,22 @@ public class UpdateCheckerTracker extends EventListener {
             if (!newModSearchDatabaseHash.equals(modSearchDatabaseSha256)) {
                 log.info("Reloading mod_search_database.yaml as hash changed: {} -> {}", modSearchDatabaseSha256, newModSearchDatabaseHash);
 
-                Files.copy(Paths.get("uploads/modsearchdatabase.yaml"), Paths.get("/shared/celeste/updater/mod-search-database.yaml"), StandardCopyOption.REPLACE_EXISTING);
+                Path modSearchDatabase = Paths.get("uploads/mod_search_database.yaml");
+
+                { // sort the mod search database in a predictable order
+                    List<Map<String, Object>> database;
+                    try (InputStream is = Files.newInputStream(modSearchDatabase)) {
+                        database = YamlUtil.load(is);
+                    }
+                    database.sort(Comparator
+                            .<Map<String, Object>, String>comparing(o -> (String) o.get("GameBananaType"))
+                            .thenComparing(o -> (int) o.get("GameBananaId")));
+                    try (OutputStream os = Files.newOutputStream(modSearchDatabase)) {
+                        YamlUtil.dump(database, os);
+                    }
+                }
+
+                Files.copy(modSearchDatabase, Paths.get("/shared/celeste/updater/mod-search-database.yaml"), StandardCopyOption.REPLACE_EXISTING);
 
                 serializeModSearchDatabase();
 
