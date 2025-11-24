@@ -308,7 +308,7 @@ public class CrontabRunner {
             runProcessAndAlertOnException("[Updater] checkOlympusVersions", OlympusVersionLister::checkOlympusVersions);
         }
 
-        /* runProcessAndAlertOnException("[Updater] updateDatabase(full: " + fullUpdateCheck + ")", () -> {
+        runProcessAndAlertOnException("[Updater] updateDatabase(full: " + fullUpdateCheck + ")", () -> {
             UpdateCheckerTracker tracker = new UpdateCheckerTracker();
             EventListener.addEventListener(tracker);
 
@@ -318,7 +318,7 @@ public class CrontabRunner {
             } finally {
                 EventListener.removeEventListener(tracker);
             }
-        }); */
+        });
     }
 
     private static void housekeepArbitraryModApp() throws IOException {
