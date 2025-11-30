@@ -163,11 +163,6 @@ fi
     };
 
     public static void main(String[] args) throws Exception {
-        if (!LocalDate.now().equals(EverestPRLabelSlapper.getNextRollingReleaseDate())) {
-            log.info("This isn't rolling release day, skipping");
-            return;
-        }
-
         log.debug("Fetching versions...");
         Map<String, String> fields = new HashMap<>();
         fields.put("{{CelesteTAS-SHA}}", getLatestCommitSHA("VampireFlower/CelesteTAS"));
