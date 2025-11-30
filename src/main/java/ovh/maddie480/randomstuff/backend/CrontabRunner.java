@@ -163,9 +163,6 @@ public class CrontabRunner {
     private static void runDailyProcesses() {
         Path dailyLock = Paths.get("daily_lock");
         runProcessAndAlertOnException("[Daily] Files.createFile(dailyLock)", () -> Files.createFile(dailyLock));
-        runProcessAndAlertOnException("[Daily] TASCheckUpdate", () -> TASCheckUpdate.main(null));
-        runProcessAndAlertOnException("[Daily] Files.delete(dailyLock)", () -> Files.delete(dailyLock));
-        System.exit(0);
 
         // This test has a tendency to OOM, get it out of the way right away
         runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
@@ -184,6 +181,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] AssetDriveService.classifyAssets", AssetDriveService::classifyAssets);
         runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
         runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
+        runProcessAndAlertOnException("[Daily] TASCheckUpdate", () -> TASCheckUpdate.main(null));
 
         // Health Checks
         runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);
