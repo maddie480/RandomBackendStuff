@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,6 +51,7 @@ public class ContinuousHealthChecks {
             "Timezone Role Updater", 1,
             "Nextcloud", 1,
             "Maddie's Random Stuff Website", 1,
+            "Certbot", 1,
             // GameBanana is given more leniency, ESPECIALLY the file server
             "GameBanana Website", 3,
             "GameBanana API", 3,
@@ -86,6 +89,8 @@ public class ContinuousHealthChecks {
                                 "Timezone Role Updater");
                         checkHealth(ContinuousHealthChecks::checkNextcloudSpace,
                                 "Nextcloud", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
+                        checkHealth(() -> Files.exists(Paths.get("/shared/temp/cert_renew_success")),
+                                "Certbot", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                     } catch (Exception e) {
                         // this shouldn't happen, unless we cannot communicate with Discord.
                         logger.error("Uncaught exception happened during health check!", e);
