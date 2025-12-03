@@ -1,6 +1,7 @@
 services:
   full-update-check:
     image: max480/random-stuff-backend
+    network_mode: host
     command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/CrontabRunner --updater/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants_backend
     volumes:
@@ -12,3 +13,4 @@ services:
         limits:
           cpus: 1
           memory: 384M
+

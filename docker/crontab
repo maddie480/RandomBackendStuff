@@ -27,3 +27,5 @@
 #if LNJ_BOT
 # 30  12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot
 #endif
+
+   0   4   *   *   * rm /home/debian/.bash_history > /dev/null 2>&1
