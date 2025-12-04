@@ -246,7 +246,7 @@ fi
             for (Map.Entry<String, String> field : fields.entrySet()) {
                 prDescription = prDescription.replace(field.getKey(), field.getValue());
             }
-            openPullRequest("Bump TAS Check dependencies", prDescription);
+            openPullRequest("EverestAPI/Everest", "dev", "Bump TAS Check dependencies", prDescription);
 
             fields.remove("{{compare:CelesteTAS-SHA}}");
             fields.remove("{{compare:StrawberryJamTAS-SHA}}");
@@ -268,8 +268,8 @@ fi
     /**
      * Opens a pull request to merge maddie480-bot/Everest:dev to EverestAPI/Everest:dev.
      */
-    private static void openPullRequest(String title, String description) throws Exception {
-        HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://api.github.com/repos/EverestAPI/Everest/pulls");
+    static void openPullRequest(String repo, String branch, String title, String description) throws Exception {
+        HttpURLConnection connAuth = ConnectionUtils.openConnectionWithTimeout("https://api.github.com/repos/" + repo + "/pulls");
         connAuth.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_BASIC_AUTH);
         connAuth.setRequestProperty("Content-Type", "application/json");
         connAuth.setRequestMethod("POST");
@@ -278,8 +278,8 @@ fi
         JSONObject req = new JSONObject();
         req.put("title", title);
         req.put("body", description);
-        req.put("head", "maddie480-bot:dev");
-        req.put("base", "dev");
+        req.put("head", "maddie480-bot:" + branch);
+        req.put("base", branch);
 
         try (OutputStream os = connAuth.getOutputStream();
              BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {

@@ -62,7 +62,7 @@ public final class GitOperator {
             if (mineUrl != null) {
                 gitRepository.remoteAdd()
                         .setName("mine")
-                        .setUri(new URIish("git@github.com:maddie480-bot/Everest.git"))
+                        .setUri(new URIish(mineUrl))
                         .call();
 
                 sshInit();

@@ -168,6 +168,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
 
         // Update tasks
+        runProcessAndAlertOnException("[Daily] Dependabork", () -> Dependabork.main(null));
         runProcessAndAlertOnException("[Daily] GameBananaProfileLink", () -> GameBananaProfileLink.main(null));
         runProcessAndAlertOnException("[Daily] MembershipNotifier", () -> MembershipNotifier.main(null));
         runProcessAndAlertOnException("[Daily] TimezoneBot.leaveDeadServerIfNecessary", TimezoneBot::leaveDeadServerIfNecessary);
