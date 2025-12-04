@@ -21,6 +21,7 @@ services:
     network_mode: host
     restart: on-failure
     env_file: secret_constants_backend
+    command: ["/bin/bash", "-c", "sed -i 's/-Xmx256m/-Xmx288m/' /app/run_bot.sh && /app/run_bot.sh"]
     volumes:
       - /home/debian/backend:/backend
       - /home/debian/shared:/shared
@@ -29,4 +30,4 @@ services:
       resources:
         limits:
           cpus: "0.4"
-          memory: 544M
+          memory: 576M
