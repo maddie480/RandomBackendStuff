@@ -60,6 +60,9 @@ public class Dependabork {
             return Integer.toString(stableVersion);
         }
 
+        StringBuilder description = new StringBuilder();
+        description.append("Updates Everest and its dependencies to latest stable (version **").append(stableVersion).append("**).\n\n");
+
         Path tempdir = Paths.get("/tmp/Everest");
         if (Files.exists(tempdir)) FileUtils.deleteDirectory(tempdir.toFile());
 
@@ -67,6 +70,7 @@ public class Dependabork {
         GitOperator.init("git@github.com:" + org + "/" + repo + ".git", branch, "git@github.com:maddie480-bot/" + repo + ".git");
 
         log.debug("Downloading latest lib-stripped...");
+        description.append("Updated DLLs in the `lib-stripped` folder:\n");
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(libStrippedUrl);
              ZipInputStream zis = new ZipInputStream(is)) {
 
@@ -75,12 +79,14 @@ public class Dependabork {
                 Path target = tempdir.resolve(entry.getName());
                 if (!entry.isDirectory() && Files.exists(target)) {
                     log.debug("Updating {}", entry.getName());
+                    description.append("- `").append(target.getFileName()).append("`\n");
                     try (OutputStream os = Files.newOutputStream(target)) {
                         IOUtils.copy(zis, os);
                     }
                 }
             }
         }
+        description.append('\n');
 
         Path csproj;
         try (Stream<Path> fileSearch = Files.list(tempdir)) {
@@ -92,6 +98,7 @@ public class Dependabork {
         String csprojContents = FileUtils.readFileToString(csproj.toFile(), StandardCharsets.UTF_8);
 
         log.debug("Loading used dependency versions...");
+        description.append("Updated dependency versions in `").append(csproj.getFileName()).append("`:\n");
         try (InputStream is = ConnectionUtils.openStreamWithTimeout(mainUrl);
              ZipInputStream zis = new ZipInputStream(is)) {
 
@@ -113,6 +120,7 @@ public class Dependabork {
                 csprojContents = csprojContents.replaceAll(regex, "Include=\"" + assemblyName + "\" Version=\"" + version + "\"");
 
                 log.debug("Set version of {} to {}", assemblyName, version);
+                description.append("- `").append(assemblyName).append("` set to version **").append(version).append("**\n");
             }
         }
 
@@ -123,7 +131,7 @@ public class Dependabork {
         FileUtils.writeStringToFile(tempdir.resolve("everest.yaml").toFile(), everestYaml, StandardCharsets.UTF_8);
 
         GitOperator.commitChanges(".", "Bump Everest dependency", "mine");
-        TASCheckUpdate.openPullRequest(org + "/" + repo, branch, "Bump Everest dependency", "");
+        TASCheckUpdate.openPullRequest(org + "/" + repo, branch, "Bump Everest dependency", description.toString().trim());
 
         FileUtils.deleteDirectory(tempdir.toFile());
 
