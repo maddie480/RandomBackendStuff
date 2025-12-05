@@ -755,7 +755,7 @@ public class GameBananaAutomatedChecks {
                     String itemtype = mod.split("/")[0];
                     int itemid = Integer.parseInt(mod.split("/")[1]);
 
-                    badPngListMessage = ":warning: The file at " + url + " (page name **" + modName + "**) has invalid PNG files:\n" +
+                    badPngListMessage = ":warning: The file at " + url + " (page title **" + modName + "**) has invalid PNG files:\n" +
                             "```\n" +
                             badPngListMessage + "\n" +
                             "```\n" +
@@ -769,7 +769,7 @@ public class GameBananaAutomatedChecks {
                         } else if (webhook.startsWith("https://discord.com/") && tempListFile.length() <= 10 * 1024 * 1024) {
                             // Discord webhook and list too long to be included in the message: send the file with attachment
                             executeEnhancedWebhook(webhook,
-                                    ":warning: The file at " + url + " (page name **" + modName + "**) has invalid PNG files! You will find the list attached.\n" +
+                                    ":warning: The file at " + url + " (page title **" + modName + "**) has invalid PNG files! You will find the list attached.\n" +
                                             "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
                                             ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid),
                                     Collections.singletonList(tempListFile)
@@ -777,7 +777,7 @@ public class GameBananaAutomatedChecks {
                         } else {
                             // Discord-compatible webhook or file is too big(???): send the file with special header but without the attachment
                             executeEnhancedWebhook(webhook,
-                                    ":warning: The file at " + url + " (page name **" + modName + "**) has invalid PNG files!\n" +
+                                    ":warning: The file at " + url + " (page title **" + modName + "**) has invalid PNG files!\n" +
                                             "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
                                             ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid)
                             );
