@@ -30,10 +30,10 @@ public class UpdateOutgoingWebhooks {
             return;
         }
 
-        /* ConnectionUtils.runWithRetry(() -> {
+        ConnectionUtils.runWithRetry(() -> {
             OtobotMirror.getInstance().update();
             return null; // method signature
-        }); */
+        });
 
         GitHubMirror.main(null);
 
