@@ -33,6 +33,7 @@ public class Dependabork {
         status = process("maddie480", "MaddieHelpingHand", "master");
         status = process("maddie480", "ExtendedVariantMode", "master");
         status = process("EverestAPI", "CelesteCollabUtils2", "master");
+        status = process("maddie480", "JungleHelper", "master");
         FileUtils.writeStringToFile(stateFile, status, "UTF-8");
     }
 
