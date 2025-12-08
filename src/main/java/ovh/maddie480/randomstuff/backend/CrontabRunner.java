@@ -108,6 +108,7 @@ public class CrontabRunner {
             TimezoneBot.main(null);
             ModStructureVerifier.main(null);
             new QuestCommunityBot();
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":arrow_up: :desktop: The backend just started.");
         } catch (Exception e) {
             logger.error("Error while starting up the bots", e);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not start up the bots: " + e);
