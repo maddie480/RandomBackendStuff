@@ -241,6 +241,10 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] PlatformBackup", PlatformBackup::run);
         runProcessAndAlertOnException("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily);
 
+        if (ZonedDateTime.now().getDayOfMonth() == 1) {
+            runProcessAndAlertOnException("[Monthly] FullMirrorCheck", () -> FullMirrorCheck.main(null));
+        }
+
         runProcessAndAlertOnException("[Daily] Files.delete(dailyLock)", () -> Files.delete(dailyLock));
     }
 
