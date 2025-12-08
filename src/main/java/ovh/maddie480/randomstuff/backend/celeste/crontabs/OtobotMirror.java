@@ -20,10 +20,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.PSSParameterSpec;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class OtobotMirror {
@@ -80,6 +77,13 @@ public class OtobotMirror {
         return updaterDatabase.values().stream()
                 .map(mod -> (String) mod.get("MirrorURL"))
                 .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.substring("https://celestemodupdater.0x0a.de/".length()))
+                .filter(mod -> !Arrays.asList(
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror/484636.zip",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror/1214662.zip",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror/604125.zip",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror/1574839.zip",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror/1410481.zip"
+                ).contains(mod))
                 .collect(Collectors.toSet());
     }
 
@@ -92,6 +96,16 @@ public class OtobotMirror {
                 .map(mod -> mod.get("MirroredScreenshots"))
                 .flatMap(List::stream)
                 .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.substring("https://celestemodupdater.0x0a.de/".length()))
+                .filter(mod -> !Arrays.asList(
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_679706ef4a45a.png",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_66fca6179d61c.png",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_672c6e3909e08.png",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_683984624742f.png",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_6839845890023.png",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_68657c2a213ec.png",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_693150d334dd6.png",
+                        "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/img_ss_mods_693150d2ebe9b.png"
+                ).contains(mod))
                 .collect(Collectors.toSet());
     }
 
@@ -102,6 +116,19 @@ public class OtobotMirror {
         }
         return richPresenceIcons.get("HashesToFiles").keySet().stream()
                 .map(hash -> "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/" + hash + ".png")
+                .filter(mod -> !Arrays.asList(
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/d8949733e3725149.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/b4c4a5e273e1e69c.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/5c5ad7b331e745f1.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/e910496c758d0d27.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/3297439aef239566.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/e2b43677fa1258cd.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/2c0783e7350faacb.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/979ab4946a710b8e.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/26fd23a14a37efa1.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/292cdfba118bccab.png",
+                        "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/234b8d317360cb74.png"
+                ).contains(mod))
                 .collect(Collectors.toSet());
     }
 
