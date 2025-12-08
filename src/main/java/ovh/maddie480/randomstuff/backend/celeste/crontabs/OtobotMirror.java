@@ -79,6 +79,7 @@ public class OtobotMirror {
         }
         return updaterDatabase.values().stream()
                 .map(mod -> (String) mod.get("MirrorURL"))
+                .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.substring("https://celestemodupdater.0x0a.de/".length()))
                 .collect(Collectors.toSet());
     }
 
@@ -90,6 +91,7 @@ public class OtobotMirror {
         return modSearchDatabase.stream()
                 .map(mod -> mod.get("MirroredScreenshots"))
                 .flatMap(List::stream)
+                .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.substring("https://celestemodupdater.0x0a.de/".length()))
                 .collect(Collectors.toSet());
     }
 
@@ -99,7 +101,7 @@ public class OtobotMirror {
             richPresenceIcons = YamlUtil.load(is);
         }
         return richPresenceIcons.get("HashesToFiles").keySet().stream()
-                .map(hash -> "https://celestemodupdater.0x0a.de/rich-presence-icons/" + hash + ".png")
+                .map(hash -> "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/" + hash + ".png")
                 .collect(Collectors.toSet());
     }
 

@@ -37,7 +37,7 @@ public class ModCatalogDictionaryGenerator {
                             throw new RuntimeException(e);
                         }
                     })
-                    .map(map -> "https://celestemodupdater.0x0a.de/banana-mirror/" + map.get("GameBananaFileId") + ".zip")
+                    .map(map -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + map.get("GameBananaFileId") + ".zip")
                     .toList();
         }
 

@@ -348,8 +348,8 @@ public class CelesteStuffHealthCheck {
                     .collect(Collectors.toList());
         }
 
-        for (String mirror : Arrays.asList("https://celestemodupdater.0x0a.de", "https://celestemodupdater-storage.0x0a.de",
-                "https://celestemodupdater-conductor.0x0a.de", "https://celestemodupdater-mirror.papyrus.0x0a.de")) {
+        for (String mirror : Arrays.asList("https://celestemodupdater.0x0a.de",
+                "https://celestemodupdater-storage.0x0a.de", "https://celestemodupdater-mirror.papyrus.0x0a.de")) {
 
             log.debug("Checking Banana Mirror contents ({})...", mirror);
 
@@ -1053,7 +1053,7 @@ public class CelesteStuffHealthCheck {
     public static void checkModStructureVerifier() throws IOException {
         log.debug("Downloading Tornado Valley...");
 
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater.0x0a.de/banana-mirror/399127.zip");
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror/399127.zip");
              OutputStream os = new FileOutputStream("/tmp/tornado.zip")) {
 
             IOUtils.copy(is, os);
