@@ -38,7 +38,7 @@
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>6.1.2</version>
+            <version>6.1.3</version>
             <exclusions>
                 <!-- None of the bots have audio features, so we can exclude those dependencies -->
                 <!-- as mentioned in JDA's readme -->
