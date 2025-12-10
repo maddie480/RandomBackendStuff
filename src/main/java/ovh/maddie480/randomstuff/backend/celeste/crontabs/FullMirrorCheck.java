@@ -10,9 +10,11 @@ import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -23,7 +25,11 @@ public class FullMirrorCheck {
 
     public static void main(String[] args) throws IOException {
         AtomicBoolean allGood = new AtomicBoolean(true);
-        boolean popup = args != null;
+
+        // To avoid cluttering the output, the progress is shown in a window with a progress bar.
+        // This only appears if run directly (the crontabs invoke it with args = null),
+        // and if the environment can actually display the window.
+        boolean popup = args != null && !GraphicsEnvironment.isHeadless();
 
         {
             logger.debug("Checking match between celestemodupdater-storage.0x0a.de and updater database");
