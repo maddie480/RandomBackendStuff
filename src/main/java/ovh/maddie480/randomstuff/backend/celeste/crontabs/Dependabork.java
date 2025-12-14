@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -30,14 +29,14 @@ public class Dependabork {
 
     public static void main(String[] args) throws Exception {
         String status;
-        status = process("maddie480", "MaddieHelpingHand", "master");
-        status = process("maddie480", "ExtendedVariantMode", "master");
-        status = process("EverestAPI", "CelesteCollabUtils2", "master");
-        status = process("maddie480", "JungleHelper", "master");
+        status = process("maddie480", "MaddieHelpingHand", "master", "MaddieHelpingHand.csproj");
+        status = process("maddie480", "ExtendedVariantMode", "master", "ExtendedVariantMode.csproj");
+        status = process("EverestAPI", "CelesteCollabUtils2", "master", "CollabUtils2.csproj");
+        status = process("maddie480", "JungleHelper", "master", "Code/JungleHelper.csproj");
         FileUtils.writeStringToFile(stateFile, status, "UTF-8");
     }
 
-    private static String process(String org, String repo, String branch) throws Exception {
+    private static String process(String org, String repo, String branch, String pathToCsproj) throws Exception {
         String latestStableProcessed = FileUtils.readFileToString(stateFile, StandardCharsets.UTF_8);
 
         log.debug("Finding download URLs...");
@@ -90,13 +89,7 @@ public class Dependabork {
         }
         description.append('\n');
 
-        Path csproj;
-        try (Stream<Path> fileSearch = Files.list(tempdir)) {
-            csproj = fileSearch
-                    .filter(p -> p.getFileName().toString().endsWith(".csproj"))
-                    .findFirst().orElseThrow();
-        }
-
+        Path csproj = tempdir.resolve(pathToCsproj);
         String csprojContents = FileUtils.readFileToString(csproj.toFile(), StandardCharsets.UTF_8);
 
         log.debug("Loading used dependency versions...");
