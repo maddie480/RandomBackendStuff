@@ -2,6 +2,10 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.misc;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
@@ -10,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
@@ -18,10 +24,14 @@ import java.util.stream.Stream;
  * This is a service that reposts stuff prefixed with # to a webhook.
  */
 public class WebhookReposter {
-    private static final long ACTIVE_IN_CHANNEL_ID = 445631337315958796L;
-    private static final long AVATAR_CHANNEL_ID = 445236692136230943L;
+    private static final Logger logger = LoggerFactory.getLogger(WebhookReposter.class);
 
-    private record Identity(String prefix, long avatarMessageId, String nickname) {}
+    private static final long ACTIVE_IN_CHANNEL_ID = 445631337315958796L;
+    private static final long AVATAR_CHANNEL_ID = 1280617841980080158L;
+
+    private static final Map<String, String> avatarUrls = new HashMap<>();
+
+    private record Identity(String prefix, String avatarFileName, String nickname) {}
 
     public static boolean onMessageReceived(MessageReceivedEvent event) throws IOException {
         if (event.getChannel().getIdLong() != ACTIVE_IN_CHANNEL_ID
@@ -41,6 +51,7 @@ public class WebhookReposter {
         List<Path> attachments = new ArrayList<>();
         for (Message.Attachment attachment : event.getMessage().getAttachments()) {
             try {
+                logger.debug("Downloading attachment {}", attachment.getFileName());
                 Path file = tempDirectory.resolve(attachment.getFileName());
                 file = attachment.getProxy().downloadToPath(file).get();
                 attachments.add(file);
@@ -49,12 +60,36 @@ public class WebhookReposter {
             }
         }
 
-        // get the URL of the avatar, which is uploaded as a Discord attachment
-        String avatarUrl = event.getJDA()
-                .getTextChannelById(AVATAR_CHANNEL_ID)
-                .retrieveMessageById(identity.avatarMessageId()).complete()
-                .getAttachments().get(0)
-                .getUrl();
+        // upload the URL as a Discord attachment
+        String avatarUrl;
+        synchronized (avatarUrls) {
+            avatarUrl = avatarUrls.get(identity.avatarFileName());
+            logger.debug("Cached avatar URL for {} is {}", identity.avatarFileName(), avatarUrl);
+            if (avatarUrl == null) {
+                avatarUrl = event.getJDA()
+                    .getTextChannelById(AVATAR_CHANNEL_ID)
+                    .sendMessage(MessageCreateData.fromFiles(FileUpload.fromData(
+                        Paths.get("webhook_reposter", identity.avatarFileName()))))
+                    .complete()
+                    .getAttachments().get(0)
+                    .getUrl();
+                avatarUrls.put(identity.avatarFileName(), avatarUrl);
+                logger.debug("Uploaded the avatar, got URL: {}", avatarUrl);
+
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(3_600_000L);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    synchronized (avatarUrls) {
+                        avatarUrls.remove(identity.avatarFileName());
+                        logger.debug("Cached avatar for {} expired", identity.avatarFileName());
+                    }
+                }).start();
+            }
+        }
 
         // repost the message
         WebhookExecutor.executeWebhook(
@@ -69,6 +104,7 @@ public class WebhookReposter {
 
         // delete the temp directory with the attachments
         for (Path path : attachments) {
+            logger.debug("Deleting temp file for attachment at {}", path.toAbsolutePath());
             Files.delete(path);
         }
         Files.delete(tempDirectory);
@@ -82,7 +118,7 @@ public class WebhookReposter {
                 String[] split = line.split(";", 3);
                 return new Identity(
                     /* prefix: */ split[0],
-                    /* avatarMessageId: */ Long.parseLong(split[1]),
+                    /* avatarFileName: */ split[1],
                     /* nickname: */ split[2]
                 );
             }).toList();
