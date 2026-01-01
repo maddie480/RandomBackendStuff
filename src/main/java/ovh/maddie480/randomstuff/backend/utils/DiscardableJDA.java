@@ -413,6 +413,9 @@ public class DiscardableJDA implements JDA, Closeable {
     }
 
     @NotNull
+    RestAction<List<SKU>> retrieveSKUList();
+
+    @NotNull
     @Override
     public EntitlementPaginationAction retrieveEntitlements() {
         return backingJDA.retrieveEntitlements();
