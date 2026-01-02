@@ -63,7 +63,7 @@ public class FullMirrorCheck {
 
                     return compareStreams(Arrays.asList(i1, i2, i3));
                 }
-            }, "mod", allGood), allGood));
+            }, "mod " + entry, allGood), allGood));
         }
 
         {
@@ -86,7 +86,7 @@ public class FullMirrorCheck {
 
                     return compareStreams(Arrays.asList(i1, i2, i3));
                 }
-            }, "image", allGood), allGood));
+            }, "image " + entry, allGood), allGood));
         }
 
         {
@@ -103,7 +103,7 @@ public class FullMirrorCheck {
 
                     return compareStreams(Arrays.asList(i1, i2));
                 }
-            }, "Rich Presence icon", allGood), allGood));
+            }, "Rich Presence icon " + entry, allGood), allGood));
         }
 
         if (!allGood.get()) {
@@ -135,7 +135,7 @@ public class FullMirrorCheck {
         }
 
         // the checker returned false 3 times, whoops
-        logger.error("Mirrors aren't identical for {} {}", log, entry);
+        logger.error("Mirrors aren't identical for {}", log);
         allGood.set(false);
     }
 
