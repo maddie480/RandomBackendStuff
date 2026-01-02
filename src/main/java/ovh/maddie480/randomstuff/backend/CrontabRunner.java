@@ -84,7 +84,13 @@ public class CrontabRunner {
         }
 
         if (arg.equals("--mirrorcheck")) {
-            runProcessAndAlertOnException("[Monthly] FullMirrorCheck", () -> FullMirrorCheck.main(null));
+            try {
+                FullMirrorCheck.main(null);
+                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":tada: Full mirror check found no issues!");
+            } catch (Exception e) {
+                logger.error("Error while running FullMirrorCheck", e);
+                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `FullMirrorCheck`: " + e);
+            }
             return;
         }
 
