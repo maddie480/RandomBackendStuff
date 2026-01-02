@@ -83,6 +83,11 @@ public class CrontabRunner {
             return;
         }
 
+        if (arg.equals("--mirrorcheck")) {
+            runProcessAndAlertOnException("[Monthly] FullMirrorCheck", () -> FullMirrorCheck.main(null));
+            return;
+        }
+
         // redirect logs to a file
         redirectLogsToFile(args[0]);
 
@@ -240,10 +245,6 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] StonkUpdateChecker", StonkUpdateChecker::post);
         runProcessAndAlertOnException("[Daily] PlatformBackup", PlatformBackup::run);
         runProcessAndAlertOnException("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily);
-
-        if (ZonedDateTime.now().getDayOfMonth() == 1) {
-            runProcessAndAlertOnException("[Monthly] FullMirrorCheck", () -> FullMirrorCheck.main(null));
-        }
 
         runProcessAndAlertOnException("[Daily] Files.delete(dailyLock)", () -> Files.delete(dailyLock));
     }

@@ -18,3 +18,4 @@ The [CrontabRunner](src/main/java/ovh/maddie480/randomstuff/backend/CrontabRunne
   - `--daily`: called every day at 7pm UTC
   - `--hourly`: called every hour when the minute is 45
   - `--updater`: runs a full mod update, called everyday at 12pm UTC
+  - `--mirrorcheck`: checks that all mods are the same on all mirrors, called every 1st day of the month at 2pm UTC
