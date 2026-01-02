@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class FullMirrorCheck {
@@ -52,19 +53,16 @@ public class FullMirrorCheck {
             }, allGood));
 
             logger.debug("Checking match between mods on all mirrors");
-            doTheParallelStuff(hashes.keySet(), 5, popup, entry -> retryAndCatch(() -> {
-                try (InputStream i1 = ConnectionUtils.openStreamWithTimeout(entry);
-                     InputStream i2 = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/"
-                             + entry.substring("https://celestemodupdater-storage.0x0a.de/".length()));
-                     InputStream i3 = ConnectionUtils.openStreamWithTimeout("https://banana-mirror-mods.celestemods.com/"
-                             + entry.substring("https://celestemodupdater-storage.0x0a.de/banana-mirror/".length()))) {
+            doTheParallelStuff(hashes.keySet(), 5, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
+                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(entry));
+                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/"
+                             + entry.substring("https://celestemodupdater-storage.0x0a.de/".length())));
+                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-mods.celestemods.com/"
+                             + entry.substring("https://celestemodupdater-storage.0x0a.de/banana-mirror/".length())))) {
 
-                    if (!compareStreams(Arrays.asList(i1, i2, i3))) {
-                        logger.error("Mirrors aren't identical for mod {}", entry);
-                        allGood.set(false);
-                    }
+                    return compareStreams(Arrays.asList(i1, i2, i3));
                 }
-            }, allGood));
+            }, "mod", allGood), allGood));
         }
 
         {
@@ -77,20 +75,17 @@ public class FullMirrorCheck {
                         .collect(Collectors.toList());
             }
 
-            doTheParallelStuff(mirroredScreenshots, 25, popup, entry -> retryAndCatch(() -> {
-                try (InputStream i1 = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/"
-                        + entry.substring("https://celestemodupdater.0x0a.de/".length()));
-                     InputStream i2 = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/"
-                             + entry.substring("https://celestemodupdater.0x0a.de/".length()));
-                     InputStream i3 = ConnectionUtils.openStreamWithTimeout("https://banana-mirror-images.celestemods.com/"
-                             + entry.substring("https://celestemodupdater.0x0a.de/banana-mirror-images/".length()))) {
+            doTheParallelStuff(mirroredScreenshots, 25, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
+                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/"
+                        + entry.substring("https://celestemodupdater.0x0a.de/".length())));
+                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/"
+                             + entry.substring("https://celestemodupdater.0x0a.de/".length())));
+                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-images.celestemods.com/"
+                             + entry.substring("https://celestemodupdater.0x0a.de/banana-mirror-images/".length())))) {
 
-                    if (!compareStreams(Arrays.asList(i1, i2, i3))) {
-                        logger.error("Mirrors aren't identical for image {}", entry);
-                        allGood.set(false);
-                    }
+                    return compareStreams(Arrays.asList(i1, i2, i3));
                 }
-            }, allGood));
+            }, "image", allGood), allGood));
         }
 
         {
@@ -101,16 +96,13 @@ public class FullMirrorCheck {
                 for (int i = 0; i < a.length(); i++) richPresenceIcons.add(a.getString(i));
             }
 
-            doTheParallelStuff(richPresenceIcons, 25, popup, entry -> retryAndCatch(() -> {
-                try (InputStream i1 = ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/rich-presence-icons/" + entry + ".png");
-                     InputStream i2 = ConnectionUtils.openStreamWithTimeout("https://banana-mirror-rich-presence-icons.celestemods.com/" + entry + ".png")) {
+            doTheParallelStuff(richPresenceIcons, 25, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
+                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/rich-presence-icons/" + entry + ".png"));
+                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-rich-presence-icons.celestemods.com/" + entry + ".png"))) {
 
-                    if (!compareStreams(Arrays.asList(i1, i2))) {
-                        logger.error("Mirrors aren't identical for Rich Presence icon {}", entry);
-                        allGood.set(false);
-                    }
+                    return compareStreams(Arrays.asList(i1, i2));
                 }
-            }, allGood));
+            }, "Rich Presence icon", allGood), allGood));
         }
 
         if (!allGood.get()) {
@@ -133,6 +125,17 @@ public class FullMirrorCheck {
             logger.error("Could not process item", e);
             allGood.set(false);
         }
+    }
+
+    private static void compareStreams(Supplier<Boolean> checker, String log, AtomicBoolean allGood) {
+        // if there are differences, try 3 times to be sure this isn't a connection cutting off
+        for (int i = 0; i < 3; i++) {
+            if (checker.get()) return;
+        }
+
+        // the checker returned false 3 times, whoops
+        logger.error("Mirrors aren't identical for {} {}", log, entry);
+        allGood.set(false);
     }
 
     private static boolean compareStreams(List<InputStream> streams) throws IOException {
