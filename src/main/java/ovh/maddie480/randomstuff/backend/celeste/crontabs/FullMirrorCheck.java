@@ -44,7 +44,7 @@ public class FullMirrorCheck {
             }
             doTheParallelStuff(hashes.entrySet(), 5, popup, entry -> retryAndCatch(() -> {
                 String actualHash;
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(entry.getKey())) {
+                try (InputStream is = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(entry.getKey()))) {
                     actualHash = DatabaseUpdater.computeXXHash(is);
                 }
                 if (!actualHash.equals(entry.getValue())) {
