@@ -41,19 +41,6 @@ public class TemperatureChecker {
 
     private final Map<Integer, String> warningNames = new HashMap<>();
 
-    private String sunrise, sunset;
-
-    private void loadFile() {
-        try (BufferedReader br = new BufferedReader(new FileReader("daylight_settings.txt"))) {
-            sunrise = br.readLine();
-            sunset = br.readLine();
-        } catch (IOException e) {
-            log.warn("Could not load sunrise and sunset times", e);
-            sunrise = "";
-            sunset = "";
-        }
-    }
-
     private static String getToken() throws IOException {
         HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://meteofrance.com");
         connection.setRequestMethod("HEAD");
@@ -217,28 +204,10 @@ public class TemperatureChecker {
             server.getRoleById(809579511451877397L).getManager().setColor(new Color(255, 205, 58)).complete();
         }
 
-        ZonedDateTime zonedDaylightStart = daylightStart.atZoneSameInstant(ZoneId.of("Europe/Paris"));
-        ZonedDateTime zonedDaylightEnd = daylightEnd.atZoneSameInstant(ZoneId.of("Europe/Paris"));
-        while (zonedDaylightStart.getMinute() % 15 != 0) {
-            zonedDaylightStart = zonedDaylightStart.plusMinutes(1);
-        }
-        while (zonedDaylightEnd.getMinute() % 15 != 0) {
-            zonedDaylightEnd = zonedDaylightEnd.plusMinutes(1);
-        }
-
-        if (!sunrise.equals(zonedDaylightStart.format(timeFormatter)) || !sunset.equals(zonedDaylightEnd.format(timeFormatter))) {
-            log.info("Sunrise and sunset times changed! {} -> {}, {} -> {}",
-                    sunrise, zonedDaylightStart.format(timeFormatter), sunset, zonedDaylightEnd.format(timeFormatter));
-
-            sunrise = zonedDaylightStart.format(timeFormatter);
-            sunset = zonedDaylightEnd.format(timeFormatter);
-
-            Message message = target.sendMessage(":information_source: Change la programmation du light theme de **" + sunrise + "** à **" + sunset + "** !").complete();
-            message.pin().complete();
-
-            try (BufferedWriter bw = new BufferedWriter(new FileWriter("daylight_settings.txt"))) {
-                bw.write(sunrise + "\n" + sunset);
-            }
+        String sunrise = daylightStart.atZoneSameInstant(ZoneId.of("Europe/Paris")).format(timeFormatter);
+        String sunset = daylightEnd.atZoneSameInstant(ZoneId.of("Europe/Paris")).format(timeFormatter);
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter("daylight_settings.txt"))) {
+            bw.write(sunrise + "\n" + sunset);
         }
     }
 
@@ -250,8 +219,6 @@ public class TemperatureChecker {
 
     private void checkForUpdates(TextChannel target) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
-            loadFile();
-
             String token = getToken();
 
             if (warningNames.isEmpty()) {
