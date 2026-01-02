@@ -1,6 +1,7 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import org.apache.commons.io.function.IORunnable;
+import org.apache.commons.io.function.IOSupplier;
 import org.json.JSONArray;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
@@ -19,7 +20,6 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class FullMirrorCheck {
@@ -128,7 +128,7 @@ public class FullMirrorCheck {
         }
     }
 
-    private static void compareStreams(Supplier<Boolean> checker, String log, AtomicBoolean allGood) {
+    private static void compareStreams(IOSupplier<Boolean> checker, String log, AtomicBoolean allGood) throws IOException {
         // if there are differences, try 3 times to be sure this isn't a connection cutting off
         for (int i = 0; i < 3; i++) {
             if (checker.get()) return;
