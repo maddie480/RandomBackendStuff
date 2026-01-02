@@ -11,6 +11,7 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
