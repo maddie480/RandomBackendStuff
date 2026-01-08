@@ -31,10 +31,10 @@ public class EverestPRLabelSlapper {
     private static final Logger log = LoggerFactory.getLogger(EverestPRLabelSlapper.class);
 
     private static final String LABEL_DRAFT = "draft";
-    private static final String LABEL_REVIEW_NEEDED = "review needed";
-    private static final String LABEL_CHANGES_REQUESTED = "changes requested";
-    private static final String LABEL_LAST_CALL_WINDOW = "last call window";
-    private static final String LABEL_READY_TO_MERGE = "ready to merge";
+    private static final String LABEL_REVIEW_NEEDED = "1: review needed";
+    private static final String LABEL_CHANGES_REQUESTED = "2: changes requested";
+    private static final String LABEL_LAST_CALL_WINDOW = "3: last call window";
+    private static final String LABEL_READY_TO_MERGE = "4: ready to merge";
     private static final Set<String> BOT_MANAGED_LABELS = new HashSet<>(Arrays.asList(LABEL_DRAFT, LABEL_REVIEW_NEEDED, LABEL_CHANGES_REQUESTED, LABEL_LAST_CALL_WINDOW, LABEL_READY_TO_MERGE));
 
     private static final LocalDate ROLLING_RELEASE_DATE = LocalDate.parse("2025-05-17");
