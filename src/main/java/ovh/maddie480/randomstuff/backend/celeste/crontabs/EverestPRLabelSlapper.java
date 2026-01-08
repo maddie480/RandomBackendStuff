@@ -30,7 +30,7 @@ import static ovh.maddie480.randomstuff.backend.celeste.crontabs.EverestVersionL
 public class EverestPRLabelSlapper {
     private static final Logger log = LoggerFactory.getLogger(EverestPRLabelSlapper.class);
 
-    private static final String LABEL_DRAFT = "draft";
+    private static final String LABEL_DRAFT = "0: draft";
     private static final String LABEL_REVIEW_NEEDED = "1: review needed";
     private static final String LABEL_CHANGES_REQUESTED = "2: changes requested";
     private static final String LABEL_LAST_CALL_WINDOW = "3: last call window";
