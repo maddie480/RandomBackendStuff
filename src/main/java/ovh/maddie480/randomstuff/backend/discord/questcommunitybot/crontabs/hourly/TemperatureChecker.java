@@ -2,7 +2,6 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hou
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONArray;
@@ -15,16 +14,23 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
 import java.awt.*;
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class TemperatureChecker {
     private static final Logger log = LoggerFactory.getLogger(TemperatureChecker.class);
@@ -38,6 +44,41 @@ public class TemperatureChecker {
             Color.decode("#E74C3C"),
             Color.decode("#AAAAAA")
     );
+
+    private static String getEmojiForWarningLevel(int level) {
+        return switch (level) {
+            case -1 -> "\uD83D\uDFE2";
+            case 0 -> "\uD83D\uDFE1";
+            case 1 -> "\uD83D\uDFE0";
+            case 2 -> "\uD83D\uDD34";
+            default -> "\uD83E\uDD37";
+        };
+    }
+
+    public static void main(String[] args) throws IOException {
+        String mode = args[0];
+        String place = args[1];
+        String domain = args[2];
+        String token = getToken();
+
+        Map<String, Integer> warnings;
+        {
+            TemperatureChecker t = new TemperatureChecker();
+            t.retrieveWarningNames(token, domain);
+            warnings = t.retrieveWeatherWarnings(token, domain);
+        }
+
+        if (mode.equals("temp")) {
+            String warningEmoji = getEmojiForWarningLevel(warnings.values().stream().mapToInt(i -> i).max().orElse(-1));
+            System.out.println(warningEmoji + "  " + Math.round(retrieveTemperature(token, place)) + "°C");
+        } else if (warnings.isEmpty()) {
+            System.out.println("Pas de vigilance");
+        } else {
+            System.out.println("Vigilances :\n" + warnings.entrySet().stream()
+                    .map(entry -> getEmojiForWarningLevel(entry.getValue()) + " " + entry.getKey())
+                    .collect(Collectors.joining("\n")));
+        }
+    }
 
     private final Map<Integer, String> warningNames = new HashMap<>();
 
@@ -74,8 +115,8 @@ public class TemperatureChecker {
         }
     }
 
-    private void retrieveWarningNames(String token) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/internet2018client/2.0/warning/dictionary?domain=" + SecretConstants.WEATHER_WARNING_DOMAIN);
+    private void retrieveWarningNames(String token, String domain) throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/internet2018client/2.0/warning/dictionary?domain=" + domain);
         connection.setRequestProperty("Authorization", "Bearer " + token);
 
         JSONObject result;
@@ -93,8 +134,8 @@ public class TemperatureChecker {
         log.debug("I retrieved the name of the warnings: {}", warningNames);
     }
 
-    private void refreshWarnings(String token, TextChannel target) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/wsft/v3/warning/currentphenomenons?echeance=J0&warning_type=vigilance&domain=" + SecretConstants.WEATHER_WARNING_DOMAIN);
+    private Map<String, Integer> retrieveWeatherWarnings(String token, String domain) throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/wsft/v3/warning/currentphenomenons?echeance=J0&warning_type=vigilance&domain=" + domain);
         connection.setRequestProperty("Authorization", "Bearer " + token);
 
         JSONObject result;
@@ -106,7 +147,6 @@ public class TemperatureChecker {
 
         Map<String, Integer> allLevels = new TreeMap<>();
         Map<String, Integer> retrievedLevels = new LinkedHashMap<>();
-        Map<String, Integer> alreadyGotLevels = new LinkedHashMap<>();
 
         // d'abord on parse tout et on trie par ordre alphabétique du phénomène
         for (Object o : phenomenons) {
@@ -124,6 +164,12 @@ public class TemperatureChecker {
                 }
             }
         }
+        return retrievedLevels;
+    }
+
+    private void refreshWarnings(String token, TextChannel target) throws IOException {
+        Map<String, Integer> retrievedLevels = retrieveWeatherWarnings(token, SecretConstants.WEATHER_WARNING_DOMAIN);
+        Map<String, Integer> alreadyGotLevels = new LinkedHashMap<>();
 
         // et on récupère ce qu'on a déjà
         Guild server = target.getGuild();
@@ -164,19 +210,22 @@ public class TemperatureChecker {
     }
 
     private void refreshTemperature(String token, TextChannel target) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/internet2018client/2.0/observation/gridded?" + SecretConstants.WEATHER_PLACE);
+        float temperature = retrieveTemperature(token, SecretConstants.WEATHER_PLACE);
+        int temperatureRounded = Math.round(temperature);
+        log.debug("Got temperature: {}, rounded to {}", temperature, temperatureRounded);
+
+        changeNicknameIfRequired("CCB 2.0 | " + temperatureRounded + "°C", target);
+    }
+
+    private static float retrieveTemperature(String token, String place) throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/internet2018client/2.0/observation/gridded?" + place);
         connection.setRequestProperty("Authorization", "Bearer " + token);
 
         JSONObject result;
         try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
             result = new JSONObject(new JSONTokener(is));
         }
-
-        float temperature = result.getJSONObject("properties").getJSONObject("gridded").getFloat("T");
-        int temperatureRounded = Math.round(temperature);
-        log.debug("Got temperature: {}, rounded to {}", temperature, temperatureRounded);
-
-        changeNicknameIfRequired("CCB 2.0 | " + temperatureRounded + "°C", target);
+        return result.getJSONObject("properties").getJSONObject("gridded").getFloat("T");
     }
 
     private void refreshDaylightSettings(String token, TextChannel target) throws IOException {
@@ -222,7 +271,7 @@ public class TemperatureChecker {
             String token = getToken();
 
             if (warningNames.isEmpty()) {
-                retrieveWarningNames(token);
+                retrieveWarningNames(token, SecretConstants.WEATHER_WARNING_DOMAIN);
             }
             refreshTemperature(token, target);
             refreshWarnings(token, target);
