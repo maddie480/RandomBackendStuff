@@ -12,12 +12,8 @@ RUN echo "fr_FR.UTF-8 UTF-8" > /etc/locale.gen && \
   ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
   echo $TZ > /etc/timezone && \
   apt-get update && \
-  apt-get install -y software-properties-common && \
-  add-apt-repository ppa:dotnet/backports && \
-  apt-get update && \
   apt-get install dotnet-sdk-8.0 wine figlet ffmpeg python3 7zip -y && \
   apt-get upgrade -y && \
-  apt-get remove -y software-properties-common && \
   apt-get autoremove -y && \
   apt-get clean
 
