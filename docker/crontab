@@ -23,6 +23,7 @@
    0  12   *   *   * /home/debian/docker-run-with-logging.sh full-update-check > /dev/null 2>&1
    0  19   *   *   * /home/debian/docker-run-with-logging.sh daily-crontabs > /dev/null 2>&1
   45   *   *   *   * /home/debian/docker-run-with-logging.sh hourly-crontabs > /dev/null 2>&1
+   0  13   1   *   * /home/debian/docker-run-with-logging.sh mirror-consistency-check > /dev/null 2>&1
 */10   *   *   *   * cd /home/debian && ./magic-auto-deploy.sh > /dev/null 2>&1
 #if LNJ_BOT
 # 30  12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot > /dev/null 2>&1
