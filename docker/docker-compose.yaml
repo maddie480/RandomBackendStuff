@@ -12,8 +12,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.4"
-          memory: 512M
+          cpus: 2
+          memory: 2G
 
   backend:
     image: max480/random-stuff-backend
@@ -21,7 +21,7 @@ services:
     network_mode: host
     restart: on-failure
     env_file: secret_constants_backend
-    command: ["/bin/bash", "-c", "sed -i 's/-Xmx256m/-Xmx288m/' /app/run_bot.sh && /app/run_bot.sh"]
+    command: ["/bin/bash", "-c", "/app/run_bot.sh"]
     volumes:
       - /home/debian/backend:/backend
       - /home/debian/shared:/shared
@@ -29,5 +29,5 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.4"
-          memory: 768M
+          cpus: 2
+          memory: 2G

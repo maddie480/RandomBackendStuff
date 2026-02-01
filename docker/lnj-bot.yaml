@@ -2,7 +2,7 @@ services:
   lnj-bot:
     image: max480/random-stuff-backend
     network_mode: host
-    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/streams.features.LNJBot/' /app/run_bot.sh && sed -i 's/-Xmx256m/-Xmx128m/' /app/run_bot.sh && /app/run_bot.sh"]
+    command: ["/bin/bash", "-c", "sed -i 's/CrontabRunner/streams.features.LNJBot/' /app/run_bot.sh && /app/run_bot.sh"]
     env_file: secret_constants_backend
     volumes:
       - /home/debian/backend:/backend
@@ -11,5 +11,5 @@ services:
     deploy:
       resources:
         limits:
-          cpus: 1
-          memory: 256M
+          cpus: 2
+          memory: 2G

@@ -173,12 +173,6 @@ public class CrontabRunner {
     }
 
     private static void runDailyProcesses() {
-        Path dailyLock = Paths.get("daily_lock");
-        runProcessAndAlertOnException("[Daily] Files.createFile(dailyLock)", () -> Files.createFile(dailyLock));
-
-        // This test has a tendency to OOM, get it out of the way right away
-        runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
-
         // Update tasks
         runProcessAndAlertOnException("[Daily] Dependabork", () -> Dependabork.main(null));
         runProcessAndAlertOnException("[Daily] GameBananaProfileLink", () -> GameBananaProfileLink.main(null));
@@ -230,6 +224,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] BadCharactersChecker", () -> BadCharactersChecker.main(null));
         runProcessAndAlertOnException("[Daily] checkMilestoneIsInTheFuture", EverestRepositoriesRitualCheck::checkMilestoneIsInTheFuture);
         runProcessAndAlertOnException("[Daily] checkLatestVersionsArePinned", EverestRepositoriesRitualCheck::checkLatestVersionsArePinned);
+        runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
         runProcessAndAlertOnException("[Daily] checkEverestGitHubAPIMirrorMatch", CelesteStuffHealthCheck::checkEverestGitHubAPIMirrorMatch);
 
         // Non-Celeste Stuff
@@ -251,19 +246,9 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] StonkUpdateChecker", StonkUpdateChecker::post);
         runProcessAndAlertOnException("[Daily] PlatformBackup", PlatformBackup::run);
         runProcessAndAlertOnException("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily);
-
-        runProcessAndAlertOnException("[Daily] Files.delete(dailyLock)", () -> Files.delete(dailyLock));
     }
 
     private static void runHourlyProcesses() {
-        AtomicBoolean dailyLocked = new AtomicBoolean(false);
-        runProcessAndAlertOnException("[Hourly] Files.exists(dailyLock)", () -> {
-            if (Files.exists(Paths.get("daily_lock"))) {
-                logger.info("Daily locked, we will need to skip checkYieldReturnOrigAndIntPtrTrick");
-                dailyLocked.set(true);
-            }
-        });
-
         // Update tasks
         runProcessAndAlertOnException("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub);
         runProcessAndAlertOnException("[Hourly] CollabAutoHider", CollabAutoHider::run);
@@ -296,7 +281,7 @@ public class CrontabRunner {
         });
 
         if (updaterStuffHappened.get()) {
-            if (!dailyLocked.get()) runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
+            runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
             runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", GameBananaAutomatedChecks::checkForForbiddenFiles);
             runProcessAndAlertOnException("[Hourly] checkForFilesBelongingToMultipleMods", GameBananaAutomatedChecks::checkForFilesBelongingToMultipleMods);
             runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
