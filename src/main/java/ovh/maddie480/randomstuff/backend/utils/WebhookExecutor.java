@@ -30,21 +30,28 @@ public class WebhookExecutor {
      * Calls a Discord webhook without enabling mentions.
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body) throws IOException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), null);
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), null, true);
+    }
+
+    /**
+     * Calls a Discord webhook without enabling mentions, with a logging toggle.
+     */
+    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, boolean shouldLog) throws IOException {
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), null, shouldLog);
     }
 
     /**
      * Calls a Discord webhook without enabling mentions, with embeds.
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, List<Map<String, Object>> embeds) throws IOException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), embeds);
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), embeds, true);
     }
 
     /**
      * Calls a Discord webhook without enabling mentions, with embeds and attachments.
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, List<File> attachments, List<Map<String, Object>> embeds) throws IOException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, attachments, embeds);
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, attachments, embeds, true);
     }
 
     /**
@@ -52,7 +59,7 @@ public class WebhookExecutor {
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, Map<String, String> httpHeaders)
             throws IOException {
-        executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, false, null, Collections.emptyList(), null);
+        executeWebhook(webhookUrl, avatar, nickname, body, httpHeaders, false, null, Collections.emptyList(), null, true);
     }
 
     /**
@@ -60,7 +67,7 @@ public class WebhookExecutor {
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, long allowedUserMentionId)
             throws IOException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, allowedUserMentionId, Collections.emptyList(), null);
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, allowedUserMentionId, Collections.emptyList(), null, true);
     }
 
     /**
@@ -68,16 +75,16 @@ public class WebhookExecutor {
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, boolean allowUserMentions, List<File> attachments)
             throws IOException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), allowUserMentions, null, attachments, null);
+        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), allowUserMentions, null, attachments, null, true);
     }
 
     private static void executeWebhook(String webhookUrl, String avatar, String nickname, String body,
                                        Map<String, String> httpHeaders, boolean allowUserMentions, Long allowedUserMentionId,
-                                       List<File> attachments, List<Map<String, Object>> embeds) throws IOException {
+                                       List<File> attachments, List<Map<String, Object>> embeds, boolean shouldLog) throws IOException {
 
         ConnectionUtils.runWithRetry(() -> {
             try {
-                executeWebhookInternal(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments, embeds);
+                executeWebhookInternal(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments, embeds, shouldLog);
             } catch (InterruptedException e) {
                 // this should never happen, so whatever. :p
                 throw new IOException(e);
@@ -89,7 +96,7 @@ public class WebhookExecutor {
 
     private static void executeWebhookInternal(String webhookUrl, String avatar, String nickname, String body,
                                                Map<String, String> httpHeaders, boolean allowUserMentions, Long allowedUserMentionId,
-                                               List<File> attachments, List<Map<String, Object>> embeds) throws IOException, InterruptedException {
+                                               List<File> attachments, List<Map<String, Object>> embeds, boolean shouldLog) throws IOException, InterruptedException {
 
         // primitive handling for rate limits.
         if (retryAfter != null) {
@@ -132,7 +139,7 @@ public class WebhookExecutor {
 
         if (attachments.isEmpty()) {
             // webhook with no attachment: pure JSON
-            log.debug("Sending request to [{}]: {}", webhookUrl, request);
+            if (shouldLog) log.debug("Sending request to [{}]: {}", webhookUrl, request);
 
             connection = ConnectionUtils.openConnectionWithTimeout(webhookUrl);
 
@@ -153,7 +160,7 @@ public class WebhookExecutor {
             writer.close();
         } else {
             // multipart request to send the JSON, and attachments
-            log.debug("Sending request to [{}]: {} with attachments [\"{}\"]", webhookUrl, request,
+            if (shouldLog) log.debug("Sending request to [{}]: {} with attachments [\"{}\"]", webhookUrl, request,
                     attachments.stream().map(File::getAbsolutePath).collect(Collectors.joining("\", \"")));
 
             HashMap<String, String> headers = new HashMap<>();
@@ -170,7 +177,7 @@ public class WebhookExecutor {
 
         if (connection.getResponseCode() == 204 || connection.getResponseCode() == 200) {
             // the message came through
-            log.debug("Message sent!");
+            if (shouldLog) log.debug("Message sent!");
 
         } else if (connection.getResponseCode() == 429) {
             // we hit an unexpected rate limit => we should wait for the time indicated in Retry-After, then retry.

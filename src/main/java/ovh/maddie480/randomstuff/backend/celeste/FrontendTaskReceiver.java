@@ -210,7 +210,7 @@ public class FrontendTaskReceiver {
             }
 
             if (lastMessageHandle.get() != myHandle) {
-                log.debug("Another message got queued up, dropping \"{}\"", newStatus);
+                // Another message got queued up, give up
                 return;
             }
 

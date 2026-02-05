@@ -511,17 +511,17 @@ public class CrontabRunner {
         }
 
         try {
-            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`");
+            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`", false);
             sendCrontabStatusEvent(name);
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
             sendCrontabStatusEvent("");
-            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`");
+            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`", false);
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `" + name + "`: " + e);
-            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :x: Fail `" + name + "`");
+            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :x: Fail `" + name + "`", false);
         }
 
         try {
@@ -545,12 +545,16 @@ public class CrontabRunner {
     }
 
     private static void sendMessageToWebhook(String url, String message) {
+        sendMessageToWebhook(url, message, true);
+    }
+    private static void sendMessageToWebhook(String url, String message, boolean shouldLog) {
         try {
             WebhookExecutor.executeWebhook(
                     url,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/compute-engine.png",
                     "Crontab Runner",
-                    message);
+                    message,
+                    shouldLog);
         } catch (IOException e) {
             logger.error("Error while sending message \"{}\"", message, e);
         }
