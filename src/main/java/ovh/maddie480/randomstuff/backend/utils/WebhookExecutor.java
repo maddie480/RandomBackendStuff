@@ -184,7 +184,7 @@ public class WebhookExecutor {
             // (Discord docs claim those are seconds, but those actually seem to be milliseconds. /shrug)
             retryAfter = ZonedDateTime.now().plus(Integer.parseInt(connection.getHeaderField("Retry-After")), ChronoUnit.MILLIS);
             log.warn("We hit a rate limit we did not anticipate! We will wait until {} before next request.", retryAfter);
-            executeWebhookInternal(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments, embeds);
+            executeWebhookInternal(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments, embeds, shouldLog);
             return;
 
         } else if (connection.getResponseCode() == 404) {
