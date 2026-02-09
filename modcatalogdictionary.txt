@@ -67,8 +67,6 @@ Emhelper/Switchtrigger=Switch Trigger
 ExtendedVariantMode/JumpRefill=Recover Jump Refill
 FancyTileEntities/FancyConditionBlock=LoadConditionBlock=Fancy Condition Block
 HonlyHelper/RisingBlock=Rising Block
-JackalHelper/BlizzardRemovalTrigger.cs=Blizzard Removal Trigger
-JackalHelper/BlizzardTrigger.cs=Blizzard Trigger
 JackalHelper/BraveBird=Custom Fling Bird
 JackalHelper/BraveBirdAlt=Custom Extra Fling Bird
 JackalHelper/LongFish=Geyser
