@@ -26,7 +26,7 @@
    0  13   1   *   * /home/debian/docker-run-with-logging.sh mirror-consistency-check > /dev/null 2>&1
 */10   *   *   *   * cd /home/debian && ./magic-auto-deploy.sh > /dev/null 2>&1
 #if LNJ_BOT
-# 30  12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot > /dev/null 2>&1
+  30  12   *   *   0 /home/debian/docker-run-with-logging.sh lnj-bot > /dev/null 2>&1
 #endif
 
    0   4   *   *   * rm -f /home/debian/.bash_history > /dev/null 2>&1
