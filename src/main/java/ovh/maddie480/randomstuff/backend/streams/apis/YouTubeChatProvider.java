@@ -213,7 +213,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
                 ChatMessage<String> chatMessage = new ChatMessage<>(
                         message.getJSONObject("authorDetails").getString("channelId"),
-                        message.getJSONObject("authorDetails").getString("displayName"),
+                        trimAtIfNecessary(message.getJSONObject("authorDetails").getString("displayName")),
                         message.getString("id"),
                         messageText,
                         CHANNEL_ID.equals(message.getJSONObject("authorDetails").getString("channelId")),
@@ -228,6 +228,10 @@ public class YouTubeChatProvider implements IChatProvider<String> {
 
             return new MessageCheckResult(response.getInt("pollingIntervalMillis"), response.getString("nextPageToken"));
         }
+    }
+
+    private String trimAtIfNecessary(String displayName) {
+        return displayName.startsWith("@") ? displayName.substring(1) : displayName;
     }
 
     private void sendPeriodicMessageIfNecessary() {
