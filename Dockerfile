@@ -23,7 +23,6 @@ COPY --chown=ubuntu:ubuntu target/run_bot.sh /app/run_bot.sh
 COPY --chown=ubuntu:ubuntu target/random-stuff-backend-0.0.1-SNAPSHOT.jar /app/random-stuff-backend-0.0.1-SNAPSHOT.jar
 COPY --chown=ubuntu:ubuntu target/java-libs /app/java-libs
 COPY --chown=ubuntu:ubuntu static /app/static
-COPY --chown=ubuntu:ubuntu games.json /app/static/games.json
 
 RUN cd /app/static && \
   chmod -c u+x /app/run_bot.sh *.sh && \
