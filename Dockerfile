@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 ENV DEBIAN_FRONTEND=noninteractive \
   TZ=Europe/Paris \
