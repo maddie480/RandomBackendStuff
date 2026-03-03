@@ -42,7 +42,7 @@ public class LNJBot {
     private final ClippyTheClipper clipper;
     private final CustomEmotes customEmotes;
 
-    public static void main(String[] args) throws IOException {
+    static void main(String[] args) throws IOException {
         new LNJBot();
         logger.debug("Startup finished!");
 
@@ -92,7 +92,7 @@ public class LNJBot {
         }
 
         if (message.messageContents().trim().toLowerCase(Locale.ROOT).matches("^! *clip$")) {
-            logger.debug("Received a !clip command from " + message.messageSenderName());
+            logger.debug("Received a !clip command from {}", message.messageSenderName());
             clipper.makeClip(message);
 
         } else if (message.isAdmin()

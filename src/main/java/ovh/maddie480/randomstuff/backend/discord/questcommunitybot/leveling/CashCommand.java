@@ -46,7 +46,7 @@ public class CashCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         if (parameters.length > 0) {
             Member resolved = Utils.findMemberFromString(event.getChannel(), parameters[0]);
             if (resolved != null) {
@@ -58,7 +58,7 @@ public class CashCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         if (Utils.getUnicodeHexFromEmoji(event.getEmoji().getName()).equals("e29c85")) {
             return levelingEngine.onTickAddGiveCash(event.getChannel(), event.getMessageIdLong(), event.getUser());
         }

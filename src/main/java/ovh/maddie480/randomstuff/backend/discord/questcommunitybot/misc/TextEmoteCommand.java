@@ -41,7 +41,7 @@ public class TextEmoteCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         String text = event.getMessage().getContentDisplay().substring(parameters[0].length() + 1);
         String result = turnIntoEmotes(text);
         while (result.length() > 2000) {
@@ -53,7 +53,7 @@ public class TextEmoteCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 

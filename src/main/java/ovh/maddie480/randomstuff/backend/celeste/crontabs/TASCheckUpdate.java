@@ -334,9 +334,9 @@ fi
             }
         }
 
-        String crcAsString = Long.toHexString(crc.getValue());
-        while (crcAsString.length() < 8) crcAsString = "0" + crcAsString;
-        return crcAsString;
+        StringBuilder crcAsString = new StringBuilder(Long.toHexString(crc.getValue()));
+        while (crcAsString.length() < 8) crcAsString.insert(0, "0");
+        return crcAsString.toString();
     }
 
     private static void cleanup() {

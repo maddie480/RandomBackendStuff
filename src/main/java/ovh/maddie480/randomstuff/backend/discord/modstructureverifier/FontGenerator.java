@@ -313,7 +313,7 @@ public class FontGenerator {
             try {
                 FileUtils.deleteDirectory(directory.toFile());
             } catch (IOException e) {
-                logger.error("Failed deleting directory " + directory.toAbsolutePath() + "!", e);
+                logger.error("Failed deleting directory {}!", directory.toAbsolutePath(), e);
             }
         }
     }
@@ -325,7 +325,7 @@ public class FontGenerator {
             try {
                 Files.delete(file);
             } catch (IOException e) {
-                logger.error("Failed deleting file" + file.toAbsolutePath() + "!", e);
+                logger.error("Failed deleting file{}!", file.toAbsolutePath(), e);
             }
         }
     }

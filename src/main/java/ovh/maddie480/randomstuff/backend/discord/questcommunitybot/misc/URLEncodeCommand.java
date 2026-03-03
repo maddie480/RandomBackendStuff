@@ -41,12 +41,12 @@ public class URLEncodeCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         event.getChannel().sendMessage("Voici le résultat : `" + URLEncoder.encode(parameters[0], UTF_8) + "`").queue();
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

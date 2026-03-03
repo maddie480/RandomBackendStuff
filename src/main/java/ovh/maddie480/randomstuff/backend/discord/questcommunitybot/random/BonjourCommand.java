@@ -39,7 +39,7 @@ public class BonjourCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         String msg = switch ((int) (Math.random() * 5)) {
             case 0 -> "Bonjour " + event.getAuthor().getName() + " !";
             case 1 -> "Salut " + event.getAuthor().getName() + ", ça va ?";

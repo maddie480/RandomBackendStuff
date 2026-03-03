@@ -349,7 +349,7 @@ public class UpdateCheckerTracker extends EventListener {
     }
 
     private void addModUpdateToLatestUpdatesList(Mod mod, boolean isAddition) {
-        latestUpdates.add(0, ImmutableMap.of(
+        latestUpdates.addFirst(ImmutableMap.of(
                 "isAddition", isAddition,
                 "name", mod.getName(),
                 "version", mod.getVersion(),
@@ -550,7 +550,7 @@ public class UpdateCheckerTracker extends EventListener {
         try (InputStream connectionToDatabase = new FileInputStream("uploads/modsearchdatabase.yaml")) {
             // download the mods
             List<HashMap<String, Object>> mods = YamlUtil.load(connectionToDatabase);
-            log.debug("There are " + mods.size() + " mods in the search database.");
+            log.debug("There are {} mods in the search database.", mods.size());
 
             // serialize the mod list for the frontend to be able to load it
             List<ModInfo> modDatabaseForSorting = new LinkedList<>();
@@ -672,7 +672,7 @@ public class UpdateCheckerTracker extends EventListener {
 
             try (InputStream is = ConnectionUtils.connectionToInputStream(connection)) {
                 List<Map<String, Object>> contents = YamlUtil.load(is);
-                extraYamls.put((String) contents.get(0).get("Name"), (String) contents.get(0).get("Version"));
+                extraYamls.put((String) contents.getFirst().get("Name"), (String) contents.getFirst().get("Version"));
             }
         }
 

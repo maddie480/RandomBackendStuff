@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 
 import java.io.IOException;
+import java.text.DateFormat;
 import java.util.Date;
 
 public class SnowflakeCommand implements BotCommand {
@@ -44,7 +45,7 @@ public class SnowflakeCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         long snowflake = Long.parseLong(parameters[0]);
 
         long timestamp = (snowflake >> 22) + 1420070400000L;
@@ -53,14 +54,14 @@ public class SnowflakeCommand implements BotCommand {
         long increment = snowflake & 0xFFF;
 
         event.getChannel().sendMessage(
-                "Date = " + new Date(timestamp).toLocaleString() + "." + (timestamp % 1000) + " (" + timestamp + ")\n" +
+                "Date = " + DateFormat.getDateTimeInstance().format(new Date(timestamp)) + "." + (timestamp % 1000) + " (" + timestamp + ")\n" +
                         "Worker ID = " + workerID + "\n" +
                         "Process ID = " + processID + "\n" +
                         "Incrément = " + increment + "\n").queue();
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

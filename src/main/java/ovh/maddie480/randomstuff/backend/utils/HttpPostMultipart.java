@@ -32,7 +32,7 @@ public class HttpPostMultipart {
         httpConn.setDoOutput(true);    // indicates POST method
         httpConn.setDoInput(true);
         httpConn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-        if (headers != null && headers.size() > 0) {
+        if (headers != null && !headers.isEmpty()) {
             for (String key : headers.keySet()) {
                 String value = headers.get(key);
                 httpConn.setRequestProperty(key, value);

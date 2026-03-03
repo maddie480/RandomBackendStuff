@@ -11,7 +11,7 @@ public class TestCommand extends AbstractFixedMessageCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         event.getChannel().sendMessage("Cette commande n'a _jamais_ existé. Tu t'attendais à quoi ? :p").queue();
     }
 }

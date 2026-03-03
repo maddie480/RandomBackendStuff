@@ -58,7 +58,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class CrontabRunner {
     private static final Logger logger = LoggerFactory.getLogger(CrontabRunner.class);
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         // load update checker config from secret constants
         ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
         Map<String, Object> config = YamlUtil.load(is);
@@ -66,32 +66,31 @@ public class CrontabRunner {
 
         String arg = args != null && args.length > 0 ? args[0] : "";
 
-        if (arg.equals("--daily")) {
-            runDailyProcesses();
-            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Daily processes completed!");
-            System.exit(0);
-            return;
-        }
-
-        if (arg.equals("--hourly")) {
-            runHourlyProcesses();
-            return;
-        }
-
-        if (arg.equals("--updater")) {
-            runUpdater(true);
-            return;
-        }
-
-        if (arg.equals("--mirrorcheck")) {
-            try {
-                FullMirrorCheck.main(null);
-                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":tada: Full mirror check found no issues!");
-            } catch (Exception e) {
-                logger.error("Error while running FullMirrorCheck", e);
-                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `FullMirrorCheck`: " + e);
+        switch (arg) {
+            case "--daily" -> {
+                runDailyProcesses();
+                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Daily processes completed!");
+                System.exit(0);
+                return;
             }
-            return;
+            case "--hourly" -> {
+                runHourlyProcesses();
+                return;
+            }
+            case "--updater" -> {
+                runUpdater(true);
+                return;
+            }
+            case "--mirrorcheck" -> {
+                try {
+                    FullMirrorCheck.main(null);
+                    sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":tada: Full mirror check found no issues!");
+                } catch (Exception e) {
+                    logger.error("Error while running FullMirrorCheck", e);
+                    sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `FullMirrorCheck`: " + e);
+                }
+                return;
+            }
         }
 
         // redirect logs to a file
@@ -347,7 +346,7 @@ public class CrontabRunner {
                     .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
                     .get()
                     .select(".header b")
-                    .get(0).text());
+                    .getFirst().text());
         } catch (NumberFormatException e) {
             throw new IOException("Did not find the amount of songs where it was expected!");
         }
@@ -531,7 +530,6 @@ public class CrontabRunner {
         } catch (IOException e) {
             logger.error("Could not unlock updater", e);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not unlock updater: " + e);
-            return;
         }
     }
 

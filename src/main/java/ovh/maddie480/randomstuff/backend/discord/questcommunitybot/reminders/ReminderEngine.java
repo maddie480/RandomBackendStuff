@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 
 import java.io.*;
+import java.text.DateFormat;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -24,7 +25,7 @@ public class ReminderEngine {
 
     private final List<RappelV3> tousLesRappelsV3;
 
-    public void run(Guild guild) throws IOException {
+    public void run(Guild guild) {
         new Thread("Reminder Engine") {
             @Override
             public void run() {
@@ -91,7 +92,7 @@ public class ReminderEngine {
                         String message = "Tu m'avais demandé de te rappeler de \"" + rappel.message + "\". C'est fait.";
 
                         if (rappel.interval != null) {
-                            message += "\n(Je te le rappellerai à nouveau le " + new Date(rappel.nextOccurence.toInstant().toEpochMilli()).toLocaleString()
+                            message += "\n(Je te le rappellerai à nouveau le " + DateFormat.getDateTimeInstance().format(new Date(rappel.nextOccurence.toInstant().toEpochMilli()))
                                     + ", comme convenu.)";
                         }
 
@@ -273,7 +274,7 @@ public class ReminderEngine {
             return null;
         } else {
             message = message.trim();
-            logger.debug("J'ai compris message = " + message + ", intervalle de récurrence = " + interval + ", prochaine occurence = " + nextOccurence + ", utilisateur = " + reflectedUserId);
+            logger.debug("J'ai compris message = {}, intervalle de récurrence = {}, prochaine occurence = {}, utilisateur = {}", message, interval, nextOccurence, reflectedUserId);
 
             message = inversionDesPronoms(message);
             logger.debug("Message après inversion des pronoms : {}.", message);

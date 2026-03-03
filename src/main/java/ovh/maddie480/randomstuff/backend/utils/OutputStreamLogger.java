@@ -22,7 +22,7 @@ public class OutputStreamLogger extends OutputStream {
     }
 
     @Override
-    public void write(int b) throws IOException {
+    public void write(int b) {
         if (b == '\r' || b == '\n') {
             flushBytes();
         } else {

@@ -55,11 +55,11 @@ public final class Utils {
         log.debug("Matches for {} : exact = {}, approx = {}", string, exactMatches, approxMatches);
 
         if (exactMatches.size() == 1) {
-            return exactMatches.get(0);
+            return exactMatches.getFirst();
         } else if (exactMatches.size() > 1) {
             channel.sendMessage("\"" + string + "\" n'est pas assez précis et correspond à plusieurs personnes. Essaie encore !").queue();
         } else if (approxMatches.size() == 1) {
-            return approxMatches.get(0);
+            return approxMatches.getFirst();
         } else if (approxMatches.size() > 1) {
             channel.sendMessage("\"" + string + "\" n'est pas assez précis et correspond à plusieurs personnes. Essaie encore !").queue();
         } else {

@@ -216,12 +216,12 @@ public class BotEventListener extends ListenerAdapter {
     @Override
     public void onStringSelectInteraction(@NotNull StringSelectInteractionEvent event) {
         if ("discord-timestamp".equals(event.getComponent().getCustomId())) {
-            logger.info("New interaction with discord-timestamp selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
+            logger.info("New interaction with discord-timestamp selection menu from member {}, picked {}", event.getMember(), event.getValues().getFirst());
 
             // the user picked a timestamp format! we should edit the message to that timestamp so that they can copy it easier.
             // we also want the menu to stay the same, so that they can switch.
             event.editMessage(new MessageEditBuilder()
-                    .setContent(event.getValues().get(0))
+                    .setContent(event.getValues().getFirst())
                     .setComponents(ActionRow.of(event.getSelectMenu().createCopy()
                             .setDefaultValues(event.getValues())
                             .build()))
@@ -229,10 +229,10 @@ public class BotEventListener extends ListenerAdapter {
         }
 
         if ("timezone-dropdown".equals(event.getComponent().getCustomId())) {
-            logger.info("New interaction with timezone-dropdown selection menu from member {}, picked {}", event.getMember(), event.getValues().get(0));
+            logger.info("New interaction with timezone-dropdown selection menu from member {}, picked {}", event.getMember(), event.getValues().getFirst());
 
             // the user picked a timezone in the dropdown! we should act exactly like the /timezone command, actually.
-            defineUserTimezone(event, event.getMember(), event.getValues().get(0), event.getUserLocale());
+            defineUserTimezone(event, event.getMember(), event.getValues().getFirst(), event.getUserLocale());
         }
     }
 
@@ -363,7 +363,7 @@ public class BotEventListener extends ListenerAdapter {
 
             // remove old link if there is any.
             TimezoneBot.userTimezones.stream()
-                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
+                    .filter(u -> u.serverId() == member.getGuild().getIdLong() && u.userId() == member.getIdLong())
                     .findFirst()
                     .map(u -> TimezoneBot.userTimezones.remove(u));
 
@@ -390,7 +390,7 @@ public class BotEventListener extends ListenerAdapter {
             TimezoneRoleUpdater.forceUpdate();
         } catch (DateTimeException ex) {
             // ZoneId.of blew up so the timezone is probably invalid.
-            logger.warn("Could not parse timezone " + timezoneParam, ex);
+            logger.warn("Could not parse timezone {}", timezoneParam, ex);
 
             List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezoneParam);
             if (conflictingTimezones != null) {
@@ -417,7 +417,7 @@ public class BotEventListener extends ListenerAdapter {
     private static void removeUserTimezone(IReplyCallback event, Member member, DiscordLocale locale) {
         // find the user's timezone.
         TimezoneBot.UserTimezone userTimezone = TimezoneBot.userTimezones.stream()
-                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
+                .filter(u -> u.serverId() == member.getGuild().getIdLong() && u.userId() == member.getIdLong())
                 .findFirst().orElse(null);
 
         if (userTimezone != null) {
@@ -501,8 +501,8 @@ public class BotEventListener extends ListenerAdapter {
     private static void giveDiscordTimestamp(IReplyCallback event, Member member, String dateTimeParam, DiscordLocale locale) {
         // find the user's timezone.
         String timezoneName = TimezoneBot.userTimezones.stream()
-                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
-                .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+                .filter(u -> u.serverId() == member.getGuild().getIdLong() && u.userId() == member.getIdLong())
+                .findFirst().map(timezone -> timezone.timezoneName()).orElse(null);
 
         // if the user has no timezone role, we want to use UTC instead!
         String timezoneToUse = timezoneName == null ? "UTC" : timezoneName;
@@ -619,13 +619,13 @@ public class BotEventListener extends ListenerAdapter {
     private static void giveTimeForOtherUser(IReplyCallback event, Member member, Long memberParam, DiscordLocale locale) {
         // find the target user's timezone.
         String timezoneName = TimezoneBot.userTimezones.stream()
-                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == memberParam)
-                .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+                .filter(u -> u.serverId() == member.getGuild().getIdLong() && u.userId() == memberParam)
+                .findFirst().map(timezone -> timezone.timezoneName()).orElse(null);
 
         // find the calling user's timezone.
         String userTimezone = TimezoneBot.userTimezones.stream()
-                .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
-                .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+                .filter(u -> u.serverId() == member.getGuild().getIdLong() && u.userId() == member.getIdLong())
+                .findFirst().map(timezone -> timezone.timezoneName()).orElse(null);
 
         if (timezoneName == null) {
             // the user is not in the database.
@@ -651,8 +651,8 @@ public class BotEventListener extends ListenerAdapter {
         String userTimezone = null;
         if (member != null) {
             userTimezone = TimezoneBot.userTimezones.stream()
-                    .filter(u -> u.serverId == member.getGuild().getIdLong() && u.userId == member.getIdLong())
-                    .findFirst().map(timezone -> timezone.timezoneName).orElse(null);
+                    .filter(u -> u.serverId() == member.getGuild().getIdLong() && u.userId() == member.getIdLong())
+                    .findFirst().map(timezone -> timezone.timezoneName()).orElse(null);
         }
 
         try {
@@ -796,8 +796,8 @@ public class BotEventListener extends ListenerAdapter {
     private void listTimezones(IReplyCallback event, String namesToUse, boolean asTextFile, boolean shouldRespondInPublic, DiscordLocale locale) {
         // list all members from the server
         Map<TimezoneBot.UserTimezone, TimezoneBot.CachedMember> members = TimezoneBot.userTimezones.stream()
-                .filter(user -> user.serverId == event.getGuild().getIdLong())
-                .collect(Collectors.toMap(user -> user, user -> TimezoneBot.getMemberWithCache(event.getGuild(), user.userId)));
+                .filter(user -> user.serverId() == event.getGuild().getIdLong())
+                .collect(Collectors.toMap(user -> user, user -> TimezoneBot.getMemberWithCache(event.getGuild(), user.userId())));
 
         if (members.isEmpty()) {
             event.reply(localizeMessage(locale,
@@ -811,15 +811,10 @@ public class BotEventListener extends ListenerAdapter {
         // group them by UTC offset
         Map<Integer, Set<String>> peopleByUtcOffset = new TreeMap<>();
         for (Map.Entry<TimezoneBot.UserTimezone, TimezoneBot.CachedMember> member : members.entrySet()) {
-            ZoneId zone = ZoneId.of(member.getKey().timezoneName);
+            ZoneId zone = ZoneId.of(member.getKey().timezoneName());
             ZonedDateTime now = ZonedDateTime.now(zone);
             int offset = now.getOffset().getTotalSeconds() / 60;
-
-            Set<String> peopleInUtcOffset = peopleByUtcOffset.get(offset);
-            if (peopleInUtcOffset == null) {
-                peopleInUtcOffset = new TreeSet<>(Comparator.comparing(s -> s.toLowerCase(Locale.ROOT)));
-                peopleByUtcOffset.put(offset, peopleInUtcOffset);
-            }
+            Set<String> peopleInUtcOffset = peopleByUtcOffset.computeIfAbsent(offset, _ -> new TreeSet<>(Comparator.<String, String>comparing(s -> s.toLowerCase(Locale.ROOT))));
             peopleInUtcOffset.add(getUserName(member.getValue(), namesToUse));
         }
 
@@ -855,9 +850,9 @@ public class BotEventListener extends ListenerAdapter {
 
     private String getUserName(TimezoneBot.CachedMember member, String nameToUse) {
         return switch (nameToUse) {
-            case "nicknames" -> member.nickname;
-            case "both" -> member.nickname + " (" + member.discordTag + ")";
-            default -> member.discordTag;
+            case "nicknames" -> member.nickname();
+            case "both" -> member.nickname() + " (" + member.discordTag() + ")";
+            default -> member.discordTag();
         };
     }
 

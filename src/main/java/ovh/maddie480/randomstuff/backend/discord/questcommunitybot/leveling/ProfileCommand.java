@@ -46,7 +46,7 @@ public class ProfileCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         if (parameters.length > 0) {
             Member resolved = Utils.findMemberFromString(event.getChannel(), parameters[0]);
             if (resolved != null) {
@@ -58,7 +58,7 @@ public class ProfileCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

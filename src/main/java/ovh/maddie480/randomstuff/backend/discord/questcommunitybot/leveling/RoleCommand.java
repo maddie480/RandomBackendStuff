@@ -48,12 +48,12 @@ public class RoleCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         levelingEngine.pickRole(event.getChannel(), event.getMember(), parameters[0]);
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         if (Utils.getUnicodeHexFromEmoji(event.getEmoji().getName()).equals("e29c85")) {
             return levelingEngine.onTickAddBuyRole(event.getChannel(), event.getMessageIdLong(), event.getUser());
         }

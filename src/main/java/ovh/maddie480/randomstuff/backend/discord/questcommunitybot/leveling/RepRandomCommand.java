@@ -51,7 +51,7 @@ public class RepRandomCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         Guild guild = Utils.getQuestGuild(event.getJDA());
         List<Member> members = guild.getMembers();
 
@@ -60,7 +60,7 @@ public class RepRandomCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

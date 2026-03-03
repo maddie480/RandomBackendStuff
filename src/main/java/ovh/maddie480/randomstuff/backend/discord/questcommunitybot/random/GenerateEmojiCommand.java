@@ -43,7 +43,7 @@ public class GenerateEmojiCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         Guild s = event.getJDA().getGuildById(443390765826179072L);
         Role r = s.getRoleById(1053042632919617667L);
         Member m = s.getMemberById(892979056889430048L);

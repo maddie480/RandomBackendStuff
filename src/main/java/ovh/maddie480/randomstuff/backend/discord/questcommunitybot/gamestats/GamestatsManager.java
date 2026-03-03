@@ -236,8 +236,8 @@ public class GamestatsManager {
 
             log.debug("Résultat de la recherche case-insensitive : {}", candidates);
             if (candidates.size() == 1) {
-                log.debug("J'ai trouvé la bonne casse pour {} : c'est {}", game, candidates.get(0));
-                game = candidates.get(0);
+                log.debug("J'ai trouvé la bonne casse pour {} : c'est {}", game, candidates.getFirst());
+                game = candidates.getFirst();
             }
         }
 

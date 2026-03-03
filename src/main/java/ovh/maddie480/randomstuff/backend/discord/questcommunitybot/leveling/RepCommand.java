@@ -46,7 +46,7 @@ public class RepCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         Member receiver = Utils.findMemberFromString(event.getChannel(), parameters[0]);
         if (receiver != null) {
             levelingEngine.rep(event.getChannel(), event.getAuthor(), receiver.getUser());
@@ -54,7 +54,7 @@ public class RepCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

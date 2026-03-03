@@ -205,7 +205,7 @@ public class YouTubeChatProvider implements IChatProvider<String> {
                 JSONObject message = response.getJSONArray("items").getJSONObject(i);
 
                 if (!"textMessageEvent".equals(message.getJSONObject("snippet").getString("type"))) {
-                    log.debug("Skipping message of type " + message.getJSONObject("snippet").getString("type"));
+                    log.debug("Skipping message of type {}", message.getJSONObject("snippet").getString("type"));
                     continue;
                 }
 

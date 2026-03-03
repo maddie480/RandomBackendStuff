@@ -20,13 +20,13 @@ import java.util.List;
 public class PrivateDiscordJanitor {
     private static final Logger logger = LoggerFactory.getLogger(PrivateDiscordJanitor.class);
 
-    private JDA botClient;
+    private final JDA botClient;
 
     private PrivateDiscordJanitor(JDA botClient) {
         this.botClient = botClient;
     }
 
-    public static void runDaily() throws IOException {
+    public static void runDaily() {
         try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
             new PrivateDiscordJanitor(questBot).run();
         }

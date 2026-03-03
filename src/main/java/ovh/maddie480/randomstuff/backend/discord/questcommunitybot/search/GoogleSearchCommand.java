@@ -109,10 +109,10 @@ public class GoogleSearchCommand implements BotCommand {
     }
 
     private void postGoogleResultToChannel(MessageChannel channel, List<String> searchLinks, List<String> searchNames) {
-        channel.sendMessage("J'ai trouvé : **" + searchNames.get(0) + "**\n:arrow_right: " + searchLinks.get(0))
+        channel.sendMessage("J'ai trouvé : **" + searchNames.getFirst() + "**\n:arrow_right: " + searchLinks.getFirst())
                 .queue(message -> {
-                    searchLinks.remove(0);
-                    searchNames.remove(0);
+                    searchLinks.removeFirst();
+                    searchNames.removeFirst();
                     if (searchLinks.isEmpty() || searchNames.isEmpty()) {
                         nextSearchLinks.remove(message.getIdLong());
                         nextSearchNames.remove(message.getIdLong());

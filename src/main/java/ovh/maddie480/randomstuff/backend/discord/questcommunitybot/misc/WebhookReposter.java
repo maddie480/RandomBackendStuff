@@ -71,7 +71,7 @@ public class WebhookReposter {
                     .sendMessage(MessageCreateData.fromFiles(FileUpload.fromData(
                         Paths.get("webhook_reposter", identity.avatarFileName()))))
                     .complete()
-                    .getAttachments().get(0)
+                    .getAttachments().getFirst()
                     .getUrl();
                 avatarUrls.put(identity.avatarFileName(), avatarUrl);
                 logger.debug("Uploaded the avatar, got URL: {}", avatarUrl);

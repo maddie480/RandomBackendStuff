@@ -19,10 +19,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -55,7 +51,7 @@ public class TemperatureChecker {
         };
     }
 
-    public static void main(String[] args) throws IOException {
+    static void main(String[] args) throws IOException {
         String mode = args[0];
         String place = args[1];
         String domain = args[2];
@@ -175,8 +171,8 @@ public class TemperatureChecker {
         Guild server = target.getGuild();
         List<Role> botRoles = server.getSelfMember().getRoles();
         for (Role r : botRoles) {
-            if (roleColors.contains(r.getColor())) {
-                alreadyGotLevels.put(r.getName(), roleColors.indexOf(r.getColor()));
+            if (roleColors.contains(r.getColors().getPrimary())) {
+                alreadyGotLevels.put(r.getName(), roleColors.indexOf(r.getColors().getPrimary()));
             }
         }
 
@@ -190,7 +186,7 @@ public class TemperatureChecker {
             log.info("We need to replace the showed levels!");
 
             for (Role r : botRoles) {
-                if (roleColors.contains(r.getColor())) {
+                if (roleColors.contains(r.getColors().getPrimary())) {
                     log.debug("Deleting role {}", r);
                     r.delete().complete();
                 }

@@ -76,7 +76,7 @@ public class TimezoneRoleUpdater implements Runnable {
 
                 TimezoneBot.jda.getPresence().setActivity(Activity.playing("/timezone | " +
                         TimezoneBot.jda.getGuilds().stream().mapToInt(g -> TimezoneBot.getTimezoneOffsetRolesForGuild(g).size()).sum() + " roles | " +
-                        TimezoneBot.userTimezones.stream().map(u -> u.userId).distinct().count() + " users | " +
+                        TimezoneBot.userTimezones.stream().map(u -> u.userId()).distinct().count() + " users | " +
                         TimezoneBot.jda.getGuilds().size() + " servers"));
             } catch (Exception e) {
                 logger.error("Refresh roles failed", e);
@@ -118,8 +118,8 @@ public class TimezoneRoleUpdater implements Runnable {
 
         // user-timezone couples for this server
         Map<Long, String> userTimezonesThisServer = TimezoneBot.userTimezones.stream()
-                .filter(s -> s.serverId == guildId)
-                .collect(Collectors.toMap(s -> s.userId, s -> s.timezoneName));
+                .filter(s -> s.serverId() == guildId)
+                .collect(Collectors.toMap(s -> s.userId(), s -> s.timezoneName()));
         Map<Integer, Long> timezoneOffsetRolesThisServer = TimezoneBot.getTimezoneOffsetRolesForGuild(server);
 
         // timezones no one has anymore (existing timezones will be removed from the set as it goes)
@@ -163,7 +163,7 @@ public class TimezoneRoleUpdater implements Runnable {
                 }
 
                 boolean userHasCorrectRole = false;
-                for (long roleId : member.roleIds) {
+                for (long roleId : member.roleIds()) {
                     if (roleId != targetRole.getIdLong() && timezoneOffsetRolesThisServer.values().stream().anyMatch(l -> l == roleId)) {
                         // the user has a timezone role that doesn't match their timezone!
                         Role serverRole = server.getRoleById(roleId);
@@ -202,7 +202,7 @@ public class TimezoneRoleUpdater implements Runnable {
             logger.info("Removing user {}", user);
             userTimezonesThisServer.remove(user);
             TimezoneBot.userTimezones.stream()
-                    .filter(u -> u.serverId == guildId && u.userId == user)
+                    .filter(u -> u.serverId() == guildId && u.userId() == user)
                     .findFirst().map(u -> TimezoneBot.userTimezones.remove(u));
             usersDeleted = true;
         }
@@ -257,8 +257,8 @@ public class TimezoneRoleUpdater implements Runnable {
      */
     private boolean cleanUpUsersFromServer(Guild server) {
         List<Long> serverUsers = TimezoneBot.userTimezones.stream()
-                .filter(s -> s.serverId == server.getIdLong())
-                .map(s -> s.userId)
+                .filter(s -> s.serverId() == server.getIdLong())
+                .map(s -> s.userId())
                 .toList();
 
         boolean usersDeleted = false;
@@ -267,7 +267,7 @@ public class TimezoneRoleUpdater implements Runnable {
             if (TimezoneBot.getMemberWithCache(server, user) == null) {
                 logger.info("Removing user {}", user);
                 TimezoneBot.userTimezones.stream()
-                        .filter(u -> u.serverId == server.getIdLong() && u.userId == user)
+                        .filter(u -> u.serverId() == server.getIdLong() && u.userId() == user)
                         .findFirst().map(u -> TimezoneBot.userTimezones.remove(u));
                 usersDeleted = true;
             }
@@ -288,7 +288,7 @@ public class TimezoneRoleUpdater implements Runnable {
         // remove settings for users that left
         List<TimezoneBot.UserTimezone> toDelete = new ArrayList<>();
         for (TimezoneBot.UserTimezone userTimezone : TimezoneBot.userTimezones) {
-            if (TimezoneBot.jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == userTimezone.serverId)) {
+            if (TimezoneBot.jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == userTimezone.serverId())) {
                 logger.warn("Removing user {} belonging to non-existing server", userTimezone);
                 toDelete.add(userTimezone);
                 usersDeleted = true;
@@ -298,10 +298,10 @@ public class TimezoneRoleUpdater implements Runnable {
 
         // remove users that left or don't have settings from the cache
         for (TimezoneBot.CachedMember memberCache : new ArrayList<>(TimezoneBot.memberCache)) {
-            if (TimezoneBot.jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == memberCache.serverId)) {
+            if (TimezoneBot.jda.getGuilds().stream().noneMatch(g -> g.getIdLong() == memberCache.serverId())) {
                 logger.warn("Removing user {} from cache belonging to non-existing server", memberCache);
                 TimezoneBot.memberCache.remove(memberCache);
-            } else if (TimezoneBot.userTimezones.stream().noneMatch(u -> u.serverId == memberCache.serverId && u.userId == memberCache.memberId)) {
+            } else if (TimezoneBot.userTimezones.stream().noneMatch(u -> u.serverId() == memberCache.serverId() && u.userId() == memberCache.memberId())) {
                 logger.warn("Removing user {} from cache because they are not a bot user", memberCache);
                 TimezoneBot.memberCache.remove(memberCache);
             }
@@ -327,7 +327,7 @@ public class TimezoneRoleUpdater implements Runnable {
      */
     private Member getMemberForReal(TimezoneBot.CachedMember member) {
         try {
-            return TimezoneBot.jda.getGuildById(member.serverId).retrieveMemberById(member.memberId).complete();
+            return TimezoneBot.jda.getGuildById(member.serverId()).retrieveMemberById(member.memberId()).complete();
         } catch (ErrorResponseException error) {
             if (error.getErrorResponse() == ErrorResponse.UNKNOWN_MEMBER) {
                 // Unknown Member error: this is to be expected if a member left the server.

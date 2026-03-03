@@ -239,7 +239,7 @@ public class SHSChatControl implements Runnable {
             }
 
             int fileSize = (int) Files.size(radioToSend);
-            logger.debug("Transferring file {} @ {} ({} bytes) and remaining duration {} to client", songPath, radioToSend.toAbsolutePath().toString(), fileSize, duration - seek);
+            logger.debug("Transferring file {} @ {} ({} bytes) and remaining duration {} to client", songPath, radioToSend.toAbsolutePath(), fileSize, duration - seek);
 
             // transfer the size, the file, then the time left
             os.writeInt(fileSize);

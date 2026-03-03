@@ -43,57 +43,13 @@ public class TimezoneBot {
      * The timezone of a user in a particular server.
      * Timezones are server-specific, since you might want to only show your timezone to some servers.
      */
-    static class UserTimezone {
-        final long serverId;
-        final long userId;
-        final String timezoneName;
-
-        public UserTimezone(long serverId, long userId, String timezoneName) {
-            this.serverId = serverId;
-            this.userId = userId;
-            this.timezoneName = timezoneName;
-        }
-
-        @Override
-        public String toString() {
-            return "UserTimezone{" +
-                    "serverId=" + serverId +
-                    ", userId=" + userId +
-                    ", timezoneName='" + timezoneName + '\'' +
-                    '}';
-        }
-    }
+    record UserTimezone(long serverId, long userId, String timezoneName) {}
 
     /**
      * A member in a server, with their current roles.
      * This allows to avoid having to retrieve all members at each time.
      */
-    static class CachedMember {
-        final long serverId;
-        final long memberId;
-        final String discordTag;
-        final String nickname;
-        final ArrayList<Long> roleIds;
-
-        public CachedMember(long serverId, long memberId, String discordTag, String nickname, ArrayList<Long> roleIds) {
-            this.serverId = serverId;
-            this.memberId = memberId;
-            this.discordTag = discordTag;
-            this.nickname = nickname;
-            this.roleIds = roleIds;
-        }
-
-        @Override
-        public String toString() {
-            return "MemberCache{" +
-                    "serverId=" + serverId +
-                    ", memberId=" + memberId +
-                    ", discordTag=" + discordTag +
-                    ", nickname=" + nickname +
-                    ", roleIds=" + roleIds +
-                    '}';
-        }
-    }
+    record CachedMember(long serverId, long memberId, String discordTag, String nickname, ArrayList<Long> roleIds) {}
 
     static List<UserTimezone> userTimezones;
     static Set<Long> serversWithTime; // servers that want times in timezone roles
@@ -164,7 +120,7 @@ public class TimezoneBot {
         }
     }
 
-    public static int getServerCount() throws IOException {
+    public static int getServerCount() {
         try (DiscardableJDA jda = new DiscardableJDA(SecretConstants.TIMEZONE_BOT_TOKEN)) {
             return jda.getGuilds().size();
         }

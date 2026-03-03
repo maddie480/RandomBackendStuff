@@ -471,7 +471,7 @@ public class AssetDriveService {
             return result;
 
         } catch (Exception e) {
-            log.warn("Exception while reading PNG dimensions for {}", e, file.getFileName());
+            log.warn("Exception while reading PNG dimensions for {}", file.getFileName(), e);
             return new Size(0, 0);
         }
     }

@@ -40,13 +40,13 @@ public class ChooseCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         String picked = parameters[(int) (Math.random() * parameters.length)];
         event.getChannel().sendMessage("**" + event.getAuthor().getName() + "**, je choisis **" + picked + "** !").queue();
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

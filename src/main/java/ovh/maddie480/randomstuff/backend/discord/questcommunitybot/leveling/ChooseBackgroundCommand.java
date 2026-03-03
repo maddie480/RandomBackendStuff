@@ -50,7 +50,7 @@ public class ChooseBackgroundCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         if (Utils.getUnicodeHexFromEmoji(event.getEmoji().getName()).equals("e29c85")) {
             return levelingEngine.onTickAddBuyBackground(event.getChannel(), event.getMessageIdLong(), event.getUser());
         }

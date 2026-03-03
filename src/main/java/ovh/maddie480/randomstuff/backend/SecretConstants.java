@@ -10,126 +10,126 @@ import java.util.Map;
 
 public class SecretConstants {
     // specifies where the bot should publish errors, and who it should ping about them
-    public static Long OWNER_ID;
-    public static Long REPORT_SERVER_ID;
-    public static Long REPORT_SERVER_CHANNEL;
+    public static final Long OWNER_ID;
+    public static final Long REPORT_SERVER_ID;
+    public static final Long REPORT_SERVER_CHANNEL;
 
     // Timezone Bot credentials
-    public static String TIMEZONE_BOT_TOKEN;
+    public static final String TIMEZONE_BOT_TOKEN;
 
     // API key to access the TimeZoneDB API
-    public static String TIMEZONEDB_API_KEY;
+    public static final String TIMEZONEDB_API_KEY;
 
     // Games Bot credentials
-    public static String GAMES_BOT_CLIENT_ID;
-    public static String GAMES_BOT_TOKEN;
-    public static String GAMES_BOT_TOP_GG_TOKEN;
+    public static final String GAMES_BOT_CLIENT_ID;
+    public static final String GAMES_BOT_TOKEN;
+    public static final String GAMES_BOT_TOP_GG_TOKEN;
 
     // Custom Slash Commands application credentials
-    public static String CUSTOM_SLASH_COMMANDS_CLIENT_ID;
-    public static String CUSTOM_SLASH_COMMANDS_CLIENT_SECRET;
-    public static String CUSTOM_SLASH_COMMANDS_TOKEN;
-    public static String CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN;
+    public static final String CUSTOM_SLASH_COMMANDS_CLIENT_ID;
+    public static final String CUSTOM_SLASH_COMMANDS_CLIENT_SECRET;
+    public static final String CUSTOM_SLASH_COMMANDS_TOKEN;
+    public static final String CUSTOM_SLASH_COMMANDS_TOP_GG_TOKEN;
 
     // Credentials for the frontend ("no roles") version of the Timezone Bot
-    public static String TIMEZONE_BOT_LITE_CLIENT_ID;
-    public static String TIMEZONE_BOT_LITE_TOKEN;
-    public static String TIMEZONE_BOT_LITE_TOP_GG_TOKEN;
+    public static final String TIMEZONE_BOT_LITE_CLIENT_ID;
+    public static final String TIMEZONE_BOT_LITE_TOKEN;
+    public static final String TIMEZONE_BOT_LITE_TOP_GG_TOKEN;
 
     // Token for the BananaBot user that shouldn't be used
-    public static String BANANABOT_TOKEN;
+    public static final String BANANABOT_TOKEN;
 
     // Mod Structure Verifier credentials
-    public static String MOD_STRUCTURE_VERIFIER_TOKEN;
+    public static final String MOD_STRUCTURE_VERIFIER_TOKEN;
 
     // Links to helpers from GitHub that should be taken into account by the Mod Structure Verifier (everest.yaml name => path to Lönn lang file)
-    public static Map<String, String> LOENN_ENTITIES_FROM_GITHUB;
-    public static List<String> EVEREST_YAMLS_FROM_GITHUB;
+    public static final Map<String, String> LOENN_ENTITIES_FROM_GITHUB;
+    public static final List<String> EVEREST_YAMLS_FROM_GITHUB;
 
     // Server Manager bot credentials
-    public static String SERVER_JANITOR_TOKEN;
-    public static List<String> SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP;
+    public static final String SERVER_JANITOR_TOKEN;
+    public static final List<String> SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP;
 
     // Raw content of the update_checker_config.yaml to pass to the Everest Update Checker
-    public static String UPDATE_CHECKER_CONFIG;
+    public static final String UPDATE_CHECKER_CONFIG;
 
     // Asset Drive Browser service: interacts with Google Drive
-    public static String GOOGLE_DRIVE_API_KEY;
-    public static String ASSET_DRIVE_FOLDER_ID;
-    public static String GOOGLE_DRIVE_OAUTH_CONFIG;
+    public static final String GOOGLE_DRIVE_API_KEY;
+    public static final String ASSET_DRIVE_FOLDER_ID;
+    public static final String GOOGLE_DRIVE_OAUTH_CONFIG;
 
-    public static String NEXTCLOUD_HEALTHCHECK_TOKEN;
+    public static final String NEXTCLOUD_HEALTHCHECK_TOKEN;
 
     // secret used to call "reload" APIs on the frontend, when everest_update.yaml / mod_search_database.yaml is updated
-    public static String RELOAD_SHARED_SECRET;
+    public static final String RELOAD_SHARED_SECRET;
 
     // key that has to be used to access the speedrun.com update notifications setup
-    public static String SRC_MOD_UPDATE_NOTIFICATIONS_KEY;
+    public static final String SRC_MOD_UPDATE_NOTIFICATIONS_KEY;
 
     // Discord webhooks to call about GameBanana check issues
-    public static List<String> GAMEBANANA_ISSUES_ALERT_HOOKS;
+    public static final List<String> GAMEBANANA_ISSUES_ALERT_HOOKS;
 
     // The channel on Celestecord where people running collabs should be pinged when they are auto-hidden from the list
-    public static String COLLAB_AUTO_HIDDEN_ALERT_HOOK;
+    public static final String COLLAB_AUTO_HIDDEN_ALERT_HOOK;
 
     // hooks to call when posting update checker notifications
-    public static List<String> UPDATE_CHECKER_HOOKS;
+    public static final List<String> UPDATE_CHECKER_HOOKS;
 
     // hook to call for update checker technical logs
-    public static String UPDATE_CHECKER_LOGS_HOOK;
+    public static final String UPDATE_CHECKER_LOGS_HOOK;
 
     // hooks to call in case of issues with 0x0a.de
-    public static List<String> JADE_PLATFORM_HEALTHCHECK_HOOKS;
+    public static final List<String> JADE_PLATFORM_HEALTHCHECK_HOOKS;
 
     // hooks to call in case of issues with platforms other than 0x0a.de (namely GameBanana, Update Checker and maddie480.ovh)
-    public static List<String> NON_JADE_PLATFORM_HEALTHCHECK_HOOKS;
+    public static final List<String> NON_JADE_PLATFORM_HEALTHCHECK_HOOKS;
 
     // hook to call for speedrun.com update notifications
-    public static String SRC_UPDATE_CHECKER_HOOK;
+    public static final String SRC_UPDATE_CHECKER_HOOK;
 
     // a webhook I'm using for personal notifications
-    public static String PERSONAL_NOTIFICATION_WEBHOOK_URL;
-    public static String CRONTAB_LOGS_WEBHOOK_URL;
+    public static final String PERSONAL_NOTIFICATION_WEBHOOK_URL;
+    public static final String CRONTAB_LOGS_WEBHOOK_URL;
 
     // header used to authenticate to the bot account @maddie480-bot with the GitHub API
-    public static String GITHUB_BASIC_AUTH;
+    public static final String GITHUB_BASIC_AUTH;
 
     // SSH credentials for @maddie480-bot
-    public static String GITHUB_SSH_PRIVATE_KEY;
-    public static String GITHUB_SSH_PUBLIC_KEY;
-    public static String GITHUB_SSH_KNOWN_HOSTS;
+    public static final String GITHUB_SSH_PRIVATE_KEY;
+    public static final String GITHUB_SSH_PUBLIC_KEY;
+    public static final String GITHUB_SSH_KNOWN_HOSTS;
 
     // header used to authenticate to the main account @maddie480 with the GitHub API
     // (only used to access private resources only the main account can access)
-    public static String GITHUB_MAIN_ACCOUNT_BASIC_AUTH;
+    public static final String GITHUB_MAIN_ACCOUNT_BASIC_AUTH;
 
     // Private key file to sign requests to celestemods.com (otobot's mirror)
-    public static String OTOBOT_WEBHOOK_PRIVATE_KEY;
+    public static final String OTOBOT_WEBHOOK_PRIVATE_KEY;
 
     // Twitch credentials
-    public static String TWITCH_CLIENT_ID;
-    public static String TWITCH_CLIENT_SECRET;
+    public static final String TWITCH_CLIENT_ID;
+    public static final String TWITCH_CLIENT_SECRET;
 
-    public static String YOUTUBE_LNJ_BOT_CLIENT_ID;
-    public static String YOUTUBE_LNJ_BOT_CLIENT_SECRET;
+    public static final String YOUTUBE_LNJ_BOT_CLIENT_ID;
+    public static final String YOUTUBE_LNJ_BOT_CLIENT_SECRET;
 
     // Quest Community Bot secrets
-    public static String QUEST_COMMUNITY_BOT_TOKEN;
-    public static long QUEST_COMMUNITY_SERVER_ID;
-    public static long LEVELING_NOTIFICATION_CHANNEL;
-    public static String YOUTUBE_API_KEY;
-    public static String GOOGLE_CUSTOM_SEARCH_API_KEY;
-    public static String STEAM_WEB_API_KEY;
-    public static String REPOST_WEBHOOK_URL;
+    public static final String QUEST_COMMUNITY_BOT_TOKEN;
+    public static final long QUEST_COMMUNITY_SERVER_ID;
+    public static final long LEVELING_NOTIFICATION_CHANNEL;
+    public static final String YOUTUBE_API_KEY;
+    public static final String GOOGLE_CUSTOM_SEARCH_API_KEY;
+    public static final String STEAM_WEB_API_KEY;
+    public static final String REPOST_WEBHOOK_URL;
 
     // Quest Community Bot crontabs
-    public static String STONK_URL;
-    public static String WEATHER_WARNING_DOMAIN;
-    public static String WEATHER_PLACE;
+    public static final String STONK_URL;
+    public static final String WEATHER_WARNING_DOMAIN;
+    public static final String WEATHER_PLACE;
 
     // Nextcloud URL to upload backups to
-    public static String NEXTCLOUD_LOGIN;
-    public static String NEXTCLOUD_UPLOAD_TARGET;
+    public static final String NEXTCLOUD_LOGIN;
+    public static final String NEXTCLOUD_UPLOAD_TARGET;
 
     static {
         // The SECRET_CONSTANTS environment variable has all secrets, in JSON format.

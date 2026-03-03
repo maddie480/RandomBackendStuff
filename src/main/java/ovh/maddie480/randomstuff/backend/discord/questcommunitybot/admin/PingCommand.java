@@ -40,7 +40,7 @@ public class PingCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         long ping = event.getJDA().getGatewayPing();
 
         final String message = ":ping_pong: Pong"
@@ -60,7 +60,7 @@ public class PingCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

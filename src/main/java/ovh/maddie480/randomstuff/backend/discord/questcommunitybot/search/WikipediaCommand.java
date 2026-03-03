@@ -77,7 +77,7 @@ public class WikipediaCommand implements BotCommand {
 
             try {
                 String title = doc.title();
-                String realUrl = doc.select("link[rel=\"canonical\"]").get(0).attr("href");
+                String realUrl = doc.select("link[rel=\"canonical\"]").getFirst().attr("href");
 
                 event.getChannel().sendMessage("J'ai trouvé ce que tu cherchais : **" + title + "**\n:arrow_right: " + realUrl).queue();
             } catch (Exception e) {
@@ -98,7 +98,7 @@ public class WikipediaCommand implements BotCommand {
                 }
 
                 event.getChannel().sendMessage("Je n'ai pas trouvé exactement ce que tu cherchais. En revanche, j'ai trouvé : **" +
-                        linksToResults.get(0).text().trim() + "**\n:arrow_right: https://fr.wikipedia.org" + linksToResults.get(0).attr("href")).queue(message -> {
+                        linksToResults.getFirst().text().trim() + "**\n:arrow_right: https://fr.wikipedia.org" + linksToResults.getFirst().attr("href")).queue(message -> {
 
                     if (!names.isEmpty()) {
                         message.addReaction(Utils.getEmojiFromUnicodeHex("e28fad")).queue();
@@ -137,10 +137,10 @@ public class WikipediaCommand implements BotCommand {
     }
 
     private void postGoogleResultToChannel(MessageChannel channel, List<String> searchLinks, List<String> searchNames) {
-        channel.sendMessage("J'ai trouvé : **" + searchNames.get(0) + "**\n:arrow_right: " + searchLinks.get(0))
+        channel.sendMessage("J'ai trouvé : **" + searchNames.getFirst() + "**\n:arrow_right: " + searchLinks.getFirst())
                 .queue(message -> {
-                    searchLinks.remove(0);
-                    searchNames.remove(0);
+                    searchLinks.removeFirst();
+                    searchNames.removeFirst();
                     if (searchLinks.isEmpty() || searchNames.isEmpty()) {
                         nextSearchLinks.remove(message.getIdLong());
                         nextSearchNames.remove(message.getIdLong());

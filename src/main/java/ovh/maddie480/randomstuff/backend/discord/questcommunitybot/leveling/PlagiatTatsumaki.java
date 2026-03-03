@@ -136,15 +136,7 @@ public class PlagiatTatsumaki {
         String backgroundUrl;
     }
 
-    private static class GameBackground {
-        final String gameNameUrlEncoded;
-        final String backgroundUrl;
-
-        GameBackground(String gameNameUrlEncoded, String backgroundUrl) {
-            this.gameNameUrlEncoded = gameNameUrlEncoded;
-            this.backgroundUrl = backgroundUrl;
-        }
-
+    private record GameBackground(String gameNameUrlEncoded, String backgroundUrl) {
         public String toString() {
             return this.gameNameUrlEncoded + " @ " + this.backgroundUrl;
         }
@@ -498,8 +490,7 @@ public class PlagiatTatsumaki {
                     if (transaction.backgroundUrl != null) {
                         channel.sendTyping().queue();
 
-                        logger.debug("On télécharge " + transaction.backgroundUrl + " vers "
-                                + "backgrounds_user" + File.separator + author.getIdLong() + ".png");
+                        logger.debug("On télécharge {} vers backgrounds_user{}{}.png", transaction.backgroundUrl, File.separator, author.getIdLong());
 
                         try (InputStream is = ConnectionUtils.openStreamWithTimeout(transaction.backgroundUrl)) {
                             IOUtils.copy(
@@ -519,9 +510,7 @@ public class PlagiatTatsumaki {
                     } else {
                         channel.sendTyping().queue();
 
-                        logger.debug("cp "
-                                + "/app/static/quest/background-repository" + File.separator + matchingBackground.fileName + " "
-                                + "backgrounds_user" + File.separator + author.getIdLong() + ".png");
+                        logger.debug("cp /app/static/quest/background-repository{}{} backgrounds_user{}{}.png", File.separator, matchingBackground.fileName, File.separator, author.getIdLong());
 
                         Files.copy(
                                 Paths.get("/app/static/quest/background-repository", matchingBackground.fileName),
@@ -1116,9 +1105,7 @@ public class PlagiatTatsumaki {
             channel.sendMessage("L'arrière-plan **" + backgroundName + "** est introuvable.").queue();
         } else {
             if (boughtBackgrounds.getOrDefault(author.getIdLong(), new ArrayList<>()).contains(matchingBackground.nameUrlEncoded)) {
-                logger.debug("cp "
-                        + "/app/static/quest/background-repository" + File.separator + matchingBackground.fileName + " "
-                        + "backgrounds_user" + File.separator + author.getIdLong() + ".png");
+                logger.debug("cp /app/static/quest/background-repository{}{} backgrounds_user{}{}.png", File.separator, matchingBackground.fileName, File.separator, author.getIdLong());
 
                 Files.copy(
                         Paths.get("/app/static/quest/background-repository", matchingBackground.fileName),
@@ -1185,8 +1172,7 @@ public class PlagiatTatsumaki {
                 channel.sendTyping().queue();
 
                 if (boughtGameBackgrounds.getOrDefault(author.getIdLong(), new ArrayList<>()).contains(matchingBackground.gameNameUrlEncoded)) {
-                    logger.debug("On télécharge " + matchingBackground.backgroundUrl + " vers "
-                            + "backgrounds_user" + File.separator + author.getIdLong() + ".png");
+                    logger.debug("On télécharge {} vers backgrounds_user{}{}.png", matchingBackground.backgroundUrl, File.separator, author.getIdLong());
 
                     IOUtils.copy(
                             is,
@@ -1240,7 +1226,7 @@ public class PlagiatTatsumaki {
     }
 
     void revertToDefault(MessageChannel channel, User author) throws IOException {
-        logger.debug("rm " + "backgrounds_user" + File.separator + author.getIdLong() + ".png");
+        logger.debug("rm backgrounds_user{}{}.png", File.separator, author.getIdLong());
         Files.delete(Paths.get("backgrounds_user" + File.separator + author.getIdLong() + ".png"));
 
         purgeBackgrounds();
@@ -1387,7 +1373,7 @@ public class PlagiatTatsumaki {
     }
 
     private long generateTokenFor(JDA jda, Long authorId) throws IOException {
-        logger.debug("Generating background data for " + authorId);
+        logger.debug("Generating background data for {}", authorId);
 
         long token;
         do {

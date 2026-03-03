@@ -111,10 +111,10 @@ public class YouTubeSearchCommand implements BotCommand {
     }
 
     private void postYoutubeResultToChannel(MessageChannel channel, List<String> videoIds, List<String> videoNames) {
-        channel.sendMessage("J'ai trouvé : **" + videoNames.get(0) + "**\n:arrow_right: https://www.youtube.com/watch?v=" + videoIds.get(0))
+        channel.sendMessage("J'ai trouvé : **" + videoNames.getFirst() + "**\n:arrow_right: https://www.youtube.com/watch?v=" + videoIds.getFirst())
                 .queue(message -> {
-                    videoIds.remove(0);
-                    videoNames.remove(0);
+                    videoIds.removeFirst();
+                    videoNames.removeFirst();
 
                     if (videoIds.isEmpty() || videoNames.isEmpty()) {
                         nextVideoIds.remove(message.getIdLong());

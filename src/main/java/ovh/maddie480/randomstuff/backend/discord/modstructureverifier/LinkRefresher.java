@@ -104,7 +104,7 @@ public class LinkRefresher {
 
             log.info("Refreshing link of message {} that expired on {}", message.embedId(), linkExpiresAt);
 
-            String url = origMessage.getAttachments().get(0).getUrl();
+            String url = origMessage.getAttachments().getFirst().getUrl();
             linkExpiresAt = Instant.ofEpochSecond(getLinkExpirationTimestamp(url)).atZone(ZoneId.systemDefault());
 
             log.info("New link expires on {}: {}", linkExpiresAt, url);
@@ -112,7 +112,7 @@ public class LinkRefresher {
                 throw new Exception("New link is still expired!");
             }
 
-            MessageEmbed originalEmbed = embedMessage.getEmbeds().get(0);
+            MessageEmbed originalEmbed = embedMessage.getEmbeds().getFirst();
             MessageEmbed newEmbed = new EmbedBuilder()
                     .setTitle(originalEmbed.getTitle(), "https://0x0a.de/twoclick?" + url)
                     .setDescription(originalEmbed.getDescription())

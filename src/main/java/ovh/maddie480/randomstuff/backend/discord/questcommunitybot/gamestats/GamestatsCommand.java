@@ -52,7 +52,7 @@ public class GamestatsCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         if (parameters.length == 0) {
             event.getChannel().sendMessage(gamestatsManager.postStats(GamestatsManager.ALLTIME)).queue();
         } else if (parameters[0].equals("day")) {
@@ -72,7 +72,7 @@ public class GamestatsCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

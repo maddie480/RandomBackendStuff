@@ -56,7 +56,7 @@ public class TopCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         boolean withBots = true;
         for (String parameter : parameters) {
             if ("nobots".equals(parameter)) {
@@ -75,7 +75,7 @@ public class TopCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

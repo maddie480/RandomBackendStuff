@@ -56,12 +56,12 @@ public class ChronoCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         startStopwatch(event.getAuthor().getIdLong(), event.getChannel());
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         if (!messageIDsToStopwatchIDs.containsKey(event.getMessageIdLong())) {
             return false;
         }
@@ -100,7 +100,7 @@ public class ChronoCommand implements BotCommand {
                 while (runningStates.getOrDefault(id, false) && ecoule <= 120) {
                     tempsEcoule = ecoule + (ecoule == 1 ? " minute" : " minutes");
                     if (ecoule == 0) tempsEcoule = "moins d'une minute";
-                    logger.debug(tempsEcoule + " elapsed");
+                    logger.debug("{} elapsed", tempsEcoule);
 
                     if (message == null) {
                         logger.debug("Posting first message");
@@ -125,7 +125,7 @@ public class ChronoCommand implements BotCommand {
                             throw new RuntimeException(e);
                         }
 
-                        logger.debug("Done. ID is " + message.getId());
+                        logger.debug("Done. ID is {}", message.getId());
                     } else {
                         logger.debug("Updating existing message.");
                         message.editMessage("Le chrono #" + id + " de <@" + authorId + "> tourne depuis " + tempsEcoule + ".").queue();

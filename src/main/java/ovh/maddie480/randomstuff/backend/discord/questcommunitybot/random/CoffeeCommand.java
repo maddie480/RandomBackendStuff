@@ -11,7 +11,7 @@ public class CoffeeCommand extends AbstractFixedMessageCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         event.getChannel().sendMessage(":coffee:").queue();
     }
 }

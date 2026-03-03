@@ -60,7 +60,7 @@ public class PlayedCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         if (parameters.length == 0) {
             log.debug("Récupération des statistiques globales de l'utilisateur connecté");
             event.getChannel().sendMessage(gamestatsManager.getUserStats(event.getAuthor(), GamestatsManager.ALLTIME, true)).queue();
@@ -94,7 +94,7 @@ public class PlayedCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

@@ -11,7 +11,7 @@ public class SpamCommand extends AbstractFixedMessageCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         event.getChannel().sendMessage("S").queue();
         event.getChannel().sendMessage("P").queue();
         event.getChannel().sendMessage("A").queue();

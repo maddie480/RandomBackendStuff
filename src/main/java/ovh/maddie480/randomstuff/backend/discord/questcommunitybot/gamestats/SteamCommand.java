@@ -231,7 +231,7 @@ public class SteamCommand implements BotCommand {
             event.getChannel().sendMessage("J'ai trouvé " + results.size() + (results.size() > 1 ? " résultats" : " résultat") + " " +
                     "pour `" + parameters[0] + "`. Clique sur :white_check_mark: si c'est ton profil"
                     + (results.size() > 1 ? " ou sur :track_next: pour afficher le résultat suivant" : "") + ".\n\n" +
-                    ":arrow_right: " + results.get(0)).queue(message -> {
+                    ":arrow_right: " + results.getFirst()).queue(message -> {
 
                 steamProfilesForMessage.put(message.getIdLong(), results);
                 allowedUsersForMessage.put(message.getIdLong(), event.getAuthor().getIdLong());
@@ -260,7 +260,7 @@ public class SteamCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         long messageId = event.getMessageIdLong();
         String reactionHex = Utils.getUnicodeHexFromEmoji(event.getEmoji().getName());
         MessageChannel channel = event.getChannel();
@@ -271,12 +271,12 @@ public class SteamCommand implements BotCommand {
 
                 // dépiler un résultat et afficher le suivant
                 List<String> results = steamProfilesForMessage.get(messageId);
-                results.remove(0);
+                results.removeFirst();
 
                 steamProfilesForMessage.remove(messageId);
                 allowedUsersForMessage.remove(messageId);
 
-                channel.sendMessage(":arrow_right: " + results.get(0)).queue(message -> {
+                channel.sendMessage(":arrow_right: " + results.getFirst()).queue(message -> {
                     steamProfilesForMessage.put(message.getIdLong(), results);
                     allowedUsersForMessage.put(message.getIdLong(), event.getUserIdLong());
 
@@ -305,7 +305,7 @@ public class SteamCommand implements BotCommand {
                 if (channel instanceof TextChannel textChannel) textChannel.clearReactionsById(messageId).queue();
 
                 // dépiler un résultat et afficher le suivant
-                String correctUrl = steamProfilesForMessage.get(messageId).get(0);
+                String correctUrl = steamProfilesForMessage.get(messageId).getFirst();
 
                 steamProfilesForMessage.remove(messageId);
                 allowedUsersForMessage.remove(messageId);

@@ -5,9 +5,6 @@ import net.dv8tion.jda.api.components.MessageTopLevelComponent;
 import net.dv8tion.jda.api.components.MessageTopLevelComponentUnion;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
-import net.dv8tion.jda.api.entities.channel.ChannelType;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.interactions.*;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.commands.Command;
@@ -23,7 +20,6 @@ import ovh.maddie480.randomstuff.backend.discord.timezonebot.BotEventListener;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -295,12 +291,6 @@ public class WorldClockHealthCheck {
 
         @NotNull
         @Override
-        public InteractionType getType() {
-            return IReplyCallback.super.getType();
-        }
-
-        @NotNull
-        @Override
         public String getToken() {
             return null;
         }
@@ -308,17 +298,6 @@ public class WorldClockHealthCheck {
         @Override
         public Guild getGuild() {
             return null;
-        }
-
-        @Override
-        public boolean isFromGuild() {
-            return IReplyCallback.super.isFromGuild();
-        }
-
-        @NotNull
-        @Override
-        public ChannelType getChannelType() {
-            return IReplyCallback.super.getChannelType();
         }
 
         @NotNull
@@ -347,34 +326,10 @@ public class WorldClockHealthCheck {
             return 0;
         }
 
-        @Nullable
-        @Override
-        public String getChannelId() {
-            return IReplyCallback.super.getChannelId();
-        }
-
-        @NotNull
-        @Override
-        public GuildChannel getGuildChannel() {
-            return IReplyCallback.super.getGuildChannel();
-        }
-
-        @NotNull
-        @Override
-        public MessageChannel getMessageChannel() {
-            return IReplyCallback.super.getMessageChannel();
-        }
-
         @NotNull
         @Override
         public DiscordLocale getUserLocale() {
             return null;
-        }
-
-        @NotNull
-        @Override
-        public DiscordLocale getGuildLocale() {
-            return IReplyCallback.super.getGuildLocale();
         }
 
         @NotNull
@@ -401,23 +356,10 @@ public class WorldClockHealthCheck {
             return null;
         }
 
-        @NotNull
-        @Override
-        public String getId() {
-            return IReplyCallback.super.getId();
-        }
-
         @Override
         public long getIdLong() {
             return 0;
         }
-
-        @NotNull
-        @Override
-        public OffsetDateTime getTimeCreated() {
-            return IReplyCallback.super.getTimeCreated();
-        }
-
 
         @NotNull
         @Override

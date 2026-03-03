@@ -163,8 +163,7 @@ public class WebhookExecutor {
             if (shouldLog) log.debug("Sending request to [{}]: {} with attachments [\"{}\"]", webhookUrl, request,
                     attachments.stream().map(File::getAbsolutePath).collect(Collectors.joining("\", \"")));
 
-            HashMap<String, String> headers = new HashMap<>();
-            headers.putAll(httpHeaders);
+            HashMap<String, String> headers = new HashMap<>(httpHeaders);
             HttpPostMultipart multipart = new HttpPostMultipart(webhookUrl, "UTF-8", headers);
 
             multipart.addFormField("payload_json", request.toString());

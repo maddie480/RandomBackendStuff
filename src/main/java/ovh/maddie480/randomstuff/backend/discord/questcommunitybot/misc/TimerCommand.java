@@ -59,7 +59,7 @@ public class TimerCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         int minutes = Integer.parseInt(parameters[0]);
 
         MessageChannel chan = event.getChannel();
@@ -96,7 +96,7 @@ public class TimerCommand implements BotCommand {
 
                 for (int restant = minutes; restant > 0 && !timerIsStopping; restant--) {
                     String tempsRestant = restant + (restant == 1 ? " minute" : " minutes");
-                    logger.debug(tempsRestant + " remaining");
+                    logger.debug("{} remaining", tempsRestant);
                     dernierTempsRestant = tempsRestant;
 
                     if (message == null) {
@@ -122,7 +122,7 @@ public class TimerCommand implements BotCommand {
                             throw new RuntimeException(e);
                         }
 
-                        logger.debug("Done. ID is " + message.getId());
+                        logger.debug("Done. ID is {}", message.getId());
                     } else {
                         int progress = (int) ((100 - (100 * restant / minutes)) / 2.5);
                         StringBuilder progressBar = new StringBuilder("`[");
@@ -166,7 +166,7 @@ public class TimerCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         long messageId = event.getMessageIdLong();
         long authorId = event.getUserIdLong();
 

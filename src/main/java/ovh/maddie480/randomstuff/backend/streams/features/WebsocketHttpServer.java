@@ -45,12 +45,12 @@ public class WebsocketHttpServer {
              BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
 
             // pretend to consume the request
-            String request = "";
-            while (!request.equals("\r\n\r\n")) {
+            StringBuilder request = new StringBuilder();
+            while (!request.toString().equals("\r\n\r\n")) {
                 int result = is.read();
                 if (result == -1) throw new IOException("Connection closed!");
-                request += ((char) result);
-                if (request.length() == 5) request = request.substring(1, 5);
+                request.append((char) result);
+                if (request.length() == 5) request = new StringBuilder(request.substring(1, 5));
             }
 
             // send the response

@@ -73,15 +73,15 @@ public class CelesteStuffHealthCheck {
         if (latestStable == -1) {
             throw new IOException("There is no Everest stable version :a:");
         }
-        log.debug("Latest Everest stable version: " + latestStable);
+        log.debug("Latest Everest stable version: {}", latestStable);
         if (latestBeta == -1) {
             throw new IOException("There is no beta Everest version :a:");
         }
-        log.debug("Latest Everest beta version: " + latestBeta);
+        log.debug("Latest Everest beta version: {}", latestBeta);
         if (latestDev == -1) {
             throw new IOException("There is no Everest dev version :a:");
         }
-        log.debug("Latest Everest dev version: " + latestDev);
+        log.debug("Latest Everest dev version: {}", latestDev);
 
         // check the last version we sent an SRC notification for.
         int savedLatestEverest = Integer.parseInt(FileUtils.readFileToString(new File("latest_everest.txt"), UTF_8));
@@ -140,15 +140,15 @@ public class CelesteStuffHealthCheck {
         if (latestStable.isEmpty()) {
             throw new IOException("There is no Olympus stable version :a:");
         }
-        log.debug("Latest Olympus stable version: " + latestStable);
+        log.debug("Latest Olympus stable version: {}", latestStable);
         if (latestMain.isEmpty()) {
             throw new IOException("There is no Olympus dev version :a:");
         }
-        log.debug("Latest Olympus dev version: " + latestMain);
+        log.debug("Latest Olympus dev version: {}", latestMain);
         if (latestWindowsInit.isEmpty()) {
             throw new IOException("There is no Olympus windows-init version :a:");
         }
-        log.debug("Latest Olympus windows-init version: " + latestWindowsInit);
+        log.debug("Latest Olympus windows-init version: {}", latestWindowsInit);
 
         if (daily) {
             checkOlympusVersionExists("main");
@@ -310,7 +310,7 @@ public class CelesteStuffHealthCheck {
                     .stream()
                     .map(item -> item.get("URL").toString())
                     .sorted()
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         List<String> mirroredScreenshotsRef;
@@ -321,7 +321,7 @@ public class CelesteStuffHealthCheck {
                     .flatMap(List::stream)
                     .distinct()
                     .sorted()
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         List<String> richPresenceIconsRef;
@@ -345,7 +345,7 @@ public class CelesteStuffHealthCheck {
 
             richPresenceIconsRef = mapped.get("HashesToFiles").keySet().stream()
                     .sorted()
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         for (String mirror : Arrays.asList("https://celestemodupdater.0x0a.de",
@@ -1265,8 +1265,8 @@ public class CelesteStuffHealthCheck {
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
             Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
             fileId = (int) mapped.get("MaxHelpingHand").get("GameBananaFileId");
-            socmHash = ((List<String>) mapped.get("TheSecretOfCelesteMountain").get("xxHash")).get(0);
-            xaphanHelperHash = ((List<String>) mapped.get("XaphanHelper").get("xxHash")).get(0);
+            socmHash = ((List<String>) mapped.get("TheSecretOfCelesteMountain").get("xxHash")).getFirst();
+            xaphanHelperHash = ((List<String>) mapped.get("XaphanHelper").get("xxHash")).getFirst();
         }
 
         // search for MaxHelpingHand

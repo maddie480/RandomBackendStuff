@@ -67,7 +67,7 @@ public class EverestVersionLister {
                 currentAzureBuilds.addAll(new JSONObject(new JSONTokener(is)).getJSONArray("value")
                         .toList().stream()
                         .map(version -> (int) ((Map<String, Object>) version).get("id"))
-                        .collect(Collectors.toList()));
+                        .toList());
             }
         }
 
@@ -225,8 +225,8 @@ public class EverestVersionLister {
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
                     ":sparkles: Everest versions were updated. There are now **" + info.size() + "** versions on record.\n" +
-                            "Latest Everest version is **" + info.get(0).get("version") + "** (" + info.get(0).get("branch") + ")"
-                            + (info.get(0).containsKey("description") ? ": `" + info.get(0).get("description") + "` by " + info.get(0).get("author") + "." : "."),
+                            "Latest Everest version is **" + info.getFirst().get("version") + "** (" + info.getFirst().get("branch") + ")"
+                            + (info.getFirst().containsKey("description") ? ": `" + info.getFirst().get("description") + "` by " + info.getFirst().get("author") + "." : "."),
                     ImmutableMap.of("X-Everest-Log", "true"));
         }
         UpdateOutgoingWebhooks.changesHappened();

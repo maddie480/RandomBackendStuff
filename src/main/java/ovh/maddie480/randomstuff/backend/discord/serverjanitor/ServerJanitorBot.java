@@ -19,7 +19,7 @@ import java.util.List;
 public class ServerJanitorBot {
     private static final Logger log = LoggerFactory.getLogger(ServerJanitorBot.class);
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         try (DiscardableJDA jda = new DiscardableJDA(SecretConstants.SERVER_JANITOR_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
             for (String serverAndChannelIdRaw : SecretConstants.SUPPORT_SERVER_CHANNELS_TO_CLEAN_UP) {
                 String[] serverAndChannelId = serverAndChannelIdRaw.split(";");

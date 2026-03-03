@@ -49,7 +49,7 @@ public class RollCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         StringBuilder reponse = new StringBuilder("J'ai tiré : ");
 
         for (String limite : parameters) {
@@ -62,7 +62,7 @@ public class RollCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

@@ -11,7 +11,7 @@ public class EasterEggCommand extends AbstractFixedMessageCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         event.getChannel().sendMessage("Bien essayé !").queue();
     }
 }

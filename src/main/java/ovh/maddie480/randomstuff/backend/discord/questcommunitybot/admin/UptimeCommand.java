@@ -49,7 +49,7 @@ public class UptimeCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         long minutes = startDate.until(ZonedDateTime.now(), ChronoUnit.MINUTES);
 
         long remainingMinutes = minutes % 60;
@@ -88,7 +88,7 @@ public class UptimeCommand implements BotCommand {
 
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

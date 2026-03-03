@@ -16,7 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class GameDBBuilder {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    static void main(String[] args) throws IOException, InterruptedException {
         Path outputFile = Paths.get("../games.json");
         if (Files.exists(outputFile)) {
             System.out.println("Output file already exists, skipping");
@@ -43,16 +43,16 @@ public class GameDBBuilder {
 
         JSONArray output = new JSONArray();
 
-        while (indices.size() > 0) {
+        while (!indices.isEmpty()) {
             System.out.println("Remaining games to fetch: " + indices.size());
 
             StringBuilder urlBuilder = new StringBuilder("https://discord.com/api/v9/applications/public?");
-            for (int i = 0; i < 10 && indices.size() > 0; i++) {
+            for (int i = 0; i < 10 && !indices.isEmpty(); i++) {
                 if (i != 0) {
                     urlBuilder.append('&');
                 }
 
-                long applicationId = gameDB.getJSONObject(indices.remove(0)).getLong("id");
+                long applicationId = gameDB.getJSONObject(indices.removeFirst()).getLong("id");
                 urlBuilder.append("application_ids=").append(applicationId);
             }
 

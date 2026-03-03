@@ -51,7 +51,7 @@ public class GiveCashCommand implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         long amount = Long.parseLong(parameters[1]);
         Member receiver = Utils.findMemberFromString(event.getChannel(), parameters[0]);
         if (receiver != null) {
@@ -60,7 +60,7 @@ public class GiveCashCommand implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         if (Utils.getUnicodeHexFromEmoji(event.getEmoji().getName()).equals("e29c85")) {
             return levelingEngine.onTickAddGiveCash(event.getChannel(), event.getMessageIdLong(), event.getUser());
         }

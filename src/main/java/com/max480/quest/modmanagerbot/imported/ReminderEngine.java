@@ -2,6 +2,7 @@ package com.max480.quest.modmanagerbot.imported;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.text.DateFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -47,7 +48,7 @@ public class ReminderEngine {
             }
 
             return "\"" + message + "\" le " +
-                    new Date(nextOccurence.toInstant().toEpochMilli()).toLocaleString() +
+                    DateFormat.getDateTimeInstance().format(new Date(nextOccurence.toInstant().toEpochMilli())) +
                     (interval == null ? "" : " puis " + minimumDuration);
         }
     }

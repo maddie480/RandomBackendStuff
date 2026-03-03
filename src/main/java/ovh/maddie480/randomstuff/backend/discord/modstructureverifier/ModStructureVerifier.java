@@ -187,7 +187,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         ModStructureVerifier.effectToMod = effectToMod;
     }
 
-    public static int getServerCount() throws IOException {
+    public static int getServerCount() {
         try (DiscardableJDA jda = new DiscardableJDA(SecretConstants.MOD_STRUCTURE_VERIFIER_TOKEN)) {
             return jda.getGuilds().size();
         }
@@ -228,7 +228,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             if (event.getMessage().getAttachments().isEmpty()) {
                 event.getChannel().sendMessage(":x: Send a text file in order to generate a font for it!").queue();
             } else {
-                event.getMessage().getAttachments().get(0).getProxy().downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
+                event.getMessage().getAttachments().getFirst().getProxy().downloadToFile(new File("/tmp/text_file_" + System.currentTimeMillis() + ".txt"))
                         .thenAcceptAsync(file -> FontGenerator.generateFontFromDiscord(file, event.getMessage().getContentRaw().substring("--generate-font ".length()), event.getChannel(), event.getMessage()));
             }
         } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong()) && event.getMessage().getContentRaw().startsWith("--verify ")) {
@@ -396,7 +396,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                     .toList();
 
             boolean shouldScanMapContents = true;
-            if (maps.size() == 0) {
+            if (maps.isEmpty()) {
                 problemList.add(pickFormat(isHtml,
                         "<b>There is no map in the Maps folder!</b> No map will appear in-game.",
                         "**There is no map in the Maps folder!** No map will appear in-game."));
@@ -408,7 +408,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 shouldScanMapContents = false;
             } else if (hasNameScan) {
                 // check its path
-                String mapPath = maps.get(0);
+                String mapPath = maps.getFirst();
                 if (!mapPath.matches("^Maps/" + expectedCollabMapsPrefix + "/.+/.+\\.bin$")) {
                     parseProblematicPaths(problemList, websiteProblemList, "badmappath",
                             "Your map is not in the right folder", Collections.singletonList(mapPath), isHtml);
@@ -637,11 +637,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                 String updatedYaml = null;
                 if (!dependenciesList.isEmpty() && (channel == null || channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_ATTACH_FILES))) {
                     List<Map<String, String>> modDependencies;
-                    if (yamlContents.get(0).containsKey("Dependencies")) {
-                        modDependencies = (List<Map<String, String>>) yamlContents.get(0).get("Dependencies");
+                    if (yamlContents.getFirst().containsKey("Dependencies")) {
+                        modDependencies = (List<Map<String, String>>) yamlContents.getFirst().get("Dependencies");
                     } else {
                         modDependencies = new ArrayList<>();
-                        yamlContents.get(0).put("Dependencies", modDependencies);
+                        yamlContents.getFirst().put("Dependencies", modDependencies);
                     }
 
                     Map<String, Map<String, Object>> databaseContents;
@@ -1131,7 +1131,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                                               String websiteProblem, String problemLabel, List<String> paths, boolean isHtml) {
         logger.debug("{}: {}", problemLabel, paths);
 
-        if (paths.size() != 0) {
+        if (!paths.isEmpty()) {
             websiteProblemList.add(websiteProblem);
         }
 
@@ -1139,7 +1139,7 @@ public class ModStructureVerifier extends ListenerAdapter {
         // just a formatting method: to display "x", "x and y" or "x and 458 others" depending on how many problematic paths there are.
         if (paths.size() == 1) {
             problemList.add(problemLabel + ": "
-                    + formatProblematicThing(isHtml, paths.get(0)));
+                    + formatProblematicThing(isHtml, paths.getFirst()));
         } else if (paths.size() == 2) {
             problemList.add(problemLabel + ": "
                     + formatProblematicThing(isHtml, paths.get(0))
@@ -1281,7 +1281,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                         valid = true;
                         noNameResponseChannels.put(event.getChannel().getIdLong(), Long.parseLong(channelId));
                         saveMap(event, ":white_check_mark: The bot will check zips posted in this channel against those rules:\n"
-                                + getRulesForNoFolderName() + "\n\nAny issue found will be posted in <#" + channelId + ">.");
+                                + RULES_NO_FOLDER_NAME + "\n\nAny issue found will be posted in <#" + channelId + ">.");
                     }
                 }
             }
@@ -1304,7 +1304,7 @@ public class ModStructureVerifier extends ListenerAdapter {
             }
         } else if (msg.equals("--rules")) {
             if (noNameResponseChannels.containsKey(event.getChannel().getIdLong())) {
-                event.getChannel().sendMessage("Here is what the bot checks in submitted zips: \n" + getRulesForNoFolderName()).queue();
+                event.getChannel().sendMessage("Here is what the bot checks in submitted zips: \n" + RULES_NO_FOLDER_NAME).queue();
             } else if (responseChannels.containsKey(event.getChannel().getIdLong())) {
                 event.getChannel().sendMessage("Here is what the bot checks in submitted zips: \n" + getRules(event.getChannel().getIdLong())).queue();
             } else if (freeResponseChannels.containsKey(event.getChannel().getIdLong())) {
@@ -1388,15 +1388,13 @@ public class ModStructureVerifier extends ListenerAdapter {
                 "- there should be exactly 1 file in the `Maps` folder, and its path should match: `Maps/" + collabMapsName + "/[subfolder]/[anything].bin`\n" +
                 "- if there is an `English.txt`, dialog IDs should match: `" + collabAssetsName + "_[anything]_[anything]`" +
                 (collabMapsName.equals(collabAssetsName) ? "" : "or `" + collabMapsName + "_[anything]_[anything]`") + "\n" +
-                getRulesForNoFolderName();
+                RULES_NO_FOLDER_NAME;
     }
 
-    private static String getRulesForNoFolderName() {
-        return """
+    private static final String RULES_NO_FOLDER_NAME = """
                 - `everest.yaml` should exist and should be valid according to the everest.yaml validator
                 - all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies
                 - the dialog files for vanilla languages should not contain characters that are missing from the game's font, or those extra characters should be included in the zip""";
-    }
 
     private static String pickFormat(boolean isHtml, String html, String md) {
         return isHtml ? html : md;

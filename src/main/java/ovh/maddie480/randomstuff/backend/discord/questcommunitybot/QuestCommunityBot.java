@@ -167,18 +167,18 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
 
         final List<String> commandParsed = new CommandParser(event.getMessage().getContentRaw()).parse();
 
-        commandParsed.set(0, commandParsed.get(0).toLowerCase());
+        commandParsed.set(0, commandParsed.getFirst().toLowerCase());
 
         log.debug("{} sent command {} sur {}", event.getAuthor(), commandParsed, event.getChannel());
 
-        if (commandParsed.size() > 1 && commandParsed.get(0).equals("!")) {
+        if (commandParsed.size() > 1 && commandParsed.getFirst().equals("!")) {
             commandParsed.set(0, "!" + commandParsed.remove(1).toLowerCase());
             log.debug("Trimmed espaces between \"!\" and command: {}", commandParsed);
         }
 
         BotCommand command = commandCategories.values().stream()
                 .flatMap(List::stream)
-                .filter(c -> c.getCommandName().equals(commandParsed.get(0).substring(1)))
+                .filter(c -> c.getCommandName().equals(commandParsed.getFirst().substring(1)))
                 .findFirst().orElse(null);
 
         if (command == null) {
@@ -204,11 +204,11 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
 
         String[] parameters;
         if (command.getCommandParameters().length == 1 && commandParsed.size() > 2) {
-            commandParsed.remove(0);
+            commandParsed.removeFirst();
             parameters = new String[]{String.join(" ", commandParsed)};
             log.debug("Single-operand command parameters grouped as one: {}", (Object[]) parameters);
         } else {
-            commandParsed.remove(0);
+            commandParsed.removeFirst();
             parameters = new String[commandParsed.size()];
             commandParsed.toArray(parameters);
             log.debug("Command parameters: {}", commandParsed);
@@ -310,7 +310,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
     }
 
     @Override
-    public void runCommand(MessageReceivedEvent event, String[] parameters) throws IOException {
+    public void runCommand(MessageReceivedEvent event, String[] parameters) {
         if (parameters.length == 1) {
             BotCommand command = commandCategories.values().stream()
                     .flatMap(List::stream)
@@ -368,7 +368,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
     }
 
     @Override
-    public boolean processReaction(MessageReactionAddEvent event, String reaction) throws IOException {
+    public boolean processReaction(MessageReactionAddEvent event, String reaction) {
         return false;
     }
 }

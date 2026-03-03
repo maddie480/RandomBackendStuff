@@ -55,7 +55,7 @@ public class OlympusVersionLister {
                 currentAzureBuilds.addAll(new JSONObject(new JSONTokener(is)).getJSONArray("value")
                         .toList().stream()
                         .map(version -> (int) ((Map<String, Object>) version).get("id"))
-                        .collect(Collectors.toList()));
+                        .toList());
             }
         }
 
@@ -116,7 +116,7 @@ public class OlympusVersionLister {
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
                     "Everest Update Checker",
                     ":sparkles: Olympus versions were updated. There are now **" + info.size() + "** versions on record.\n" +
-                            "Latest Olympus version is **" + info.get(0).get("version") + "** (" + info.get(0).get("branch") + "):\n" + info.get(0).get("changelog"),
+                            "Latest Olympus version is **" + info.getFirst().get("version") + "** (" + info.getFirst().get("branch") + "):\n" + info.getFirst().get("changelog"),
                     ImmutableMap.of("X-Everest-Log", "true"));
         }
         UpdateOutgoingWebhooks.changesHappened();

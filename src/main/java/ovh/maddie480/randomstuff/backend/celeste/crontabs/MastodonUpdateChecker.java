@@ -57,7 +57,7 @@ public class MastodonUpdateChecker {
 
                 previousStatuses.put(mastodonStatusUrl, previous);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("Couldn't load {}", file, e);
             }
         }
     }
@@ -83,7 +83,7 @@ public class MastodonUpdateChecker {
      * @throws IOException In case of issues when fetching statuses or notifying about them
      */
     private static void checkForUpdates(String feed) throws IOException {
-        log.debug("Checking for updates on feed " + feed);
+        log.debug("Checking for updates on feed {}", feed);
 
         boolean firstRun = !previousStatuses.containsKey(feed);
         Set<String> statusesAlreadyNotified = previousStatuses.getOrDefault(feed, new HashSet<>());
@@ -118,7 +118,7 @@ public class MastodonUpdateChecker {
                 }
 
                 if (!firstRun && !recentSelfReblog) {
-                    log.info("New status with id " + id);
+                    log.info("New status with id {}", id);
 
                     String username = status.getJSONObject("account").getString("display_name");
                     if (username.endsWith(" :verified:")) {
@@ -174,7 +174,7 @@ public class MastodonUpdateChecker {
 
                     statusesAlreadyNotified.add(id);
                 } else {
-                    log.info("New status with id " + id + ", but this is a self-reblog of a status from less than a week before, or this is the first run.");
+                    log.info("New status with id {}, but this is a self-reblog of a status from less than a week before, or this is the first run.", id);
                     statusesAlreadyNotified.add(id);
                 }
             }
