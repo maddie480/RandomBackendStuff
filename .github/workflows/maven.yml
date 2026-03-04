@@ -52,7 +52,7 @@ jobs:
 
     - name: Set up QEMU
       if: github.ref == 'refs/heads/main'
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@v4
 
     - name: Set up Docker Buildx
       if: github.ref == 'refs/heads/main'
