@@ -338,6 +338,12 @@ public class DiscardableJDA implements JDA, Closeable {
 
     @NotNull
     @Override
+    public RestAction<List<SoundboardSound>> retrieveDefaultSoundboardSounds() {
+        return backingJDA.retrieveDefaultSoundboardSounds();
+    }
+
+    @NotNull
+    @Override
     public IEventManager getEventManager() {
         return backingJDA.getEventManager();
     }
