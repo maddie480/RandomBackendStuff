@@ -112,7 +112,7 @@ public class TemperatureChecker {
     }
 
     private void retrieveWarningNames(String token, String domain) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/internet2018client/2.0/warning/dictionary?domain=" + domain);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rwg.meteofrance.com/internet2018client/2.0/warning/dictionary?domain=" + domain);
         connection.setRequestProperty("Authorization", "Bearer " + token);
 
         JSONObject result;
@@ -131,7 +131,7 @@ public class TemperatureChecker {
     }
 
     private Map<String, Integer> retrieveWeatherWarnings(String token, String domain) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/wsft/v3/warning/currentphenomenons?echeance=J0&warning_type=vigilance&domain=" + domain);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rwg.meteofrance.com/wsft/v3/warning/currentphenomenons?echeance=J0&warning_type=vigilance&domain=" + domain);
         connection.setRequestProperty("Authorization", "Bearer " + token);
 
         JSONObject result;
@@ -214,7 +214,7 @@ public class TemperatureChecker {
     }
 
     private static float retrieveTemperature(String token, String place) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/internet2018client/2.0/observation/gridded?" + place);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rwg.meteofrance.com/internet2018client/2.0/observation/gridded?" + place);
         connection.setRequestProperty("Authorization", "Bearer " + token);
 
         JSONObject result;
@@ -225,7 +225,7 @@ public class TemperatureChecker {
     }
 
     private void refreshDaylightSettings(String token, TextChannel target) throws IOException {
-        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rpcache-aa.meteofrance.com/internet2018client/2.0/ephemeris?" + SecretConstants.WEATHER_PLACE);
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://rwg.meteofrance.com/internet2018client/2.0/ephemeris?" + SecretConstants.WEATHER_PLACE);
         connection.setRequestProperty("Authorization", "Bearer " + token);
 
         JSONObject result;
