@@ -583,7 +583,8 @@ public class CustomEntityCatalogGenerator {
 
     private void addEntityDescriptionsFrom(String mod, String fullKey, Map<String, String> namesAndDescriptions) {
         for (Map.Entry<String, String> nameDescriptionPair : namesAndDescriptions.entrySet()) {
-            if (nameDescriptionPair.getValue() == null) continue;
+            if (nameDescriptionPair.getValue() == null
+                || nameDescriptionPair.getKey().equals(nameDescriptionPair.getValue())) continue;
 
             if (!entityDescriptions.containsKey(mod)) entityDescriptions.put(mod, new HashMap<>());
             if (!entityDescriptions.get(mod).containsKey(fullKey)) entityDescriptions.get(mod).put(fullKey, new HashMap<>());
