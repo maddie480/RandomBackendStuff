@@ -12,7 +12,7 @@ RUN echo "fr_FR.UTF-8 UTF-8" > /etc/locale.gen && \
   ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
   echo $TZ > /etc/timezone && \
   apt-get update && \
-  apt-get install dotnet-sdk-8.0 wine figlet ffmpeg python3 7zip curl -y && \
+  apt-get install dotnet-sdk-10.0 wine figlet ffmpeg python3 7zip curl -y && \
   apt-get upgrade -y && \
   apt-get autoremove -y && \
   apt-get clean
