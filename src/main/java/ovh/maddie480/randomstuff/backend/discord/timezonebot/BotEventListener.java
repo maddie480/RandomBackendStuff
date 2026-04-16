@@ -75,9 +75,9 @@ public class BotEventListener extends ListenerAdapter {
         Map<String, List<String>> timezoneConflicts = new HashMap<>();
 
         // populate the timezones!
-        for (Element elt : ConnectionUtils.jsoupGetWithRetry("https://www.timeanddate.com/time/zones/").select("#tz-abb tbody tr")) {
+        for (Element elt : ConnectionUtils.jsoupGetWithRetry("https://www.timeanddate.com/time/zones/").select(".tad-table tbody tr")) {
             String name = elt.select("td:first-child").text().trim();
-            String fullName = elt.select("td:nth-child(2)").first().ownText().trim();
+            String fullName = elt.select("td:nth-child(2) .tad-cell__wrap > div").first().ownText().trim();
             String offset = elt.select("td:last-child").text().trim().replace(" ", "");
 
             // UTC+8:45 => UTC+08:45
