@@ -32,7 +32,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
@@ -62,75 +61,18 @@ import java.util.stream.Collectors;
 public class BotEventListener extends ListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(BotEventListener.class);
 
-    // offset timezone database
-    private final Map<String, String> TIMEZONE_MAP;
-    private final Map<String, String> TIMEZONE_FULL_NAMES;
-    private final Map<String, List<String>> TIMEZONE_CONFLICTS;
-
     private static final AtomicLong lastTimezoneDBRequest = new AtomicLong(0);
 
     public BotEventListener() throws IOException {
-        Map<String, String> timezoneMap = new HashMap<>();
-        Map<String, String> timezoneFullNames = new HashMap<>();
-        Map<String, List<String>> timezoneConflicts = new HashMap<>();
-
-        // populate the timezones!
-        for (Element elt : ConnectionUtils.jsoupGetWithRetry("https://www.timeanddate.com/time/zones/").select(".tad-table tbody tr")) {
-            String name = elt.select("td:first-child").text().trim();
-            String fullName = elt.select("td:nth-child(2) .tad-cell__wrap > div").first().ownText().trim();
-            String offset = elt.select("td:last-child").text().trim().replace(" ", "");
-
-            // UTC+8:45 => UTC+08:45
-            if (offset.matches("UTC[+-][0-9]:[0-9]{2}")) {
-                offset = offset.replace("+", "+0").replace("-", "-0");
-            }
-
-            try {
-                ZoneId.of(offset);
-            } catch (DateTimeException e) {
-                // the timezone ended up invalid: skip it.
-                logger.info("Time zone offset {} is invalid", offset);
-                continue;
-            }
-
-            timezoneMap.put(fullName, offset);
-            if (!timezoneConflicts.containsKey(name)) {
-                // there is no conflict (yet): add to the valid timezone map.
-                timezoneMap.put(name, offset);
-                timezoneFullNames.put(name, fullName);
-                timezoneConflicts.put(name, new ArrayList<>(Collections.singletonList(fullName)));
-            } else {
-                timezoneConflicts.get(name).add(fullName);
-                timezoneFullNames.remove(name);
-
-                if (timezoneMap.containsKey(name) && !timezoneMap.get(name).equals(offset)) {
-                    // there is a conflict and the offsets are different! remove it.
-                    timezoneMap.remove(name);
-                }
-            }
-        }
-
-        // filter out conflicts that aren't conflicts.
-        Map<String, List<String>> actualConflicts = new HashMap<>();
-        for (Map.Entry<String, List<String>> conflict : timezoneConflicts.entrySet()) {
-            if (!timezoneMap.containsKey(conflict.getKey())) {
-                actualConflicts.put(conflict.getKey(), conflict.getValue());
-            }
-        }
-        timezoneConflicts = actualConflicts;
-
-        logger.info("Time zone offsets: {}, time zone full names: {}, zone conflicts: {}", timezoneMap, timezoneFullNames, timezoneConflicts);
+        logger.info("Time zone offsets: {}, time zone full names: {}, zone conflicts: {}",
+                TimezoneNamesDB.TIMEZONE_MAP, TimezoneNamesDB.TIMEZONE_FULL_NAMES, TimezoneNamesDB.TIMEZONE_CONFLICTS);
 
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream("/tmp/timezone_name_data.ser"))) {
-            os.writeObject(timezoneMap);
-            os.writeObject(timezoneFullNames);
-            os.writeObject(timezoneConflicts);
+            os.writeObject(TimezoneNamesDB.TIMEZONE_MAP);
+            os.writeObject(TimezoneNamesDB.TIMEZONE_FULL_NAMES);
+            os.writeObject(TimezoneNamesDB.TIMEZONE_CONFLICTS);
         }
         Files.move(Paths.get("/tmp/timezone_name_data.ser"), Paths.get("/shared/discord-bots/timezone-name-data.ser"), StandardCopyOption.REPLACE_EXISTING);
-
-        TIMEZONE_MAP = timezoneMap;
-        TIMEZONE_FULL_NAMES = timezoneFullNames;
-        TIMEZONE_CONFLICTS = timezoneConflicts;
     }
 
     @Override
@@ -289,22 +231,22 @@ public class BotEventListener extends ListenerAdapter {
         }
 
         // look up timezone names
-        List<Command.Choice> matchingTimezoneNames = TIMEZONE_MAP.entrySet().stream()
+        List<Command.Choice> matchingTimezoneNames = TimezoneNamesDB.TIMEZONE_MAP.entrySet().stream()
                 .filter(tz -> tz.getKey().toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
                 .map(tz -> {
                     String tzName = tz.getKey();
-                    if (TIMEZONE_FULL_NAMES.containsKey(tzName)) {
-                        tzName = TIMEZONE_FULL_NAMES.get(tzName) + " (" + tzName + ")";
+                    if (TimezoneNamesDB.TIMEZONE_FULL_NAMES.containsKey(tzName)) {
+                        tzName = TimezoneNamesDB.TIMEZONE_FULL_NAMES.get(tzName) + " (" + tzName + ")";
                     }
                     return mapToChoice(tzName, tz.getValue(), locale);
                 })
                 .toList();
 
         // look up conflicting timezone names, showing all possibilities
-        List<Command.Choice> matchingTimezoneConflictNames = TIMEZONE_CONFLICTS.entrySet().stream()
+        List<Command.Choice> matchingTimezoneConflictNames = TimezoneNamesDB.TIMEZONE_CONFLICTS.entrySet().stream()
                 .filter(tz -> tz.getKey().toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
                 .flatMap(tz -> tz.getValue().stream()
-                        .map(tzValue -> mapToChoice(tzValue + " (" + tz.getKey() + ")", TIMEZONE_MAP.get(tzValue), locale)))
+                        .map(tzValue -> mapToChoice(tzValue + " (" + tz.getKey() + ")", TimezoneNamesDB.TIMEZONE_MAP.get(tzValue), locale)))
                 .toList();
 
         List<Command.Choice> allChoices = new ArrayList<>(matchingTzDatabaseTimezones);
@@ -353,7 +295,7 @@ public class BotEventListener extends ListenerAdapter {
     private void defineUserTimezone(IReplyCallback event, Member member, String timezoneParam, DiscordLocale locale) {
         try {
             // if the user passed for example "EST", convert it to "UTC-5".
-            String timezoneOffsetFromName = getIgnoreCase(TIMEZONE_MAP, timezoneParam);
+            String timezoneOffsetFromName = getIgnoreCase(TimezoneNamesDB.TIMEZONE_MAP, timezoneParam);
             if (timezoneOffsetFromName != null) {
                 timezoneParam = timezoneOffsetFromName;
             }
@@ -392,7 +334,7 @@ public class BotEventListener extends ListenerAdapter {
             // ZoneId.of blew up so the timezone is probably invalid.
             logger.warn("Could not parse timezone {}", timezoneParam, ex);
 
-            List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezoneParam);
+            List<String> conflictingTimezones = getIgnoreCase(TimezoneNamesDB.TIMEZONE_CONFLICTS, timezoneParam);
             if (conflictingTimezones != null) {
                 respondPrivately(event, localizeMessage(locale,
                         ":x: The timezone **" + timezoneParam + "** is ambiguous! It could mean one of those: _"
@@ -998,7 +940,7 @@ public class BotEventListener extends ListenerAdapter {
 
                 try {
                     // check for one of the recognized formats like "EST".
-                    String timezoneOffsetFromName = getIgnoreCase(TIMEZONE_MAP, timezone);
+                    String timezoneOffsetFromName = getIgnoreCase(TimezoneNamesDB.TIMEZONE_MAP, timezone);
                     if (timezoneOffsetFromName == null) {
                         // check the timezone can be parsed by Java if this is not one of the known formats.
                         ZoneId.of(timezone);
@@ -1014,7 +956,7 @@ public class BotEventListener extends ListenerAdapter {
                 } catch (DateTimeException ex) {
                     logger.warn("Could not parse timezone {}", timezone);
 
-                    List<String> conflictingTimezones = getIgnoreCase(TIMEZONE_CONFLICTS, timezone);
+                    List<String> conflictingTimezones = getIgnoreCase(TimezoneNamesDB.TIMEZONE_CONFLICTS, timezone);
                     if (conflictingTimezones != null) {
                         respondPrivately(slashCommandEvent, localizeMessage(locale,
                                 ":x: The timezone **" + timezone + "** is ambiguous! It could mean one of those: _"
