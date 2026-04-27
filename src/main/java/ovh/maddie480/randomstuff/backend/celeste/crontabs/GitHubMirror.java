@@ -12,9 +12,12 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.GitOperator;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 /**
  * Russia apparently hates maddie480.ovh more than everestapi.github.io.
@@ -39,7 +42,9 @@ public class GitHubMirror {
         mirror("https://maddie480.ovh/celeste/mod_ids_to_names.json", "mod_ids_to_names.json", GitHubMirror::prettyPrintJSONObject);
         mirror("https://maddie480.ovh/celeste/mod_ids_to_categories.json", "mod_ids_to_categories.json", GitHubMirror::prettyPrintJSONObject);
 
-        GitOperator.commitChanges("updatermirror", "Update files mirrored from maddie480.ovh", "origin");
+        updateHomePage();
+
+        GitOperator.commitChanges(".", "Update files mirrored from maddie480.ovh", "origin");
         FileUtils.deleteDirectory(new File("/tmp/Everest"));
     }
 
@@ -66,5 +71,35 @@ public class GitHubMirror {
     private static void prettyPrintJSONObject(InputStream is, BufferedWriter bw) {
         JSONObject json = new JSONObject(new JSONTokener(is));
         json.write(bw, 2, 0);
+    }
+
+    private static void updateHomePage() throws IOException {
+        Path homepage = Paths.get("/tmp/Everest/index.html");
+
+        String page;
+        try (InputStream is = Files.newInputStream(homepage)) {
+            page = IOUtils.toString(is, StandardCharsets.UTF_8);
+        }
+
+        for (String branch : Arrays.asList("stable", "beta", "dev"))
+            page = updateLink(page, "latest-" + branch + "-link", "https://maddie480.ovh/celeste/download-everest?branch=" + branch);
+        for (String os : Arrays.asList("macos", "linux"))
+            page = updateLink(page, "olympus-" + os + "-latest-link", "https://maddie480.ovh/celeste/download-olympus?branch=stable&platform=" + os);
+
+        try (OutputStream os = Files.newOutputStream(homepage)) {
+            IOUtils.write(page, os, StandardCharsets.UTF_8);
+        }
+    }
+
+    private static String updateLink(String old, String id, String target) throws IOException {
+        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(target);
+        connection.setInstanceFollowRedirects(false);
+        if (connection.getResponseCode() != 302)
+            throw new IOException(target + " returned HTTP code " + connection.getResponseCode());
+        String newHref = connection.getHeaderField("Location");
+
+        log.info("Filling home page link with id=\"{}\" with href=\"{}\"...", id, newHref);
+
+        return old.replaceFirst("href=\"[^\"]+\" id=\"" + id + "\"", "href=\"" + newHref + "\" id=\"" + id + "\"");
     }
 }
