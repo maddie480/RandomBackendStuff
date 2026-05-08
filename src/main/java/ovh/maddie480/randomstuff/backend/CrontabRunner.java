@@ -296,7 +296,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] checkOlympusAPIs", CelesteStuffHealthCheck::checkOlympusAPIs);
 
         // Quest Community Bot stuff
-        runProcessAndAlertOnException("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates());
+        // runProcessAndAlertOnException("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates());
         runProcessAndAlertOnException("[Hourly] TwitchUpdateChecker", () -> new TwitchUpdateChecker().checkForUpdates());
     }
 
