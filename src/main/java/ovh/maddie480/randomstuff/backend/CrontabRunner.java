@@ -225,6 +225,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkLatestVersionsArePinned", EverestRepositoriesRitualCheck::checkLatestVersionsArePinned);
         runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
         runProcessAndAlertOnException("[Daily] checkEverestGitHubAPIMirrorMatch", CelesteStuffHealthCheck::checkEverestGitHubAPIMirrorMatch);
+        runProcessAndAlertOnException("[Daily] TimezoneBot.checkIfEnoughUsers", TimezoneBot::checkIfEnoughUsers);
 
         // Non-Celeste Stuff
         /* #if LNJ_BOT

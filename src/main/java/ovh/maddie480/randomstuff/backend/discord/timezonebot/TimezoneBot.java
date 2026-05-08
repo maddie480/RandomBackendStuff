@@ -382,4 +382,10 @@ public class TimezoneBot {
             }
         }
     }
+
+    public static void checkIfEnoughUsers() throws IOException {
+        if (userTimezones.size() < 100) {
+            throw new IOException("Timezone Bot users might have been wiped out!");
+        }
+    }
 }
