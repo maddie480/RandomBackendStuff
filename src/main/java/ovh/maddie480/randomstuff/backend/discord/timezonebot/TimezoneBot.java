@@ -384,8 +384,10 @@ public class TimezoneBot {
     }
 
     public static void checkIfEnoughUsers() throws IOException {
-        if (userTimezones.size() < 100) {
-            throw new IOException("Timezone Bot users might have been wiped out!");
+        try (Stream<String> lines = Files.lines(Paths.get(SAVE_FILE_NAME))) {
+            if (lines.count() < 100) {
+                throw new IOException("Timezone Bot users might have been wiped out!");
+            }
         }
     }
 }
