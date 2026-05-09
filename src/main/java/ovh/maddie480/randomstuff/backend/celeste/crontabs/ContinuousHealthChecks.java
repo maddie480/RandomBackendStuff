@@ -85,8 +85,8 @@ public class ContinuousHealthChecks {
                                 "GameBanana API", SecretConstants.NON_JADE_PLATFORM_HEALTHCHECK_HOOKS);
 
                         // backend check: notify privately and restart if it goes down.
-                        checkHealth(() -> System.currentTimeMillis() - TimezoneRoleUpdater.getLastRunDate() < 1_800_000L,
-                                "Timezone Role Updater", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
+                        checkHealthWithEmergencyRestart(() -> System.currentTimeMillis() - TimezoneRoleUpdater.getLastRunDate() < 1_800_000L,
+                                "Timezone Role Updater");
                         checkHealth(ContinuousHealthChecks::checkNextcloudSpace,
                                 "Nextcloud", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                         checkHealth(() -> Files.exists(Paths.get("/shared/temp/cert_renew_success")),
