@@ -335,7 +335,7 @@ public class GameBananaAutomatedChecks {
                     Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
                     if (objDirectoryMatcher.matches()) {
                         sendAlertToWebhook(":warning: The mod called **" + modName + "** contains an `obj/" + objDirectoryMatcher.group(1) + "` folder! " +
-                                "It makes the zip bigger for no reason, and might contain publicized Celeste <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid));
+                                "You generally don't need to ship this folder with your mod, it makes the zip bigger for no reason <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid));
                         return;
                     }
                 }
