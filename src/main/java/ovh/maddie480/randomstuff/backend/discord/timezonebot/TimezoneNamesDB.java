@@ -20,6 +20,7 @@ public class TimezoneNamesDB {
 
     // offset timezone database
     static {
+        // paste output of the script here
         TIMEZONE_MAP = new HashMap<>();
         TIMEZONE_MAP.put("Argentina Time", "UTC-3");
         TIMEZONE_MAP.put("SCT", "UTC+4");
@@ -694,6 +695,8 @@ public class TimezoneNamesDB {
     }
 
     static void main(String[] args) throws IOException {
+        // save https://www.timeanddate.com/time/zones/ as /tmp/timeanddate.html then run the class
+
         Map<String, String> timezoneMap = new HashMap<>();
         Map<String, String> timezoneFullNames = new HashMap<>();
         Map<String, List<String>> timezoneConflicts = new HashMap<>();
