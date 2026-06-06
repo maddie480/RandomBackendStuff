@@ -176,6 +176,7 @@ public class GameBananaAutomatedChecks {
                                                     && !"Vidcutter".equals(modName) // ffmpeg
                                                     && !"ChroniaHelper".equals(modName) // Open URL Trigger
                                                     && !"Head2Head".equals(modName) // Open Control Panel option
+                                                    && !"ConsistencyTracker".equals(modName) // Opens stuff in browser
                                             ) {
                                                 logger.warn("Mod {} contains Process usage", modName);
                                                 fishyProcessStuff = true;
