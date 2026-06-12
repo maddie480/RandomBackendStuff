@@ -102,7 +102,7 @@ public class LNJBot {
 
             if (command.size() < 3) {
                 // we need at least a question and an answer!
-                message.respond("Tu dois au moins préciser une question et une réponse ! Par exemple : !poll \"à quoi on joue ce soir ?\" \"pizza dude\" \"geopolitical simulator\" freelancer");
+                message.respond("Tu dois au moins préciser une question et une réponse ! Par exemple : !poll \"à quoi on joue ce soir ?\" \"pizza dude\" \"geopolitical simulator\" \"freelancer\"");
             } else {
                 String title = command.get(1);
                 Set<String> choices = command.stream().skip(2).collect(Collectors.toSet());

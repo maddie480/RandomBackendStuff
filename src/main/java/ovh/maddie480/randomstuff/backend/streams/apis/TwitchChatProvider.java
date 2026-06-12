@@ -9,6 +9,7 @@ import com.github.twitch4j.helix.TwitchHelix;
 import com.github.twitch4j.helix.TwitchHelixBuilder;
 import com.github.twitch4j.helix.domain.ChatBadge;
 import com.github.twitch4j.helix.domain.ChatBadgeSet;
+import com.github.twitch4j.helix.domain.CreateClipList;
 import com.github.twitch4j.helix.domain.UserList;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -29,7 +30,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -228,18 +228,15 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
     }
 
     public void makeClip(ChatMessage<?> triggeredByMessage) {
-        CompletableFuture
-                .supplyAsync(() -> helix.createClip(accessToken, channelId, false).execute())
-                .thenAcceptAsync(clip -> {
-                    String clipLink = clip.getData().get(0).getEditUrl();
-                    if (clipLink.endsWith("/edit")) clipLink = clipLink.substring(0, clipLink.length() - 5);
-                    triggeredByMessage.respond("Le clip a été créé : " + clipLink);
-                })
-                .exceptionallyAsync(boom -> {
-                    logger.error("Could not create clip", boom);
-                    triggeredByMessage.respond("Quelque chose n'a pas fonctionné, désolé. :/");
-                    return null;
-                });
+        try {
+            CreateClipList clipData = helix.createClip(accessToken, channelId, false).execute();
+            String clipLink = clipData.getData().get(0).getEditUrl();
+            if (clipLink.endsWith("/edit")) clipLink = clipLink.substring(0, clipLink.length() - 5);
+            triggeredByMessage.respond("Le clip a été créé : " + clipLink);
+        } catch (Exception e) {
+            logger.error("Could not create clip", e);
+            triggeredByMessage.respond("Quelque chose n'a pas fonctionné, désolé. :/");
+        }
     }
 
     @Override
