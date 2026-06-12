@@ -177,6 +177,7 @@ public class GameBananaAutomatedChecks {
                                                     && !"ChroniaHelper".equals(modName) // Open URL Trigger
                                                     && !"Head2Head".equals(modName) // Open Control Panel option
                                                     && !"ConsistencyTracker".equals(modName) // Opens stuff in browser
+                                                    && !"girlhell1999".equals(modName) // other Open URL Trigger that causes debates in banana-watch
                                             ) {
                                                 logger.warn("Mod {} contains Process usage", modName);
                                                 fishyProcessStuff = true;
