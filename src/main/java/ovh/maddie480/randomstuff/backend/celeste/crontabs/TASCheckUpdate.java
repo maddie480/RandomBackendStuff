@@ -75,7 +75,7 @@ jobs:
     - uses: actions/checkout@v7
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Wait for Azure build on commit ${{ github.sha }}
       run: cd .github/tas-check && ./1-get-build-url.sh "${{ github.sha }}"
