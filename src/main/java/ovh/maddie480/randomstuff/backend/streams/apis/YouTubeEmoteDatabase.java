@@ -144,7 +144,7 @@ public class YouTubeEmoteDatabase {
 
     static void main(String[] args) throws IOException {
         // 1/ log in to YouTube
-        // 2/ go to literally any live stream, for instance https://www.youtube.com/watch?v=l8PMl7tUDIE
+        // 2/ go to literally any live stream, for instance https://www.youtube.com/watch?v=NiRIbKwAejk
         // 3/ right-click the chat, select "view source code of the frame"
         // 4/ copy-paste it into youtube_sludge.html
         // 5/ run the class
