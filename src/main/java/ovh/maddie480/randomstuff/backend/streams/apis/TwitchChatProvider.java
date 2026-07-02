@@ -5,12 +5,6 @@ import com.github.twitch4j.chat.TwitchChat;
 import com.github.twitch4j.chat.TwitchChatBuilder;
 import com.github.twitch4j.chat.events.channel.ChannelMessageEvent;
 import com.github.twitch4j.chat.events.channel.IRCMessageEvent;
-import com.github.twitch4j.helix.TwitchHelix;
-import com.github.twitch4j.helix.TwitchHelixBuilder;
-import com.github.twitch4j.helix.domain.ChatBadge;
-import com.github.twitch4j.helix.domain.ChatBadgeSet;
-import com.github.twitch4j.helix.domain.CreateClipList;
-import com.github.twitch4j.helix.domain.UserList;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
@@ -32,7 +26,6 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * A provider that connects to the lesnavetsjouables chat on Twitch.
@@ -53,7 +46,6 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
     private Map<String, String> allEmotes;
 
     private TwitchChat chat;
-    private TwitchHelix helix;
     private String accessToken;
 
     @Override
@@ -128,9 +120,8 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         chat.joinChannel(CHANNEL_NAME);
 
         // start listening for messages
-        helix = TwitchHelixBuilder.builder().build();
-        UserList users = helix.getUsers(accessToken, null, Collections.singletonList(CHANNEL_NAME)).execute();
-        channelId = users.getUsers().get(0).getId();
+        channelId = authenticatedHelixRequest("GET", "/users?login=" + CHANNEL_NAME)
+                .getJSONArray("data").getJSONObject(0).getString("id");
         logger.debug("Channel ID retrieved for {}: {}", CHANNEL_NAME, channelId);
 
         allBadges = getAllBadges();
@@ -167,22 +158,27 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         }
     }
 
-    private Map<Pair<String, String>, String> getAllBadges() {
+    private Map<Pair<String, String>, String> getAllBadges() throws IOException {
         Map<Pair<String, String>, String> result = new HashMap<>();
-        for (ChatBadgeSet badgeSet : helix.getGlobalChatBadges(accessToken).execute().getBadgeSets()) {
-            for (ChatBadge badge : badgeSet.getVersions()) {
-                result.put(Pair.of(badgeSet.getSetId(), badge.getId()), badge.getSmallImageUrl());
+        JSONObject badges = authenticatedHelixRequest("GET", "/chat/badges/global");
+        for (Object o : badges.getJSONArray("data")) {
+            JSONObject badge = (JSONObject) o;
+            for (Object o2 : badge.getJSONArray("versions")) {
+                JSONObject badgeVersion = (JSONObject) o2;
+                result.put(Pair.of(badge.getString("set_id"), badgeVersion.getString("id")), badgeVersion.getString("image_url_1x"));
             }
         }
         return result;
     }
 
-    private Map<String, String> getAllEmotes() {
-        return helix.getGlobalEmotes(accessToken).execute().getEmotes().stream()
-                .collect(Collectors.toMap(
-                        emote -> emote.getId(),
-                        emote -> emote.getImages().getSmallImageUrl()
-                ));
+    private Map<String, String> getAllEmotes() throws IOException {
+        JSONObject result = authenticatedHelixRequest("GET", "/chat/emotes/global");
+        Map<String, String> emotes = new HashMap<>();
+        for (Object o : result.getJSONArray("data")) {
+            JSONObject emote = (JSONObject) o;
+            emotes.put(emote.getString("id"), emote.getJSONObject("images").getString("url_1x"));
+        }
+        return emotes;
     }
 
     private List<String> getAuthorBadges(IRCMessageEvent message) {
@@ -229,8 +225,8 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
 
     public void makeClip(ChatMessage<?> triggeredByMessage) {
         try {
-            CreateClipList clipData = helix.createClip(accessToken, channelId, false).execute();
-            String clipLink = clipData.getData().get(0).getEditUrl();
+            JSONObject clipData = authenticatedHelixRequest("POST", "/clips?broadcaster_id=" + channelId);
+            String clipLink = clipData.getJSONArray("data").getJSONObject(0).getString("edit_url");
             if (clipLink.endsWith("/edit")) clipLink = clipLink.substring(0, clipLink.length() - 5);
             triggeredByMessage.respond("Le clip a été créé : " + clipLink);
         } catch (Exception e) {
@@ -244,5 +240,15 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
         message.messageId().messageId().ifPresentOrElse(
                 messageId -> chat.sendMessage(CHANNEL_NAME, response, message.messageId().nonce(), messageId),
                 () -> chat.sendMessage(CHANNEL_NAME, response));
+    }
+
+    private JSONObject authenticatedHelixRequest(String method, String path) throws IOException {
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://api.twitch.tv/helix" + path);
+        conn.setRequestMethod(method);
+        conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+        conn.setRequestProperty("Client-Id", SecretConstants.TWITCH_CLIENT_ID);
+        try (InputStream is = ConnectionUtils.connectionToInputStream(conn)) {
+            return new JSONObject(new JSONTokener(is));
+        }
     }
 }
