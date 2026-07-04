@@ -187,6 +187,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
         runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
         runProcessAndAlertOnException("[Daily] TASCheckUpdate", () -> TASCheckUpdate.main(null));
+        runProcessAndAlertOnException("[Daily] TranslationViewer.triggerRefresh", TranslationViewerCheck::triggerRefresh);
 
         // Health Checks
         runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);
@@ -225,6 +226,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
         runProcessAndAlertOnException("[Daily] checkEverestGitHubAPIMirrorMatch", CelesteStuffHealthCheck::checkEverestGitHubAPIMirrorMatch);
         runProcessAndAlertOnException("[Daily] TimezoneBot.checkIfEnoughUsers", TimezoneBot::checkIfEnoughUsers);
+        runProcessAndAlertOnException("[Daily] TranslationViewer.check", TranslationViewerCheck::main);
 
         // Non-Celeste Stuff
         runProcessAndAlertOnException("[Daily] LNJBot.healthCheck", LNJBot::healthCheck);
