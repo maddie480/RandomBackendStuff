@@ -47,15 +47,20 @@ public class GameBananaAutomatedChecks {
             "libEGL.dll", "libGLESv2.dll", "libjpeg-9.dll", "libpng16-16.dll", "lua53.dll", "steam_api.dll", "zlib1.dll", "Microsoft.Xna.Framework.dll",
             "Microsoft.Xna.Framework.Game.dll", "Microsoft.Xna.Framework.Graphics.dll");
 
-    private static final Pattern objDirectoryRegex = Pattern.compile(".*(?:/|^)obj/(Debug|Release)(?:/|$).*");
+    private static final Pattern objDirectoryRegex = Pattern.compile("(.*(?:/|^)obj/(?:Debug|Release))(?:/|$).*");
 
     private static String getMaskedEnhancedEmbedLink(Map<String, Object> mod) {
-        return getMaskedEnhancedEmbedLink((String) mod.get("GameBananaType"), (int) mod.get("GameBananaId"));
+        return getMaskedEnhancedEmbedLink((String) mod.get("GameBananaType"), (int) mod.get("GameBananaId"), Integer.toString((int) mod.get("GameBananaFileId")));
     }
 
     static String getMaskedEnhancedEmbedLink(String itemtype, int itemid) {
         String link = "gamebanana.com/" + itemtype.toLowerCase() + "s/" + itemid;
         return "[" + link + "](https://maddie480.ovh/" + link + ")";
+    }
+
+    static String getMaskedEnhancedEmbedLink(String itemtype, int itemid, String fileId) {
+        return getMaskedEnhancedEmbedLink(itemtype, itemid) +
+                " (https://gamebanana.com/mmdl/" + fileId + ")";
     }
 
     /**
@@ -309,12 +314,12 @@ public class GameBananaAutomatedChecks {
 
                 if (!exeList.isEmpty()) {
                     String message = ":warning: The mod called **" + modName + "** contains an EXE file: `" + exeList.getFirst() + "`! " +
-                            "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid);
+                            "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file);
 
                     for (int i = 2; i <= exeList.size(); i++) {
                         String newMessage = ":warning: The mod called **" + modName + "** contains EXE files: `" +
                                 exeList.stream().limit(i - 1).collect(Collectors.joining("`, `")) + "` and `" + exeList.get(i - 1) + "`! " +
-                                "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid);
+                                "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file);
 
                         if (newMessage.length() > 2000) break;
                         message = newMessage;
@@ -329,15 +334,15 @@ public class GameBananaAutomatedChecks {
                         if (entry.equalsIgnoreCase(illegalFile) || entry.toLowerCase(Locale.ROOT).endsWith("/" + illegalFile.toLowerCase(Locale.ROOT))) {
                             // this file is illegal!
                             sendAlertToWebhook(":warning: The mod called **" + modName + "** contains a file called `" + illegalFile + "`! " +
-                                    "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid));
+                                    "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file));
                             return;
                         }
                     }
 
                     Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
                     if (objDirectoryMatcher.matches()) {
-                        sendAlertToWebhook(":warning: The mod called **" + modName + "** contains an `obj/" + objDirectoryMatcher.group(1) + "` folder! " +
-                                "You generally don't need to ship this folder with your mod, it makes the zip bigger for no reason <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid));
+                        sendAlertToWebhook(":warning: The mod called **" + modName + "** contains a `" + objDirectoryMatcher.group(1) + "` folder! " +
+                                "You generally don't need to ship this folder with your mod, it makes the zip bigger for no reason <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file));
                         return;
                     }
                 }
@@ -368,10 +373,9 @@ public class GameBananaAutomatedChecks {
 
                     if (!oldDuplicateList.contains(pair) && !newDuplicateList.contains(pair)) {
                         sendAlertToWebhook(":warning: Mods " +
-                                getMaskedEnhancedEmbedLink((String) everestUpdate.get(name1).get("GameBananaType"), (int) everestUpdate.get(name1).get("GameBananaId")) +
-                                " (**" + name1 + "**) and " +
-                                getMaskedEnhancedEmbedLink((String) everestUpdate.get(name2).get("GameBananaType"), (int) everestUpdate.get(name2).get("GameBananaId")) +
-                                " (**" + name2 + "**) have the same mod ID with different cases.\nThis will cause them to overwrite each other when downloading both on Windows!"
+                                getMaskedEnhancedEmbedLink(everestUpdate.get(name1)) + " (**" + name1 + "**) and " +
+                                getMaskedEnhancedEmbedLink(everestUpdate.get(name2)) + " (**" + name2 + "**) " +
+                                "have the same mod ID with different cases.\nThis will cause them to overwrite each other when downloading both on Windows!"
                         );
                     }
                     newDuplicateList.add(pair);
