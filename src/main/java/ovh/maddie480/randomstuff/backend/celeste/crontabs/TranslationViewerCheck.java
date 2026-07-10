@@ -28,9 +28,8 @@ public class TranslationViewerCheck {
                 new Check("everest", "Simplified+Chinese", "{big}谢谢你((player))！{/big}{n}不过我们的 {#ff1144}((sid)){#} 在另一座山。"),
 
                 new Check("olympus", "", "Olympus is currently busy with something else."),
-                new Check("olympus", "a", "Update check finished.\\nNo updates were found."),
                 new Check("olympus", "fr", "Olympus est actuellement occupé avec autre chose."),
-                new Check("olympus", "fr", "La vérification est terminée.\\nAucune mise à jour n'a été trouvée."),
+                new Check("olympus", "zh", "Olympus 当前正忙于其他任务。"),
 
                 new Check("cu2", "", "Return to Lobby"),
                 new Check("cu2", "Brazilian+Portuguese", "Voltar ao lobby"),
