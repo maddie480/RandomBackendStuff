@@ -20,6 +20,8 @@
 #
 # For more information see the manual pages of crontab(5) and cron(8)
 #
+@reboot bash -c 'cd /home/debian/.iptables && PATH=/sbin:$PATH ./iptables.sh' > /dev/null 2>&1
+
 # m    h  dom mon dow   command
   0 0,12    *   *   *   /home/debian/cert-renew-with-logging.sh > /dev/null 2>&1
   0    4    *   *   *   journalctl --rotate --vacuum-time=7days > /dev/null 2>&1
