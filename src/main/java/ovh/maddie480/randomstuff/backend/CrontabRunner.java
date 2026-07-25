@@ -28,6 +28,7 @@ import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.EmbedBuilder;
+import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import javax.imageio.ImageIO;
@@ -171,6 +172,31 @@ public class CrontabRunner {
     }
 
     private static void runDailyProcesses() {
+        // The YouTube bot is not approved by Google, so its authorization gets revoked after a week,
+        // so we need to reauthorize through the Authorization Code Flow: I allow the app,
+        // then Google gives me a token, and I paste it into youtube_auth_code.txt.
+        // This is referred to as the "Token Exchange Ritual", because it sounds more ~mysterious~.
+        // Live streams happen on Sunday, so Saturday evening is the right time to do this!
+        if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.SATURDAY) {
+            runProcessAndAlertOnException("[Daily] prepareYouTubeTokenExchangeRitual", () -> {
+                OutputStreamLogger.redirectAllOutput(logger,
+                        new ProcessBuilder("rm", "-rfv", "youtube_api_credentials").start()).waitFor();
+                OutputStreamLogger.redirectAllOutput(logger,
+                        new ProcessBuilder("touch", "youtube_auth_code.txt").start()).waitFor();
+
+                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "You have 5 minutes to execute the YouTube Token Exchange Ritual!");
+            });
+
+            try {
+                Thread.sleep(300000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () ->
+                    checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
+        }
+
         // Update tasks
         runProcessAndAlertOnException("[Daily] Dependabork", () -> Dependabork.main(null));
         runProcessAndAlertOnException("[Daily] GameBananaProfileLink", () -> GameBananaProfileLink.main(null));
@@ -231,13 +257,6 @@ public class CrontabRunner {
         // Non-Celeste Stuff
         runProcessAndAlertOnException("[Daily] LNJBot.healthCheck", LNJBot::healthCheck);
         runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(Twitch)", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
-        if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.SATURDAY) {
-            runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () -> {
-                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "You have 5 minutes to execute the YouTube Token Exchange Ritual!");
-                Thread.sleep(300000);
-                checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
-            });
-        }
         runProcessAndAlertOnException("[Daily] checkRadioLNJ", CrontabRunner::checkRadioLNJ);
         runProcessAndAlertOnException("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes);
         runProcessAndAlertOnException("[Daily] checkEnhancedBananaEmbeds()", CrontabRunner::checkEnhancedBananaEmbeds);
