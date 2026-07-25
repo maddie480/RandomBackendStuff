@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.function.IORunnable;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,7 +32,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -949,21 +949,17 @@ public class CelesteStuffHealthCheck {
         }
 
         String url = result.getURL().toString();
-        log.debug("Font generator task tracker URL: {}, checking result in 60 seconds", url);
+        log.debug("Font generator task tracker URL: {}", url);
 
-        try {
-            Thread.sleep(60000);
-        } catch (InterruptedException e) {
-            throw new IOException(e);
-        }
-
-        log.debug("Loading result page: {}", url);
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-            String response = IOUtils.toString(is, UTF_8);
-            if (!response.contains("Here is the font you need to place")) {
-                throw new IOException("Font generator result page does not indicate success!");
+        periodicCheck(() -> {
+            log.debug("Loading result page: {}", url);
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+                String response = IOUtils.toString(is, UTF_8);
+                if (!response.contains("Here is the font you need to place")) {
+                    throw new IOException("Font generator result page does not indicate success!");
+                }
             }
-        }
+        });
 
         // read the response as a zip file
         log.debug("Loading generated font file: {}/download/0", url);
@@ -1014,21 +1010,17 @@ public class CelesteStuffHealthCheck {
         }
 
         String url = result.getURL().toString();
-        log.debug("Font generator task tracker URL: {}, checking result in 5 minutes", url);
+        log.debug("Font generator task tracker URL: {}", url);
 
-        try {
-            Thread.sleep(300000);
-        } catch (InterruptedException e) {
-            throw new IOException(e);
-        }
-
-        log.debug("Loading result page: {}", url);
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-            String response = IOUtils.toString(is, UTF_8);
-            if (!response.contains("Here is the font you need to place")) {
-                throw new IOException("Font generator result page does not indicate success!");
+        periodicCheck(() -> {
+            log.debug("Loading result page: {}", url);
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+                String response = IOUtils.toString(is, UTF_8);
+                if (!response.contains("Here is the font you need to place")) {
+                    throw new IOException("Font generator result page does not indicate success!");
+                }
             }
-        }
+        });
 
         // read the response as a zip file
         log.debug("Loading generated font file: {}/download/0", url);
@@ -1074,21 +1066,17 @@ public class CelesteStuffHealthCheck {
             // the response is a URL relative to maddie480.ovh.
             url = "https://maddie480.ovh" + IOUtils.toString(is, UTF_8);
         }
-        log.debug("Mod structure verifier task tracker URL: {}, checking result in 60 seconds", url);
+        log.debug("Mod structure verifier task tracker URL: {}", url);
 
-        try {
-            Thread.sleep(60000);
-        } catch (InterruptedException e) {
-            throw new IOException(e);
-        }
-
-        log.debug("Loading result page: {}", url);
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-            String response = IOUtils.toString(is, UTF_8);
-            if (!response.contains("No issue was found with your zip!")) {
-                throw new IOException("Mod structure verifier result page does not indicate success!");
+        periodicCheck(() -> {
+            log.debug("Loading result page: {}", url);
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
+                String response = IOUtils.toString(is, UTF_8);
+                if (!response.contains("No issue was found with your zip!")) {
+                    throw new IOException("Mod structure verifier result page does not indicate success!");
+                }
             }
-        }
+        });
     }
 
     /**
@@ -1234,24 +1222,19 @@ public class CelesteStuffHealthCheck {
             log.debug("Response to first request: {}", IOUtils.toString(is, UTF_8));
         }
 
-        // leave time for the search to be done
-        try {
-            Thread.sleep(60000);
-        } catch (InterruptedException e) {
-            throw new IOException(e);
-        }
+        periodicCheck(() -> {
+            // check the result of the search
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/file-search?" +
+                    "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
 
-        // check the result of the search
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/file-search?" +
-                "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
+                String result = IOUtils.toString(is, UTF_8);
+                log.debug("Response to second request: {}", result);
 
-            String result = IOUtils.toString(is, UTF_8);
-            log.debug("Response to second request: {}", result);
-
-            if (!result.contains("{\"itemid\":150597,\"itemtype\":\"Mod\",\"fileid\":399127}")) {
-                throw new IOException("File Searcher did not return expected result!");
+                if (!result.contains("{\"itemid\":150597,\"itemtype\":\"Mod\",\"fileid\":399127}")) {
+                    throw new IOException("File Searcher did not return expected result!");
+                }
             }
-        }
+        });
     }
 
     /**
@@ -1640,6 +1623,29 @@ public class CelesteStuffHealthCheck {
                 1920, 1080
         ))) {
             throw new IOException("Wipe Converter didn't return the expected data!");
+        }
+    }
+
+    private static void periodicCheck(IORunnable function) throws IOException {
+        int i = 0;
+        while (true) {
+            i++;
+
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                function.run();
+                log.debug("Check {}/60 OK!", i);
+                return;
+            } catch (IOException e) {
+                log.debug("Check {}/60 failed", i);
+                // 60 tries = 5 minutes
+                if (i == 60) throw e;
+            }
         }
     }
 }
