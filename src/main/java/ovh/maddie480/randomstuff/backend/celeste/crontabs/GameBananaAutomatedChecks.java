@@ -880,8 +880,7 @@ public class GameBananaAutomatedChecks {
             // is not actually the file that got uploaded in the first place, and that's a problem!
             // (that did happen multiple times already, mind you)
             if (file.size != realSize) {
-                // temporary: turn this into sendAlertToWebhook
-                throw new IOException(":warning: GameBanana's API and file servers disagree on the file size of <" + file.fileUrl + ">, it might be serving an old file by accident!\n"
+                sendAlertToWebhook(":warning: GameBanana's API and file servers disagree on the file size of <" + file.fileUrl + ">, it might be serving an old file by accident!\n"
                         + ":arrow_right: " + getMaskedEnhancedEmbedLink(file.modType, file.modId));
             }
         }
