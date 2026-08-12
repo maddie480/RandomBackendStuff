@@ -839,10 +839,10 @@ public class GameBananaAutomatedChecks {
 
         // load state
         Set<String> alreadyProcessed = new HashSet<>();
-        Path statusFile = Paths.get("banana_moment_check.ser");
-        try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(statusFile))) {
-            alreadyProcessed = (Set<String>) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
+        Path statusFile = Paths.get("banana_moment_check.yaml");
+        try (InputStream is = Files.newInputStream(statusFile)) {
+            alreadyProcessed = new HashSet<>(YamlUtil.<List<String>>load(is));
+        } catch (IOException e) {
             logger.warn("Could not read already processed files, starting over from beginning", e);
         }
 
@@ -887,8 +887,8 @@ public class GameBananaAutomatedChecks {
         }
 
         // save state
-        try (ObjectOutputStream os = new ObjectOutputStream(Files.newOutputStream(statusFile))) {
-            os.writeObject(alreadyBeDone.stream().map(MiniMod::fileUrl).collect(Collectors.toCollection(HashSet::new)));
+        try (OutputStream os = Files.newOutputStream(statusFile)) {
+            YamlUtil.dump(alreadyBeDone.stream().map(MiniMod::fileUrl).toList(), os);
         }
     }
 
