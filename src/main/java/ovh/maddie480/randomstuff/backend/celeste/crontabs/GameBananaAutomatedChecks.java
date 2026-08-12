@@ -820,6 +820,78 @@ public class GameBananaAutomatedChecks {
         }
     }
 
+    public static void checkForBananaGettingDrunkAndServingTheWrongFile() throws IOException {
+        record MiniMod(String modType, int modId, String fileUrl, int size) {}
+
+        // gather all "file sizes according to the API" from the mod search database
+        List<MiniMod> urlsWithExpectedSizes;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
+            List<Map<String, Object>> modSearchDatabase = YamlUtil.load(is);
+            urlsWithExpectedSizes = modSearchDatabase.stream()
+                    .map(e ->
+                            Triple.of((String) e.get("GameBananaType"), (int) e.get("GameBananaId"), (List<Map<String, Object>>) e.get("Files")))
+                    .map(e -> e.getRight().stream()
+                            .map(f -> new MiniMod(e.getLeft(), e.getMiddle(), (String) f.get("URL"), (int) f.get("Size")))
+                            .toList())
+                    .flatMap(List::stream)
+                    .toList();
+        }
+
+        // load state
+        Set<String> alreadyProcessed = new HashSet<>();
+        Path statusFile = Paths.get("banana_moment_check.ser");
+        try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(statusFile))) {
+            alreadyProcessed = (Set<String>) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            logger.warn("Could not read already processed files, starting over from beginning", e);
+        }
+
+        // temporary: do not process all 14k files at once, or we're going to lock the updater for hours!
+        List<MiniMod> alreadyBeDone = new ArrayList<>();
+        int cutoff = 1000;
+
+        for (MiniMod file : urlsWithExpectedSizes) {
+            alreadyBeDone.add(file);
+            if (alreadyProcessed.contains(file.fileUrl)) continue;
+            if (cutoff-- == 0) break;
+
+            logger.debug("Checking file size match for: {} {}", file, cutoff);
+
+            // query the file server to figure out the size of the actual file...
+            int realSize = ConnectionUtils.runWithRetry(() -> {
+                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(file.fileUrl);
+                connection.setRequestMethod("HEAD");
+                connection.setInstanceFollowRedirects(true);
+
+                if (connection.getResponseCode() != 200) {
+                    throw new IOException("HEAD " + file.fileUrl + " responded with code " + connection.getResponseCode());
+                }
+
+                String contentLengthHeader = connection.getHeaderField("content-length");
+                try {
+                    int sizeReal = Integer.parseInt(contentLengthHeader);
+                    if (sizeReal > 0) return sizeReal;
+                } catch (NumberFormatException e) {}
+
+                throw new IOException("HEAD " + file.fileUrl + " responded with invalid content-length " + contentLengthHeader);
+            });
+
+            // ... and compare the two. If they don't match, it's likely that the downloadable file
+            // is not actually the file that got uploaded in the first place, and that's a problem!
+            // (that did happen multiple times already, mind you)
+            if (file.size != realSize) {
+                // temporary: turn this into sendAlertToWebhook
+                throw new IOException(":warning: GameBanana's API and file servers disagree on the file size of <" + file.fileUrl + ">, it might be serving an old file by accident!\n"
+                        + ":arrow_right: " + getMaskedEnhancedEmbedLink(file.modType, file.modId));
+            }
+        }
+
+        // save state
+        try (ObjectOutputStream os = new ObjectOutputStream(Files.newOutputStream(statusFile))) {
+            os.writeObject(alreadyBeDone.stream().map(MiniMod::fileUrl).collect(Collectors.toCollection(HashSet::new)));
+        }
+    }
+
     public static void executeEnhancedWebhook(String webhookUrl, String body, List<File> attachments) throws IOException {
         Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(body);
         if (enhanced.getRight().isEmpty() || !webhookUrl.startsWith("https://discord.com/")) {
