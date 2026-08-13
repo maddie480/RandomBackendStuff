@@ -848,7 +848,7 @@ public class GameBananaAutomatedChecks {
 
         // temporary: do not process all 14k files at once, or we're going to lock the updater for hours!
         List<MiniMod> alreadyBeDone = new ArrayList<>();
-        int cutoff = 1000;
+        int cutoff = 100;
 
         for (MiniMod file : urlsWithExpectedSizes) {
             alreadyBeDone.add(file);
