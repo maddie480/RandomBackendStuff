@@ -846,14 +846,8 @@ public class GameBananaAutomatedChecks {
             logger.warn("Could not read already processed files, starting over from beginning", e);
         }
 
-        // temporary: do not process all 14k files at once, or we're going to lock the updater for hours!
-        List<MiniMod> alreadyBeDone = new ArrayList<>();
-        int cutoff = 100;
-
-        for (MiniMod file : urlsWithExpectedSizes) {
-            alreadyBeDone.add(file);
+        /* for (MiniMod file : urlsWithExpectedSizes) {
             if (alreadyProcessed.contains(file.fileUrl)) continue;
-            if (cutoff-- == 0) break;
 
             logger.debug("Checking file size match for: {} {}", file, cutoff);
 
@@ -883,11 +877,11 @@ public class GameBananaAutomatedChecks {
                 sendAlertToWebhook(":warning: GameBanana's API and file servers disagree on the file size of <" + file.fileUrl + ">.\nThe download link might lead to another file uploaded to GameBanana with the same name! If this is the case, you should rename the file, then try uploading it again.\n"
                         + ":arrow_right: " + getMaskedEnhancedEmbedLink(file.modType, file.modId));
             }
-        }
+        } */
 
         // save state
         try (OutputStream os = Files.newOutputStream(statusFile)) {
-            YamlUtil.dump(alreadyBeDone.stream().map(MiniMod::fileUrl).toList(), os);
+            YamlUtil.dump(urlsWithExpectedSizes.stream().map(MiniMod::fileUrl).toList(), os);
         }
     }
 

@@ -306,9 +306,8 @@ public class CrontabRunner {
             runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
             runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", GameBananaAutomatedChecks::checkPngFilesArePngFiles);
             runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", GameBananaAutomatedChecks::checkDuplicateModIdsCaseInsensitive);
+            runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", GameBananaAutomatedChecks::checkForBananaGettingDrunkAndServingTheWrongFile);
         }
-
-        runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", GameBananaAutomatedChecks::checkForBananaGettingDrunkAndServingTheWrongFile);
 
         // Health checks
         runProcessAndAlertOnException("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck);
