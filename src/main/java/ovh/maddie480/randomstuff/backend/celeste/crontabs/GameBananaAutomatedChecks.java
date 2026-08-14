@@ -846,7 +846,7 @@ public class GameBananaAutomatedChecks {
             logger.warn("Could not read already processed files, starting over from beginning", e);
         }
 
-        /* for (MiniMod file : urlsWithExpectedSizes) {
+        for (MiniMod file : urlsWithExpectedSizes) {
             if (alreadyProcessed.contains(file.fileUrl)) continue;
 
             logger.debug("Checking file size match for: {} {}", file, cutoff);
@@ -877,7 +877,7 @@ public class GameBananaAutomatedChecks {
                 sendAlertToWebhook(":warning: GameBanana's API and file servers disagree on the file size of <" + file.fileUrl + ">.\nThe download link might lead to another file uploaded to GameBanana with the same name! If this is the case, you should rename the file, then try uploading it again.\n"
                         + ":arrow_right: " + getMaskedEnhancedEmbedLink(file.modType, file.modId));
             }
-        } */
+        }
 
         // save state
         try (OutputStream os = Files.newOutputStream(statusFile)) {
