@@ -849,7 +849,7 @@ public class GameBananaAutomatedChecks {
         for (MiniMod file : urlsWithExpectedSizes) {
             if (alreadyProcessed.contains(file.fileUrl)) continue;
 
-            logger.debug("Checking file size match for: {} {}", file, cutoff);
+            logger.debug("Checking file size match for: {}", file);
 
             // query the file server to figure out the size of the actual file...
             int realSize = ConnectionUtils.runWithRetry(() -> {
