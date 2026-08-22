@@ -15,10 +15,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.List;
-import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class ModDatabase implements AutoCloseable {
     private static final Yaml yaml;
@@ -26,7 +22,7 @@ public class ModDatabase implements AutoCloseable {
 
     static {
         LoaderOptions loaderOptions = new LoaderOptions();
-        loaderOptions.setCodePointLimit(15 * 1024 * 1024);
+        loaderOptions.setCodePointLimit(100 * 1024 * 1024);
         loaderOptions.setTagInspector(tag -> tag.matches(ModRecord.class));
 
         DumperOptions dumperOptions = new DumperOptions();
@@ -64,9 +60,6 @@ public class ModDatabase implements AutoCloseable {
         }
 
         try {
-            logger.debug("Optimizing mod database...");
-            optimize();
-
             logger.debug("Dumping mod database...");
             try (BufferedWriter bw = Files.newBufferedWriter(tempDatabase, StandardCharsets.UTF_8)) {
                 yaml.dump(allMods, bw);
@@ -81,31 +74,6 @@ public class ModDatabase implements AutoCloseable {
             Files.move(tempDatabase, databaseFile, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             releaseDatabaseLock();
-        }
-    }
-
-    private void optimize() {
-        // mods can share authors and categories, but they don't share files or screenshots
-        // (or at least they're not supposed to).
-        optimizeSingle(mod -> mod.author, (mod, author) -> mod.author = author);
-        optimizeSingle(mod -> mod.category, (mod, category) -> mod.category = category);
-    }
-
-    private <T> void optimizeSingle(Function<ModRecord, T> get, BiConsumer<ModRecord, T> set) {
-        // if multiple mods refer to the same thing, we want them
-        // to refer to the same object.
-        // SnakeYAML will then kindly use anchors to avoid storing the value 28493 times in the file.
-
-        Set<T> allThingsThatExist = allMods.stream()
-                .map(get)
-                .collect(Collectors.toSet());
-
-        for (ModRecord mod : allMods) {
-            T correctValue = allThingsThatExist.stream()
-                    .filter(v -> v.equals(get.apply(mod)))
-                    .findFirst().orElseThrow();
-
-            set.accept(mod, correctValue);
         }
     }
 

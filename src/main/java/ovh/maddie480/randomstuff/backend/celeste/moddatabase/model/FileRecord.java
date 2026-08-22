@@ -9,11 +9,20 @@ public class FileRecord {
     public String mirrorName;
     public String description;
     public int size;
-    public boolean hasEverestYaml;
     public long createdDate;
     public int downloads;
+
+    public String xxHash;
+    public boolean hasEverestYaml;
     public String modId;
-    public String supersededByFileId;
+    public String modVersion;
+    public boolean isLeader;
+    public boolean bannedFromBeingLeader;
+    public String[] fileListing;
+    public DependencyRecord[] dependencies;
+    public DependencyRecord[] optionalDependencies;
+    public MapEditorRecord ahornEntities;
+    public MapEditorRecord loennEntities;
 
     public FileRecord() {
     }
