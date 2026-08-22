@@ -16,7 +16,6 @@ public class ModRecord {
     public int downloads;
     public AuthorRecord author;
     public CategoryRecord category;
-    public CategoryRecord subcategory;
     public ScreenshotRecord[] screenshots;
     public FileRecord[] files;
 

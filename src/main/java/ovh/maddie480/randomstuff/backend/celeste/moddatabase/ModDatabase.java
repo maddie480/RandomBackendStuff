@@ -8,6 +8,7 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.representer.Representer;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.CategoryRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 
@@ -16,10 +17,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -109,6 +107,17 @@ public class ModDatabase implements AutoCloseable {
         optimizeForFiles(f -> f.fileListing, (f, v) -> f.fileListing = v);
         optimizeForFiles(f -> f.ahornEntities, (f, v) -> f.ahornEntities = v);
         optimizeForFiles(f -> f.loennEntities, (f, v) -> f.loennEntities = v);
+
+        List<Pair<Supplier<CategoryRecord>, Consumer<CategoryRecord>>> allCategoriesRecursively = new ArrayList<>();
+        for (ModRecord m : allMods) {
+            CategoryRecord c = m.category;
+            while (c.parent != null) {
+                CategoryRecord c1 = c;
+                allCategoriesRecursively.add(Pair.of(() -> c1.parent, v -> c1.parent = v));
+                c = c.parent;
+            }
+        }
+        optimizeFields(allCategoriesRecursively);
     }
 
     private <T> void optimizeForMods(Function<ModRecord, T> getter, BiConsumer<ModRecord, T> setter) {
@@ -147,7 +156,7 @@ public class ModDatabase implements AutoCloseable {
         }
     }
 
-    private static void unstoppableSleep(int delay) {
+    static void unstoppableSleep(int delay) {
         try {
             Thread.sleep(delay);
         } catch (InterruptedException e) {

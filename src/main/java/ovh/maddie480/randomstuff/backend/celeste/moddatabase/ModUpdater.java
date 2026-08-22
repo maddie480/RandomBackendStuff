@@ -14,6 +14,7 @@ import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBanan
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,6 +27,10 @@ public class ModUpdater {
     private static final List<ModProvider> modProviders = Collections.singletonList(new GameBananaModProvider());
     private static final Logger logger = LoggerFactory.getLogger(ModUpdater.class);
     private static final XXHashFactory xxHashFactory = XXHashFactory.fastestInstance();
+
+    static void main() throws IOException {
+        fullUpdate();
+    }
 
     public static void incrementalUpdate() throws IOException {
         long newestModificationInDatabase;
@@ -78,7 +83,7 @@ public class ModUpdater {
             }
 
             for (Pair<ModRecord, FileRecord> newFile : newFiles.values()) {
-                handleNewFile(database, newFile.getLeft(), newFile.getRight());
+                handleNewFile(newFile.getRight());
             }
 
             if (replace) {
@@ -114,54 +119,74 @@ public class ModUpdater {
                 .toList();
     }
 
-    private static void handleNewFile(ModDatabase database, ModRecord mod, FileRecord file) throws IOException {
+    private static void handleNewFile(FileRecord file) throws IOException {
         Path target = Paths.get("/tmp/modfile");
 
-        ConnectionUtils.runWithRetry(() -> {
-            logger.debug("Starting download of {} to {}", file.mainUrl, target.toAbsolutePath());
-
-            try (InputStream is = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(file.mainUrl));
-                 OutputStream os = new BufferedOutputStream(Files.newOutputStream(target))) {
-
-                IOUtils.copy(is, os);
-            }
-
-            long actualSize = Files.size(target);
-            if (file.size != actualSize) {
-                throw new IOException("The announced file size (" + file.size + ") does not match what we got (" + actualSize + ")" +
-                        " for file " + file.mainUrl);
-            }
-
-            return null;
-        });
-
-        try (InputStream is = Files.newInputStream(target)) {
-            file.xxHash = computeXXHash(is);
-        }
-
         // standard "this doesn't have a valid yaml file" values
+        file.xxHash = null;
         file.modId = null;
         file.modVersion = null;
         file.dependencies = new DependencyRecord[0];
         file.optionalDependencies = new DependencyRecord[0];
         file.isLeader = false;
         file.bannedFromBeingLeader = false;
+        file.hasEverestYaml = false;
+        file.fileListing = new String[0];
+        file.loennEntities = new MapEditorRecord();
+        file.ahornEntities = new MapEditorRecord();
+
+        for (MapEditorRecord me : Arrays.asList(file.loennEntities, file.ahornEntities)) {
+            me.effects = new String[0];
+            me.entities = new String[0];
+            me.triggers = new String[0];
+        }
+
+        logger.debug("Starting download of {}", file.mainUrl);
+
+        for (int i = 1; i <= 10; i++) {
+            List<Integer> responseCodes = new ArrayList<>();
+
+            try {
+                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(file.mainUrl);
+                connection.setInstanceFollowRedirects(true);
+                responseCodes.add(connection.getResponseCode());
+
+                try (InputStream is = new BufferedInputStream(ConnectionUtils.connectionToInputStream(connection));
+                     OutputStream os = new BufferedOutputStream(Files.newOutputStream(target))) {
+
+                    IOUtils.copy(is, os);
+                }
+
+                long actualSize = Files.size(target);
+                if (file.size != actualSize) {
+                    throw new IOException("The announced file size (" + file.size + ") does not match what we got (" + actualSize + ")" +
+                            " for file " + file.mainUrl);
+                }
+                break;
+            } catch (IOException e) {
+                logger.warn("I/O exception (try {}/10). Registered response codes: {}", i, responseCodes, e);
+
+                if (i == 10) {
+                    if (responseCodes.size() == 10 && responseCodes.stream().allMatch(r -> r / 100 == 4)) {
+                        logger.warn("We only got 4xx errors! Considering the file to be lost...");
+                        return;
+                    }
+                    throw e;
+                } else {
+                    ModDatabase.unstoppableSleep(i * 5000);
+                }
+            }
+        }
+
+        try (InputStream is = Files.newInputStream(target)) {
+            file.xxHash = computeXXHash(is);
+        }
 
         try {
             checkZipSignature(target);
         } catch (IOException e) {
             // invalid zip!
             logger.warn("File {} could not be read as a zip", file.id, e);
-            file.hasEverestYaml = false;
-            file.fileListing = new String[0];
-
-            file.loennEntities = new MapEditorRecord();
-            file.ahornEntities = new MapEditorRecord();
-            for (MapEditorRecord me : Arrays.asList(file.loennEntities, file.ahornEntities)) {
-                me.effects = new String[0];
-                me.entities = new String[0];
-                me.triggers = new String[0];
-            }
             return;
         }
 
