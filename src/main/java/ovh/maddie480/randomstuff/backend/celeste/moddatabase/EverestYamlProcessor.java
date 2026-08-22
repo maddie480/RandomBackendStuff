@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.DependencyRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -22,14 +21,7 @@ public class EverestYamlProcessor {
 
             for (Map<String, Object> infoMod : info) {
                 String modName = infoMod.get("Name").toString();
-
-                // some mods have no Version field, it would be a shame to exclude them though
-                String modVersion;
-                if (infoMod.containsKey("Version")) {
-                    modVersion = infoMod.get("Version").toString();
-                } else {
-                    modVersion = "NoVersion";
-                }
+                String modVersion = infoMod.get("Version").toString();
 
                 List<DependencyRecord> dependencies = new ArrayList<>();
                 List<DependencyRecord> optionalDependencies = new ArrayList<>();
