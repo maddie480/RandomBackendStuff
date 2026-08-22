@@ -6,8 +6,8 @@ public class ModRecord {
     public String id;
     public String pageUrl;
     public String name;
+    public String summary;
     public String description;
-    public String text;
     public long createdDate;
     public long modifiedDate;
     public long updatedDate;
@@ -16,6 +16,7 @@ public class ModRecord {
     public int downloads;
     public AuthorRecord author;
     public CategoryRecord category;
+    public CategoryRecord subcategory;
     public ScreenshotRecord[] screenshots;
     public FileRecord[] files;
 

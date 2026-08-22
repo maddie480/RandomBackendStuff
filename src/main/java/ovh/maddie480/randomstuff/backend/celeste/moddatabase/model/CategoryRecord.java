@@ -6,6 +6,7 @@ public class CategoryRecord {
     public String id;
     public String name;
     public String iconUrl;
+    public String pageUrl;
     public CategoryRecord parent;
 
     public CategoryRecord() {

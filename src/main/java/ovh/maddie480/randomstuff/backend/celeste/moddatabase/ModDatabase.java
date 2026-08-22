@@ -1,5 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.moddatabase;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.DumperOptions;
@@ -7,6 +8,7 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.representer.Representer;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 
 import java.io.BufferedReader;
@@ -14,7 +16,14 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class ModDatabase implements AutoCloseable {
     private static final Yaml yaml;
@@ -60,6 +69,9 @@ public class ModDatabase implements AutoCloseable {
         }
 
         try {
+            logger.debug("Optimizing mod database...");
+            optimize();
+
             logger.debug("Dumping mod database...");
             try (BufferedWriter bw = Files.newBufferedWriter(tempDatabase, StandardCharsets.UTF_8)) {
                 yaml.dump(allMods, bw);
@@ -86,6 +98,44 @@ public class ModDatabase implements AutoCloseable {
     private static void releaseDatabaseLock() throws IOException {
         Files.delete(lockFile);
         logger.debug("Released database lock!");
+    }
+
+    private void optimize() {
+        // share as many references as possible
+        optimizeForMods(m -> m.author, (m, v) -> m.author = v);
+        optimizeForMods(m -> m.category, (m, v) -> m.category = v);
+        optimizeForFiles(f -> f.dependencies, (f, v) -> f.dependencies = v);
+        optimizeForFiles(f -> f.optionalDependencies, (f, v) -> f.optionalDependencies = v);
+        optimizeForFiles(f -> f.fileListing, (f, v) -> f.fileListing = v);
+        optimizeForFiles(f -> f.ahornEntities, (f, v) -> f.ahornEntities = v);
+        optimizeForFiles(f -> f.loennEntities, (f, v) -> f.loennEntities = v);
+    }
+
+    private <T> void optimizeForMods(Function<ModRecord, T> getter, BiConsumer<ModRecord, T> setter) {
+        optimizeFields(allMods.stream()
+                .map(m -> Pair.<Supplier<T>, Consumer<T>>of(() -> getter.apply(m), v -> setter.accept(m, v)))
+                .toList());
+    }
+
+    private <T> void optimizeForFiles(Function<FileRecord, T> getter, BiConsumer<FileRecord, T> setter) {
+        optimizeFields(allMods.stream()
+                .map(m -> Arrays.stream(m.files)
+                        .map(f -> Pair.<Supplier<T>, Consumer<T>>of(() -> getter.apply(f), v -> setter.accept(f, v)))
+                        .toList())
+                .flatMap(List::stream)
+                .toList());
+    }
+
+    private <T> void optimizeFields(List<Pair<Supplier<T>, Consumer<T>>> getsetters) {
+        Map<T, T> alreadyMet = new HashMap<>();
+        for (Pair<Supplier<T>, Consumer<T>> getsetter : getsetters) {
+            T got = getsetter.getLeft().get();
+            if (alreadyMet.containsKey(got)) {
+                getsetter.getRight().accept(alreadyMet.get(got));
+            } else {
+                alreadyMet.put(got, got);
+            }
+        }
     }
 
     private static boolean tryCreate(Path file) throws IOException {
