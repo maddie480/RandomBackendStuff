@@ -8,9 +8,6 @@ public class AuthorRecord {
     public String avatarUrl;
     public String profileUrl;
 
-    public AuthorRecord() {
-    }
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

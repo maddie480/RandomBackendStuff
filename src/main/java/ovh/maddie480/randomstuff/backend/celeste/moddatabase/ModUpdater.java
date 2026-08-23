@@ -6,10 +6,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.DependencyRecord;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.MapEditorRecord;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.*;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBananaModProvider;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
@@ -73,16 +70,21 @@ public class ModUpdater {
                     f.optionalDependencies = knownFile.optionalDependencies;
                     f.hasEverestYaml = knownFile.hasEverestYaml;
                     f.modId = knownFile.modId;
+                    f.modVersion = knownFile.modVersion;
                     f.isLeader = knownFile.isLeader;
                     f.bannedFromBeingLeader = knownFile.bannedFromBeingLeader;
                     f.fileListing = knownFile.fileListing;
                     f.xxHash = knownFile.xxHash;
                     f.ahornEntities = knownFile.ahornEntities;
                     f.loennEntities = knownFile.loennEntities;
+                    f.richPresenceIcons = knownFile.richPresenceIcons;
                 }
             }
 
+            int progress = 0;
             for (Pair<ModRecord, FileRecord> newFile : newFiles.values()) {
+                progress++;
+                logger.debug("Processing new file {}/{}", progress, newFiles.size());
                 handleNewFile(newFile.getRight());
             }
 
@@ -134,6 +136,7 @@ public class ModUpdater {
         file.fileListing = new String[0];
         file.loennEntities = new MapEditorRecord();
         file.ahornEntities = new MapEditorRecord();
+        file.richPresenceIcons = new RichPresenceIconRecord[0];
 
         for (MapEditorRecord me : Arrays.asList(file.loennEntities, file.ahornEntities)) {
             me.effects = new String[0];
@@ -195,12 +198,13 @@ public class ModUpdater {
         file.ahornEntities = FileLister.listAhornPlugins(target, file.fileListing);
         file.hasEverestYaml = Arrays.stream(file.fileListing).anyMatch(
                 f -> f.equals("everest.yaml") || f.equals("everest.yml"));
+        file.richPresenceIcons = RichPresenceIcons.get(file, target);
 
         if (!file.hasEverestYaml) return;
 
         try (ZipFile zip = ZipFileWithAutoEncoding.open(target.toAbsolutePath().toString())) {
             ZipEntry everestYaml = zip.getEntry("everest.yaml");
-            if (everestYaml == null) everestYaml = zip.getEntry("everest.yaml");
+            if (everestYaml == null) everestYaml = zip.getEntry("everest.yml");
 
             try (InputStream is = zip.getInputStream(everestYaml)) {
                 EverestYamlProcessor.parseEverestYamlFromZipFile(is, file);

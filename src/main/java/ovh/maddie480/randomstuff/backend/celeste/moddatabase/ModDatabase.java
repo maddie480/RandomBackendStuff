@@ -17,7 +17,10 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -31,6 +34,7 @@ public class ModDatabase implements AutoCloseable {
         LoaderOptions loaderOptions = new LoaderOptions();
         loaderOptions.setCodePointLimit(100 * 1024 * 1024);
         loaderOptions.setTagInspector(tag -> tag.matches(ModRecord.class));
+        loaderOptions.setMaxAliasesForCollections(1_000_000);
 
         DumperOptions dumperOptions = new DumperOptions();
         dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
@@ -41,6 +45,10 @@ public class ModDatabase implements AutoCloseable {
     private static final Path lockFile = Paths.get("database_lock");
     private static final Path databaseFile = Paths.get("mod_database.yaml");
     private static final Path tempDatabase = Paths.get("/tmp/mod_database_staging.yaml");
+
+    static {
+        lockFile.toFile().deleteOnExit();
+    }
 
     public final List<ModRecord> allMods;
     private final boolean readOnly;
@@ -107,6 +115,7 @@ public class ModDatabase implements AutoCloseable {
         optimizeForFiles(f -> f.fileListing, (f, v) -> f.fileListing = v);
         optimizeForFiles(f -> f.ahornEntities, (f, v) -> f.ahornEntities = v);
         optimizeForFiles(f -> f.loennEntities, (f, v) -> f.loennEntities = v);
+        optimizeForFiles(f -> f.richPresenceIcons, (f, v) -> f.richPresenceIcons = v);
 
         List<Pair<Supplier<CategoryRecord>, Consumer<CategoryRecord>>> allCategoriesRecursively = new ArrayList<>();
         for (ModRecord m : allMods) {
@@ -136,13 +145,17 @@ public class ModDatabase implements AutoCloseable {
     }
 
     private <T> void optimizeFields(List<Pair<Supplier<T>, Consumer<T>>> getsetters) {
-        Map<T, T> alreadyMet = new HashMap<>();
+        List<T> alreadyMet = new ArrayList<>();
         for (Pair<Supplier<T>, Consumer<T>> getsetter : getsetters) {
             T got = getsetter.getLeft().get();
-            if (alreadyMet.containsKey(got)) {
-                getsetter.getRight().accept(alreadyMet.get(got));
+            T existing = alreadyMet.stream()
+                    .filter(t -> Objects.deepEquals(t, got))
+                    .findFirst().orElse(null);
+
+            if (existing != null) {
+                getsetter.getRight().accept(existing);
             } else {
-                alreadyMet.put(got, got);
+                alreadyMet.add(got);
             }
         }
     }

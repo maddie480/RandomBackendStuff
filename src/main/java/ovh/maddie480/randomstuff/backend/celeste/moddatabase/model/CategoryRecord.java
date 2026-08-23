@@ -9,9 +9,6 @@ public class CategoryRecord {
     public String pageUrl;
     public CategoryRecord parent;
 
-    public CategoryRecord() {
-    }
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

@@ -7,13 +7,19 @@ import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.DependencyRec
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class EverestYamlProcessor {
     private static final Logger logger = LoggerFactory.getLogger(EverestYamlProcessor.class);
+
+    private static final Set<String> blacklistedMods = new HashSet<>(Arrays.asList(
+            // reserved
+            "Celeste",
+            "Everest",
+            "EverestCore",
+            // part of other mods
+            "CrowControl-WS" // Crow Control
+    ));
 
     public static void parseEverestYamlFromZipFile(InputStream yamlInputStream, FileRecord fileRecord) {
         try {
@@ -36,6 +42,11 @@ public class EverestYamlProcessor {
                     }
                 }
 
+                if (blacklistedMods.contains(modName)) {
+                    logger.warn("Skipping mod {} because it is in the blacklist.", modName);
+                    continue;
+                }
+
                 logger.info("Reading everest.yaml of file {} finished: name {}, version {}, {} dependencies, {} optional dependencies.",
                         fileRecord.id, modName, modVersion, dependencies.size(), optionalDependencies.size());
 
@@ -43,6 +54,7 @@ public class EverestYamlProcessor {
                 fileRecord.modVersion = modVersion;
                 fileRecord.dependencies = toArray(dependencies);
                 fileRecord.optionalDependencies = toArray(optionalDependencies);
+                break;
             }
         } catch (Exception e) {
             logger.warn("Error while reading the YAML file from {}", fileRecord.id, e);

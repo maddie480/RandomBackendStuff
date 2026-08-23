@@ -19,9 +19,6 @@ public class ModRecord {
     public ScreenshotRecord[] screenshots;
     public FileRecord[] files;
 
-    public ModRecord() {
-    }
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

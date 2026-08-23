@@ -6,9 +6,6 @@ public class ScreenshotRecord {
     public String mainUrl;
     public String mirrorName;
 
-    public ScreenshotRecord() {
-    }
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

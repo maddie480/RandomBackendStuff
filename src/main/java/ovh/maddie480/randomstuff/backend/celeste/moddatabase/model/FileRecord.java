@@ -12,6 +12,7 @@ public class FileRecord {
     public long createdDate;
     public int downloads;
 
+    // these aren't expected from mod providers, most are filled out by downloading the zip
     public String xxHash;
     public boolean hasEverestYaml;
     public String modId;
@@ -21,6 +22,7 @@ public class FileRecord {
     public String[] fileListing;
     public DependencyRecord[] dependencies;
     public DependencyRecord[] optionalDependencies;
+    public RichPresenceIconRecord[] richPresenceIcons;
     public MapEditorRecord ahornEntities;
     public MapEditorRecord loennEntities;
 

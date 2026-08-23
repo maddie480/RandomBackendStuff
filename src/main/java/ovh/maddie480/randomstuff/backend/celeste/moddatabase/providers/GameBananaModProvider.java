@@ -188,7 +188,7 @@ public class GameBananaModProvider implements ModProvider {
                         JSONObject file = (JSONObject) item;
                         fileRecord.id = "GameBanana/" + file.getInt("_idRow");
                         fileRecord.name = file.getString("_sFile");
-                        fileRecord.mainUrl = file.getString("_sDownloadUrl");
+                        fileRecord.mainUrl = file.getString("_sDownloadUrl").replace("/dl/", "/mmdl/");
                         fileRecord.mirrorName = Integer.toString(file.getInt("_idRow"));
                         fileRecord.size = file.getInt("_nFilesize");
                         fileRecord.createdDate = file.getInt("_tsDateAdded");
@@ -263,7 +263,7 @@ public class GameBananaModProvider implements ModProvider {
         modRecord.views = mod.getInt("_nViewCount");
         modRecord.downloads = mod.getInt("_nDownloadCount");
         modRecord.author = author;
-        // category
+        modRecord.category = category;
         modRecord.screenshots = new ScreenshotRecord[screenshotRecords.size()];
         screenshotRecords.toArray(modRecord.screenshots);
         modRecord.files = new FileRecord[filesInMod.size()];

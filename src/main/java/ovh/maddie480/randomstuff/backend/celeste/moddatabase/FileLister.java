@@ -36,7 +36,7 @@ public class FileLister {
                 }
             }
 
-            log.debug("Found {} files in file.", filePaths.size());
+            log.debug("Found {} files in archive.", filePaths.size());
             return ModUpdater.toArray(filePaths);
         }
     }
@@ -50,7 +50,6 @@ public class FileLister {
             try (ZipFile zipFile = ZipFileWithAutoEncoding.open(zipFilePath.toAbsolutePath().toString())) {
                 for (String file : fileList) {
                     if (file.startsWith("Ahorn/") && file.endsWith(".jl")) {
-                        log.debug("Analyzing file {}", file);
                         InputStream inputStream = zipFile.getInputStream(zipFile.getEntry(file));
                         extractAhornEntities(ahornEntities, ahornTriggers, ahornEffects, file, inputStream);
                     }
@@ -122,7 +121,6 @@ public class FileLister {
             try (ZipFile zipFile = ZipFileWithAutoEncoding.open(zipFilePath.toAbsolutePath().toString())) {
                 for (String file : fileList) {
                     if (file.startsWith("Loenn/") && file.endsWith(".lua")) {
-                        log.debug("Analyzing file {}", file);
                         InputStream inputStream = zipFile.getInputStream(zipFile.getEntry(file));
                         extractLoennEntitiesFromPlugin(loennEntities, loennTriggers, loennEffects, file, inputStream);
                     }

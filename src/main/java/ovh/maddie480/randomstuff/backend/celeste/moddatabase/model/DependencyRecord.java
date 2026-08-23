@@ -6,9 +6,6 @@ public class DependencyRecord {
     public String name;
     public String version;
 
-    public DependencyRecord() {
-    }
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
