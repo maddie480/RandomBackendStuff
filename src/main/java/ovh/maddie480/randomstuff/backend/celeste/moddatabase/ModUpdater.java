@@ -203,7 +203,7 @@ public class ModUpdater {
                 }
                 break;
             } catch (IOException e) {
-                logger.warn("I/O exception (try {}/10). Registered response codes: {}", i, responseCodes, e);
+                logger.warn("I/O exception (try {}/10). Server responded at least once: {}", i, nonTimeoutHappened, e);
 
                 if (i == 10) {
                     if (nonTimeoutHappened) {
