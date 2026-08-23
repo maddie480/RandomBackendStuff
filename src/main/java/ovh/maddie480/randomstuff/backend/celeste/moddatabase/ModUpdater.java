@@ -182,12 +182,13 @@ public class ModUpdater {
         logger.debug("Starting download of {}", file.mainUrl);
 
         for (int i = 1; i <= 10; i++) {
-            List<Integer> responseCodes = new ArrayList<>();
+            boolean nonTimeoutHappened = false;
 
             try {
                 HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(file.mainUrl);
                 connection.setInstanceFollowRedirects(true);
-                responseCodes.add(connection.getResponseCode());
+                connection.getResponseCode();
+                nonTimeoutHappened = true; // ... well, we got a response code, at least.
 
                 try (InputStream is = new BufferedInputStream(ConnectionUtils.connectionToInputStream(connection));
                      OutputStream os = new BufferedOutputStream(Files.newOutputStream(target))) {
@@ -205,8 +206,8 @@ public class ModUpdater {
                 logger.warn("I/O exception (try {}/10). Registered response codes: {}", i, responseCodes, e);
 
                 if (i == 10) {
-                    if (responseCodes.size() == 10 && responseCodes.stream().allMatch(r -> r / 100 == 4)) {
-                        logger.warn("We only got 4xx errors! Considering the file to be lost...");
+                    if (nonTimeoutHappened) {
+                        logger.warn("The server responded at least once and we still couldn't get the file! Considering it to be lost...");
                         return;
                     }
                     throw e;
