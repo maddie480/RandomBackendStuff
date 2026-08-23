@@ -16,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -81,12 +83,47 @@ public class ModUpdater {
                 }
             }
 
+            final int workerThreads = 20;
             int progress = 0;
+            Semaphore limiter = new Semaphore(workerThreads);
+            AtomicReference<Exception> whoops = new AtomicReference<>();
+
             for (Pair<ModRecord, FileRecord> newFile : newFiles.values()) {
                 progress++;
-                logger.debug("Processing new file {}/{}", progress, newFiles.size());
-                handleNewFile(newFile.getRight());
+                int current = progress;
+
+                // wait for enough threads to be done first...
+                limiter.acquireUninterruptibly();
+
+                // launch a new thread
+                new Thread(() -> {
+                    Path temp = Paths.get("/tmp/updater_download_" + current);
+                    try {
+                        logger.debug("Processing new file {}/{}", current, newFiles.size());
+                        handleNewFile(newFile.getRight(), temp);
+                        logger.debug("Processing of file {}/{} finished", current, newFiles.size());
+                    } catch (Exception e) {
+                        logger.warn("Exception occurred downloading file {}", current);
+                        whoops.set(e);
+                    } finally {
+                        try {
+                            if (Files.exists(temp)) Files.delete(temp);
+                        } catch (IOException e) { /* welp */ }
+
+                        // we're done
+                        limiter.release();
+                    }
+                }).start();
+
+                // if some thread crashed, no use in running other ones, stop now!
+                if (whoops.get() != null) break;
             }
+
+            // wait for EVERY thread to be done
+            limiter.acquireUninterruptibly(workerThreads);
+            // if a thread crashed, send the exception to the caller
+            if (whoops.get() != null)
+                throw new IOException("An exception occurred on a file worker thread", whoops.get());
 
             if (replace) {
                 database.allMods.clear();
@@ -121,9 +158,7 @@ public class ModUpdater {
                 .toList();
     }
 
-    private static void handleNewFile(FileRecord file) throws IOException {
-        Path target = Paths.get("/tmp/modfile");
-
+    private static void handleNewFile(FileRecord file, Path target) throws IOException {
         // standard "this doesn't have a valid yaml file" values
         file.xxHash = null;
         file.modId = null;
@@ -210,8 +245,6 @@ public class ModUpdater {
                 EverestYamlProcessor.parseEverestYamlFromZipFile(is, file);
             }
         }
-
-        Files.delete(target);
     }
 
     private static void designateTheNewLeaders(ModDatabase database, Map<String, Pair<ModRecord, FileRecord>> previousFiles) {

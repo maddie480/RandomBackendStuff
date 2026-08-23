@@ -32,7 +32,7 @@ public class ModDatabase implements AutoCloseable {
 
     static {
         LoaderOptions loaderOptions = new LoaderOptions();
-        loaderOptions.setCodePointLimit(100 * 1024 * 1024);
+        loaderOptions.setCodePointLimit(1024 * 1024 * 1024);
         loaderOptions.setTagInspector(tag -> tag.matches(ModRecord.class));
         loaderOptions.setMaxAliasesForCollections(1_000_000);
 
