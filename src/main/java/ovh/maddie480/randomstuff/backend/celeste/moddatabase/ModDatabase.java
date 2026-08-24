@@ -43,7 +43,7 @@ public class ModDatabase implements AutoCloseable {
     }
 
     private static final Path lockFile = Paths.get("/shared/celeste/database_lock");
-    private static final Path databaseFile = Paths.get("/shared/celeste/mod_database.yaml");
+    private static final Path databaseFile = Paths.get("/shared/celeste/mod-database.yaml");
     private static final Path tempDatabase = Paths.get("/tmp/mod_database_staging.yaml");
 
     static {
@@ -51,10 +51,8 @@ public class ModDatabase implements AutoCloseable {
     }
 
     public final List<ModRecord> allMods;
-    private final boolean readOnly;
 
-    public ModDatabase(boolean readOnly) throws IOException {
-        this.readOnly = readOnly;
+    public ModDatabase() throws IOException {
         acquireDatabaseLock();
 
         try (BufferedReader br = Files.newBufferedReader(databaseFile, StandardCharsets.UTF_8)) {
@@ -66,28 +64,22 @@ public class ModDatabase implements AutoCloseable {
         }
     }
 
+    public void commit() throws IOException {
+        logger.debug("Optimizing mod database...");
+        optimize();
+
+        logger.debug("Dumping mod database...");
+        try (BufferedWriter bw = Files.newBufferedWriter(tempDatabase, StandardCharsets.UTF_8)) {
+            yaml.dump(allMods, bw);
+        }
+
+        logger.debug("Committing...");
+        Files.move(tempDatabase, databaseFile, StandardCopyOption.REPLACE_EXISTING);
+    }
+
     @Override
     public void close() throws IOException {
-        if (readOnly) {
-            // gotta go fast
-            releaseDatabaseLock();
-            return;
-        }
-
-        try {
-            logger.debug("Optimizing mod database...");
-            optimize();
-
-            logger.debug("Dumping mod database...");
-            try (BufferedWriter bw = Files.newBufferedWriter(tempDatabase, StandardCharsets.UTF_8)) {
-                yaml.dump(allMods, bw);
-            }
-
-            logger.debug("Committing...");
-            Files.move(tempDatabase, databaseFile, StandardCopyOption.REPLACE_EXISTING);
-        } finally {
-            releaseDatabaseLock();
-        }
+        releaseDatabaseLock();
     }
 
     private static void acquireDatabaseLock() throws IOException {

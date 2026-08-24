@@ -31,7 +31,7 @@ public class ModUpdater {
 
     public static void incrementalUpdate() throws IOException {
         if (newestModificationInDatabase == 0) {
-            try (ModDatabase database = new ModDatabase(true)) {
+            try (ModDatabase database = new ModDatabase()) {
                 newestModificationInDatabase = database.allMods.stream()
                         .mapToLong(m -> m.modifiedDate)
                         .max().orElse(0);
@@ -56,7 +56,7 @@ public class ModUpdater {
     }
 
     private static void update(List<ModRecord> incomingMods, boolean replace) throws IOException {
-        try (ModDatabase database = new ModDatabase(false)) {
+        try (ModDatabase database = new ModDatabase()) {
             Map<String, Pair<ModRecord, FileRecord>> knownFiles = toFileMap(database.allMods);
             Map<String, Pair<ModRecord, FileRecord>> incomingFiles = toFileMap(incomingMods);
 
@@ -144,6 +144,7 @@ public class ModUpdater {
 
             designateTheNewLeaders(database, knownFiles);
             newestModificationInDatabase = 0;
+            database.commit();
         }
     }
 

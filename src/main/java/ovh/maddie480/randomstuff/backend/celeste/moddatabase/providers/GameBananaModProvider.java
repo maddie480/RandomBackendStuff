@@ -179,6 +179,9 @@ public class GameBananaModProvider implements ModProvider {
                     return record;
                 })
                 .toList();
+        for (int i = 2; i < screenshotRecords.size(); i++) {
+            screenshotRecords.get(i).mirrorName = null;
+        }
 
         List<FileRecord> filesInMod = new ArrayList<>();
         if (!mod.isNull("_aFiles")) {
