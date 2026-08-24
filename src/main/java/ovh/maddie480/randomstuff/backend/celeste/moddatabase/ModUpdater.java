@@ -27,10 +27,6 @@ public class ModUpdater {
     private static final Logger logger = LoggerFactory.getLogger(ModUpdater.class);
     private static final XXHashFactory xxHashFactory = XXHashFactory.fastestInstance();
 
-    static void main() throws IOException {
-        fullUpdate();
-    }
-
     public static void incrementalUpdate() throws IOException {
         long newestModificationInDatabase;
         try (ModDatabase database = new ModDatabase(true)) {
@@ -43,7 +39,9 @@ public class ModUpdater {
         for (ModProvider modProvider : modProviders) {
             mods.addAll(modProvider.incrementalUpdate(newestModificationInDatabase));
         }
-        update(mods, false);
+        if (!mods.isEmpty()) {
+            update(mods, false);
+        }
     }
 
     public static void fullUpdate() throws IOException {
