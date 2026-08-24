@@ -29,7 +29,7 @@ public class GameBananaModProvider implements ModProvider {
     @Override
     public List<ModRecord> incrementalUpdate(long since) throws IOException {
         List<ModRecord> results = new ArrayList<>();
-        int incrementalPageSize = ZonedDateTime.now().getMinute() % 30 + 10;
+        int incrementalPageSize = ZonedDateTime.now().getMinute() / 2 + 10;
 
         for (String category : VALID_CATEGORIES) {
             int page = 1;

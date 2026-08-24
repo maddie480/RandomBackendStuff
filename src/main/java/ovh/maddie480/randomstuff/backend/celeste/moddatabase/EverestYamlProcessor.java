@@ -18,7 +18,9 @@ public class EverestYamlProcessor {
             "Everest",
             "EverestCore",
             // part of other mods
-            "CrowControl-WS" // Crow Control
+            "CrowControl-WS", // Crow Control
+            "CrowControl-WebSockets", // Crow Control
+            "GhostMod" // GhostNet
     ));
 
     public static void parseEverestYamlFromZipFile(InputStream yamlInputStream, FileRecord fileRecord) {
