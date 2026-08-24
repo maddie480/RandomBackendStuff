@@ -83,6 +83,9 @@ public class ModDatabase implements AutoCloseable {
                 yaml.dump(allMods, bw);
             }
 
+            // the DB is huge, having it twice in memory requires -Xmx3G
+            allMods.clear();
+
             logger.debug("Checking new database integrity...");
             try (BufferedReader br = Files.newBufferedReader(tempDatabase, StandardCharsets.UTF_8)) {
                 yaml.load(br);
