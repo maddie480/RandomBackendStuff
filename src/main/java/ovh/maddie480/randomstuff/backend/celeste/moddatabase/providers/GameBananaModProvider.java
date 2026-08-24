@@ -61,7 +61,7 @@ public class GameBananaModProvider implements ModProvider {
 
                             try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv8/" + category + "/" + mod.getInt("_idRow") + "?" +
                                     "_csvProperties=_idRow,_sName,_aFiles,_aSubmitter,_sDescription,_sText,_nLikeCount,_nViewCount,_nDownloadCount,_aCategory," +
-                                    "_tsDateAdded,_tsDateModified,_tsDateUpdated,_aPreviewMedia,_sProfileUrl,_bIsNsfw&ts=" + System.currentTimeMillis())) {
+                                    "_aSuperCategory,_aRootCategory,_tsDateAdded,_tsDateModified,_tsDateUpdated,_aPreviewMedia,_sProfileUrl,_bIsNsfw&ts=" + System.currentTimeMillis())) {
 
                                 return new JSONObject(new JSONTokener(is));
                             } catch (JSONException e) {
