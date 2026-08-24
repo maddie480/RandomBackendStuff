@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,7 +23,7 @@ public class RichPresenceIcons {
     private static final Logger log = LoggerFactory.getLogger(RichPresenceIcons.class);
 
     public static RichPresenceIconRecord[] get(FileRecord fileRecord, Path path) throws IOException {
-        Set<String> fileList = Set.of(fileRecord.fileListing);
+        Set<String> fileList = new HashSet<>(List.of(fileRecord.fileListing));
 
         List<String> richPresenceIcons = Arrays.stream(fileRecord.fileListing)
                 .filter(fileName -> fileName.startsWith("Graphics/Atlases/Gui/")
