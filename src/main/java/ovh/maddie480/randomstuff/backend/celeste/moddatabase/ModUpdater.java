@@ -27,12 +27,15 @@ public class ModUpdater {
     private static final Logger logger = LoggerFactory.getLogger(ModUpdater.class);
     private static final XXHashFactory xxHashFactory = XXHashFactory.fastestInstance();
 
+    private static long newestModificationInDatabase = 0;
+
     public static void incrementalUpdate() throws IOException {
-        long newestModificationInDatabase;
-        try (ModDatabase database = new ModDatabase(true)) {
-            newestModificationInDatabase = database.allMods.stream()
-                    .mapToLong(m -> m.modifiedDate)
-                    .max().orElse(0);
+        if (newestModificationInDatabase == 0) {
+            try (ModDatabase database = new ModDatabase(true)) {
+                newestModificationInDatabase = database.allMods.stream()
+                        .mapToLong(m -> m.modifiedDate)
+                        .max().orElse(0);
+            }
         }
 
         List<ModRecord> mods = new ArrayList<>();
@@ -140,6 +143,7 @@ public class ModUpdater {
             }
 
             designateTheNewLeaders(database, knownFiles);
+            newestModificationInDatabase = 0;
         }
     }
 

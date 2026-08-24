@@ -15,6 +15,7 @@ import ovh.maddie480.everest.updatechecker.ServerConfig;
 import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import ovh.maddie480.randomstuff.backend.celeste.crontabs.*;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
 import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
@@ -337,6 +338,8 @@ public class CrontabRunner {
                 EventListener.removeEventListener(tracker);
             }
         });
+
+        runProcessAndAlertOnException("[Updater] ModUpdater::incrementalUpdate", ModUpdater::incrementalUpdate);
     }
 
     private static void housekeepArbitraryModApp() throws IOException {
