@@ -33,6 +33,8 @@ public class GameBananaModProvider implements ModProvider {
 
         for (String category : VALID_CATEGORIES) {
             int page = 1;
+
+            categoryLoop:
             while (true) {
                 // load a page of mods.
                 final int thisPage = page;
@@ -73,7 +75,7 @@ public class GameBananaModProvider implements ModProvider {
                         results.add(createModRecord(category, modInfo));
                     } else {
                         log.trace("Updated date of mod {} is earlier than last updated date {}, stopping incremental update", mod.getInt("_tsDateModified"), since);
-                        continue;
+                        break categoryLoop;
                     }
                 }
 
