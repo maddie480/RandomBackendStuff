@@ -8,9 +8,9 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModProvider;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.*;
+import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.IOException;
 import java.io.InputStream;

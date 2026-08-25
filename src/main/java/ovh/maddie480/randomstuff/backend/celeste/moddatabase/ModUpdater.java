@@ -6,9 +6,11 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateOutgoingWebhooks;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.*;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBananaModProvider;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -29,34 +31,53 @@ public class ModUpdater {
 
     private static long newestModificationInDatabase = 0;
 
-    public static void incrementalUpdate() throws IOException {
-        if (newestModificationInDatabase == 0) {
-            try (ModDatabase database = new ModDatabase()) {
-                newestModificationInDatabase = database.allMods.stream()
-                        .mapToLong(m -> m.modifiedDate)
-                        .max().orElse(0);
+    public static void incrementalUpdate() {
+        try {
+            long start = System.currentTimeMillis();
+
+            if (newestModificationInDatabase == 0) {
+                try (ModDatabase database = new ModDatabase()) {
+                    newestModificationInDatabase = database.allMods.stream()
+                            .mapToLong(m -> m.modifiedDate)
+                            .max().orElse(0);
+                }
             }
-        }
 
-        List<ModRecord> mods = new ArrayList<>();
-        for (ModProvider modProvider : modProviders) {
-            mods.addAll(modProvider.incrementalUpdate(newestModificationInDatabase));
-        }
-        if (!mods.isEmpty()) {
-            update(mods, false);
+            List<ModRecord> mods = new ArrayList<>();
+            for (ModProvider modProvider : modProviders) {
+                mods.addAll(modProvider.incrementalUpdate(newestModificationInDatabase));
+            }
+            if (!mods.isEmpty()) {
+                update(mods, false, start);
+            }
+        } catch (Exception e) {
+            logger.error("Uncaught exception during incremental update", e);
+            new UpdateCheckerTracker(null).uncaughtError(e);
         }
     }
 
-    public static void fullUpdate() throws IOException {
-        List<ModRecord> mods = new ArrayList<>();
-        for (ModProvider modProvider : modProviders) {
-            mods.addAll(modProvider.fullUpdate());
+    public static void fullUpdate() {
+        try {
+            long start = System.currentTimeMillis();
+
+            List<ModRecord> mods = new ArrayList<>();
+            for (ModProvider modProvider : modProviders) {
+                mods.addAll(modProvider.fullUpdate());
+            }
+            update(mods, true, start);
+        } catch (Exception e) {
+            logger.error("Uncaught exception during full update", e);
+            new UpdateCheckerTracker(null).uncaughtError(e);
         }
-        update(mods, true);
     }
 
-    private static void update(List<ModRecord> incomingMods, boolean replace) throws IOException {
+    private static void update(List<ModRecord> incomingMods, boolean replace, long start) throws IOException {
         try (ModDatabase database = new ModDatabase()) {
+            UpdateCheckerTracker tracker = new UpdateCheckerTracker(database);
+            tracker.startedSearchingForUpdates(replace);
+
+            if (!replace) for (ModRecord r : incomingMods) tracker.modUpdatedIncrementally(r.name, r.pageUrl);
+
             Map<String, Pair<ModRecord, FileRecord>> knownFiles = toFileMap(database.allMods);
             Map<String, Pair<ModRecord, FileRecord>> incomingFiles = toFileMap(incomingMods);
 
@@ -101,7 +122,7 @@ public class ModUpdater {
                     Path temp = Paths.get("/tmp/updater_download_" + current);
                     try {
                         logger.debug("Processing new file {}/{}", current, newFiles.size());
-                        handleNewFile(newFile.getRight(), temp);
+                        handleNewFile(newFile.getLeft(), newFile.getRight(), temp, tracker);
                         logger.debug("Processing of file {}/{} finished", current, newFiles.size());
                     } catch (Exception e) {
                         logger.warn("Exception occurred downloading file {}", current);
@@ -142,9 +163,17 @@ public class ModUpdater {
                 }
             }
 
-            designateTheNewLeaders(database, knownFiles);
+            designateTheNewLeaders(database, knownFiles, newFiles, tracker);
             newestModificationInDatabase = 0;
             database.commit();
+
+            tracker.endedSearchingForUpdates(System.currentTimeMillis() - start);
+
+            BananaMirror banan = new BananaMirror();
+            banan.synchronizeFiles(database, tracker);
+            banan.synchronizeImages(database, tracker);
+            banan.synchronizeRichPresenceIcons(database, tracker);
+            UpdateOutgoingWebhooks.notifyUpdate();
         }
     }
 
@@ -161,7 +190,7 @@ public class ModUpdater {
                 .toList();
     }
 
-    private static void handleNewFile(FileRecord file, Path target) throws IOException {
+    private static void handleNewFile(ModRecord mod, FileRecord file, Path target, UpdateCheckerTracker tracker) throws IOException {
         // standard "this doesn't have a valid yaml file" values
         file.xxHash = null;
         file.modId = null;
@@ -211,6 +240,7 @@ public class ModUpdater {
                 if (i == 10) {
                     if (nonTimeoutHappened) {
                         logger.warn("The server responded at least once and we still couldn't get the file! Considering it to be lost...");
+                        tracker.fileDownloadError(mod, file, e);
                         return;
                     }
                     throw e;
@@ -229,29 +259,33 @@ public class ModUpdater {
         } catch (IOException e) {
             // invalid zip!
             logger.warn("File {} could not be read as a zip", file.id, e);
+            tracker.zipFileIsUnreadable(mod, file, e);
             return;
         }
 
-        file.fileListing = FileLister.getFileList(target);
-        file.loennEntities = FileLister.listLoennPlugins(target, file.fileListing);
-        file.ahornEntities = FileLister.listAhornPlugins(target, file.fileListing);
+        file.fileListing = FileLister.getFileList(target, mod, file, tracker);
+        file.loennEntities = FileLister.listLoennPlugins(target, file.fileListing, file.mainUrl, tracker);
+        file.ahornEntities = FileLister.listAhornPlugins(target, file.fileListing, file.mainUrl, tracker);
         file.hasEverestYaml = Arrays.stream(file.fileListing).anyMatch(
                 f -> f.equals("everest.yaml") || f.equals("everest.yml"));
         file.richPresenceIcons = RichPresenceIcons.get(file, target);
 
-        if (!file.hasEverestYaml) return;
+        if (!file.hasEverestYaml) {
+            tracker.modHasNoYamlFile(mod, file);
+            return;
+        }
 
-        try (ZipFile zip = ZipFileWithAutoEncoding.open(target.toAbsolutePath().toString())) {
+        try (ZipFile zip = ZipFileWithAutoEncoding.open(target.toAbsolutePath().toString(), tracker, file)) {
             ZipEntry everestYaml = zip.getEntry("everest.yaml");
             if (everestYaml == null) everestYaml = zip.getEntry("everest.yml");
 
             try (InputStream is = zip.getInputStream(everestYaml)) {
-                EverestYamlProcessor.parseEverestYamlFromZipFile(is, file);
+                EverestYamlProcessor.parseEverestYamlFromZipFile(is, mod, file, tracker);
             }
         }
     }
 
-    private static void designateTheNewLeaders(ModDatabase database, Map<String, Pair<ModRecord, FileRecord>> previousFiles) {
+    private static void designateTheNewLeaders(ModDatabase database, Map<String, Pair<ModRecord, FileRecord>> previousFiles, Map<String, Pair<ModRecord, FileRecord>> newFiles, UpdateCheckerTracker tracker) {
         Map<String, List<Pair<ModRecord, FileRecord>>> filesByModId = toFileMap(database.allMods).values().stream()
                 .filter(f -> f.getRight().modId != null && !f.getRight().bannedFromBeingLeader)
                 .collect(Collectors.toMap(
@@ -302,16 +336,36 @@ public class ModUpdater {
                 }
             }
 
-            if (newLeader.getRight().isLeader) continue;
-
-            logger.info("A new leader has been designated for mod ID {}: {}", contestants.getKey(), newLeader.getRight().id);
-            for (Pair<ModRecord, FileRecord> contestant : contestants.getValue()) {
-                contestant.getRight().isLeader = contestant.getRight().equals(newLeader.getRight());
+            if (!newLeader.getRight().isLeader) {
+                logger.info("A new leader has been designated for mod ID {}: {}", contestants.getKey(), newLeader.getRight().id);
+                for (Pair<ModRecord, FileRecord> contestant : contestants.getValue()) {
+                    contestant.getRight().isLeader = contestant.getRight().equals(newLeader.getRight());
+                }
+                tracker.savedNewInformationToDatabase(newLeader.getLeft(), newLeader.getRight());
             }
+
+            List<Pair<ModRecord, FileRecord>> newNonLeaderFilesMatchingId = newFiles.values().stream()
+                    .filter(mf -> !mf.getRight().isLeader && contestants.getKey().equals(mf.getRight().modId))
+                    .toList();
+
+            for (Pair<ModRecord, FileRecord> nonLeader : newNonLeaderFilesMatchingId) {
+                if (nonLeader.getLeft().equals(newLeader.getLeft())) {
+                    tracker.moreRecentFileAlreadyExists(nonLeader.getLeft(), nonLeader.getRight(), newLeader.getRight());
+                } else {
+                    tracker.currentVersionBelongsToAnotherMod(nonLeader.getLeft(), nonLeader.getRight(), newLeader.getLeft(), newLeader.getRight());
+                }
+            }
+        }
+
+        for (Pair<ModRecord, FileRecord> idsThatAreGone : previousFiles.values().stream()
+                .filter(e -> e.getRight().isLeader && !filesByModId.containsKey(e.getRight().modId))
+                .toList()) {
+
+            tracker.modWasDeletedFromDatabase(idsThatAreGone.getLeft(), idsThatAreGone.getRight());
         }
     }
 
-    private static String computeXXHash(InputStream is) throws IOException {
+    public static String computeXXHash(InputStream is) throws IOException {
         StringBuilder xxHash;
 
         try (StreamingXXHash64 hash64 = xxHashFactory.newStreamingHash64(0)) {

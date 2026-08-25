@@ -9,10 +9,11 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBananaModProvider;
 import ovh.maddie480.randomstuff.backend.utils.*;
 
 import java.io.*;
@@ -49,18 +50,17 @@ public class GameBananaAutomatedChecks {
 
     private static final Pattern objDirectoryRegex = Pattern.compile("(.*(?:/|^)obj/(?:Debug|Release))(?:/|$).*");
 
-    private static String getMaskedEnhancedEmbedLink(Map<String, Object> mod) {
-        return getMaskedEnhancedEmbedLink((String) mod.get("GameBananaType"), (int) mod.get("GameBananaId"), Integer.toString((int) mod.get("GameBananaFileId")));
+    public static String getMaskedEnhancedEmbedLink(ModRecord mod, FileRecord file) {
+        String maskedLink = mod.pageUrl;
+        if (mod.id.startsWith("GameBanana/")) {
+            String link = mod.pageUrl.replace("https://", "");
+            maskedLink = "[" + link + "](https://maddie480.ovh/" + link + ")";
+        }
+        return maskedLink + " (<" + file.mainUrl + ">)";
     }
 
-    static String getMaskedEnhancedEmbedLink(String itemtype, int itemid) {
-        String link = "gamebanana.com/" + itemtype.toLowerCase() + "s/" + itemid;
-        return "[" + link + "](https://maddie480.ovh/" + link + ")";
-    }
-
-    static String getMaskedEnhancedEmbedLink(String itemtype, int itemid, String fileId) {
-        return getMaskedEnhancedEmbedLink(itemtype, itemid) +
-                " (https://gamebanana.com/mmdl/" + fileId + ")";
+    public static String getMaskedEnhancedEmbedLink(ModDatabase.ModLatestVersion v) {
+        return getMaskedEnhancedEmbedLink(v.mod(), v.file());
     }
 
     /**
@@ -83,167 +83,149 @@ public class GameBananaAutomatedChecks {
             oldResults = YamlUtil.load(is);
         }
 
-        // download the updater database to figure out which mods we should scan...
-        Map<String, Map<String, Object>> updaterDatabase;
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = YamlUtil.load(is);
-        }
+        try (ModDatabase database = new ModDatabase()) {
+            for (ModDatabase.ModLatestVersion record : database.listLatestVersions()) {
+                if (oldResults.contains(record.file().id)) {
+                    // skip scanning already scanned files.
+                    newResults.add(record.file().id);
+                } else {
+                    if (Arrays.stream(record.file().fileListing).anyMatch(f -> f.toLowerCase(Locale.ROOT).endsWith(".dll"))) {
+                        // file listing contains dll, so download!
+                        logger.debug("Downloading mod {} (file id {})", record.file().modId, record.file().id);
 
-        for (Map.Entry<String, Map<String, Object>> modEntry : updaterDatabase.entrySet()) {
-            String modName = modEntry.getKey();
-            Map<String, Object> mod = modEntry.getValue();
-
-            // does the file have a dll?
-            String fileName = mod.get("URL").toString().substring("https://gamebanana.com/mmdl/".length());
-
-            if (oldResults.contains(fileName)) {
-                // skip scanning already scanned files.
-                newResults.add(fileName);
-            } else {
-                // check file listing
-                List<String> fileList;
-                try (InputStream is = new FileInputStream(
-                        "modfilesdatabase/" + mod.get("GameBananaType") + "/" + mod.get("GameBananaId") + "/" + fileName + ".yaml")) {
-
-                    fileList = YamlUtil.load(is);
-                }
-
-                if (fileList.stream().anyMatch(file -> file.toLowerCase(Locale.ROOT).endsWith(".dll"))) {
-                    // file listing contains dll, so download!
-                    logger.debug("Downloading mod {} (file id {})", modName, fileName);
-
-                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(mod.get("MirrorURL").toString())) {
-                        FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.zip"));
-                    }
-
-                    logger.debug("Searching for DLL");
-
-                    try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/mod_yield_police.zip")) {
-                        // find the everest.yaml name used in this mod.
-                        ZipEntry yaml = zip.getEntry("everest.yaml");
-                        if (yaml == null) {
-                            yaml = zip.getEntry("everest.yml");
+                        try (InputStream is = ConnectionUtils.openStreamWithTimeout(record.file().mainUrl)) {
+                            FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.zip"));
                         }
 
-                        // read everest.yaml without extracting
-                        List<Map<String, Object>> yamlContent;
-                        try (InputStream is = zip.getInputStream(yaml)) {
-                            yamlContent = YamlUtil.load(is);
-                        }
+                        logger.debug("Searching for DLL");
 
-                        boolean yieldReturnIssue = false;
-                        boolean consoleWriteLine = false;
-                        boolean fishyProcessStuff = false;
-                        boolean dllEntryFoundInYaml = false;
+                        try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/mod_yield_police.zip")) {
+                            // find the everest.yaml name used in this mod.
+                            ZipEntry yaml = zip.getEntry("everest.yaml");
+                            if (yaml == null) {
+                                yaml = zip.getEntry("everest.yml");
+                            }
 
-                        // read "DLL" fields for each everest.yaml entry
-                        for (Map<String, Object> yamlEntry : yamlContent) {
-                            Object dllPath = yamlEntry.get("DLL");
-                            if (dllPath == null) {
-                                logger.info("Mod actually has no DLL, skipping");
-                            } else {
-                                dllEntryFoundInYaml = true;
-                                ZipEntry entry = zip.getEntry(dllPath.toString());
+                            // read everest.yaml without extracting
+                            List<Map<String, Object>> yamlContent;
+                            try (InputStream is = zip.getInputStream(yaml)) {
+                                yamlContent = YamlUtil.load(is);
+                            }
 
-                                if (entry == null) {
-                                    logger.info("The DLL specified in the yaml file \"{}\" does not exist! Skipping.", dllPath);
+                            boolean yieldReturnIssue = false;
+                            boolean consoleWriteLine = false;
+                            boolean fishyProcessStuff = false;
+                            boolean dllEntryFoundInYaml = false;
+
+                            // read "DLL" fields for each everest.yaml entry
+                            for (Map<String, Object> yamlEntry : yamlContent) {
+                                Object dllPath = yamlEntry.get("DLL");
+                                if (dllPath == null) {
+                                    logger.info("Mod actually has no DLL, skipping");
                                 } else {
-                                    logger.debug("Extracting DLL from {}", dllPath);
+                                    dllEntryFoundInYaml = true;
+                                    ZipEntry entry = zip.getEntry(dllPath.toString());
 
-                                    try (InputStream is = zip.getInputStream(entry)) {
-                                        FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.dll"));
-                                    }
+                                    if (entry == null) {
+                                        logger.info("The DLL specified in the yaml file \"{}\" does not exist! Skipping.", dllPath);
+                                    } else {
+                                        logger.debug("Extracting DLL from {}", dllPath);
 
-                                    // invoke ilspycmd to decompile the mod.
-                                    logger.debug("Decompiling DLL...");
-                                    Process p = OutputStreamLogger.redirectErrorOutput(logger,
-                                            new ProcessBuilder("/home/ubuntu/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start());
+                                        try (InputStream is = zip.getInputStream(entry)) {
+                                            FileUtils.copyToFile(is, new File("/tmp/mod_yield_police.dll"));
+                                        }
 
-                                    int lines = 0;
+                                        // invoke ilspycmd to decompile the mod.
+                                        logger.debug("Decompiling DLL...");
+                                        Process p = OutputStreamLogger.redirectErrorOutput(logger,
+                                                new ProcessBuilder("/home/ubuntu/.dotnet/tools/ilspycmd", "/tmp/mod_yield_police.dll").start());
 
-                                    try (InputStream is = p.getInputStream();
-                                         BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
+                                        int lines = 0;
 
-                                        String line;
-                                        while ((line = br.readLine()) != null) {
-                                            lines++;
-                                            if (line.contains("yield return orig.Invoke")) {
-                                                logger.warn("Mod {} uses yield return orig(self)!", modName);
-                                                yieldReturnIssue = true;
-                                            }
-                                            if (line.contains("Console.WriteLine")) {
-                                                logger.warn("Mod {} contains Console.WriteLine", modName);
-                                                consoleWriteLine = true;
-                                            }
-                                            if (Stream.of("ProcessStartInfo", "Process.Start", "new Process", "UseShellExecute")
-                                                    .anyMatch(line::contains)
-                                                    && !"CelesteTAS".equals(modName) // Celeste Studio
-                                                    && !"Vidcutter".equals(modName) // ffmpeg
-                                                    && !"ChroniaHelper".equals(modName) // Open URL Trigger
-                                                    && !"Head2Head".equals(modName) // Open Control Panel option
-                                                    && !"ConsistencyTracker".equals(modName) // Opens stuff in browser
-                                                    && !"girlhell1999".equals(modName) // other Open URL Trigger that causes debates in banana-watch
-                                            ) {
-                                                logger.warn("Mod {} contains Process usage", modName);
-                                                fishyProcessStuff = true;
+                                        try (InputStream is = p.getInputStream();
+                                             BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
+
+                                            String line;
+                                            while ((line = br.readLine()) != null) {
+                                                lines++;
+                                                if (line.contains("yield return orig.Invoke")) {
+                                                    logger.warn("Mod {} uses yield return orig(self)!", record.file().modId);
+                                                    yieldReturnIssue = true;
+                                                }
+                                                if (line.contains("Console.WriteLine")) {
+                                                    logger.warn("Mod {} contains Console.WriteLine", record.file().modId);
+                                                    consoleWriteLine = true;
+                                                }
+                                                if (Stream.of("ProcessStartInfo", "Process.Start", "new Process", "UseShellExecute")
+                                                        .anyMatch(line::contains)
+                                                        && !"CelesteTAS".equals(record.file().modId) // Celeste Studio
+                                                        && !"Vidcutter".equals(record.file().modId) // ffmpeg
+                                                        && !"ChroniaHelper".equals(record.file().modId) // Open URL Trigger
+                                                        && !"Head2Head".equals(record.file().modId) // Open Control Panel option
+                                                        && !"ConsistencyTracker".equals(record.file().modId) // Opens stuff in browser
+                                                        && !"girlhell1999".equals(record.file().modId) // other Open URL Trigger that causes debates in banana-watch
+                                                ) {
+                                                    logger.warn("Mod {} contains Process usage", record.file().modId);
+                                                    fishyProcessStuff = true;
+                                                }
                                             }
                                         }
+
+                                        try {
+                                            p.waitFor();
+                                        } catch (InterruptedException e) {
+                                            throw new IOException(e);
+                                        }
+
+                                        if (p.exitValue() != 0) {
+                                            throw new IOException("ilspycmd returned exit code " + p.exitValue());
+                                        }
+
+                                        logger.debug("Decompiled {} lines of code", lines);
+
+                                        logger.debug("Deleting temporary DLL");
+                                        FileUtils.forceDelete(new File("/tmp/mod_yield_police.dll"));
                                     }
-
-                                    try {
-                                        p.waitFor();
-                                    } catch (InterruptedException e) {
-                                        throw new IOException(e);
-                                    }
-
-                                    if (p.exitValue() != 0) {
-                                        throw new IOException("ilspycmd returned exit code " + p.exitValue());
-                                    }
-
-                                    logger.debug("Decompiled {} lines of code", lines);
-
-                                    logger.debug("Deleting temporary DLL");
-                                    FileUtils.forceDelete(new File("/tmp/mod_yield_police.dll"));
                                 }
                             }
+
+                            newResults.add(record.file().id);
+
+                            if (yieldReturnIssue) {
+                                sendAlertToWebhook(database, ":warning: The mod called **" + record.file().modId + "** uses `yield return orig(self)`!" +
+                                        " This might change timings and desync TASes <:UnimpressedPoggersGuneline:971378034441601034>\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
+                            }
+
+                            if (consoleWriteLine) {
+                                sendAlertToWebhook(database, ":warning: The mod called **" + record.file().modId + "** uses `Console.WriteLine`!" +
+                                        " This might pollute the logs <:faintshiro:463773786819264512>\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
+                            }
+
+                            if (fishyProcessStuff) {
+                                sendAlertToWebhook(database, ":warning: The mod called **" + record.file().modId + "** seems to be using `Process` APIs!" +
+                                        " Make sure that it isn't doing anything fishy with them :fish:\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
+                            }
+
+                            if (!dllEntryFoundInYaml) {
+                                sendAlertToWebhook(database, ":warning: The mod called **" + record.file().modId + "** ships with DLLs, but does not refer to any in its everest.yaml." +
+                                        " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
+                            }
+                        } catch (ZipException e) {
+                            logger.warn("Error while reading zip. Adding to the whitelist so that it isn't retried.", e);
+                            newResults.add(record.file().id);
+
+                            // send an angry ping to the owner to have the mod manually checked
+                            WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
+                                    "Banana Watch",
+                                    "<@" + SecretConstants.OWNER_ID + "> The mod called **" + record.file().modId + "** could not be checked. Please check it manually.\n" +
+                                            ":arrow_right: " + getMaskedEnhancedEmbedLink(record),
+                                    SecretConstants.OWNER_ID);
                         }
 
-                        newResults.add(fileName);
-
-                        if (yieldReturnIssue) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `yield return orig(self)`!" +
-                                    " This might change timings and desync TASes <:UnimpressedPoggersGuneline:971378034441601034>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
-                        }
-
-                        if (consoleWriteLine) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** uses `Console.WriteLine`!" +
-                                    " This might pollute the logs <:faintshiro:463773786819264512>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
-                        }
-
-                        if (fishyProcessStuff) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** seems to be using `Process` APIs!" +
-                                    " Make sure that it isn't doing anything fishy with them :fish:\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
-                        }
-
-                        if (!dllEntryFoundInYaml) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** ships with DLLs, but does not refer to any in its everest.yaml." +
-                                    " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod));
-                        }
-                    } catch (ZipException e) {
-                        logger.warn("Error while reading zip. Adding to the whitelist so that it isn't retried.", e);
-                        newResults.add(fileName);
-
-                        // send an angry ping to the owner to have the mod manually checked
-                        WebhookExecutor.executeWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                                "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
-                                "Banana Watch",
-                                "<@" + SecretConstants.OWNER_ID + "> The mod called **" + modName + "** could not be checked. Please check it manually.\n" +
-                                        ":arrow_right: " + getMaskedEnhancedEmbedLink(mod),
-                                SecretConstants.OWNER_ID);
+                        logger.debug("Deleting temporary ZIP");
+                        FileUtils.forceDelete(new File("/tmp/mod_yield_police.zip"));
                     }
-
-                    logger.debug("Deleting temporary ZIP");
-                    FileUtils.forceDelete(new File("/tmp/mod_yield_police.zip"));
                 }
             }
         }
@@ -259,12 +241,6 @@ public class GameBananaAutomatedChecks {
      * (That arbitrary limit is here because that rule is not retroactive.)
      */
     public static void checkForForbiddenFiles() throws IOException {
-        // load mod list
-        List<String> mods;
-        try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-            mods = YamlUtil.load(is);
-        }
-
         // the new file list is built from scratch (only files that still exist are copied over from the previous list).
         List<String> alreadyCheckedNew = new ArrayList<>();
 
@@ -274,76 +250,61 @@ public class GameBananaAutomatedChecks {
             alreadyCheckedOld = YamlUtil.load(is);
         }
 
-        for (String mod : mods) {
-            scanModFileListings(mod, alreadyCheckedOld, alreadyCheckedNew);
-        }
+        scanModFileListings(alreadyCheckedOld, alreadyCheckedNew);
 
         try (OutputStream os = new FileOutputStream("already_checked_for_illegal_files.yaml")) {
             YamlUtil.dump(alreadyCheckedNew, os);
         }
     }
 
-    private static void scanModFileListings(String mod, List<String> alreadyCheckedOld, List<String> alreadyCheckedNew) throws IOException {
-        // load file list for the mod
-        String modName;
-        List<String> files;
-        try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-            Map<String, Object> info = YamlUtil.load(is);
-            modName = info.get("Name").toString();
-            files = (List<String>) info.get("Files");
-        }
+    private static void scanModFileListings(List<String> alreadyCheckedOld, List<String> alreadyCheckedNew) throws IOException {
+        try (ModDatabase database = new ModDatabase()) {
+            for (ModRecord mod : database.allMods) {
+                for (FileRecord file : mod.files) {
+                    // check for forbidden files if not already done
+                    alreadyCheckedNew.add(file.id);
+                    if (!alreadyCheckedOld.contains(file.id)) {
+                        logger.debug("Checking for illegal files in file {} of {}...", file.id, mod.id);
 
-        for (String file : files) {
-            // check for forbidden files if not already done
-            alreadyCheckedNew.add(file);
-            if (!alreadyCheckedOld.contains(file)) {
-                logger.debug("Checking for illegal files in file {} of {}...", file, mod);
+                        // check for EXE files
+                        List<String> exeList = Arrays.stream(file.fileListing)
+                                .filter(f -> f.toLowerCase().endsWith(".exe"))
+                                .toList();
 
-                List<String> contents;
-                try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
-                    contents = YamlUtil.load(is);
-                }
+                        if (!exeList.isEmpty()) {
+                            String message = ":warning: The mod called **" + mod.name + "** contains an EXE file: `" + exeList.getFirst() + "`! " +
+                                    "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file);
 
-                // check for EXE files
-                List<String> exeList = contents.stream()
-                        .filter(f -> f.toLowerCase().endsWith(".exe"))
-                        .toList();
+                            for (int i = 2; i <= exeList.size(); i++) {
+                                String newMessage = ":warning: The mod called **" + mod.name + "** contains EXE files: `" +
+                                        exeList.stream().limit(i - 1).collect(Collectors.joining("`, `")) + "` and `" + exeList.get(i - 1) + "`! " +
+                                        "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file);
 
-                String itemtype = mod.split("/")[0];
-                int itemid = Integer.parseInt(mod.split("/")[1]);
+                                if (newMessage.length() > 2000) break;
+                                message = newMessage;
+                            }
 
-                if (!exeList.isEmpty()) {
-                    String message = ":warning: The mod called **" + modName + "** contains an EXE file: `" + exeList.getFirst() + "`! " +
-                            "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file);
-
-                    for (int i = 2; i <= exeList.size(); i++) {
-                        String newMessage = ":warning: The mod called **" + modName + "** contains EXE files: `" +
-                                exeList.stream().limit(i - 1).collect(Collectors.joining("`, `")) + "` and `" + exeList.get(i - 1) + "`! " +
-                                "This is pretty fishy <:thonkeline:640606520706465804>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file);
-
-                        if (newMessage.length() > 2000) break;
-                        message = newMessage;
-                    }
-
-                    sendAlertToWebhook(message);
-                }
-
-                // check against the bad file list (tm)
-                for (String entry : contents) {
-                    for (String illegalFile : BAD_FILE_LIST) {
-                        if (entry.equalsIgnoreCase(illegalFile) || entry.toLowerCase(Locale.ROOT).endsWith("/" + illegalFile.toLowerCase(Locale.ROOT))) {
-                            // this file is illegal!
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** contains a file called `" + illegalFile + "`! " +
-                                    "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file));
-                            return;
+                            sendAlertToWebhook(database, message);
                         }
-                    }
 
-                    Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
-                    if (objDirectoryMatcher.matches()) {
-                        sendAlertToWebhook(":warning: The mod called **" + modName + "** contains a `" + objDirectoryMatcher.group(1) + "` folder! " +
-                                "You generally don't need to ship this folder with your mod, it makes the zip bigger for no reason <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid, file));
-                        return;
+                        // check against the bad file list (tm)
+                        for (String entry : file.fileListing) {
+                            for (String illegalFile : BAD_FILE_LIST) {
+                                if (entry.equalsIgnoreCase(illegalFile) || entry.toLowerCase(Locale.ROOT).endsWith("/" + illegalFile.toLowerCase(Locale.ROOT))) {
+                                    // this file is illegal!
+                                    sendAlertToWebhook(database, ":warning: The mod called **" + mod.name + "** contains a file called `" + illegalFile + "`! " +
+                                            "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file));
+                                    return;
+                                }
+                            }
+
+                            Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
+                            if (objDirectoryMatcher.matches()) {
+                                sendAlertToWebhook(database, ":warning: The mod called **" + mod.name + "** contains a `" + objDirectoryMatcher.group(1) + "` folder! " +
+                                        "You generally don't need to ship this folder with your mod, it makes the zip bigger for no reason <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file));
+                                return;
+                            }
+                        }
                     }
                 }
             }
@@ -359,32 +320,29 @@ public class GameBananaAutomatedChecks {
             oldDuplicateList = YamlUtil.load(is);
         }
 
-        Map<String, Map<String, Object>> everestUpdate;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
-            everestUpdate = YamlUtil.load(is);
-        }
+        try (ModDatabase database = new ModDatabase()) {
+            for (ModDatabase.ModLatestVersion mod1 : database.listLatestVersions()) {
+                for (ModDatabase.ModLatestVersion mod2 : database.listLatestVersions()) {
+                    if (!mod1.file().modId.equals(mod2.file().modId) && mod1.file().modId.equalsIgnoreCase(mod2.file().modId)) {
+                        // :landeline: those are case-insensitive duplicates!
+                        List<String> pair = new ArrayList<>(Arrays.asList(mod1.file().modId, mod2.file().modId));
+                        pair.sort(Comparator.naturalOrder());
 
-        for (String name1 : everestUpdate.keySet()) {
-            for (String name2 : everestUpdate.keySet()) {
-                if (!name1.equals(name2) && name1.equalsIgnoreCase(name2)) {
-                    // :landeline: those are case-insensitive duplicates!
-                    List<String> pair = new ArrayList<>(Arrays.asList(name1, name2));
-                    pair.sort(Comparator.naturalOrder());
-
-                    if (!oldDuplicateList.contains(pair) && !newDuplicateList.contains(pair)) {
-                        sendAlertToWebhook(":warning: Mods " +
-                                getMaskedEnhancedEmbedLink(everestUpdate.get(name1)) + " (**" + name1 + "**) and " +
-                                getMaskedEnhancedEmbedLink(everestUpdate.get(name2)) + " (**" + name2 + "**) " +
-                                "have the same mod ID with different cases.\nThis will cause them to overwrite each other when downloading both on Windows!"
-                        );
+                        if (!oldDuplicateList.contains(pair) && !newDuplicateList.contains(pair)) {
+                            sendAlertToWebhook(database, ":warning: Mods " +
+                                    getMaskedEnhancedEmbedLink(mod1) + " (**" + mod1.file().modId + "**) and " +
+                                    getMaskedEnhancedEmbedLink(mod2) + " (**" + mod2.file().modId + "**) " +
+                                    "have the same mod ID with different cases.\nThis will cause them to overwrite each other when downloading both on Windows!"
+                            );
+                        }
+                        newDuplicateList.add(pair);
                     }
-                    newDuplicateList.add(pair);
                 }
             }
-        }
 
-        try (OutputStream os = Files.newOutputStream(alreadyReportedStorage)) {
-            YamlUtil.dump(newDuplicateList, os);
+            try (OutputStream os = Files.newOutputStream(alreadyReportedStorage)) {
+                YamlUtil.dump(newDuplicateList, os);
+            }
         }
     }
 
@@ -395,101 +353,96 @@ public class GameBananaAutomatedChecks {
             oldAlreadyChecked = YamlUtil.load(is);
         }
 
-        Map<String, Map<String, Object>> updaterDatabase;
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = YamlUtil.load(is);
-        }
-
-        for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
-            String modName = modMap.getKey();
-            String url = modMap.getValue().get("MirrorURL").toString();
-            if (!oldAlreadyChecked.contains(url)) {
-                logger.debug("Downloading {} ({}) for everest.yaml checking", url, modName);
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-                    FileUtils.copyToFile(is, new File("/tmp/everest_yaml_police.zip"));
-                }
-
-                try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/everest_yaml_police.zip")) {
-                    // find the everest.yaml name used in this mod.
-                    ZipEntry yaml = zip.getEntry("everest.yaml");
-                    if (yaml == null) {
-                        yaml = zip.getEntry("everest.yml");
+        try (ModDatabase database = new ModDatabase()) {
+            for (ModDatabase.ModLatestVersion record : database.listLatestVersions()) {
+                if (!oldAlreadyChecked.contains(record.file().id)) {
+                    logger.debug("Downloading {} ({}) for everest.yaml checking", record.file().mainUrl, record.file().modId);
+                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(record.file().mainUrl)) {
+                        FileUtils.copyToFile(is, new File("/tmp/everest_yaml_police.zip"));
                     }
 
-                    logger.debug("Extracting {}", yaml.getName());
-                    Path destination = Paths.get("/tmp", yaml.getName());
-                    try (InputStream is = zip.getInputStream(yaml)) {
-                        FileUtils.copyToFile(is, destination.toFile());
-                    }
-
-                    logger.debug("Sending to validator");
-                    HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
-                    submit.addFilePart("file", destination.toFile());
-                    submit.addFormField("outputFormat", "json");
-                    HttpURLConnection result = submit.finish();
-
-                    JSONObject resultBody;
-                    try (InputStream is = ConnectionUtils.connectionToInputStream(result)) {
-                        resultBody = new JSONObject(new JSONTokener(is));
-                    }
-
-                    logger.debug("Checking result");
-                    if (resultBody.has("parseError")) {
-                        handleEverestYamlInvalidSyntax(destination, resultBody.getString("parseError"),
-                                ":warning: The mod called **" + modName + "** has an everest.yaml file with invalid syntax:\n```\n"
-                                        + resultBody.getString("parseError")
-                                        + "\n```\n:arrow_right: " + getMaskedEnhancedEmbedLink(modMap.getValue()));
-                    } else if (resultBody.has("validationErrors")) {
-                        List<String> allErrors = new ArrayList<>();
-                        for (Object o : resultBody.getJSONArray("validationErrors")) {
-                            allErrors.add((String) o);
-                        }
-                        sendAlertToWebhook(":warning: The mod called **" + modName + "** does not pass the everest.yaml validator:\n- "
-                                + String.join("\n- ", allErrors)
-                                + "\n:arrow_right: " + getMaskedEnhancedEmbedLink(modMap.getValue()));
-                    } else {
-                        // let's check that it refers to DLLs that actually exist.
-                        List<Map<String, Object>> yamlFile;
-                        try (InputStream is = Files.newInputStream(destination)) {
-                            yamlFile = YamlUtil.load(is);
+                    try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/everest_yaml_police.zip")) {
+                        // find the everest.yaml name used in this mod.
+                        ZipEntry yaml = zip.getEntry("everest.yaml");
+                        if (yaml == null) {
+                            yaml = zip.getEntry("everest.yml");
                         }
 
-                        boolean problem = false;
-                        for (Map<String, Object> entry : yamlFile) {
-                            if (entry.containsKey("DLL") && entry.get("DLL") != null) {
-                                if (zip.getEntry(entry.get("DLL").toString()) == null) {
-                                    logger.warn("File referred by DLL field {} does not exist in archive for mod {}!", entry.get("DLL"), modName);
-                                    problem = true;
-                                } else {
-                                    logger.debug("File referred by DLL field {} exists", entry.get("DLL"));
+                        logger.debug("Extracting {}", yaml.getName());
+                        Path destination = Paths.get("/tmp", yaml.getName());
+                        try (InputStream is = zip.getInputStream(yaml)) {
+                            FileUtils.copyToFile(is, destination.toFile());
+                        }
+
+                        logger.debug("Sending to validator");
+                        HttpPostMultipart submit = new HttpPostMultipart("https://maddie480.ovh/celeste/everest-yaml-validator", "UTF-8", new HashMap<>());
+                        submit.addFilePart("file", destination.toFile());
+                        submit.addFormField("outputFormat", "json");
+                        HttpURLConnection result = submit.finish();
+
+                        JSONObject resultBody;
+                        try (InputStream is = ConnectionUtils.connectionToInputStream(result)) {
+                            resultBody = new JSONObject(new JSONTokener(is));
+                        }
+
+                        logger.debug("Checking result");
+                        if (resultBody.has("parseError")) {
+                            handleEverestYamlInvalidSyntax(database, destination, resultBody.getString("parseError"),
+                                    ":warning: The mod called **" + record.file().modId + "** has an everest.yaml file with invalid syntax:\n```\n"
+                                            + resultBody.getString("parseError")
+                                            + "\n```\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
+                        } else if (resultBody.has("validationErrors")) {
+                            List<String> allErrors = new ArrayList<>();
+                            for (Object o : resultBody.getJSONArray("validationErrors")) {
+                                allErrors.add((String) o);
+                            }
+                            sendAlertToWebhook(database, ":warning: The mod called **" + record.file().modId + "** does not pass the everest.yaml validator:\n- "
+                                    + String.join("\n- ", allErrors)
+                                    + "\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
+                        } else {
+                            // let's check that it refers to DLLs that actually exist.
+                            List<Map<String, Object>> yamlFile;
+                            try (InputStream is = Files.newInputStream(destination)) {
+                                yamlFile = YamlUtil.load(is);
+                            }
+
+                            boolean problem = false;
+                            for (Map<String, Object> entry : yamlFile) {
+                                if (entry.containsKey("DLL") && entry.get("DLL") != null) {
+                                    if (zip.getEntry(entry.get("DLL").toString()) == null) {
+                                        logger.warn("File referred by DLL field {} does not exist in archive for mod {}!", entry.get("DLL"), record.file().modId);
+                                        problem = true;
+                                    } else {
+                                        logger.debug("File referred by DLL field {} exists", entry.get("DLL"));
+                                    }
                                 }
+                            }
+
+                            if (problem) {
+                                sendAlertToWebhook(database, ":warning: The mod called **" + record.file().modId + "** has an everest.yaml file that refers to a DLL that does not exist." +
+                                        " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
                             }
                         }
 
-                        if (problem) {
-                            sendAlertToWebhook(":warning: The mod called **" + modName + "** has an everest.yaml file that refers to a DLL that does not exist." +
-                                    " Might be an oversight? <:laugheline:454887887847030814>\n:arrow_right: " + getMaskedEnhancedEmbedLink(modMap.getValue()));
-                        }
+                        logger.debug("Deleting temp file");
+                        Files.delete(destination);
                     }
 
-                    logger.debug("Deleting temp file");
-                    Files.delete(destination);
+                    logger.debug("Deleting temporary ZIP");
+                    FileUtils.forceDelete(new File("/tmp/everest_yaml_police.zip"));
                 }
 
-                logger.debug("Deleting temporary ZIP");
-                FileUtils.forceDelete(new File("/tmp/everest_yaml_police.zip"));
+                newAlreadyChecked.add(record.file().id);
             }
 
-            newAlreadyChecked.add(url);
-        }
-
-        try (OutputStream os = new FileOutputStream("already_validated_yaml_files.yaml")) {
-            YamlUtil.dump(newAlreadyChecked, os);
+            try (OutputStream os = new FileOutputStream("already_validated_yaml_files.yaml")) {
+                YamlUtil.dump(newAlreadyChecked, os);
+            }
         }
     }
 
-    private static void handleEverestYamlInvalidSyntax(Path yaml, String error, String message) throws IOException {
-        sendAlertToWebhook(message);
+    private static void handleEverestYamlInvalidSyntax(ModDatabase database, Path yaml, String error, String message) throws IOException {
+        sendAlertToWebhook(database, message);
 
         if (!error.matches("^Cannot parse Dependencies for .*: No Version is specified for Everest$")) return;
 
@@ -546,62 +499,8 @@ public class GameBananaAutomatedChecks {
         FileUtils.deleteDirectory(fixedFile.getParent().toFile());
     }
 
-    public static void checkForFilesBelongingToMultipleMods() throws IOException {
-        Map<String, Map<String, Object>> updaterDatabase;
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            updaterDatabase = YamlUtil.load(is);
-        }
-
-        List<String> oldAlreadyChecked;
-        List<String> newAlreadyChecked = new ArrayList<>();
-        try (InputStream is = new FileInputStream("already_checked_multiple_mods.yaml")) {
-            oldAlreadyChecked = YamlUtil.load(is);
-        }
-
-        Set<String> filesWeAlreadyWarnedAbout = new HashSet<>();
-
-        for (Map.Entry<String, Map<String, Object>> modMap : updaterDatabase.entrySet()) {
-            String url = modMap.getValue().get("URL").toString();
-
-            newAlreadyChecked.add(url);
-            if (oldAlreadyChecked.contains(url)) {
-                continue;
-            }
-
-            // if a URL is present twice, we are going to encounter it twice, but we still want to warn about it only once.
-            if (filesWeAlreadyWarnedAbout.contains(url)) {
-                continue;
-            }
-
-            // go through the database again to find all mods that have the same URL (including the mod we are checking itself)
-            List<String> modNames = new ArrayList<>();
-            for (Map.Entry<String, Map<String, Object>> otherModMap : updaterDatabase.entrySet()) {
-                String otherUrl = otherModMap.getValue().get("URL").toString();
-
-                if (otherUrl.equals(url)) {
-                    modNames.add(otherModMap.getKey());
-                }
-            }
-
-            logger.debug("URL {} belongs to mod(s) {}", url, modNames);
-
-            if (modNames.size() > 1) {
-                // we found a URL associated with 2 or more mods!
-                sendAlertToWebhook(":warning: Mods **" + String.join("**, **", modNames) + "** are all associated to file " + url + ".\n" +
-                        "This means this file contains multiple mods, which can cause weirdness when it gets updated (multiple entries for the same file appearing in the updater).\n" +
-                        "If having multiple mods cannot be avoided, one of them should be updater-blacklisted by Maddie.");
-
-                filesWeAlreadyWarnedAbout.add(url);
-            }
-        }
-
-        try (OutputStream os = new FileOutputStream("already_checked_multiple_mods.yaml")) {
-            YamlUtil.dump(newAlreadyChecked, os);
-        }
-    }
-
     public static void checkUnapprovedCategories() throws IOException {
-        for (String itemtype : DatabaseUpdater.VALID_CATEGORIES) {
+        for (String itemtype : GameBananaModProvider.VALID_CATEGORIES) {
             checkUnapprovedCategoriesFor(itemtype);
         }
     }
@@ -673,7 +572,7 @@ public class GameBananaAutomatedChecks {
 
         for (int category : categoriesThatExistButDont) {
             if (!alreadyWarned.contains(category)) {
-                sendAlertToWebhook(":warning: The category at <https://gamebanana.com/" + name.toLowerCase(Locale.ROOT) + "s/cats/" + category + "> does not seem to be approved by site admins!\n" +
+                sendAlertToWebhook(null, ":warning: The category at <https://gamebanana.com/" + name.toLowerCase(Locale.ROOT) + "s/cats/" + category + "> does not seem to be approved by site admins!\n" +
                         "This means it will not appear in the categories list (neither in Olympus nor on GameBanana itself).");
             }
         }
@@ -690,114 +589,93 @@ public class GameBananaAutomatedChecks {
             oldAlreadyChecked = YamlUtil.load(is);
         }
 
-        // load mod list
-        List<String> mods;
-        try (InputStream is = new FileInputStream("modfilesdatabase/list.yaml")) {
-            mods = YamlUtil.load(is);
-        }
+        try (ModDatabase database = new ModDatabase()) {
+            for (ModRecord mod : database.allMods) {
+                for (FileRecord file : mod.files) {
+                    newAlreadyChecked.add(file.id);
 
-        for (String mod : mods) {
-            // load file list for the mod
-            String modName;
-            List<String> files;
-            try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/info.yaml")) {
-                Map<String, Object> info = YamlUtil.load(is);
-                modName = info.get("Name").toString();
-                files = (List<String>) info.get("Files");
-            }
+                    // skip already checked mods
+                    if (oldAlreadyChecked.contains(file.id)) {
+                        continue;
+                    }
 
-            for (String file : files) {
-                newAlreadyChecked.add(file);
-
-                // skip already checked mods
-                if (oldAlreadyChecked.contains(file)) {
-                    continue;
-                }
-
-                // load file listing for the mod, so that we know which PNG files to check for
-                List<String> filesToCheck;
-                try (InputStream is = new FileInputStream("modfilesdatabase/" + mod + "/" + file + ".yaml")) {
-                    List<String> fileList = YamlUtil.load(is);
-                    filesToCheck = fileList.stream()
+                    // load file listing for the mod, so that we know which PNG files to check for
+                    List<String> filesToCheck = Arrays.stream(file.fileListing)
                             .filter(fileName -> fileName.startsWith("Graphics/") && fileName.endsWith(".png"))
                             .toList();
-                }
 
-                // skip downloading entirely if there is no PNG file (if the file is not a zip, the file listing will be empty)
-                if (filesToCheck.isEmpty()) {
-                    logger.debug("Skipping file {} because it has no PNG file!", file);
-                    continue;
-                }
-
-                // download the file from GameBanana...
-                String url = "https://gamebanana.com/mmdl/" + file;
-                logger.debug("Downloading {} ({}) for PNG file checking, we have {} files to check", url, modName, filesToCheck.size());
-                ConnectionUtils.runWithRetry(() -> {
-                    try (InputStream is = ConnectionUtils.openStreamWithTimeout(url)) {
-                        FileUtils.copyToFile(is, new File("/tmp/png_police.zip"));
-                        return null;
+                    // skip downloading entirely if there is no PNG file (if the file is not a zip, the file listing will be empty)
+                    if (filesToCheck.isEmpty()) {
+                        logger.debug("Skipping file {} because it has no PNG file!", file);
+                        continue;
                     }
-                });
 
-                // extract its PNG files and check for the signature.
-                List<String> badPngs = new LinkedList<>();
-                try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/png_police.zip")) {
-                    for (String fileName : filesToCheck) {
-                        if (!checkPngSignature(zip, zip.getEntry(fileName))) {
-                            badPngs.add(fileName);
+                    // download the file from GameBanana...
+                    logger.debug("Downloading {} ({}) for PNG file checking, we have {} files to check", file.mainUrl, mod.name, filesToCheck.size());
+                    ConnectionUtils.runWithRetry(() -> {
+                        try (InputStream is = ConnectionUtils.openStreamWithTimeout(file.mainUrl)) {
+                            FileUtils.copyToFile(is, new File("/tmp/png_police.zip"));
+                            return null;
                         }
-                    }
-                }
+                    });
 
-                logger.debug("Deleting temporary ZIP");
-                FileUtils.forceDelete(new File("/tmp/png_police.zip"));
-
-                if (!badPngs.isEmpty()) {
-                    // write the file listing to a file we will be able to attach to the alert.
-                    String badPngListMessage = String.join("\n", badPngs);
-                    File tempListFile = new File("/tmp/bad_png_files.txt");
-                    FileUtils.writeStringToFile(tempListFile, badPngListMessage, UTF_8);
-
-                    String itemtype = mod.split("/")[0];
-                    int itemid = Integer.parseInt(mod.split("/")[1]);
-
-                    badPngListMessage = ":warning: The file at " + url + " (page title **" + modName + "**) has invalid PNG files:\n" +
-                            "```\n" +
-                            badPngListMessage + "\n" +
-                            "```\n" +
-                            "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
-                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid);
-
-                    for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-                        if (badPngListMessage.length() <= 2000) {
-                            // list is short enough to fit in the message itself: just include it
-                            executeEnhancedWebhook(webhook, badPngListMessage);
-                        } else if (webhook.startsWith("https://discord.com/") && tempListFile.length() <= 10 * 1024 * 1024) {
-                            // Discord webhook and list too long to be included in the message: send the file with attachment
-                            executeEnhancedWebhook(webhook,
-                                    ":warning: The file at " + url + " (page title **" + modName + "**) has invalid PNG files! You will find the list attached.\n" +
-                                            "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
-                                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid),
-                                    Collections.singletonList(tempListFile)
-                            );
-                        } else {
-                            // Discord-compatible webhook or file is too big(???): send the file with special header but without the attachment
-                            executeEnhancedWebhook(webhook,
-                                    ":warning: The file at " + url + " (page title **" + modName + "**) has invalid PNG files!\n" +
-                                            "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
-                                            ":arrow_right: " + getMaskedEnhancedEmbedLink(itemtype, itemid)
-                            );
+                    // extract its PNG files and check for the signature.
+                    List<String> badPngs = new LinkedList<>();
+                    try (ZipFile zip = ZipFileWithAutoEncoding.open("/tmp/png_police.zip")) {
+                        for (String fileName : filesToCheck) {
+                            if (!checkPngSignature(zip, zip.getEntry(fileName))) {
+                                badPngs.add(fileName);
+                            }
                         }
                     }
 
-                    // delete temp file
-                    FileUtils.forceDelete(tempListFile);
+                    logger.debug("Deleting temporary ZIP");
+                    FileUtils.forceDelete(new File("/tmp/png_police.zip"));
+
+                    if (!badPngs.isEmpty()) {
+                        // write the file listing to a file we will be able to attach to the alert.
+                        String badPngListMessage = String.join("\n", badPngs);
+                        File tempListFile = new File("/tmp/bad_png_files.txt");
+                        FileUtils.writeStringToFile(tempListFile, badPngListMessage, UTF_8);
+
+                        badPngListMessage = ":warning: The file at " + file.mainUrl + " (page title **" + mod.name + "**) has invalid PNG files:\n" +
+                                "```\n" +
+                                badPngListMessage + "\n" +
+                                "```\n" +
+                                "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
+                                ":arrow_right: " + getMaskedEnhancedEmbedLink(mod, file);
+
+                        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
+                            if (badPngListMessage.length() <= 2000) {
+                                // list is short enough to fit in the message itself: just include it
+                                executeEnhancedWebhook(database, webhook, badPngListMessage);
+                            } else if (webhook.startsWith("https://discord.com/") && tempListFile.length() <= 10 * 1024 * 1024) {
+                                // Discord webhook and list too long to be included in the message: send the file with attachment
+                                executeEnhancedWebhook(database, webhook,
+                                        ":warning: The file at " + file.mainUrl + " (page title **" + mod.name + "**) has invalid PNG files! You will find the list attached.\n" +
+                                                "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
+                                                ":arrow_right: " + getMaskedEnhancedEmbedLink(mod, file),
+                                        Collections.singletonList(tempListFile)
+                                );
+                            } else {
+                                // Discord-compatible webhook or file is too big(???): send the file with special header but without the attachment
+                                executeEnhancedWebhook(database, webhook,
+                                        ":warning: The file at " + file.mainUrl + " (page title **" + mod.name + "**) has invalid PNG files!\n" +
+                                                "This can cause crashes in some configurations. Please open them and resave them as PNGs, just renaming the file is not enough!\n" +
+                                                ":arrow_right: " + getMaskedEnhancedEmbedLink(mod, file)
+                                );
+                            }
+                        }
+
+                        // delete temp file
+                        FileUtils.forceDelete(tempListFile);
+                    }
                 }
             }
-        }
 
-        try (OutputStream os = new FileOutputStream("already_validated_png_files.yaml")) {
-            YamlUtil.dump(newAlreadyChecked, os);
+            try (OutputStream os = new FileOutputStream("already_validated_png_files.yaml")) {
+                YamlUtil.dump(newAlreadyChecked, os);
+            }
         }
     }
 
@@ -821,22 +699,6 @@ public class GameBananaAutomatedChecks {
     }
 
     public static void checkForBananaGettingDrunkAndServingTheWrongFile() throws IOException {
-        record MiniMod(String modType, int modId, String fileUrl, int size) {}
-
-        // gather all "file sizes according to the API" from the mod search database
-        List<MiniMod> urlsWithExpectedSizes;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
-            List<Map<String, Object>> modSearchDatabase = YamlUtil.load(is);
-            urlsWithExpectedSizes = modSearchDatabase.stream()
-                    .map(e ->
-                            Triple.of((String) e.get("GameBananaType"), (int) e.get("GameBananaId"), (List<Map<String, Object>>) e.get("Files")))
-                    .map(e -> e.getRight().stream()
-                            .map(f -> new MiniMod(e.getLeft(), e.getMiddle(), (String) f.get("URL"), (int) f.get("Size")))
-                            .toList())
-                    .flatMap(List::stream)
-                    .toList();
-        }
-
         // load state
         Set<String> alreadyProcessed = new HashSet<>();
         Path statusFile = Paths.get("banana_moment_check.yaml");
@@ -846,47 +708,54 @@ public class GameBananaAutomatedChecks {
             logger.warn("Could not read already processed files, starting over from beginning", e);
         }
 
-        for (MiniMod file : urlsWithExpectedSizes) {
-            if (alreadyProcessed.contains(file.fileUrl)) continue;
+        List<String> fileIds = new ArrayList<>();
+        try (ModDatabase database = new ModDatabase()) {
+            for (ModRecord mod : database.allMods) {
+                for (FileRecord file : mod.files) {
+                    fileIds.add(file.id);
+                    if (alreadyProcessed.contains(file.id)) continue;
 
-            logger.debug("Checking file size match for: {}", file);
+                    logger.debug("Checking file size match for: {}", file.id);
 
-            // query the file server to figure out the size of the actual file...
-            int realSize = ConnectionUtils.runWithRetry(() -> {
-                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(file.fileUrl);
-                connection.setRequestMethod("HEAD");
-                connection.setInstanceFollowRedirects(true);
+                    // query the file server to figure out the size of the actual file...
+                    int realSize = ConnectionUtils.runWithRetry(() -> {
+                        HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(file.mainUrl);
+                        connection.setRequestMethod("HEAD");
+                        connection.setInstanceFollowRedirects(true);
 
-                if (connection.getResponseCode() != 200) {
-                    throw new IOException("HEAD " + file.fileUrl + " responded with code " + connection.getResponseCode());
+                        if (connection.getResponseCode() != 200) {
+                            throw new IOException("HEAD " + file.mainUrl + " responded with code " + connection.getResponseCode());
+                        }
+
+                        String contentLengthHeader = connection.getHeaderField("content-length");
+                        try {
+                            int sizeReal = Integer.parseInt(contentLengthHeader);
+                            if (sizeReal > 0) return sizeReal;
+                        } catch (NumberFormatException e) {
+                        }
+
+                        throw new IOException("HEAD " + file.mainUrl + " responded with invalid content-length " + contentLengthHeader);
+                    });
+
+                    // ... and compare the two. If they don't match, it's likely that the downloadable file
+                    // is not actually the file that got uploaded in the first place, and that's a problem!
+                    // (that did happen multiple times already, mind you)
+                    if (file.size != realSize) {
+                        sendAlertToWebhook(database, ":warning: GameBanana's API and file servers disagree on the file size of <" + file.mainUrl + ">.\nThe download link might lead to another file uploaded to GameBanana with the same name! If this is the case, you should rename the file, then try uploading it again.\n"
+                                + ":arrow_right: " + getMaskedEnhancedEmbedLink(mod, file));
+                    }
                 }
-
-                String contentLengthHeader = connection.getHeaderField("content-length");
-                try {
-                    int sizeReal = Integer.parseInt(contentLengthHeader);
-                    if (sizeReal > 0) return sizeReal;
-                } catch (NumberFormatException e) {}
-
-                throw new IOException("HEAD " + file.fileUrl + " responded with invalid content-length " + contentLengthHeader);
-            });
-
-            // ... and compare the two. If they don't match, it's likely that the downloadable file
-            // is not actually the file that got uploaded in the first place, and that's a problem!
-            // (that did happen multiple times already, mind you)
-            if (file.size != realSize) {
-                sendAlertToWebhook(":warning: GameBanana's API and file servers disagree on the file size of <" + file.fileUrl + ">.\nThe download link might lead to another file uploaded to GameBanana with the same name! If this is the case, you should rename the file, then try uploading it again.\n"
-                        + ":arrow_right: " + getMaskedEnhancedEmbedLink(file.modType, file.modId));
             }
         }
 
         // save state
         try (OutputStream os = Files.newOutputStream(statusFile)) {
-            YamlUtil.dump(urlsWithExpectedSizes.stream().map(MiniMod::fileUrl).toList(), os);
+            YamlUtil.dump(fileIds, os);
         }
     }
 
-    public static void executeEnhancedWebhook(String webhookUrl, String body, List<File> attachments) throws IOException {
-        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(body);
+    public static void executeEnhancedWebhook(ModDatabase database, String webhookUrl, String body, List<File> attachments) throws IOException {
+        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(database, body);
         if (enhanced.getRight().isEmpty() || !webhookUrl.startsWith("https://discord.com/")) {
             WebhookExecutor.executeWebhook(webhookUrl,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
@@ -904,8 +773,8 @@ public class GameBananaAutomatedChecks {
         }
     }
 
-    public static void executeEnhancedWebhook(String webhookUrl, String body) throws IOException {
-        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(body);
+    public static void executeEnhancedWebhook(ModDatabase database, String webhookUrl, String body) throws IOException {
+        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(database, body);
         if (enhanced.getRight().isEmpty() || !webhookUrl.startsWith("https://discord.com/")) {
             WebhookExecutor.executeWebhook(webhookUrl,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
@@ -921,10 +790,11 @@ public class GameBananaAutomatedChecks {
         }
     }
 
-    private static void sendAlertToWebhook(String message) throws IOException {
-        Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(message);
+    private static void sendAlertToWebhook(ModDatabase database, String message) throws IOException {
+        Pair<String, List<Map<String, Object>>> enhanced = null;
+        if (database != null) enhanced = enhanceYourWebhook(database, message);
         for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            if (enhanced.getRight().isEmpty() || !webhook.startsWith("https://discord.com/")) {
+            if (enhanced == null || enhanced.getRight().isEmpty() || !webhook.startsWith("https://discord.com/")) {
                 WebhookExecutor.executeWebhook(webhook,
                         "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
                         "Banana Watch",
@@ -940,7 +810,7 @@ public class GameBananaAutomatedChecks {
         }
     }
 
-    static Pair<String, List<Map<String, Object>>> enhanceYourWebhook(String body) {
+    public static Pair<String, List<Map<String, Object>>> enhanceYourWebhook(ModDatabase database, String body) {
         String bananaRegex = "gamebanana\\.com/([a-z]+)s/([0-9]+)";
         List<Triple<String, String, Map<String, Object>>> stuffToEnhance =
                 Pattern.compile("\\[" + bananaRegex + "]\\(https://maddie480\\.ovh/" + bananaRegex + "\\)")
@@ -952,28 +822,24 @@ public class GameBananaAutomatedChecks {
                             String itemtype = pair.getLeft().substring(0, 1).toUpperCase() + pair.getLeft().substring(1);
                             int itemid = pair.getRight();
 
-                            try (ModSearchDatabaseIterator iterator = new ModSearchDatabaseIterator()) {
-                                logger.debug("Looking for {} {} in mod search database...", itemtype, itemid);
-                                Map<String, Object> modCandidate;
-                                while ((modCandidate = iterator.next()) != null) {
-                                    if (itemtype.equals(modCandidate.get("GameBananaType")) && itemid == (int) modCandidate.get("GameBananaId")) {
-                                        logger.debug("Mod info found! The mod is called: {}", modCandidate.get("Name"));
+                            logger.debug("Looking for {} {} in mod search database...", itemtype, itemid);
+                            ModRecord matchingMod = database.allMods.stream()
+                                    .filter(m -> m.id.equals("GameBanana/" + itemtype + "/" + itemid))
+                                    .findFirst().orElse(null);
 
-                                        String bananaLink = "gamebanana.com/" + itemtype.toLowerCase() + "s/" + itemid;
-                                        String bananaFallbackLink = "[" + bananaLink + "](https://maddie480.ovh/" + bananaLink + ")";
-                                        bananaLink = "<https://" + bananaLink + ">";
+                            if (matchingMod != null) {
+                                logger.debug("Mod info found! The mod is called: {}", matchingMod.name);
 
-                                        JSONArray a = EmbedBuilder.buildEmbedFor(modCandidate);
-                                        return Triple.of(bananaFallbackLink, bananaLink, a.getJSONObject(0).toMap());
-                                    }
-                                }
+                                String bananaLink = "gamebanana.com/" + itemtype.toLowerCase() + "s/" + itemid;
+                                String bananaFallbackLink = "[" + bananaLink + "](https://maddie480.ovh/" + bananaLink + ")";
+                                bananaLink = "<https://" + bananaLink + ">";
 
-                                logger.error("Mod wasn't found in mod search database, we won't enhance it!");
-                                return null;
-                            } catch (Exception e) {
-                                logger.error("Could not generate enhanced embed in webhook, we won't enhance it!", e);
-                                return null;
+                                JSONArray a = EmbedBuilder.buildEmbedFor(matchingMod);
+                                return Triple.of(bananaFallbackLink, bananaLink, a.getJSONObject(0).toMap());
                             }
+
+                            logger.error("Mod wasn't found in mod search database, we won't enhance it!");
+                            return null;
                         })
                         .toList();
 
@@ -990,34 +856,5 @@ public class GameBananaAutomatedChecks {
             embeds.add(element.getRight());
         }
         return Pair.of(body, embeds);
-    }
-
-    /**
-     * A memory-friendly way to iterate through the mod search database.
-     */
-    private static class ModSearchDatabaseIterator implements AutoCloseable {
-        private final BufferedReader reader;
-        private String previous;
-
-        public ModSearchDatabaseIterator() throws IOException {
-            reader = Files.newBufferedReader(Paths.get("uploads/modsearchdatabase.yaml"), UTF_8);
-        }
-
-        public Map<String, Object> next() throws IOException {
-            if (previous == null) previous = reader.readLine();
-            if (previous == null) return null; // reached end of stream
-            StringBuilder buffer = new StringBuilder(previous);
-            while ((previous = reader.readLine()) != null && !previous.startsWith("- ")) {
-                buffer.append('\n').append(previous);
-            }
-            try (ByteArrayInputStream is = new ByteArrayInputStream(buffer.toString().getBytes(UTF_8))) {
-                return YamlUtil.<List<Map<String, Object>>>load(is).getFirst();
-            }
-        }
-
-        @Override
-        public void close() throws Exception {
-            reader.close();
-        }
     }
 }

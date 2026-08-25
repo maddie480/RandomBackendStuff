@@ -39,12 +39,6 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Build Update Checker dependency
-      run: |
-        git clone https://github.com/maddie480/EverestUpdateCheckerServer.git
-        cd EverestUpdateCheckerServer
-        mvn install
-
     - name: Build with Maven
       env:
         DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}

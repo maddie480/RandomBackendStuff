@@ -9,13 +9,10 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.EventListener;
-import ovh.maddie480.everest.updatechecker.Main;
-import ovh.maddie480.everest.updatechecker.ServerConfig;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import ovh.maddie480.randomstuff.backend.celeste.crontabs.*;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
 import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
@@ -39,16 +36,10 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -60,11 +51,6 @@ public class CrontabRunner {
     private static final Logger logger = LoggerFactory.getLogger(CrontabRunner.class);
 
     static void main(String[] args) {
-        // load update checker config from secret constants
-        ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
-        Map<String, Object> config = YamlUtil.load(is);
-        Main.serverConfig = new ServerConfig(config);
-
         String arg = args != null && args.length > 0 ? args[0] : "";
 
         switch (arg) {
@@ -117,7 +103,7 @@ public class CrontabRunner {
         try {
             // start the Timezone Bot, Mod Structure Verifier and Quest Community Bot
             TimezoneBot.main(null);
-            ModStructureVerifier.main(null);
+            ModStructureVerifier.main();
             new QuestCommunityBot();
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":arrow_up: :desktop: The backend just started.");
         } catch (Exception e) {
@@ -200,12 +186,11 @@ public class CrontabRunner {
 
         // Update tasks
         runProcessAndAlertOnException("[Daily] Dependabork", () -> Dependabork.main(null));
-        runProcessAndAlertOnException("[Daily] GameBananaProfileLink", () -> GameBananaProfileLink.main(null));
         runProcessAndAlertOnException("[Daily] MembershipNotifier", () -> MembershipNotifier.main(null));
         runProcessAndAlertOnException("[Daily] TimezoneBot.leaveDeadServerIfNecessary", TimezoneBot::leaveDeadServerIfNecessary);
         runProcessAndAlertOnException("[Daily] CustomSlashCommandsCleanup", CustomSlashCommandsCleanup::housekeep);
         runProcessAndAlertOnException("[Daily] refreshArbitraryModAppCache", ArbitraryModAppCacher::refreshArbitraryModAppCache);
-        runProcessAndAlertOnException("[Daily] CustomEntityCatalogGenerator", () -> CustomEntityCatalogGenerator.main(null));
+        runProcessAndAlertOnException("[Daily] CustomEntityCatalogGenerator", CustomEntityCatalogGenerator::main);
         runProcessAndAlertOnException("[Daily] ServerJanitorBot", () -> ServerJanitorBot.main(null));
         runProcessAndAlertOnException("[Daily] housekeepArbitraryModApp", CrontabRunner::housekeepArbitraryModApp);
         runProcessAndAlertOnException("[Daily] AssetDriveService.listAllFiles", AssetDriveService::listAllFiles);
@@ -213,8 +198,9 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] AssetDriveService.classifyAssets", AssetDriveService::classifyAssets);
         runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
         runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
-        runProcessAndAlertOnException("[Daily] TASCheckUpdate", () -> TASCheckUpdate.main(null));
+        runProcessAndAlertOnException("[Daily] TASCheckUpdate", TASCheckUpdate::main);
         runProcessAndAlertOnException("[Daily] TranslationViewer.triggerRefresh", TranslationViewerCheck::triggerRefresh);
+        runProcessAndAlertOnException("[Daily] RefreshMapEditorVanillaEntities", RefreshMapEditorVanillaEntities::checkForAhornPlugins);
 
         // Health Checks
         runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);
@@ -246,8 +232,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Daily] checkWipeConverter", CelesteStuffHealthCheck::checkWipeConverter);
         runProcessAndAlertOnException("[Daily] checkArbitraryModApp", CrontabRunner::checkArbitraryModApp);
         runProcessAndAlertOnException("[Daily] GitHubActionsChecker", () -> GitHubActionsChecker.main(null));
-        runProcessAndAlertOnException("[Daily] checkEmbedBuilder", GameBananaProfileLink::checkEmbedBuilder);
-        runProcessAndAlertOnException("[Daily] BadCharactersChecker", () -> BadCharactersChecker.main(null));
+        runProcessAndAlertOnException("[Daily] BadCharactersChecker", BadCharactersChecker::main);
         runProcessAndAlertOnException("[Daily] checkMilestoneIsInTheFuture", EverestRepositoriesRitualCheck::checkMilestoneIsInTheFuture);
         runProcessAndAlertOnException("[Daily] checkLatestVersionsArePinned", EverestRepositoriesRitualCheck::checkLatestVersionsArePinned);
         runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
@@ -272,7 +257,7 @@ public class CrontabRunner {
         // Update tasks
         runProcessAndAlertOnException("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub);
         runProcessAndAlertOnException("[Hourly] CollabAutoHider", CollabAutoHider::run);
-        runProcessAndAlertOnException("[Hourly] cleanUpFolder(/shared/temp)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, path -> true));
+        runProcessAndAlertOnException("[Hourly] cleanUpFolder(/shared/temp)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, _ -> true));
         runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs)", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log.gz")));
         runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs, autodeploy)", () -> TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log")));
         runProcessAndAlertOnException("[Hourly] zipUpOldFiles(/logs)", () -> TempFolderCleanup.zipUpOldFiles("/logs", 8, path -> path.getFileName().toString().endsWith(".backend.log")));
@@ -290,25 +275,12 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null));
 
         // GameBanana automated checks
-        AtomicBoolean updaterStuffHappened = new AtomicBoolean(false);
-        runProcessAndAlertOnException("[Hourly] Files.exists(signalFile)", () -> {
-            Path signalFile = Paths.get("updater_stuff_happened");
-            if (Files.exists(signalFile)) {
-                logger.info("Updater stuff happened, we need to check updated mods!");
-                Files.delete(signalFile);
-                updaterStuffHappened.set(true);
-            }
-        });
-
-        if (updaterStuffHappened.get()) {
-            runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
-            runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", GameBananaAutomatedChecks::checkForForbiddenFiles);
-            runProcessAndAlertOnException("[Hourly] checkForFilesBelongingToMultipleMods", GameBananaAutomatedChecks::checkForFilesBelongingToMultipleMods);
-            runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
-            runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", GameBananaAutomatedChecks::checkPngFilesArePngFiles);
-            runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", GameBananaAutomatedChecks::checkDuplicateModIdsCaseInsensitive);
-            runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", GameBananaAutomatedChecks::checkForBananaGettingDrunkAndServingTheWrongFile);
-        }
+        runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
+        runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", GameBananaAutomatedChecks::checkForForbiddenFiles);
+        runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
+        runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", GameBananaAutomatedChecks::checkPngFilesArePngFiles);
+        runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", GameBananaAutomatedChecks::checkDuplicateModIdsCaseInsensitive);
+        runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", GameBananaAutomatedChecks::checkForBananaGettingDrunkAndServingTheWrongFile);
 
         // Health checks
         runProcessAndAlertOnException("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck);
@@ -322,23 +294,13 @@ public class CrontabRunner {
     }
 
     private static void runUpdater(boolean fullUpdateCheck) {
-        if (!fullUpdateCheck) {
-            runProcessAndAlertOnException("[Updater] checkEverestVersions", EverestVersionLister::checkEverestVersions);
-            runProcessAndAlertOnException("[Updater] checkOlympusVersions", OlympusVersionLister::checkOlympusVersions);
+        if (fullUpdateCheck) {
+            runProcessAndAlertOnException("[Updater] ModUpdater::fullUpdate", ModUpdater::fullUpdate);
+            return;
         }
 
-        runProcessAndAlertOnException("[Updater] updateDatabase(full: " + fullUpdateCheck + ")", () -> {
-            UpdateCheckerTracker tracker = new UpdateCheckerTracker();
-            EventListener.addEventListener(tracker);
-
-            try {
-                Main.updateDatabase(fullUpdateCheck);
-                UpdateOutgoingWebhooks.notifyUpdate();
-            } finally {
-                EventListener.removeEventListener(tracker);
-            }
-        });
-
+        runProcessAndAlertOnException("[Updater] checkEverestVersions", EverestVersionLister::checkEverestVersions);
+        runProcessAndAlertOnException("[Updater] checkOlympusVersions", OlympusVersionLister::checkOlympusVersions);
         runProcessAndAlertOnException("[Updater] ModUpdater::incrementalUpdate", ModUpdater::incrementalUpdate);
     }
 
@@ -520,17 +482,6 @@ public class CrontabRunner {
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
         logger.debug("Waiting for updater lock to be released...");
 
-        Path lockFile = Paths.get("updater_lock");
-
-        try {
-            while (!tryCreate(lockFile)) unstoppableSleep(1000);
-            logger.debug("Acquired updater lock!");
-        } catch (IOException e) {
-            logger.error("Could not lock updater", e);
-            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not lock updater: " + e);
-            return;
-        }
-
         try {
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`", false);
             sendCrontabStatusEvent(name);
@@ -544,29 +495,12 @@ public class CrontabRunner {
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `" + name + "`: " + e);
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :x: Fail `" + name + "`", false);
         }
-
-        try {
-            Files.delete(lockFile);
-            logger.debug("Released updater lock!");
-            unstoppableSleep(1000);
-        } catch (IOException e) {
-            logger.error("Could not unlock updater", e);
-            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not unlock updater: " + e);
-        }
-    }
-
-    private static boolean tryCreate(Path file) throws IOException {
-        try {
-            Files.createFile(file);
-            return true;
-        } catch (FileAlreadyExistsException e) {
-            return false;
-        }
     }
 
     private static void sendMessageToWebhook(String url, String message) {
         sendMessageToWebhook(url, message, true);
     }
+
     private static void sendMessageToWebhook(String url, String message, boolean shouldLog) {
         try {
             WebhookExecutor.executeWebhook(

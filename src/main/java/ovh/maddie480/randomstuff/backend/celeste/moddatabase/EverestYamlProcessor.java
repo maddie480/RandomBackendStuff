@@ -2,9 +2,10 @@ package ovh.maddie480.randomstuff.backend.celeste.moddatabase;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.DependencyRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
+import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 
 import java.io.InputStream;
 import java.util.*;
@@ -23,7 +24,7 @@ public class EverestYamlProcessor {
             "GhostMod" // GhostNet
     ));
 
-    public static void parseEverestYamlFromZipFile(InputStream yamlInputStream, FileRecord fileRecord) {
+    public static void parseEverestYamlFromZipFile(InputStream yamlInputStream, ModRecord modRecord, FileRecord fileRecord, UpdateCheckerTracker tracker) {
         try {
             List<Map<String, Object>> info = YamlUtil.loadNoFloats(yamlInputStream);
 
@@ -46,11 +47,13 @@ public class EverestYamlProcessor {
 
                 if (blacklistedMods.contains(modName)) {
                     logger.warn("Skipping mod {} because it is in the blacklist.", modName);
+                    tracker.modIsExcludedByName(modName);
                     continue;
                 }
 
                 logger.info("Reading everest.yaml of file {} finished: name {}, version {}, {} dependencies, {} optional dependencies.",
                         fileRecord.id, modName, modVersion, dependencies.size(), optionalDependencies.size());
+                tracker.scannedModDependencies(modName, dependencies.size(), optionalDependencies.size());
 
                 fileRecord.modId = modName;
                 fileRecord.modVersion = modVersion;
@@ -60,6 +63,7 @@ public class EverestYamlProcessor {
             }
         } catch (Exception e) {
             logger.warn("Error while reading the YAML file from {}", fileRecord.id, e);
+            tracker.yamlFileIsUnreadable(modRecord, fileRecord, e);
             fileRecord.modId = null;
             fileRecord.modVersion = null;
             fileRecord.dependencies = new DependencyRecord[0];

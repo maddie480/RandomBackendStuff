@@ -3,7 +3,10 @@ package ovh.maddie480.randomstuff.backend.celeste.moddatabase;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.MapEditorRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
+import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,9 +23,9 @@ import java.util.zip.ZipFile;
 public class FileLister {
     private static final Logger log = LoggerFactory.getLogger(FileLister.class);
 
-    public static String[] getFileList(Path file) throws IOException {
+    public static String[] getFileList(Path file, ModRecord mod, FileRecord fileR, UpdateCheckerTracker tracker) {
         List<String> filePaths = new LinkedList<>();
-        try (ZipFile zipFile = ZipFileWithAutoEncoding.open(file.toAbsolutePath().toString())) {
+        try (ZipFile zipFile = ZipFileWithAutoEncoding.open(file.toAbsolutePath().toString(), tracker, fileR)) {
             final Enumeration<? extends ZipEntry> entriesEnum = zipFile.entries();
             while (entriesEnum.hasMoreElements()) {
                 try {
@@ -32,16 +35,22 @@ public class FileLister {
                     }
                 } catch (IllegalArgumentException e) {
                     log.warn("Encountered error while going through zip file", e);
+                    tracker.zipFileWalkthroughError(mod.pageUrl, fileR.mainUrl, e);
                     return new String[0];
                 }
             }
 
             log.debug("Found {} files in archive.", filePaths.size());
+            tracker.scannedZipContents(fileR.mainUrl, filePaths.size());
             return ModUpdater.toArray(filePaths);
+        } catch (IOException e) {
+            log.warn("Encountered error while going opening zip file", e);
+            tracker.zipFileIsUnreadableForFileListing(mod, fileR, e);
+            return new String[0];
         }
     }
 
-    public static MapEditorRecord listAhornPlugins(Path zipFilePath, String[] fileList) {
+    public static MapEditorRecord listAhornPlugins(Path zipFilePath, String[] fileList, String fileUrl, UpdateCheckerTracker tracker) {
         if (Arrays.stream(fileList).anyMatch(f -> f.startsWith("Ahorn/"))) {
             List<String> ahornEntities = new LinkedList<>();
             List<String> ahornTriggers = new LinkedList<>();
@@ -61,11 +70,14 @@ public class FileLister {
                 record.entities = ModUpdater.toArray(ahornEntities);
                 record.triggers = ModUpdater.toArray(ahornTriggers);
                 record.effects = ModUpdater.toArray(ahornEffects);
+                tracker.scannedAhornEntities(fileUrl, ahornEntities.size(), ahornTriggers.size(), ahornEffects.size());
+
                 return record;
             } catch (IOException | IllegalArgumentException e) {
                 // if a file cannot be read as a zip, no need to worry about it.
                 // we will just write an empty array.
                 log.warn("Could not analyze Ahorn plugins", e);
+                tracker.ahornPluginScanError(fileUrl, e);
             }
         } else {
             log.trace("File doesn't have any Ahorn plugin, skipping.");
@@ -78,7 +90,7 @@ public class FileLister {
         return empty;
     }
 
-    private static void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
+    public static void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
                                              String file, InputStream inputStream) throws IOException {
 
         Pattern mapdefMatcher = Pattern.compile(".*@mapdef(?:data)? [A-Za-z]+ \"([^\"]+)\".*");
@@ -111,7 +123,7 @@ public class FileLister {
         }
     }
 
-    public static MapEditorRecord listLoennPlugins(Path zipFilePath, String[] fileList) {
+    public static MapEditorRecord listLoennPlugins(Path zipFilePath, String[] fileList, String fileUrl, UpdateCheckerTracker tracker) {
         if (Arrays.stream(fileList).anyMatch(f -> f.startsWith("Loenn/"))) {
             Set<String> loennEntities = new HashSet<>();
             Set<String> loennTriggers = new HashSet<>();
@@ -138,6 +150,7 @@ public class FileLister {
                 }
 
                 log.debug("Found {} entities, {} triggers, {} effects for Lönn", loennEntities.size(), loennTriggers.size(), loennEffects.size());
+                tracker.scannedLoennEntities(fileUrl, loennEntities.size(), loennTriggers.size(), loennEffects.size());
 
                 MapEditorRecord record = new MapEditorRecord();
                 record.entities = ModUpdater.toArray(loennEntities);
@@ -148,6 +161,7 @@ public class FileLister {
                 // if a file cannot be read as a zip, no need to worry about it.
                 // we will just write an empty array.
                 log.warn("Could not analyze Lönn plugins");
+                tracker.loennPluginScanError(fileUrl, e);
             }
         } else {
             log.trace("File doesn't have any Loenn plugin, skipping.");
@@ -160,7 +174,7 @@ public class FileLister {
         return empty;
     }
 
-    private static Triple<Set<String>, Set<String>, Set<String>> extractLoennEntitiesFromLangFile(BufferedReader inputReader) throws IOException {
+    public static Triple<Set<String>, Set<String>, Set<String>> extractLoennEntitiesFromLangFile(BufferedReader inputReader) throws IOException {
         Set<String> loennEntities = new HashSet<>();
         Set<String> loennTriggers = new HashSet<>();
         Set<String> loennEffects = new HashSet<>();
@@ -185,7 +199,7 @@ public class FileLister {
     }
 
     private static void extractLoennEntitiesFromPlugin(Set<String> loennEntities, Set<String> loennTriggers, Set<String> loennEffects,
-                                                String file, InputStream inputStream) throws IOException {
+                                                       String file, InputStream inputStream) throws IOException {
 
         // match on: name = "[something]/[something]" :david_goodenough:
         Pattern nameMatcher = Pattern.compile(".*name = [^\"]*\"([^/\" ]+/[^\" ]+)\".*");

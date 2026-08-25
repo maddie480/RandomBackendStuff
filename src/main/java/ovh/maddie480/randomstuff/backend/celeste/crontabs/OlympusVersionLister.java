@@ -119,6 +119,5 @@ public class OlympusVersionLister {
                             "Latest Olympus version is **" + info.getFirst().get("version") + "** (" + info.getFirst().get("branch") + "):\n" + info.getFirst().get("changelog"),
                     ImmutableMap.of("X-Everest-Log", "true"));
         }
-        UpdateOutgoingWebhooks.changesHappened();
     }
 }

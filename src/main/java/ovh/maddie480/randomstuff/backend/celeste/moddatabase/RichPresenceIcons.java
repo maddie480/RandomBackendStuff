@@ -2,19 +2,14 @@ package ovh.maddie480.randomstuff.backend.celeste.moddatabase;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
-import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.RichPresenceIconRecord;
+import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -51,7 +46,7 @@ public class RichPresenceIcons {
                 // compute the hash to check if we already have the icon.
                 String hash;
                 try (InputStream is = zip.getInputStream(entry)) {
-                    hash = DatabaseUpdater.computeXXHash(is);
+                    hash = ModUpdater.computeXXHash(is);
                 }
 
                 RichPresenceIconRecord richPresenceIcon = new RichPresenceIconRecord();

@@ -34,15 +34,14 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import ovh.maddie480.everest.updatechecker.ModFilesDatabaseBuilder;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.crontabs.GameBananaAutomatedChecks;
-import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateCheckerTracker;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
-import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.FileLister;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.MapEditorRecord;
+import ovh.maddie480.randomstuff.backend.utils.*;
 
 import javax.annotation.Nonnull;
 import javax.xml.XMLConstants;
@@ -92,7 +91,7 @@ public class ModStructureVerifier extends ListenerAdapter {
     private static JDA jda;
     private static int analyzedZipCount = 0;
 
-    public static void main(String[] args) throws Exception {
+    public static void main() throws Exception {
         // load the list of channels the bot should be listening to from disk.
         if (new File(CHANNELS_SAVE_FILE_NAME).exists()) {
             try (Stream<String> lines = Files.lines(Paths.get(CHANNELS_SAVE_FILE_NAME))) {
@@ -166,7 +165,9 @@ public class ModStructureVerifier extends ListenerAdapter {
         logger.debug("Bot is currently in following guilds: {}", jda.getGuilds());
 
         // fill in the asset => mod maps on startup
-        UpdateCheckerTracker.updateModStructureVerifierMaps();
+        try (ModDatabase database = new ModDatabase()) {
+            new UpdateCheckerTracker(database).updateModStructureVerifierMaps();
+        }
 
         // start up the hourly signed link updater
         LinkRefresher.start(jda, messagesToEmbeds, () -> savePostedMessagesMap(null));
@@ -521,10 +522,12 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
-            if (shouldScanMapContents && dependencies != null) {
-                for (String mapPath : maps) {
-                    // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
-                    searchForMissingComponents(problemList, websiteProblemList, missingDependencies, fileListing, zipFile, mapPath, dependencies, isHtml);
+            try (ModDatabase database = new ModDatabase()) {
+                if (shouldScanMapContents && dependencies != null) {
+                    for (String mapPath : maps) {
+                        // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
+                        searchForMissingComponents(database, problemList, websiteProblemList, missingDependencies, fileListing, zipFile, mapPath, dependencies, isHtml);
+                    }
                 }
             }
 
@@ -644,16 +647,23 @@ public class ModStructureVerifier extends ListenerAdapter {
                         yamlContents.getFirst().put("Dependencies", modDependencies);
                     }
 
-                    Map<String, Map<String, Object>> databaseContents;
-                    try (InputStream databaseFile = new FileInputStream("uploads/everestupdate.yaml")) {
-                        databaseContents = YamlUtil.load(databaseFile);
-                    }
+                    try (ModDatabase database = new ModDatabase()) {
+                        for (String dependency : missingDependencies) {
+                            String version = database.allMods.stream()
+                                    .map(m -> Arrays.stream(m.files)
+                                            .filter(f -> f.isLeader && f.modId.equals(dependency))
+                                            .map(f -> f.modVersion)
+                                            .findFirst()
+                                            .orElse(null))
+                                    .filter(Objects::nonNull)
+                                    .findFirst()
+                                    .orElseThrow();
 
-                    for (String dependency : missingDependencies) {
-                        modDependencies.add(ImmutableMap.of(
-                                "Name", dependency,
-                                "Version", (String) databaseContents.get(dependency).get("Version")
-                        ));
+                            modDependencies.add(ImmutableMap.of(
+                                    "Name", dependency,
+                                    "Version", version
+                            ));
+                        }
                     }
 
                     dependenciesList += pickFormat(isHtml,
@@ -763,7 +773,7 @@ public class ModStructureVerifier extends ListenerAdapter {
                 });
     }
 
-    private static void searchForMissingComponents(List<String> problemList, Set<String> websiteProblemsList, Set<String> missingDependencies,
+    private static void searchForMissingComponents(ModDatabase database, List<String> problemList, Set<String> websiteProblemsList, Set<String> missingDependencies,
                                                    List<String> fileListing, ZipFile zipFile, String mapPath, List<String> dependencies, boolean isHtml) throws IOException {
 
         // first, let's collect what is available to us with vanilla, the map's assets, and the dependencies.
@@ -790,13 +800,13 @@ public class ModStructureVerifier extends ListenerAdapter {
         Set<String> availableModEffects = new HashSet<>();
 
         // collect vanilla entity info by grabbing the files left by the update checker.
-        try (InputStream vanillaEntitiesFromAhorn = new FileInputStream("modfilesdatabase/ahorn_vanilla.yaml")) {
+        try (InputStream vanillaEntitiesFromAhorn = new FileInputStream("ahorn_vanilla.yaml")) {
             Map<String, List<String>> entitiesList = YamlUtil.load(vanillaEntitiesFromAhorn);
             availableEntities = new HashSet<>(entitiesList.get("Entities"));
             availableTriggers = new HashSet<>(entitiesList.get("Triggers"));
             entitiesList.get("Effects").stream().map(s -> s.toLowerCase(Locale.ROOT)).forEach(availableVanillaEffects::add);
         }
-        try (InputStream vanillaEntitiesFromLoenn = new FileInputStream("modfilesdatabase/loenn_vanilla.yaml")) {
+        try (InputStream vanillaEntitiesFromLoenn = new FileInputStream("loenn_vanilla.yaml")) {
             Map<String, List<String>> entitiesList = YamlUtil.load(vanillaEntitiesFromLoenn);
             availableEntities.addAll(entitiesList.get("Entities"));
             availableTriggers.addAll(entitiesList.get("Triggers"));
@@ -818,10 +828,6 @@ public class ModStructureVerifier extends ListenerAdapter {
 
         // get the mod updater database to check dependencies. (since everest.yaml was checked earlier, all dependencies should be valid)
         logger.debug("Loading mod database for decal & styleground analysis...");
-        Map<String, Map<String, Object>> databaseContents;
-        try (InputStream databaseFile = new FileInputStream("uploads/everestupdate.yaml")) {
-            databaseContents = YamlUtil.load(databaseFile);
-        }
 
         for (String dep : dependencies) {
             if (SecretConstants.LOENN_ENTITIES_FROM_GITHUB.containsKey(dep)) {
@@ -831,42 +837,34 @@ public class ModStructureVerifier extends ListenerAdapter {
                 connection.setRequestProperty("Authorization", "Basic " + SecretConstants.GITHUB_MAIN_ACCOUNT_BASIC_AUTH);
 
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(ConnectionUtils.connectionToInputStream(connection), UTF_8))) {
-                    Triple<Set<String>, Set<String>, Set<String>> entities = ModFilesDatabaseBuilder.extractLoennEntitiesFromLangFile(br);
+                    Triple<Set<String>, Set<String>, Set<String>> entities = FileLister.extractLoennEntitiesFromLangFile(br);
                     availableEntities.addAll(entities.getLeft());
                     availableTriggers.addAll(entities.getMiddle());
                     availableModEffects.addAll(entities.getRight());
                 }
-            } else if (databaseContents.containsKey(dep)) { // to exclude Everest
-                String depUrl = (String) databaseContents.get(dep).get("URL");
-                if (depUrl.matches("https://gamebanana.com/mmdl/[0-9]+")) {
-                    // instead of downloading the file, let's grab its contents from the mod files database left by the update checker.
-                    File modFilesDatabaseFile = new File("modfilesdatabase/" +
-                            databaseContents.get(dep).get("GameBananaType") + "/" +
-                            databaseContents.get(dep).get("GameBananaId") + "/" +
-                            depUrl.substring("https://gamebanana.com/mmdl/".length()) + ".yaml");
+            } else {
+                FileRecord fileRecord = database.allMods.stream()
+                        .map(m -> Arrays.stream(m.files)
+                                .filter(f -> f.isLeader && f.modId.equals(dep))
+                                .findFirst().orElse(null))
+                        .filter(Objects::nonNull)
+                        .findFirst().orElse(null);
 
-                    if (modFilesDatabaseFile.isFile()) {
-                        logger.debug("Loading decals and stylegrounds from dependency {} (file {})...", dep, modFilesDatabaseFile.getAbsolutePath());
-                        List<String> depFileListing;
-                        try (InputStream databaseFile = new FileInputStream(modFilesDatabaseFile)) {
-                            depFileListing = YamlUtil.load(databaseFile);
-                        }
-
-                        // get everything looking like a decal or a styleground.
-                        depFileListing.stream()
-                                .filter(file -> file.startsWith("Graphics/Atlases/Gameplay/decals/") && file.endsWith(".png"))
-                                .map(file -> file.substring(26, file.length() - 4).toLowerCase(Locale.ROOT))
-                                .forEach(availableDecals::add);
-                        depFileListing.stream()
-                                .filter(file -> file.startsWith("Graphics/Atlases/Gameplay/bgs/") && file.endsWith(".png"))
-                                .map(file -> file.substring(26, file.length() - 4).toLowerCase(Locale.ROOT))
-                                .forEach(availableStylegrounds::add);
-                    }
-
-                    // is there a file for Ahorn and Lönn entities as well?
-                    checkMapEditorEntities("ahorn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
-                    checkMapEditorEntities("loenn", availableEntities, availableTriggers, availableModEffects, databaseContents, dep, depUrl);
+                if (fileRecord != null) {
+                    // get everything looking like a decal or a styleground.
+                    Arrays.stream(fileRecord.fileListing)
+                            .filter(file -> file.startsWith("Graphics/Atlases/Gameplay/decals/") && file.endsWith(".png"))
+                            .map(file -> file.substring(26, file.length() - 4).toLowerCase(Locale.ROOT))
+                            .forEach(availableDecals::add);
+                    Arrays.stream(fileRecord.fileListing)
+                            .filter(file -> file.startsWith("Graphics/Atlases/Gameplay/bgs/") && file.endsWith(".png"))
+                            .map(file -> file.substring(26, file.length() - 4).toLowerCase(Locale.ROOT))
+                            .forEach(availableStylegrounds::add);
                 }
+
+                // is there a file for Ahorn and Lönn entities as well?
+                checkMapEditorEntities(fileRecord.ahornEntities, availableEntities, availableTriggers, availableModEffects);
+                checkMapEditorEntities(fileRecord.loennEntities, availableEntities, availableTriggers, availableModEffects);
             }
         }
 
@@ -978,23 +976,10 @@ public class ModStructureVerifier extends ListenerAdapter {
         }
     }
 
-    private static void checkMapEditorEntities(String mapEditor, Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects,
-                                               Map<String, Map<String, Object>> databaseContents, String dep, String depUrl) throws IOException {
-        File modFilesDatabaseEditorFile = new File("modfilesdatabase/" +
-                databaseContents.get(dep).get("GameBananaType") + "/" +
-                databaseContents.get(dep).get("GameBananaId") + "/" + mapEditor + "_" +
-                depUrl.substring("https://gamebanana.com/mmdl/".length()) + ".yaml");
-
-        if (modFilesDatabaseEditorFile.isFile()) {
-            // there is! load the entities, triggers and effects from it.
-            logger.debug("Loading {} entities, triggers and effects from dependency {} (file {})...", mapEditor, dep, modFilesDatabaseEditorFile.getAbsolutePath());
-            try (InputStream databaseFile = new FileInputStream(modFilesDatabaseEditorFile)) {
-                Map<String, List<String>> entitiesList = YamlUtil.load(databaseFile);
-                availableEntities.addAll(entitiesList.get("Entities"));
-                availableTriggers.addAll(entitiesList.get("Triggers"));
-                availableEffects.addAll(entitiesList.get("Effects"));
-            }
-        }
+    private static void checkMapEditorEntities(MapEditorRecord mapEditorRecord, Set<String> availableEntities, Set<String> availableTriggers, Set<String> availableEffects) {
+        availableEntities.addAll(Arrays.asList(mapEditorRecord.entities));
+        availableTriggers.addAll(Arrays.asList(mapEditorRecord.triggers));
+        availableEffects.addAll(Arrays.asList(mapEditorRecord.effects));
     }
 
     private static void checkForMissingEntities(Set<String> availableEntities, Set<String> availableEntitiesCaseInsensitive, String jsonPath, Set<String> badEntities, JSONObject binAsJSON) {
@@ -1392,9 +1377,9 @@ public class ModStructureVerifier extends ListenerAdapter {
     }
 
     private static final String RULES_NO_FOLDER_NAME = """
-                - `everest.yaml` should exist and should be valid according to the everest.yaml validator
-                - all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies
-                - the dialog files for vanilla languages should not contain characters that are missing from the game's font, or those extra characters should be included in the zip""";
+            - `everest.yaml` should exist and should be valid according to the everest.yaml validator
+            - all decals, stylegrounds, entities, triggers and effects should be vanilla, packaged with the mod, or from one of the everest.yaml dependencies
+            - the dialog files for vanilla languages should not contain characters that are missing from the game's font, or those extra characters should be included in the zip""";
 
     private static String pickFormat(boolean isHtml, String html, String md) {
         return isHtml ? html : md;

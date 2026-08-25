@@ -3,7 +3,7 @@ package ovh.maddie480.randomstuff.backend.discord.crontabs;
 import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 

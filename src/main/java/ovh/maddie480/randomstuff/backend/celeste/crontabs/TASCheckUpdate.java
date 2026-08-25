@@ -5,11 +5,8 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.BananaMirrorUploader;
-import ovh.maddie480.everest.updatechecker.Main;
-import ovh.maddie480.everest.updatechecker.ServerConfig;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.BananaMirror;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.GitOperator;
 import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
@@ -162,7 +159,7 @@ fi
 """
     };
 
-    public static void main(String[] args) throws Exception {
+    public static void main() throws Exception {
         if (!LocalDate.now().equals(EverestPRLabelSlapper.getNextRollingReleaseDate())) {
             log.info("This isn't rolling release day, skipping");
             return;
@@ -209,14 +206,9 @@ fi
 
         try {
             if (fields.get("{{compare:StrawberryJamBundle-CRC}}").equals("updated :arrow_up:")) {
-                // load update checker config from secret constants
-                ByteArrayInputStream is = new ByteArrayInputStream(SecretConstants.UPDATE_CHECKER_CONFIG.getBytes(StandardCharsets.UTF_8));
-                Map<String, Object> config = YamlUtil.load(is);
-                Main.serverConfig = new ServerConfig(config);
-
                 log.debug("Uploading new version of the Strawberry Jam bundle...");
                 String filename = "StrawberryJam2021-Bundle-" + fields.get("{{StrawberryJamBundle-CRC}}") + ".zip";
-                BananaMirrorUploader.uploadFile(SJ_BUNDLE, "pinned-mods", filename);
+                new BananaMirror().uploadFile("pinned-mods", SJ_BUNDLE, filename);
             }
 
             log.debug("Preparing git repository...");

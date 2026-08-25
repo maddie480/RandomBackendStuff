@@ -6,8 +6,8 @@ import org.json.JSONArray;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import javax.swing.*;
@@ -36,16 +36,17 @@ public class FullMirrorCheck {
         {
             logger.debug("Checking match between celestemodupdater-storage.0x0a.de and updater database");
             Map<String, String> hashes;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
-                hashes = YamlUtil.<Map<String, Map<String, Object>>>load(is).values().stream()
+            try (ModDatabase database = new ModDatabase()) {
+                hashes = database.listLatestVersions().stream()
                         .collect(Collectors.toMap(
-                                v -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + v.get("GameBananaFileId") + ".zip",
-                                v -> ((List<String>) v.get("xxHash")).getFirst()));
+                                mf -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + mf.file().mirrorName + ".zip",
+                                mf -> mf.file().xxHash
+                        ));
             }
             doTheParallelStuff(hashes.entrySet(), 5, popup, entry -> retryAndCatch(() -> {
                 String actualHash;
                 try (InputStream is = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(entry.getKey()))) {
-                    actualHash = DatabaseUpdater.computeXXHash(is);
+                    actualHash = ModUpdater.computeXXHash(is);
                 }
                 if (!actualHash.equals(entry.getValue())) {
                     logger.error("Hash doesn't match for file {}", entry.getKey());
@@ -69,11 +70,14 @@ public class FullMirrorCheck {
         {
             logger.debug("Checking match between screenshots on all mirrors");
             List<String> mirroredScreenshots;
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
-                mirroredScreenshots = YamlUtil.<List<Map<String, Object>>>load(is).stream()
-                        .map(item -> (List<String>) item.get("MirroredScreenshots"))
+            try (ModDatabase database = new ModDatabase()) {
+                mirroredScreenshots = database.allMods.stream()
+                        .map(m -> Arrays.stream(m.screenshots)
+                                .filter(s -> s.mirrorName != null)
+                                .map(s -> "https://celestemodupdater.0x0a.de/banana-mirror-images/" + s.mirrorName + ".png")
+                                .toList())
                         .flatMap(List::stream)
-                        .collect(Collectors.toList());
+                        .toList();
             }
 
             doTheParallelStuff(mirroredScreenshots, 25, popup, entry -> retryAndCatch(() -> compareStreams(() -> {

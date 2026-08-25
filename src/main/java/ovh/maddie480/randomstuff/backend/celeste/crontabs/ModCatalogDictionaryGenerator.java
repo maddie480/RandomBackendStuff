@@ -3,19 +3,16 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
-import ovh.maddie480.everest.updatechecker.ZipFileWithAutoEncoding;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -27,17 +24,14 @@ public class ModCatalogDictionaryGenerator {
 
     static Map<String, Map<String, String>> generateModCatalogDictionary() throws IOException {
         List<String> toCheck;
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
-            toCheck = YamlUtil.<Map<String, Map<String, Object>>>load(is)
-                    .values().stream()
-                    .filter(map -> {
-                        try (InputStream iss = Files.newInputStream(Paths.get("modfilesdatabase", map.get("GameBananaType").toString(), map.get("GameBananaId").toString(), map.get("GameBananaFileId") + ".yaml"))) {
-                            return YamlUtil.<List<String>>load(iss).contains("Loenn/lang/en_gb.lang");
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    })
-                    .map(map -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + map.get("GameBananaFileId") + ".zip")
+        try (ModDatabase database = new ModDatabase()) {
+            toCheck = database.allMods.stream()
+                    .map(m -> Arrays.stream(m.files)
+                            .filter(f -> f.isLeader && Arrays.asList(f.fileListing).contains("Loenn/lang/en_gb.lang"))
+                            // some mods are missing, for example Aiden Helper, so go for the 0x0a.de mirror instead of f.mainUrl
+                            .map(f -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + f.mirrorName + ".zip")
+                            .toList())
+                    .flatMap(List::stream)
                     .toList();
         }
 

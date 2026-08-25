@@ -64,6 +64,19 @@ public class ModDatabase implements AutoCloseable {
         }
     }
 
+    public record ModLatestVersion(ModRecord mod, FileRecord file) {
+    }
+
+    public List<ModLatestVersion> listLatestVersions() {
+        return allMods.stream()
+                .map(m -> Arrays.stream(m.files)
+                        .filter(f -> f.isLeader)
+                        .map(f -> new ModLatestVersion(m, f))
+                        .toList())
+                .flatMap(List::stream)
+                .toList();
+    }
+
     public void commit() throws IOException {
         logger.debug("Optimizing mod database...");
         optimize();

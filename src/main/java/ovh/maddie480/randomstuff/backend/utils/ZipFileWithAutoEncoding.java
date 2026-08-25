@@ -1,9 +1,9 @@
-package ovh.maddie480.randomstuff.backend.celeste.moddatabase;
+package ovh.maddie480.randomstuff.backend.utils;
 
 import org.apache.commons.io.EndianUtils;
 import org.mozilla.universalchardet.UniversalDetector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -15,13 +15,20 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 public class ZipFileWithAutoEncoding {
-    private static final Logger logger = LoggerFactory.getLogger(ZipFileWithAutoEncoding.class);
-
     /**
      * Opens a ZIP file that is on disk.
      * If this fails due to the file not using UTF-8 file names, this will try detecting the encoding.
      */
     public static ZipFile open(String path) throws IOException {
+        return open(path, null, null);
+    }
+
+    /**
+     * Opens a ZIP file that is on disk.
+     * If this fails due to the file not using UTF-8 file names, this will try detecting the encoding.
+     * If gameBananaDownloadUrl is specified, event listeners will be called with it if the zip does not use UTF-8.
+     */
+    public static ZipFile open(String path, UpdateCheckerTracker tracker, FileRecord file) throws IOException {
         try {
             return new ZipFile(path);
         } catch (IOException e) {
@@ -34,7 +41,7 @@ public class ZipFileWithAutoEncoding {
 
                 String encodingName = universalDetector.getDetectedCharset();
                 if (encodingName != null) {
-                    logger.warn("Opening zip file using charset {}", encodingName);
+                    if (tracker != null) tracker.zipFileIsNotUTF8(file.mainUrl, encodingName);
                     return new ZipFile(path, Charset.forName(encodingName));
                 }
             }

@@ -13,13 +13,11 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.everest.updatechecker.DatabaseUpdater;
-import ovh.maddie480.everest.updatechecker.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.HttpPostMultipart;
-import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
+import ovh.maddie480.randomstuff.backend.utils.*;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -130,7 +128,8 @@ public class CelesteStuffHealthCheck {
                 JSONObject versionObj = (JSONObject) version;
 
                 switch (versionObj.getString("branch")) {
-                    case "windows-init" -> latestWindowsInit = maxString(latestWindowsInit, versionObj.getString("version"));
+                    case "windows-init" ->
+                            latestWindowsInit = maxString(latestWindowsInit, versionObj.getString("version"));
                     case "main" -> latestMain = maxString(latestMain, versionObj.getString("version"));
                     case "stable" -> latestStable = maxString(latestStable, versionObj.getString("version"));
                 }
@@ -204,7 +203,8 @@ public class CelesteStuffHealthCheck {
                     for (String os : Arrays.asList("windows", "macos", "linux")) {
                         checkExists(versionObj.getString(os + "Download"), namePrefix + os + "-install.zip");
                         checkExists(versionObj.getString(os + "Download").replace("main", "update"), namePrefix + os + "-update.zip");
-                        if (branch.equals("windows-init")) break; // macos and linux artifacts do exist, but aren't really relevant
+                        if (branch.equals("windows-init"))
+                            break; // macos and linux artifacts do exist, but aren't really relevant
                     }
 
                     break;
@@ -304,47 +304,34 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkBananaMirrorDatabaseMatch() throws IOException {
         List<String> modDownloadsRef;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
-            Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
-            modDownloadsRef = mapped.values()
-                    .stream()
-                    .map(item -> item.get("URL").toString())
-                    .sorted()
-                    .toList();
-        }
-
         List<String> mirroredScreenshotsRef;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_search_database.yaml")) {
-            List<Map<String, Object>> mapped = YamlUtil.load(is);
-            mirroredScreenshotsRef = mapped.stream()
-                    .map(item -> (List<String>) item.get("MirroredScreenshots"))
-                    .flatMap(List::stream)
-                    .distinct()
+        List<String> richPresenceIconsRef;
+
+        try (ModDatabase database = new ModDatabase()) {
+            modDownloadsRef = database.listLatestVersions().stream()
+                    .map(mf -> mf.file().mirrorName)
                     .sorted()
                     .toList();
-        }
 
-        List<String> richPresenceIconsRef;
-        try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
-            Map<String, Map<String, List<String>>> mapped = YamlUtil.load(is);
-
-            for (Map.Entry<String, List<String>> hashToFiles : mapped.get("HashesToFiles").entrySet()) {
-                for (String file : hashToFiles.getValue()) {
-                    if (!mapped.get("FilesToHashes").get(file).contains(hashToFiles.getKey())) {
-                        throw new IOException("Backwards link for " + hashToFiles.getKey() + " => " + file + " does not exist!");
-                    }
-                }
-            }
-            for (Map.Entry<String, List<String>> fileToHashes : mapped.get("FilesToHashes").entrySet()) {
-                for (String hash : fileToHashes.getValue()) {
-                    if (!mapped.get("HashesToFiles").get(hash).contains(fileToHashes.getKey())) {
-                        throw new IOException("Backwards link for " + fileToHashes.getKey() + " => " + hash + " does not exist!");
-                    }
-                }
-            }
-
-            richPresenceIconsRef = mapped.get("HashesToFiles").keySet().stream()
+            mirroredScreenshotsRef = database.allMods.stream()
+                    .map(m -> Arrays.stream(m.screenshots)
+                            .map(s -> s.mirrorName)
+                            .filter(Objects::nonNull)
+                            .toList())
+                    .flatMap(List::stream)
                     .sorted()
+                    .toList();
+
+            richPresenceIconsRef = database.allMods.stream()
+                    .map(m -> Arrays.stream(m.files)
+                            .map(f -> Arrays.stream(f.richPresenceIcons)
+                                    .map(r -> r.xxHash)
+                                    .toList())
+                            .flatMap(List::stream)
+                            .toList())
+                    .flatMap(List::stream)
+                    .sorted()
+                    .distinct()
                     .toList();
         }
 
@@ -355,7 +342,7 @@ public class CelesteStuffHealthCheck {
 
             { // === zips referenced in everest_update.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror/
                 List<String> everestUpdate = modDownloadsRef.stream()
-                        .map(item -> item.replace("https://gamebanana.com/mmdl", mirror + "/banana-mirror") + ".zip")
+                        .map(item -> mirror + "/banana-mirror/" + item + ".zip")
                         .toList();
 
                 List<String> bananaMirror = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror/")
@@ -365,7 +352,6 @@ public class CelesteStuffHealthCheck {
                         .filter(item -> !item.equals(mirror + "/banana-mirror//"))
                         .sorted()
                         .toList();
-
 
                 if (!bananaMirror.equals(everestUpdate)) {
                     throw new IOException("Banana Mirror contents at " + mirror + " don't match the mod updater database");
@@ -381,7 +367,7 @@ public class CelesteStuffHealthCheck {
 
             { // === images referenced in mod_search_database.yaml should be present at https://celestemodupdater.0x0a.de/banana-mirror-images/
                 List<String> modSearchDatabase = mirroredScreenshotsRef.stream()
-                        .map(i -> i.replace("https://celestemodupdater.0x0a.de", mirror))
+                        .map(i -> mirror + "/banana-mirror-images/" + i + ".png")
                         .toList();
 
                 List<String> bananaMirrorImages = ConnectionUtils.runWithRetry(() -> Jsoup.connect(mirror + "/banana-mirror-images/")
@@ -472,7 +458,8 @@ public class CelesteStuffHealthCheck {
                 while (i1 != -1) {
                     i1 = is1.read();
                     i2 = is2.read();
-                    if (i1 != i2) throw new IOException(s + " files don't match on maddie480.ovh and everestapi.github.io!");
+                    if (i1 != i2)
+                        throw new IOException(s + " files don't match on maddie480.ovh and everestapi.github.io!");
                 }
             }
         }
@@ -510,7 +497,8 @@ public class CelesteStuffHealthCheck {
             try (InputStream is = ConnectionUtils.openStreamWithTimeout(source2)) {
                 object2 = getter.apply(new JSONTokener(is));
             }
-            if (!object1.equals(object2)) throw new IOException(s + " files don't match on maddie480.ovh and everestapi.github.io!");
+            if (!object1.equals(object2))
+                throw new IOException(s + " files don't match on maddie480.ovh and everestapi.github.io!");
         }
     }
 
@@ -1321,10 +1309,10 @@ public class CelesteStuffHealthCheck {
 
             String actualSocmHash, actualXaphanHelperHash;
             try (InputStream is = f.getInputStream(f.getEntry("TheSecretOfCelesteMountain.zip"))) {
-                actualSocmHash = DatabaseUpdater.computeXXHash(is);
+                actualSocmHash = ModUpdater.computeXXHash(is);
             }
             try (InputStream is = f.getInputStream(f.getEntry("XaphanHelper.zip"))) {
-                actualXaphanHelperHash = DatabaseUpdater.computeXXHash(is);
+                actualXaphanHelperHash = ModUpdater.computeXXHash(is);
             }
 
             if (!actualSocmHash.equals(socmHash) || !actualXaphanHelperHash.equals(xaphanHelperHash)) {
