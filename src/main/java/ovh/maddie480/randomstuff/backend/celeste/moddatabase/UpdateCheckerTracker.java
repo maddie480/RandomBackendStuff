@@ -247,7 +247,7 @@ public class UpdateCheckerTracker {
 
     public void modWasDeletedFromDatabase(ModRecord mod, FileRecord file) {
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
-            executeWebhookAsUpdateChecker(webhook, ":x: **" + file.mainUrl + "** was deleted from the database.");
+            executeWebhookAsUpdateChecker(webhook, ":x: **" + file.modId + "** was deleted from the database.");
         }
 
         addModUpdateToLatestUpdatesList(mod, file, false);
