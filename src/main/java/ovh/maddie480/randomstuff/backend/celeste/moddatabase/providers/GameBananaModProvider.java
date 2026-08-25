@@ -240,12 +240,12 @@ public class GameBananaModProvider implements ModProvider {
         CategoryRecord theOneTopCategory = null;
         if (itemtype.equals("Tool")) {
             theOneTopCategory = new CategoryRecord();
-            theOneTopCategory.id = "GameBanana/Tool/Root";
+            theOneTopCategory.id = "GameBanana_Tool_Root";
             theOneTopCategory.name = "Tools";
             theOneTopCategory.pageUrl = "https://gamebanana.com/tools/games/6460";
         } else if (itemtype.equals("Wip")) {
             theOneTopCategory = new CategoryRecord();
-            theOneTopCategory.id = "GameBanana/Wip/Root";
+            theOneTopCategory.id = "GameBanana_Wip_Root";
             theOneTopCategory.name = "WiPs";
             theOneTopCategory.pageUrl = "https://gamebanana.com/wips/games/6460";
         }
@@ -279,7 +279,7 @@ public class GameBananaModProvider implements ModProvider {
 
     private CategoryRecord createCategoryRecord(String itemtype, JSONObject categoryJson) {
         CategoryRecord categoryRecord = new CategoryRecord();
-        categoryRecord.id = "GameBanana/" + itemtype + "/" + categoryJson.getInt("_idRow");
+        categoryRecord.id = "GameBanana_" + itemtype + "_" + categoryJson.getInt("_idRow");
         categoryRecord.name = categoryJson.getString("_sName");
         categoryRecord.iconUrl = categoryJson.getString("_sIconUrl");
         categoryRecord.pageUrl = categoryJson.getString("_sProfileUrl");

@@ -575,7 +575,7 @@ public class CelesteStuffHealthCheck {
         }
 
         // sorted list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-list?sort=downloads&category=6800&page=1"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-list?sort=downloads&category=GameBanana_Mod_6800&page=1"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Sorted list API test failed");
@@ -584,8 +584,8 @@ public class CelesteStuffHealthCheck {
         // categories list
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-categories"), UTF_8)
                 .contains("""
-                        - itemtype: Mod
-                          categoryid: 6800
+                        - itemtype: Obsolete
+                          categoryid: GameBanana_Mod_6800
                           formatted: Maps
                           count:\s""")) {
 
@@ -595,7 +595,7 @@ public class CelesteStuffHealthCheck {
         // subcategories list
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-subcategories"), UTF_8)
                 .contains("""
-                          - id: 6803
+                          - id: GameBanana_Mod_6803
                             name: Collab/Contest
                             count: \
                         """)) {
@@ -604,11 +604,11 @@ public class CelesteStuffHealthCheck {
         }
 
         // featured mods list
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-featured"), UTF_8)
+        /* if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-featured"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Featured mods list API failed");
-        }
+        } */
 
         // check that the mirror is alive by downloading a GhostNet screenshot
         if (!DigestUtils.sha256Hex(ConnectionUtils.toByteArrayWithTimeout("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png"))

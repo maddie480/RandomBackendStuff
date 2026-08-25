@@ -458,10 +458,10 @@ public class UpdateCheckerTracker {
                             category = category.parent;
                         }
                         String itemtype = "Mod";
-                        if (category.parent != null && category.parent.id.equals("GameBanana/Wip/Root")) {
+                        if (category.parent != null && category.parent.id.equals("GameBanana_Wip_Root")) {
                             itemtype = "Wip";
                         }
-                        if (category.parent != null && category.parent.id.equals("GameBanana/Tool/Root")) {
+                        if (category.parent != null && category.parent.id.equals("GameBanana_Tool_Root")) {
                             itemtype = "Tool";
                         }
 
