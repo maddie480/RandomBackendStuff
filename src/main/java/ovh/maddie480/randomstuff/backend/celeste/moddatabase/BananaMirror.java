@@ -82,7 +82,7 @@ public class BananaMirror {
                 .map(m -> m.screenshots)
                 .flatMap(Arrays::stream)
                 .filter(s -> s.mirrorName != null)
-                .collect(Collectors.toMap(s -> s.mirrorName + ".png", s -> s.mainUrl));
+                .collect(Collectors.toMap(s -> s.mirrorName + ".png", s -> s.mainUrl, (a, _) -> a));
 
         rsync(bananaMirrorConfig.imagesDirectory, list, (path, url) -> ConnectionUtils.runWithRetry(() -> {
             Path tmp = Paths.get("/tmp/updater_image_to_read");

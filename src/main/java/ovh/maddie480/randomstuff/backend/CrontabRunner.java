@@ -480,8 +480,6 @@ public class CrontabRunner {
     }
 
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
-        logger.debug("Waiting for updater lock to be released...");
-
         try {
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`", false);
             sendCrontabStatusEvent(name);

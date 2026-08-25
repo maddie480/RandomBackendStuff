@@ -87,7 +87,7 @@ public class EmbedBuilder {
             }
         }
 
-        embed.put("description", MarkdownSanitizer.escape(mod.description));
+        embed.put("description", MarkdownSanitizer.escape(mod.summary));
         {
             JSONObject author = new JSONObject();
             embed.put("author", author);
