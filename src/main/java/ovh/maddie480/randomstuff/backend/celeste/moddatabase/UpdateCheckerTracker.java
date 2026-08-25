@@ -439,7 +439,7 @@ public class UpdateCheckerTracker {
 
                         Map<String, Object> recurseItem = new TreeMap<>();
                         contents.put("Category", recurseItem);
-                        CategoryRecord recurse = new CategoryRecord();
+                        CategoryRecord recurse = m.category;
                         while (true) {
                             recurseItem.put("ID", recurse.id);
                             recurseItem.put("Name", recurse.name);
@@ -457,22 +457,15 @@ public class UpdateCheckerTracker {
                         while (category.parent != null && !category.parent.id.endsWith("/Root")) {
                             category = category.parent;
                         }
-                        String itemtype = "Mod";
-                        if (category.parent != null && category.parent.id.equals("GameBanana_Wip_Root")) {
-                            itemtype = "Wip";
-                        }
-                        if (category.parent != null && category.parent.id.equals("GameBanana_Tool_Root")) {
-                            itemtype = "Tool";
-                        }
 
                         contents.putAll(ImmutableMap.of(
-                                "GameBananaType", itemtype,
-                                "CategoryId", category.id.substring(category.id.lastIndexOf("/") + 1),
+                                "GameBananaType", "Obsolete",
+                                "CategoryId", category.id,
                                 "CategoryName", category.name
                         ));
                         if (!category.equals(subcategory)) {
                             contents.putAll(ImmutableMap.of(
-                                    "SubcategoryId", subcategory.id.substring(category.id.lastIndexOf("/") + 1),
+                                    "SubcategoryId", subcategory.id,
                                     "SubcategoryName", subcategory.name
                             ));
                         }
