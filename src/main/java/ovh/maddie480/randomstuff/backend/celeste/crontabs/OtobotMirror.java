@@ -4,25 +4,22 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.PSSParameterSpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -55,12 +52,12 @@ public class OtobotMirror {
         }
     }
 
-    public void update() throws IOException {
+    public void update(ModDatabase database) throws IOException {
         log.debug("Building file list to submit...");
         JSONObject request = new JSONObject();
-        request.put("mods", getMirroredMods());
-        request.put("screenshots", getMirroredScreenshots());
-        request.put("richPresenceIcons", getMirroredRichPresenceIcons());
+        request.put("mods", getMirroredMods(database));
+        request.put("screenshots", getMirroredScreenshots(database));
+        request.put("richPresenceIcons", getMirroredRichPresenceIcons(database));
         request.put("isModSearchDatabaseUpdate", true);
         request.put("timestamp", System.currentTimeMillis() / 1000);
 
@@ -72,35 +69,31 @@ public class OtobotMirror {
         callMirrorUpdateEndpoint(request);
     }
 
-    private Set<String> getMirroredMods() throws IOException {
-        Map<String, Map<String, Object>> updaterDatabase;
-        try (InputStream is = Files.newInputStream(Paths.get("uploads/everestupdate.yaml"))) {
-            updaterDatabase = YamlUtil.load(is);
-        }
-        return updaterDatabase.values().stream()
-                .map(mod -> (String) mod.get("MirrorURL"))
-                .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.substring("https://celestemodupdater.0x0a.de/".length()))
+    private Set<String> getMirroredMods(ModDatabase database) throws IOException {
+        return database.listLatestVersions().stream()
+                .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.file().mirrorName + ".zip")
                 .collect(Collectors.toSet());
     }
 
-    private Set<String> getMirroredScreenshots() throws IOException {
-        List<Map<String, List<String>>> modSearchDatabase;
-        try (InputStream is = Files.newInputStream(Paths.get("uploads/modsearchdatabase.yaml"))) {
-            modSearchDatabase = YamlUtil.load(is);
-        }
-        return modSearchDatabase.stream()
-                .map(mod -> mod.get("MirroredScreenshots"))
+    private Set<String> getMirroredScreenshots(ModDatabase database) throws IOException {
+        return database.allMods.stream()
+                .map(mod -> Arrays.stream(mod.screenshots)
+                        .filter(s -> s.mirrorName != null)
+                        .toList())
                 .flatMap(List::stream)
-                .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.substring("https://celestemodupdater.0x0a.de/".length()))
+                .map(s -> "https://celestemodupdater-storage.0x0a.de/" + s.mirrorName + ".png")
                 .collect(Collectors.toSet());
     }
 
-    private Set<String> getMirroredRichPresenceIcons() throws IOException {
-        Map<String, Map<String, List<String>>> richPresenceIcons;
-        try (InputStream is = Files.newInputStream(Paths.get("banana_mirror_rich_presence_icons.yaml"))) {
-            richPresenceIcons = YamlUtil.load(is);
-        }
-        return richPresenceIcons.get("HashesToFiles").keySet().stream()
+    private Set<String> getMirroredRichPresenceIcons(ModDatabase database) throws IOException {
+        return database.allMods.stream()
+                .map(mod -> Arrays.stream(mod.files)
+                        .map(f -> Arrays.stream(f.richPresenceIcons)
+                                .map(r -> r.xxHash)
+                                .toList())
+                        .flatMap(List::stream)
+                        .toList())
+                .flatMap(List::stream)
                 .map(hash -> "https://celestemodupdater-storage.0x0a.de/rich-presence-icons/" + hash + ".png")
                 .collect(Collectors.toSet());
     }

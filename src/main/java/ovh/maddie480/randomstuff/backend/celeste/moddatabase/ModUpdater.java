@@ -173,7 +173,7 @@ public class ModUpdater {
             banan.synchronizeFiles(database, tracker);
             banan.synchronizeImages(database, tracker);
             banan.synchronizeRichPresenceIcons(database, tracker);
-            UpdateOutgoingWebhooks.notifyUpdate();
+            UpdateOutgoingWebhooks.notifyUpdate(database);
         }
     }
 

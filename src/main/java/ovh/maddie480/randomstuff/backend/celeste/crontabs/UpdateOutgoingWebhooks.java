@@ -2,6 +2,7 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
@@ -12,9 +13,9 @@ import java.io.IOException;
  * Run at the end of the update loop.
  */
 public class UpdateOutgoingWebhooks {
-    public static void notifyUpdate() throws IOException {
+    public static void notifyUpdate(ModDatabase database) throws IOException {
         ConnectionUtils.runWithRetry(() -> {
-            OtobotMirror.getInstance().update();
+            OtobotMirror.getInstance().update(database);
             return null; // method signature
         });
 
