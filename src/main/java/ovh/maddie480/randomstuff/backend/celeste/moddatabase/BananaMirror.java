@@ -86,6 +86,7 @@ public class BananaMirror {
 
         rsync(bananaMirrorConfig.imagesDirectory, list, (path, url) -> ConnectionUtils.runWithRetry(() -> {
             Path tmp = Paths.get("/tmp/updater_image_to_read");
+            Path tmp2 = Paths.get("/tmp/updater_image_to_read2.png");
             try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp))) {
                 IOUtils.copy(new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(url)), os);
             }
@@ -96,7 +97,8 @@ public class BananaMirror {
             Thumbnails.of(new File(tmp.toAbsolutePath().toString()))
                     .size(220, 220)
                     .outputFormat("png")
-                    .toFile(path.toAbsolutePath().toString());
+                    .toFile(tmp2.toAbsolutePath().toString());
+            Files.move(tmp2, path);
 
             Files.delete(tmp);
             return null;
