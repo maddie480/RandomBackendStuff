@@ -434,7 +434,8 @@ public class UpdateCheckerTracker {
                                         "URL", f.mainUrl,
                                         "Name", f.name,
                                         "MirrorName", f.mirrorName
-                                )));
+                                ))
+                                .toList());
 
                         Map<String, Object> recurseItem = new TreeMap<>();
                         contents.put("Category", recurseItem);
