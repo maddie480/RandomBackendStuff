@@ -633,7 +633,7 @@ public class UpdateCheckerTracker {
         result.put("lastIncrementalCheckDuration", lastIncrementalCheckDuration);
         result.put("latestUpdatesEntries", latestUpdates);
 
-        try (InputStream is = new FileInputStream("uploads/everestupdate.yaml")) {
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
             Map<Object, Object> mods = YamlUtil.load(is);
             result.put("modCount", mods.size());
         }
