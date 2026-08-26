@@ -434,7 +434,8 @@ public class UpdateCheckerTracker {
                                         "URL", f.mainUrl,
                                         "Name", f.name,
                                         "MirrorName", f.mirrorName,
-                                        "ID", f.id
+                                        "ID", f.id,
+                                        "IsLatestVersion", f.isLeader
                                 ))
                                 .toList());
 
