@@ -687,7 +687,7 @@ public class CelesteStuffHealthCheck {
         connection.disconnect();
 
         // GameBanana info API (used by file searcher only)
-        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-info?itemtype=Mod&itemid=53650"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-info?id=GameBanana/Mod/53650"), UTF_8)
                 .contains("\"Name\":\"Extended Variant Mode\"")) {
 
             throw new IOException("Extended Variant Mode info check failed");
@@ -711,12 +711,21 @@ public class CelesteStuffHealthCheck {
 
         // mod files database zip
         try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_files_database.zip"))) {
-            Set<String> expectedFiles = new HashSet<>(Arrays.asList(
-                    "ahorn_vanilla.yaml", "loenn_vanilla.yaml", "list.yaml", "Mod/150813/info.yaml", "Mod/150813/484937.yaml", "Mod/53641/ahorn_506448.yaml"
-            ));
+            Set<String> expectedFiles;
+            try (ModDatabase database = new ModDatabase()) {
+                expectedFiles = database.allMods.stream()
+                    .map(m -> Arrays.stream(m.files)
+                        .map(f -> m.id + "/" + f.id + ".yaml")
+                        .toList())
+                    .flatMap(List::stream)
+                    .collect(Collectors.toSet());
+            }
 
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
+                if (!expectedFiles.contains(entry.getName())) {
+                    throw new IOException("Found unexpected file: " + entry.getName());
+                }
                 expectedFiles.remove(entry.getName());
             }
 
@@ -1231,13 +1240,28 @@ public class CelesteStuffHealthCheck {
      * Run daily.
      */
     public static void checkDirectLinkService() throws IOException {
-        String socmHash, xaphanHelperHash;
-        int fileId;
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/everest_update.yaml")) {
-            Map<String, Map<String, Object>> mapped = YamlUtil.load(is);
-            fileId = (int) mapped.get("MaxHelpingHand").get("GameBananaFileId");
-            socmHash = ((List<String>) mapped.get("TheSecretOfCelesteMountain").get("xxHash")).getFirst();
-            xaphanHelperHash = ((List<String>) mapped.get("XaphanHelper").get("xxHash")).getFirst();
+        String socmHash, xaphanHelperHash, mainUrl, mirrorName;
+        
+        try (ModDatabase database = new ModDatabase()) {
+            List<ModDatabase.ModLatestVersion> mods = database.listLatestVersions();
+
+            socmHash = mods.stream()
+                .map(mf -> mf.file().modId.equals("TheSecretOfCelesteMountain"))
+                .findFirst()
+                .map(mf -> mf.file().xxHash)
+                .orElseThrow();
+
+            xaphanHelperHash = mods.stream()
+                .map(mf -> mf.file().modId.equals("XaphanHelper"))
+                .findFirst()
+                .map(mf -> mf.file().xxHash)
+                .orElseThrow();
+
+            FileRecord helpingHand = mods.stream()
+                .map(mf -> mf.file().modId.equals("MaxHelpingHand"))
+                .findFirst().orElseThrow();
+            mainUrl = helpingHand.mainUrl;
+            mirrorName = helpingHand.mirrorName;
         }
 
         // search for MaxHelpingHand
@@ -1258,13 +1282,13 @@ public class CelesteStuffHealthCheck {
 
         connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1");
         connection.setInstanceFollowRedirects(false);
-        if (!("https://0x0a.de/twoclick?gamebanana.com/mmdl/" + fileId).equals(connection.getHeaderField("location"))) {
+        if (!("https://0x0a.de/twoclick?" + mainUrl.substring("https://".length())).equals(connection.getHeaderField("location"))) {
             throw new IOException("Direct Link Service did not redirect to GameBanana correctly!");
         }
 
         connection = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/dl?id=MaxHelpingHand&twoclick=1&mirror=1");
         connection.setInstanceFollowRedirects(false);
-        if (!("https://0x0a.de/twoclick?celestemodupdater.0x0a.de/banana-mirror/" + fileId + ".zip").equals(connection.getHeaderField("location"))) {
+        if (!("https://0x0a.de/twoclick?celestemodupdater.0x0a.de/banana-mirror/" + mirrorName + ".zip").equals(connection.getHeaderField("location"))) {
             throw new IOException("Direct Link Service did not redirect to mirror correctly!");
         }
 
