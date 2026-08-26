@@ -14,7 +14,6 @@ import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
@@ -1259,11 +1258,11 @@ public class CelesteStuffHealthCheck {
                 .map(mf -> mf.file().xxHash)
                 .orElseThrow();
 
-            FileRecord helpingHand = mods.stream()
+            ModDatabase.ModLatestVersion helpingHand = mods.stream()
                 .filter(mf -> mf.file().modId.equals("MaxHelpingHand"))
                 .findFirst().orElseThrow();
-            mainUrl = helpingHand.mainUrl;
-            mirrorName = helpingHand.mirrorName;
+            mainUrl = helpingHand.file().mainUrl;
+            mirrorName = helpingHand.file().mirrorName;
         }
 
         // search for MaxHelpingHand
