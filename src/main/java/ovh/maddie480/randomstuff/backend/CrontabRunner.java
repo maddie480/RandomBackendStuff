@@ -276,14 +276,16 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null));
 
         // GameBanana automated checks
-        try (ModDatabase database = new ModDatabase()) {
-            runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick(database));
-            runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", () -> GameBananaAutomatedChecks.checkForForbiddenFiles(database));
-            runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", () -> GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator(database));
-            runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", () -> GameBananaAutomatedChecks.checkPngFilesArePngFiles(database));
-            runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", () -> GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive(database));
-            runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", () -> GameBananaAutomatedChecks.checkForBananaGettingDrunkAndServingTheWrongFile(database));
-        }
+        runProcessAndAlertOnException("[Hourly] new ModDatabase()", () -> {
+            try (ModDatabase database = new ModDatabase()) {
+                runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick(database));
+                runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", () -> GameBananaAutomatedChecks.checkForForbiddenFiles(database));
+                runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", () -> GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator(database));
+                runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", () -> GameBananaAutomatedChecks.checkPngFilesArePngFiles(database));
+                runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", () -> GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive(database));
+                runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", () -> GameBananaAutomatedChecks.checkForBananaGettingDrunkAndServingTheWrongFile(database));
+            }
+        });
 
         // Health checks
         runProcessAndAlertOnException("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck);
