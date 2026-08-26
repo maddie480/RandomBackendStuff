@@ -14,6 +14,7 @@ import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
@@ -30,6 +31,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -1246,19 +1248,19 @@ public class CelesteStuffHealthCheck {
             List<ModDatabase.ModLatestVersion> mods = database.listLatestVersions();
 
             socmHash = mods.stream()
-                .map(mf -> mf.file().modId.equals("TheSecretOfCelesteMountain"))
+                .filter(mf -> mf.file().modId.equals("TheSecretOfCelesteMountain"))
                 .findFirst()
                 .map(mf -> mf.file().xxHash)
                 .orElseThrow();
 
             xaphanHelperHash = mods.stream()
-                .map(mf -> mf.file().modId.equals("XaphanHelper"))
+                .filter(mf -> mf.file().modId.equals("XaphanHelper"))
                 .findFirst()
                 .map(mf -> mf.file().xxHash)
                 .orElseThrow();
 
             FileRecord helpingHand = mods.stream()
-                .map(mf -> mf.file().modId.equals("MaxHelpingHand"))
+                .filter(mf -> mf.file().modId.equals("MaxHelpingHand"))
                 .findFirst().orElseThrow();
             mainUrl = helpingHand.mainUrl;
             mirrorName = helpingHand.mirrorName;
