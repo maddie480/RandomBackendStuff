@@ -49,6 +49,9 @@ public class ModUpdater {
             }
             if (!mods.isEmpty()) {
                 update(mods, false, start);
+            } else {
+                // don't give the false impression that the updater is down... come on.
+                new UpdateCheckerTracker(null).updateUpdateCheckerStatusInformation(System.currentTimeMillis() - start);
             }
         } catch (Exception e) {
             logger.error("Uncaught exception during incremental update", e);

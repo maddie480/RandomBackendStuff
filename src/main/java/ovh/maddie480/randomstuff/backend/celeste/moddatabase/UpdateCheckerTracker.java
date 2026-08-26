@@ -615,7 +615,7 @@ public class UpdateCheckerTracker {
     }
 
 
-    private void updateUpdateCheckerStatusInformation(long lastCheckDuration) throws IOException {
+    public void updateUpdateCheckerStatusInformation(long lastCheckDuration) throws IOException {
         if (currentUpdateIsFull) {
             lastFullCheckTimestamp = System.currentTimeMillis();
             lastFullCheckDuration = lastCheckDuration;
