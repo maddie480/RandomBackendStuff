@@ -77,16 +77,6 @@ public class FrontendTaskReceiver {
                 case "fontGenerate" -> handleFontGenerateRequest(o.getString("fileName"), o.getString("language"));
                 case "customFontGenerate" -> handleCustomFontGenerateRequest(o.getString("textFileName"),
                         o.getString("fontFileName"), o.getString("resultFontFileName"));
-                case "fileSearch" -> {
-                    try {
-                        ModFileSearcher.findAllModsByFile(
-                                o.getString("search"),
-                                o.getBoolean("exact")
-                        );
-                    } catch (IOException e) {
-                        log.error("Error while searching file for request {}", o, e);
-                    }
-                }
                 case "crontabStatusChange" -> handleCrontabStatusChange(o.getString("newStatus"));
                 default -> log.error("Received invalid task type {}!", o.getString("taskType"));
             }

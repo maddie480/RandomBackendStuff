@@ -321,6 +321,7 @@ public class CelesteStuffHealthCheck {
                             .toList())
                     .flatMap(List::stream)
                     .sorted()
+                    .distinct()
                     .toList();
 
             richPresenceIconsRef = database.allMods.stream()
@@ -697,7 +698,8 @@ public class CelesteStuffHealthCheck {
         // deprecated GameBanana categories API
         if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-categories"), UTF_8)
                 .contains("""
-                        - itemtype: Tool
+                        - itemtype: Obsolete
+                          categoryid: GameBanana_Tool_Root
                           formatted: Tools
                           count:\s""")) {
 
@@ -715,11 +717,11 @@ public class CelesteStuffHealthCheck {
             Set<String> expectedFiles;
             try (ModDatabase database = new ModDatabase()) {
                 expectedFiles = database.allMods.stream()
-                    .map(m -> Arrays.stream(m.files)
-                        .map(f -> m.id + "/" + f.id + ".yaml")
-                        .toList())
-                    .flatMap(List::stream)
-                    .collect(Collectors.toSet());
+                        .map(m -> Arrays.stream(m.files)
+                                .map(f -> m.id + "/" + f.id + ".yaml")
+                                .toList())
+                        .flatMap(List::stream)
+                        .collect(Collectors.toSet());
             }
 
             ZipEntry entry;
@@ -1213,26 +1215,16 @@ public class CelesteStuffHealthCheck {
     public static void checkFileSearcher() throws IOException {
         log.debug("Checking File Searcher...");
 
-        // run the search
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/file-search?" +
                 "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
 
-            log.debug("Response to first request: {}", IOUtils.toString(is, UTF_8));
-        }
+            String result = IOUtils.toString(is, UTF_8);
+            log.debug("Response to request: {}", result);
 
-        periodicCheck(() -> {
-            // check the result of the search
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/file-search?" +
-                    "query=Graphics/Atlases/Checkpoints/Meowsmith/1/TornadoValleyConcept/A/2b_hub.png&exact=true")) {
-
-                String result = IOUtils.toString(is, UTF_8);
-                log.debug("Response to second request: {}", result);
-
-                if (!result.contains("{\"itemid\":150597,\"itemtype\":\"Mod\",\"fileid\":399127}")) {
-                    throw new IOException("File Searcher did not return expected result!");
-                }
+            if (!result.contains("{\"modid\":\"GameBanana/Mod/150597\",\"fileid\":\"GameBanana/399127\"}")) {
+                throw new IOException("File Searcher did not return expected result!");
             }
-        });
+        }
     }
 
     /**
@@ -1247,20 +1239,20 @@ public class CelesteStuffHealthCheck {
             List<ModDatabase.ModLatestVersion> mods = database.listLatestVersions();
 
             socmHash = mods.stream()
-                .filter(mf -> mf.file().modId.equals("TheSecretOfCelesteMountain"))
-                .findFirst()
-                .map(mf -> mf.file().xxHash)
-                .orElseThrow();
+                    .filter(mf -> mf.file().modId.equals("TheSecretOfCelesteMountain"))
+                    .findFirst()
+                    .map(mf -> mf.file().xxHash)
+                    .orElseThrow();
 
             xaphanHelperHash = mods.stream()
-                .filter(mf -> mf.file().modId.equals("XaphanHelper"))
-                .findFirst()
-                .map(mf -> mf.file().xxHash)
-                .orElseThrow();
+                    .filter(mf -> mf.file().modId.equals("XaphanHelper"))
+                    .findFirst()
+                    .map(mf -> mf.file().xxHash)
+                    .orElseThrow();
 
             ModDatabase.ModLatestVersion helpingHand = mods.stream()
-                .filter(mf -> mf.file().modId.equals("MaxHelpingHand"))
-                .findFirst().orElseThrow();
+                    .filter(mf -> mf.file().modId.equals("MaxHelpingHand"))
+                    .findFirst().orElseThrow();
             mainUrl = helpingHand.file().mainUrl;
             mirrorName = helpingHand.file().mirrorName;
         }
