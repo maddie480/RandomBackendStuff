@@ -1241,7 +1241,7 @@ public class CelesteStuffHealthCheck {
      */
     public static void checkDirectLinkService() throws IOException {
         String socmHash, xaphanHelperHash, mainUrl, mirrorName;
-        
+
         try (ModDatabase database = new ModDatabase()) {
             List<ModDatabase.ModLatestVersion> mods = database.listLatestVersions();
 
