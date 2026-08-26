@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import ovh.maddie480.randomstuff.backend.celeste.crontabs.*;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
 import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
@@ -275,12 +276,14 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null));
 
         // GameBanana automated checks
-        runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", GameBananaAutomatedChecks::checkYieldReturnOrigAndIntPtrTrick);
-        runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", GameBananaAutomatedChecks::checkForForbiddenFiles);
-        runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", GameBananaAutomatedChecks::checkAllModsWithEverestYamlValidator);
-        runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", GameBananaAutomatedChecks::checkPngFilesArePngFiles);
-        runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", GameBananaAutomatedChecks::checkDuplicateModIdsCaseInsensitive);
-        runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", GameBananaAutomatedChecks::checkForBananaGettingDrunkAndServingTheWrongFile);
+        try (ModDatabase database = new ModDatabase()) {
+            runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick(database));
+            runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", () -> GameBananaAutomatedChecks.checkForForbiddenFiles(database));
+            runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", () -> GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator(database));
+            runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", () -> GameBananaAutomatedChecks.checkPngFilesArePngFiles(database));
+            runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", () -> GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive(database));
+            runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", () -> GameBananaAutomatedChecks.checkForBananaGettingDrunkAndServingTheWrongFile(database));
+        }
 
         // Health checks
         runProcessAndAlertOnException("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck);
