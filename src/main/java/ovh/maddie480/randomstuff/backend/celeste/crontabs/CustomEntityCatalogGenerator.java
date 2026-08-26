@@ -314,7 +314,7 @@ public class CustomEntityCatalogGenerator {
             thisModInfo.modName = mod.name;
 
             for (FileRecord file : mod.files) {
-                if (file.isLeader && !"MoreLoennPlugins".equals(file.modId)) continue;
+                if (!file.isLeader || "MoreLoennPlugins".equals(file.modId)) continue;
 
                 checkMapEditor("ahorn", mod, file.ahornEntities, thisModInfo, mlpEntities, mlpTriggers, mlpEffects);
                 checkMapEditor("loenn", mod, file.loennEntities, thisModInfo, Collections.emptySet(), Collections.emptySet(), Collections.emptySet());
