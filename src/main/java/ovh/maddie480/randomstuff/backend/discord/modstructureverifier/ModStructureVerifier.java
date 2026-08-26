@@ -860,11 +860,11 @@ public class ModStructureVerifier extends ListenerAdapter {
                             .filter(file -> file.startsWith("Graphics/Atlases/Gameplay/bgs/") && file.endsWith(".png"))
                             .map(file -> file.substring(26, file.length() - 4).toLowerCase(Locale.ROOT))
                             .forEach(availableStylegrounds::add);
-                }
 
-                // is there a file for Ahorn and Lönn entities as well?
-                checkMapEditorEntities(fileRecord.ahornEntities, availableEntities, availableTriggers, availableModEffects);
-                checkMapEditorEntities(fileRecord.loennEntities, availableEntities, availableTriggers, availableModEffects);
+                    // is there a file for Ahorn and Lönn entities as well?
+                    checkMapEditorEntities(fileRecord.ahornEntities, availableEntities, availableTriggers, availableModEffects);
+                    checkMapEditorEntities(fileRecord.loennEntities, availableEntities, availableTriggers, availableModEffects);
+                }
             }
         }
 

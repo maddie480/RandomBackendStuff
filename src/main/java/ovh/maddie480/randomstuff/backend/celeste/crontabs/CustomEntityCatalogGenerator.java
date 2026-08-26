@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.CategoryRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.MapEditorRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
@@ -336,8 +337,11 @@ public class CustomEntityCatalogGenerator {
                     thisModInfo.modEverestYamlId = file.modId;
                     thisModInfo.pageUrl = mod.pageUrl;
                     thisModInfo.latestVersion = file.modVersion;
-                    thisModInfo.categoryId = mod.category.id;
-                    thisModInfo.categoryName = mod.category.name;
+
+                    CategoryRecord topCategory = mod.category;
+                    while (topCategory.parent != null) topCategory = topCategory.parent;
+                    thisModInfo.categoryId = topCategory.id;
+                    thisModInfo.categoryName = topCategory.name;
                     break;
                 }
             }
