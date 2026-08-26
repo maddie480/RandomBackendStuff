@@ -57,6 +57,7 @@ public class CustomEntityCatalogGenerator {
         private String categoryName;
         private String modName;
         private String modEverestYamlId;
+        private String pageUrl;
         private String latestVersion;
         private int dependentCount;
         private final Map<String, List<String>> entityList = new HashMap<>();
@@ -88,6 +89,10 @@ public class CustomEntityCatalogGenerator {
 
         public String getModEverestYamlId() {
             return modEverestYamlId;
+        }
+
+        public String getPageUrl() {
+            return pageUrl;
         }
 
         public String getLatestVersion() {
@@ -329,6 +334,7 @@ public class CustomEntityCatalogGenerator {
                 // check if we found plugins!
                 if (!thisModInfo.entityList.isEmpty() || !thisModInfo.triggerList.isEmpty() || !thisModInfo.effectList.isEmpty()) {
                     thisModInfo.modEverestYamlId = file.modId;
+                    thisModInfo.pageUrl = mod.pageUrl;
                     thisModInfo.latestVersion = file.modVersion;
                     thisModInfo.categoryId = mod.category.id;
                     thisModInfo.categoryName = mod.category.name;
