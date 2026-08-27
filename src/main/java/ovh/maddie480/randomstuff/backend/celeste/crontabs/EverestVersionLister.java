@@ -229,6 +229,8 @@ public class EverestVersionLister {
                             + (info.getFirst().containsKey("description") ? ": `" + info.getFirst().get("description") + "` by " + info.getFirst().get("author") + "." : "."),
                     ImmutableMap.of("X-Everest-Log", "true"));
         }
+
+        GitHubMirror.main(null);
     }
 
     private static String getGitHubReleaseCommit(JSONObject release) throws IOException {
