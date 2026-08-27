@@ -46,10 +46,6 @@ public class ModDatabase implements AutoCloseable {
     private static final Path databaseFile = Paths.get("/shared/celeste/mod-database.yaml");
     private static final Path tempDatabase = Paths.get("/tmp/mod_database_staging.yaml");
 
-    static {
-        lockFile.toFile().deleteOnExit();
-    }
-
     public final List<ModRecord> allMods;
 
     public ModDatabase() throws IOException {
