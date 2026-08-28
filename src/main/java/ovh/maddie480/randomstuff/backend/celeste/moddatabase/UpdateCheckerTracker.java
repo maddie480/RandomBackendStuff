@@ -418,12 +418,12 @@ public class UpdateCheckerTracker {
                         contents.put("UpdatedDate", m.updatedDate);
                         contents.put("Screenshots", Arrays.stream(m.screenshots)
                                 .map(s -> s.mainUrl)
-                                .toList());
+                                .collect(Collectors.toCollection(ArrayList::new)));
                         contents.put("MirroredScreenshots", Arrays.stream(m.screenshots)
                                 .map(s -> s.mirrorName)
                                 .filter(Objects::nonNull)
                                 .map(s -> "https://celestemodupdater.0x0a.de/banana-mirror-images/" + s + ".png")
-                                .toList());
+                                .collect(Collectors.toCollection(ArrayList::new)));
                         contents.put("Files", Arrays.stream(m.files)
                                 .map(f -> ImmutableMap.of(
                                         "Description", f.description,
@@ -437,7 +437,7 @@ public class UpdateCheckerTracker {
                                         "ID", f.id,
                                         "IsLatestVersion", f.isLeader
                                 ))
-                                .toList());
+                                .collect(Collectors.toCollection(ArrayList::new)));
 
                         Map<String, Object> recurseItem = new TreeMap<>();
                         contents.put("Category", recurseItem);
@@ -491,13 +491,13 @@ public class UpdateCheckerTracker {
                                             "Name", d.name,
                                             "Version", d.version
                                     ))
-                                    .toList(),
+                                    .collect(Collectors.toCollection(ArrayList::new)),
                             "OptionalDependencies", Arrays.stream(m.file().optionalDependencies)
                                     .map(d -> ImmutableMap.of(
                                             "Name", d.name,
                                             "Version", d.version
                                     ))
-                                    .toList()
+                                    .collect(Collectors.toCollection(ArrayList::new))
                     )))
                     .forEach(p -> graph.put(p.getKey(), p.getValue()));
 
@@ -536,7 +536,7 @@ public class UpdateCheckerTracker {
         Map<String, String> assets = getElementMap(file -> Arrays.stream(file.fileListing)
                 .filter(e -> e.toLowerCase(Locale.ROOT).startsWith("graphics/atlases/gameplay/bgs/")
                         || e.toLowerCase(Locale.ROOT).startsWith("graphics/atlases/gameplay/decals/"))
-                .collect(Collectors.toList()));
+                .toList());
 
         Map<String, String> entities = getEntityMap(e -> e.entities);
         Map<String, String> triggers = getEntityMap(e -> e.triggers);
