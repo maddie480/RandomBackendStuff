@@ -606,11 +606,11 @@ public class CelesteStuffHealthCheck {
         }
 
         // featured mods list
-        /* if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-featured"), UTF_8)
+        if (!IOUtils.toString(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/gamebanana-featured"), UTF_8)
                 .contains("\"Name\":\"The 2020 Celeste Spring Community Collab\"")) {
 
             throw new IOException("Featured mods list API failed");
-        } */
+        }
 
         // check that the mirror is alive by downloading a GhostNet screenshot
         if (!DigestUtils.sha256Hex(ConnectionUtils.toByteArrayWithTimeout("https://celestemodupdater.0x0a.de/banana-mirror-images/img_ss_mods_5b05ac2b4b6da.png"))
