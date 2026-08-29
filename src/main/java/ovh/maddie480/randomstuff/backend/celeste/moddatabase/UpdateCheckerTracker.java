@@ -411,7 +411,8 @@ public class UpdateCheckerTracker {
                                 "Likes", m.likes,
                                 "Views", m.views,
                                 "Downloads", m.downloads,
-                                "Text", m.description
+                                "Text", m.description,
+                                "FeaturedTier", m.featuredTier
                         ));
                         contents.put("CreatedDate", m.createdDate);
                         contents.put("ModifiedDate", m.modifiedDate);

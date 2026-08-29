@@ -81,8 +81,14 @@ public class ModUpdater {
                 featuredMods.putAll(modProvider.retrieveFeaturedMods());
             }
             try (ModDatabase database = new ModDatabase()) {
+                UpdateCheckerTracker tracker = new UpdateCheckerTracker(database);
+                tracker.startedSearchingForUpdates(false);
+                long time = System.currentTimeMillis();
+
                 database.allMods.forEach(mod -> mod.featuredTier = featuredMods.getOrDefault(mod.id, 0));
                 database.commit();
+
+                tracker.endedSearchingForUpdates(System.currentTimeMillis() - time);
             }
         } catch (Exception e) {
             logger.error("Uncaught exception during featured mods update", e);
