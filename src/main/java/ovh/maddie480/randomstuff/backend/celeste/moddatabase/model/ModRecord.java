@@ -14,6 +14,7 @@ public class ModRecord {
     public int likes;
     public int views;
     public int downloads;
+    public int featuredTier;
     public AuthorRecord author;
     public CategoryRecord category;
     public ScreenshotRecord[] screenshots;

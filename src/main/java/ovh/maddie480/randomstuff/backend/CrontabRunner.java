@@ -274,6 +274,7 @@ public class CrontabRunner {
         runProcessAndAlertOnException("[Hourly] TopGGCommunicator.refreshVotes", () -> TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message)));
         runProcessAndAlertOnException("[Hourly] PrivateDiscordJanitor", PrivateDiscordJanitor::runHourly);
         runProcessAndAlertOnException("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null));
+        runProcessAndAlertOnException("[Hourly] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
 
         // GameBanana automated checks
         runProcessAndAlertOnException("[Hourly] new ModDatabase()", () -> {
@@ -301,6 +302,7 @@ public class CrontabRunner {
     private static void runUpdater(boolean fullUpdateCheck) {
         if (fullUpdateCheck) {
             runProcessAndAlertOnException("[Updater] ModUpdater::fullUpdate", ModUpdater::fullUpdate);
+            runProcessAndAlertOnException("[Updater] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
             return;
         }
 

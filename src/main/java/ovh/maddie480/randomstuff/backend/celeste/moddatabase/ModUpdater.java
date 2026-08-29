@@ -74,6 +74,22 @@ public class ModUpdater {
         }
     }
 
+    public static void updateFeaturedMods() {
+        try {
+            Map<String, Integer> featuredMods = new HashMap<>();
+            for (ModProvider modProvider : modProviders) {
+                featuredMods.putAll(modProvider.retrieveFeaturedMods());
+            }
+            try (ModDatabase database = new ModDatabase()) {
+                database.allMods.forEach(mod -> mod.featuredTier = featuredMods.getOrDefault(mod.id, 0));
+                database.commit();
+            }
+        } catch (Exception e) {
+            logger.error("Uncaught exception during featured mods update", e);
+            new UpdateCheckerTracker(null).uncaughtError(e);
+        }
+    }
+
     private static void update(List<ModRecord> incomingMods, boolean replace, long start) throws IOException {
         try (ModDatabase database = new ModDatabase()) {
             UpdateCheckerTracker tracker = new UpdateCheckerTracker(database);

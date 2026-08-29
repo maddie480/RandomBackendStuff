@@ -286,4 +286,37 @@ public class GameBananaModProvider implements ModProvider {
         if (categoryRecord.iconUrl.isEmpty()) categoryRecord.iconUrl = null;
         return categoryRecord;
     }
+
+    @Override
+    public Map<String, Integer> retrieveFeaturedMods() throws IOException {
+        log.debug("Getting list of featured mods...");
+        JSONArray featured = ConnectionUtils.runWithRetry(() -> {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv11/Game/6460/TopSubs")) {
+                return new JSONArray(new JSONTokener(is));
+            } catch (JSONException e) {
+                // turn JSON parse errors into IOExceptions to trigger a retry.
+                throw new IOException(e);
+            }
+        });
+
+        Map<String, Integer> result = new HashMap<>();
+        for (Object mod : featured) {
+            JSONObject modObject = (JSONObject) mod;
+
+            result.put(
+                    "GameBanana/" + modObject.getString("_sModelName") + "/" + modObject.getInt("_idRow"),
+                    switch (modObject.getString("_sPeriod")) {
+                        case "alltime" -> 1;
+                        case "year" -> 2;
+                        case "6month" -> 3;
+                        case "3month" -> 4;
+                        case "month" -> 5;
+                        case "week" -> 6;
+                        case "today" -> 7;
+                        default -> 0;
+                    }
+            );
+        }
+        return result;
+    }
 }
