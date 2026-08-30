@@ -223,7 +223,7 @@ public class UpdateCheckerTracker {
 
     public void moreRecentFileAlreadyExists(ModRecord mod, FileRecord file, FileRecord otherFile) {
         executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":warning: File " + file.mainUrl + " was skipped because "
-                + otherFile.mainUrl + " is more recent. Both are part of <" + mod.name + ">.");
+                + otherFile.mainUrl + " is more recent. Both are part of <" + mod.pageUrl + ">.");
     }
 
     public void currentVersionBelongsToAnotherMod(ModRecord mod, FileRecord file, ModRecord otherMod, FileRecord otherFile) {
