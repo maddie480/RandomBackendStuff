@@ -89,6 +89,7 @@ public class ModUpdater {
                 database.commit();
 
                 tracker.endedSearchingForUpdates(System.currentTimeMillis() - time);
+                UpdateOutgoingWebhooks.notifyUpdate(database);
             }
         } catch (Exception e) {
             logger.error("Uncaught exception during featured mods update", e);
