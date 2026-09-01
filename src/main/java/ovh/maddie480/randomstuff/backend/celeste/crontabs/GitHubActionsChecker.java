@@ -35,7 +35,6 @@ public class GitHubActionsChecker {
                 "maddie480/CelestePico8MapEditor",
                 "maddie480/DashCountMod",
                 "maddie480/EverestInDocker",
-                "maddie480/EverestUpdateCheckerServer",
                 "maddie480/ExtendedVariantMode",
                 "maddie480/JungleHelper",
                 "maddie480/MaddieHelpingHand",
