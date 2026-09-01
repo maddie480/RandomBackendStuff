@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
 import javax.swing.*;
@@ -19,8 +20,10 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FullMirrorCheck {
     private static final Logger logger = LoggerFactory.getLogger(FullMirrorCheck.class);
@@ -33,39 +36,47 @@ public class FullMirrorCheck {
         // and if the environment can actually display the window.
         boolean popup = args != null && !GraphicsEnvironment.isHeadless();
 
+        final Set<String> filesToBonk = new HashSet<>();
+
         {
             logger.debug("Checking match between celestemodupdater-storage.0x0a.de and updater database");
             Map<String, String> hashes;
             try (ModDatabase database = new ModDatabase()) {
                 hashes = database.listLatestVersions().stream()
                         .collect(Collectors.toMap(
-                                mf -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + mf.file().mirrorName + ".zip",
+                                mf -> mf.file().mirrorName,
                                 mf -> mf.file().xxHash
                         ));
             }
             doTheParallelStuff(hashes.entrySet(), 5, popup, entry -> retryAndCatch(() -> {
                 String actualHash;
-                try (InputStream is = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(entry.getKey()))) {
+                try (InputStream is = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror/" + entry.getKey() + ".zip"))) {
                     actualHash = ModUpdater.computeXXHash(is);
                 }
                 if (!actualHash.equals(entry.getValue())) {
                     logger.error("Hash doesn't match for file {}", entry.getKey());
+                    synchronized (filesToBonk) {
+                        filesToBonk.add(entry.getKey());
+                    }
                     allGood.set(false);
                 }
             }, allGood));
 
             logger.debug("Checking match between mods on all mirrors");
             doTheParallelStuff(hashes.keySet(), 5, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
-                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(entry));
-                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/"
-                             + entry.substring("https://celestemodupdater-storage.0x0a.de/".length())));
-                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-mods.celestemods.com/"
-                             + entry.substring("https://celestemodupdater-storage.0x0a.de/banana-mirror/".length())))) {
+                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror/" + entry + ".zip"));
+                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/banana-mirror/" + entry + ".zip"));
+                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-mods.celestemods.com/" + entry + ".zip"))) {
 
                     return compareStreams(Arrays.asList(i1, i2, i3));
                 }
-            }, "mod " + entry, allGood), allGood));
+            }, entry, filesToBonk, allGood), allGood));
         }
+
+        bonkFiles(filesToBonk,
+                (mod, name) -> Arrays.stream(mod.files)
+                        .filter(f -> name.equals(f.mirrorName)),
+                f -> f.mirrorName = "remirror_" + f.mirrorName + "_please");
 
         {
             logger.debug("Checking match between screenshots on all mirrors");
@@ -74,24 +85,26 @@ public class FullMirrorCheck {
                 mirroredScreenshots = database.allMods.stream()
                         .map(m -> Arrays.stream(m.screenshots)
                                 .filter(s -> s.mirrorName != null)
-                                .map(s -> "https://celestemodupdater.0x0a.de/banana-mirror-images/" + s.mirrorName + ".png")
+                                .map(s -> s.mirrorName)
                                 .toList())
                         .flatMap(List::stream)
                         .toList();
             }
 
             doTheParallelStuff(mirroredScreenshots, 25, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
-                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/"
-                        + entry.substring("https://celestemodupdater.0x0a.de/".length())));
-                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/"
-                             + entry.substring("https://celestemodupdater.0x0a.de/".length())));
-                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-images.celestemods.com/"
-                             + entry.substring("https://celestemodupdater.0x0a.de/banana-mirror-images/".length())))) {
+                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror-images/" + entry + ".zip"));
+                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/banana-mirror-images/" + entry + ".zip"));
+                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-images.celestemods.com/" + entry + ".zip"))) {
 
                     return compareStreams(Arrays.asList(i1, i2, i3));
                 }
-            }, "image " + entry, allGood), allGood));
+            }, entry, filesToBonk, allGood), allGood));
         }
+
+        bonkFiles(filesToBonk,
+                (mod, name) -> Arrays.stream(mod.screenshots)
+                        .filter(f -> name.equals(f.mirrorName)),
+                f -> f.mirrorName = "remirror_" + f.mirrorName + "_please");
 
         {
             logger.debug("Checking match between Rich Presence icons on all mirrors");
@@ -107,7 +120,7 @@ public class FullMirrorCheck {
 
                     return compareStreams(Arrays.asList(i1, i2));
                 }
-            }, "Rich Presence icon " + entry, allGood), allGood));
+            }, entry, filesToBonk, allGood), allGood));
         }
 
         if (!allGood.get()) {
@@ -132,7 +145,7 @@ public class FullMirrorCheck {
         }
     }
 
-    private static void compareStreams(IOSupplier<Boolean> checker, String log, AtomicBoolean allGood) throws IOException {
+    private static void compareStreams(IOSupplier<Boolean> checker, String log, Set<String> filesToBonk, AtomicBoolean allGood) throws IOException {
         // if there are differences, try 3 times to be sure this isn't a connection cutting off
         for (int i = 0; i < 3; i++) {
             if (checker.get()) return;
@@ -141,6 +154,9 @@ public class FullMirrorCheck {
         // the checker returned false 3 times, whoops
         logger.error("Mirrors aren't identical for {}", log);
         allGood.set(false);
+        synchronized (filesToBonk) {
+            filesToBonk.add(log);
+        }
     }
 
     private static boolean compareStreams(List<InputStream> streams) throws IOException {
@@ -192,5 +208,34 @@ public class FullMirrorCheck {
         sync.acquireUninterruptibly(nb);
 
         if (popup) jf.dispose();
+    }
+
+    // "bonking" the files just involves changing their mirrorName, so that the updater
+    // mirrors them again. The next full update will change the mirrorNames back anyway.
+    private static <T> void bonkFiles(Set<String> filesToBonk, BiFunction<ModRecord, String, Stream<T>> howToFilter,
+                                      Consumer<T> howToBonk) throws IOException {
+        if (filesToBonk.isEmpty()) return;
+
+        try (ModDatabase database = new ModDatabase()) {
+            for (String file : filesToBonk) {
+                T itemToBonk = database.allMods.stream()
+                        .map(m -> howToFilter.apply(m, file)
+                                .findFirst()
+                                .orElse(null))
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElse(null);
+
+                if (itemToBonk == null) {
+                    logger.warn("Couldn't find file {} to bonk, skipping", file);
+                    continue;
+                }
+
+                howToBonk.accept(itemToBonk);
+                logger.info("Bonked file {}", file);
+            }
+            database.commit();
+            filesToBonk.clear();
+        }
     }
 }
