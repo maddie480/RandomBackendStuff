@@ -31,9 +31,9 @@ public class ParallelzUtilz {
             // launch a new thread
             new Thread(() -> {
                 try {
-                    logger.debug("Running task {}/{}", current, newFiles.size());
+                    logger.debug("Running task {}/{}", current, tasks.size());
                     task.run();
-                    logger.debug("Task {}/{} finished", current, newFiles.size());
+                    logger.debug("Task {}/{} finished", current, tasks.size());
                 } catch (Exception e) {
                     logger.warn("Exception occurred running task {}", current);
                     whoops.set(e);

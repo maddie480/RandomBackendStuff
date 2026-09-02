@@ -133,7 +133,7 @@ public class ModUpdater {
             }
 
             ParallelzUtilz.runInParallel(newFiles.values().stream()
-                .map(newFile -> (() -> {
+                .<ParallelzUtilz.ExplodyRunnable>map(newFile -> (() -> {
                     Path temp = Files.createTempFile("updater_download_", "");
                     try {
                         handleNewFile(newFile.getLeft(), newFile.getRight(), temp, tracker);
