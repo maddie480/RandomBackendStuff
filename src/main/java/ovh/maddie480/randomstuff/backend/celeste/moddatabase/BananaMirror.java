@@ -100,6 +100,8 @@ public class BananaMirror {
                         .size(220, 220)
                         .outputFormat("png")
                         .toFile(tmp2.toAbsolutePath().toString());
+
+                if (Files.exists(path)) Files.delete(path);
                 Files.move(tmp2, path);
             } finally {
                 try {
