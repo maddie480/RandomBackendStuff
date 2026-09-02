@@ -105,12 +105,27 @@ public final class ConnectionUtils {
      * @return What the task returned
      * @throws IOException If the task failed 3 times
      */
+
     public static <T> T runWithRetry(IOSupplier<T> task) throws IOException {
-        for (int i = 1; i < 3; i++) {
+        return runWithRetry(task, 3);
+    }
+
+    /**
+     * Runs a task (typically a network operation), retrying if it throws an IOException.
+     *
+     * @param task The task to run and retry
+     * @param tries The amount of times to try before rethrowing
+     * @param <T>  The return type for the task
+     * @return What the task returned
+     * @throws IOException If the task failed <tries> times
+     */
+
+    public static <T> T runWithRetry(IOSupplier<T> task, int tries) throws IOException {
+        for (int i = 1; i < tries; i++) {
             try {
                 return task.get();
             } catch (IOException | JSONException e) { // GameBanana sometimes sends empty 200 responses
-                logger.warn("I/O exception while doing networking operation (try {}/3).", i, e);
+                logger.warn("I/O exception while doing networking operation (try {}/{}).", i, tries, e);
 
                 // wait a bit before retrying
                 try {

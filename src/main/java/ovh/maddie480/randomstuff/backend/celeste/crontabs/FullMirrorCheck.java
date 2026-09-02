@@ -10,16 +10,13 @@ import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.ParallelzUtilz;
 
-import javax.swing.*;
-import java.awt.*;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -30,11 +27,6 @@ public class FullMirrorCheck {
 
     public static void main(String[] args) throws IOException {
         AtomicBoolean allGood = new AtomicBoolean(true);
-
-        // To avoid cluttering the output, the progress is shown in a window with a progress bar.
-        // This only appears if run directly (the crontabs invoke it with args = null),
-        // and if the environment can actually display the window.
-        boolean popup = args != null && !GraphicsEnvironment.isHeadless();
 
         final Set<String> filesToBonk = new HashSet<>();
 
@@ -48,7 +40,7 @@ public class FullMirrorCheck {
                                 mf -> mf.file().xxHash
                         ));
             }
-            doTheParallelStuff(hashes.entrySet(), 5, popup, entry -> retryAndCatch(() -> {
+            doTheParallelStuff(hashes.entrySet(), entry -> retryAndCatch(() -> {
                 String actualHash;
                 try (InputStream is = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror/" + entry.getKey() + ".zip"))) {
                     actualHash = ModUpdater.computeXXHash(is);
@@ -63,7 +55,7 @@ public class FullMirrorCheck {
             }, allGood));
 
             logger.debug("Checking match between mods on all mirrors");
-            doTheParallelStuff(hashes.keySet(), 5, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
+            doTheParallelStuff(hashes.keySet(), entry -> retryAndCatch(() -> compareStreams(() -> {
                 try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror/" + entry + ".zip"));
                      InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/banana-mirror/" + entry + ".zip"));
                      InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-mods.celestemods.com/" + entry + ".zip"))) {
@@ -91,7 +83,7 @@ public class FullMirrorCheck {
                         .toList();
             }
 
-            doTheParallelStuff(mirroredScreenshots, 25, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
+            doTheParallelStuff(mirroredScreenshots, entry -> retryAndCatch(() -> compareStreams(() -> {
                 try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror-images/" + entry + ".png"));
                      InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/banana-mirror-images/" + entry + ".png"));
                      InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-images.celestemods.com/" + entry + ".png"))) {
@@ -114,7 +106,7 @@ public class FullMirrorCheck {
                 for (int i = 0; i < a.length(); i++) richPresenceIcons.add(a.getString(i));
             }
 
-            doTheParallelStuff(richPresenceIcons, 25, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
+            doTheParallelStuff(richPresenceIcons, entry -> retryAndCatch(() -> compareStreams(() -> {
                 try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/rich-presence-icons/" + entry + ".png"));
                      InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-rich-presence-icons.celestemods.com/" + entry + ".png"))) {
 
@@ -170,44 +162,10 @@ public class FullMirrorCheck {
         }
     }
 
-    private static <T> void doTheParallelStuff(Collection<T> items, int nb, boolean popup, Consumer<T> processOne) {
-        JFrame jf = null;
-        JProgressBar progress = null;
-        if (popup) {
-            jf = new JFrame("Mirror Check");
-            jf.add(progress = new JProgressBar(0, items.size()));
-            jf.pack();
-            jf.setBounds(0, 0, 400, 75);
-            jf.setVisible(true);
-            progress.setStringPainted(true);
-            progress.setFont(progress.getFont().deriveFont(36f));
-        }
-
-        final Semaphore sync = new Semaphore(nb);
-
-        int processed = 0;
-
-        for (T item : items) {
-            // wait for one of the spots to be available
-            sync.acquireUninterruptibly();
-
-            final T thisItem = item;
-            new Thread(() -> {
-                processOne.accept(thisItem);
-                sync.release();
-            }).start();
-
-            if (popup) {
-                processed++;
-                progress.setValue(processed);
-                progress.setString(progress.getValue() + "/" + progress.getMaximum());
-            }
-        }
-
-        // wait for everything to end
-        sync.acquireUninterruptibly(nb);
-
-        if (popup) jf.dispose();
+    private static <T> void doTheParallelStuff(Collection<T> items, Consumer<T> processOne) {
+        ParallelzUtilz.runInParallel(items.stream()
+            .map(item -> (() -> processOne(item)))
+            .toList());
     }
 
     // "bonking" the files just involves changing their mirrorName, so that the updater

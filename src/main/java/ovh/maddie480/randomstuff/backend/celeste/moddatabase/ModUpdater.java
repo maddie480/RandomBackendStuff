@@ -10,6 +10,7 @@ import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateOutgoingWebhooks
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.*;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBananaModProvider;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.ParallelzUtilz;
 import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
 import java.io.*;
@@ -131,47 +132,18 @@ public class ModUpdater {
                 }
             }
 
-            final int workerThreads = 20;
-            int progress = 0;
-            Semaphore limiter = new Semaphore(workerThreads);
-            AtomicReference<Exception> whoops = new AtomicReference<>();
-
-            for (Pair<ModRecord, FileRecord> newFile : newFiles.values()) {
-                progress++;
-                int current = progress;
-
-                // wait for enough threads to be done first...
-                limiter.acquireUninterruptibly();
-
-                // launch a new thread
-                new Thread(() -> {
-                    Path temp = Paths.get("/tmp/updater_download_" + current);
+            ParallelzUtilz.runInParallel(newFiles.values().stream()
+                .map(newFile -> (() -> {
+                    Path temp = Files.createTempFile("updater_download_", "");
                     try {
-                        logger.debug("Processing new file {}/{}", current, newFiles.size());
                         handleNewFile(newFile.getLeft(), newFile.getRight(), temp, tracker);
-                        logger.debug("Processing of file {}/{} finished", current, newFiles.size());
-                    } catch (Exception e) {
-                        logger.warn("Exception occurred downloading file {}", current);
-                        whoops.set(e);
                     } finally {
                         try {
                             if (Files.exists(temp)) Files.delete(temp);
                         } catch (IOException e) { /* welp */ }
-
-                        // we're done
-                        limiter.release();
                     }
-                }).start();
-
-                // if some thread crashed, no use in running other ones, stop now!
-                if (whoops.get() != null) break;
-            }
-
-            // wait for EVERY thread to be done
-            limiter.acquireUninterruptibly(workerThreads);
-            // if a thread crashed, send the exception to the caller
-            if (whoops.get() != null)
-                throw new IOException("An exception occurred on a file worker thread", whoops.get());
+                }))
+                .toList());
 
             if (replace) {
                 database.allMods.clear();

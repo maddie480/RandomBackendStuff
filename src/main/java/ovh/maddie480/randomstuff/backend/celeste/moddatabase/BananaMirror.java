@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.ParallelzUtilz;
 import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
@@ -74,7 +75,7 @@ public class BananaMirror {
                 }
             }
             return null;
-        }), tracker::uploadedModToBananaMirror, tracker::deletedModFromBananaMirror);
+        }, 10), tracker::uploadedModToBananaMirror, tracker::deletedModFromBananaMirror);
     }
 
     public void synchronizeImages(ModDatabase database, UpdateCheckerTracker tracker) throws IOException {
@@ -85,24 +86,29 @@ public class BananaMirror {
                 .collect(Collectors.toMap(s -> s.mirrorName + ".png", s -> s.mainUrl, (a, _) -> a));
 
         rsync(bananaMirrorConfig.imagesDirectory, list, (path, url) -> ConnectionUtils.runWithRetry(() -> {
-            Path tmp = Paths.get("/tmp/updater_image_to_read");
-            Path tmp2 = Paths.get("/tmp/updater_image_to_read2.png");
-            try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp))) {
-                IOUtils.copy(new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(url)), os);
+            Path tmp = Files.createTempFile("/tmp/updater_image_to_read_", "");
+            Path tmp2 = Files.createTempFile("/tmp/updater_image_to_read2_", ".png");
+            try {
+                try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp))) {
+                    IOUtils.copy(new BufferedInputStream(ConnectionUtils.openStreamWithTimeout(url)), os);
+                }
+
+                log.debug("Thumbnailating file...");
+
+                // minimize it to 220px
+                Thumbnails.of(new File(tmp.toAbsolutePath().toString()))
+                        .size(220, 220)
+                        .outputFormat("png")
+                        .toFile(tmp2.toAbsolutePath().toString());
+                Files.move(tmp2, path);
+            } finally {
+                try {
+                    if (Files.exists(tmp)) Files.delete(tmp);
+                    if (Files.exists(tmp2)) Files.delete(tmp2);
+                } catch (IOException e) { /* welp */ }
             }
-
-            log.debug("Thumbnailating file...");
-
-            // minimize it to 220px
-            Thumbnails.of(new File(tmp.toAbsolutePath().toString()))
-                    .size(220, 220)
-                    .outputFormat("png")
-                    .toFile(tmp2.toAbsolutePath().toString());
-            Files.move(tmp2, path);
-
-            Files.delete(tmp);
             return null;
-        }), tracker::uploadedImageToBananaMirror, tracker::deletedImageFromBananaMirror);
+        }, 10), tracker::uploadedImageToBananaMirror, tracker::deletedImageFromBananaMirror);
     }
 
     public void synchronizeRichPresenceIcons(ModDatabase database, UpdateCheckerTracker tracker) throws IOException {
@@ -122,23 +128,27 @@ public class BananaMirror {
         list.put("list.json", Pair.of("ERROR", "ERROR"));
 
         rsync(bananaMirrorConfig.richPresenceIconsDirectory, list, (path, urlAndPath) -> ConnectionUtils.runWithRetry(() -> {
-            Path temp = Paths.get("/tmp/fkldnk");
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(urlAndPath.getLeft());
-                 OutputStream os = Files.newOutputStream(temp)) {
+            Path temp = Files.createTempFile("rpiconmirror_", "");
+            try {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(urlAndPath.getLeft());
+                    OutputStream os = Files.newOutputStream(temp)) {
 
-                IOUtils.copy(is, os);
+                    IOUtils.copy(is, os);
+                }
+
+                try (ZipFile zip = ZipFileWithAutoEncoding.open(temp.toAbsolutePath().toString());
+                    InputStream is = zip.getInputStream(zip.getEntry(urlAndPath.getRight()));
+                    OutputStream os = Files.newOutputStream(path)) {
+
+                    IOUtils.copy(is, os);
+                }
+            } finally {
+                try {
+                    if (Files.exists(temp)) Files.delete(temp);
+                } catch (IOException e) { /* welp */ }
             }
-
-            try (ZipFile zip = ZipFileWithAutoEncoding.open(temp.toAbsolutePath().toString());
-                 InputStream is = zip.getInputStream(zip.getEntry(urlAndPath.getRight()));
-                 OutputStream os = Files.newOutputStream(path)) {
-
-                IOUtils.copy(is, os);
-            }
-
-            Files.delete(temp);
             return null;
-        }), tracker::uploadedRichPresenceIconToBananaMirror, tracker::deletedRichPresenceIconFromBananaMirror);
+        }, 10), tracker::uploadedRichPresenceIconToBananaMirror, tracker::deletedRichPresenceIconFromBananaMirror);
 
         list.remove("list.json");
         File tempFile = new File("/tmp/file_list.json");
@@ -156,26 +166,38 @@ public class BananaMirror {
         Set<String> existing = new HashSet<>(listFiles(directory));
         Set<String> toDelete = new HashSet<>(existing);
 
+        List<ParralelzUtilz.ExplodyRunnable> tasks = new ArrayList<>();
+
         for (Map.Entry<String, T> entry : expected.entrySet()) {
             toDelete.remove(entry.getKey());
 
             if (!existing.contains(entry.getKey())) {
-                log.info("File {} is not currently mirrored! Doing that now.", entry.getKey());
-
-                Path mirrorer = Paths.get("/tmp/mirrorstfuf");
-                fileGen.accept(mirrorer, entry.getValue());
-                uploadFile(directory, mirrorer, entry.getKey());
-                onCreate.accept(entry.getKey());
-                Files.delete(mirrorer);
+                tasks.add(() -> {
+                    log.info("File {} is not currently mirrored! Doing that now.", entry.getKey());
+                    Path mirrorer = Files.createTempFile("/tmp/mirrorstfuf_", "");
+                    try {
+                        fileGen.accept(mirrorer, entry.getValue());
+                        uploadFile(directory, mirrorer, entry.getKey());
+                        onCreate.accept(entry.getKey());
+                    } finally {
+                        try {
+                            if (Files.exists(mirrorer)) Files.delete(mirrorer);
+                        } catch (IOException e) { /* welp */ }
+                    }
+                });
             }
         }
 
         // delete all files that disappeared from the database.
         for (String file : toDelete) {
-            log.info("File {} is mirrored but doesn't exist anymore! Deleting it now.", file);
-            deleteFile(directory, file);
-            onDelete.accept(file);
+            tasks.add(() -> {
+                log.info("File {} is mirrored but doesn't exist anymore! Deleting it now.", file);
+                deleteFile(directory, file);
+                onDelete.accept(file);
+            });
         }
+
+        ParallelzUtilz.runInParallel(tasks);
     }
 
     private List<String> listFiles(String directory) throws IOException {
