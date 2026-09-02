@@ -69,23 +69,23 @@ public class OtobotMirror {
         callMirrorUpdateEndpoint(request);
     }
 
-    private Set<String> getMirroredMods(ModDatabase database) throws IOException {
+    private Set<String> getMirroredMods(ModDatabase database) {
         return database.listLatestVersions().stream()
-                .map(mod -> "https://celestemodupdater-storage.0x0a.de/" + mod.file().mirrorName + ".zip")
+                .map(mod -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + mod.file().mirrorName + ".zip")
                 .collect(Collectors.toSet());
     }
 
-    private Set<String> getMirroredScreenshots(ModDatabase database) throws IOException {
+    private Set<String> getMirroredScreenshots(ModDatabase database) {
         return database.allMods.stream()
                 .map(mod -> Arrays.stream(mod.screenshots)
                         .filter(s -> s.mirrorName != null)
                         .toList())
                 .flatMap(List::stream)
-                .map(s -> "https://celestemodupdater-storage.0x0a.de/" + s.mirrorName + ".png")
+                .map(s -> "https://celestemodupdater-storage.0x0a.de/banana-mirror-images/" + s.mirrorName + ".png")
                 .collect(Collectors.toSet());
     }
 
-    private Set<String> getMirroredRichPresenceIcons(ModDatabase database) throws IOException {
+    private Set<String> getMirroredRichPresenceIcons(ModDatabase database) {
         return database.allMods.stream()
                 .map(mod -> Arrays.stream(mod.files)
                         .map(f -> Arrays.stream(f.richPresenceIcons)
