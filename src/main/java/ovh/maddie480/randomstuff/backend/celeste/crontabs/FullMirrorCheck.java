@@ -163,7 +163,7 @@ public class FullMirrorCheck {
         }
     }
 
-    private static <T> void doTheParallelStuff(Collection<T> items, Consumer<T> processOne) {
+    private static <T> void doTheParallelStuff(Collection<T> items, Consumer<T> processOne) throws IOException {
         ParallelzUtilz.runInParallel(items.stream()
             .<ParallelzUtilz.ExplodyRunnable>map(item -> (() -> processOne.accept(item)))
             .toList());
