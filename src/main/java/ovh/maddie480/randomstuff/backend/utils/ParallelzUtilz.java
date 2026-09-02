@@ -48,4 +48,4 @@ public class ParallelzUtilz {
         if (whoops.get() != null)
             throw new IOException("An exception occurred on a worker thread", whoops.get());
     }
-} 
+}
