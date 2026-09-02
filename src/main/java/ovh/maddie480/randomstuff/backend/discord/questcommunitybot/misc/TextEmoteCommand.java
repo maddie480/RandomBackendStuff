@@ -6,8 +6,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 
-import java.io.IOException;
-
 public class TextEmoteCommand implements BotCommand {
     @Override
     public String getCommandName() {

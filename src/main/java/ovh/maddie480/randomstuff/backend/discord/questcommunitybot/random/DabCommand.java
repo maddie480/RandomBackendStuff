@@ -2,8 +2,6 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.random;
 
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.io.IOException;
-
 public class DabCommand extends AbstractFixedMessageCommand {
     @Override
     public String getCommandName() {

@@ -31,7 +31,8 @@ public class WebhookReposter {
 
     private static final Map<String, String> avatarUrls = new HashMap<>();
 
-    private record Identity(String prefix, String avatarFileName, String nickname) {}
+    private record Identity(String prefix, String avatarFileName, String nickname) {
+    }
 
     public static boolean onMessageReceived(MessageReceivedEvent event) throws IOException {
         if (event.getChannel().getIdLong() != ACTIVE_IN_CHANNEL_ID
@@ -42,8 +43,8 @@ public class WebhookReposter {
 
         // try finding the identity matching the prefix
         Identity identity = getIdentities().stream()
-            .filter(id -> event.getMessage().getContentRaw().startsWith(id.prefix()))
-            .findFirst().orElse(null);
+                .filter(id -> event.getMessage().getContentRaw().startsWith(id.prefix()))
+                .findFirst().orElse(null);
         if (identity == null) return false;
 
         // download all attachments to a temp directory
@@ -67,12 +68,12 @@ public class WebhookReposter {
             logger.debug("Cached avatar URL for {} is {}", identity.avatarFileName(), avatarUrl);
             if (avatarUrl == null) {
                 avatarUrl = event.getJDA()
-                    .getTextChannelById(AVATAR_CHANNEL_ID)
-                    .sendMessage(MessageCreateData.fromFiles(FileUpload.fromData(
-                        Paths.get("webhook_reposter", identity.avatarFileName()))))
-                    .complete()
-                    .getAttachments().getFirst()
-                    .getUrl();
+                        .getTextChannelById(AVATAR_CHANNEL_ID)
+                        .sendMessage(MessageCreateData.fromFiles(FileUpload.fromData(
+                                Paths.get("webhook_reposter", identity.avatarFileName()))))
+                        .complete()
+                        .getAttachments().getFirst()
+                        .getUrl();
                 avatarUrls.put(identity.avatarFileName(), avatarUrl);
                 logger.debug("Uploaded the avatar, got URL: {}", avatarUrl);
 
@@ -117,9 +118,9 @@ public class WebhookReposter {
             return lines.map(line -> {
                 String[] split = line.split(";", 3);
                 return new Identity(
-                    /* prefix: */ split[0],
-                    /* avatarFileName: */ split[1],
-                    /* nickname: */ split[2]
+                        /* prefix: */ split[0],
+                        /* avatarFileName: */ split[1],
+                        /* nickname: */ split[2]
                 );
             }).toList();
         }

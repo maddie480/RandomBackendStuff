@@ -17,10 +17,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -133,17 +130,17 @@ public class ModUpdater {
             }
 
             ParallelzUtilz.runInParallel(newFiles.values().stream()
-                .<ParallelzUtilz.ExplodyRunnable>map(newFile -> (() -> {
-                    Path temp = Files.createTempFile("updater_download_", ".tmp");
-                    try {
-                        handleNewFile(newFile.getLeft(), newFile.getRight(), temp, tracker);
-                    } finally {
+                    .<ParallelzUtilz.ExplodyRunnable>map(newFile -> (() -> {
+                        Path temp = Files.createTempFile("updater_download_", ".tmp");
                         try {
-                            if (Files.exists(temp)) Files.delete(temp);
-                        } catch (IOException e) { /* welp */ }
-                    }
-                }))
-                .toList());
+                            handleNewFile(newFile.getLeft(), newFile.getRight(), temp, tracker);
+                        } finally {
+                            try {
+                                if (Files.exists(temp)) Files.delete(temp);
+                            } catch (IOException e) { /* welp */ }
+                        }
+                    }))
+                    .toList());
 
             if (replace) {
                 database.allMods.clear();

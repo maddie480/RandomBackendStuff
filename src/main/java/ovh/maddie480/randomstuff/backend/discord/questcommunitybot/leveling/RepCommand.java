@@ -6,8 +6,6 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
 
-import java.io.IOException;
-
 public class RepCommand implements BotCommand {
     private final PlagiatTatsumaki levelingEngine;
 

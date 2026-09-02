@@ -16,7 +16,6 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -165,8 +164,8 @@ public class FullMirrorCheck {
 
     private static <T> void doTheParallelStuff(Collection<T> items, Consumer<T> processOne) throws IOException {
         ParallelzUtilz.runInParallel(items.stream()
-            .<ParallelzUtilz.ExplodyRunnable>map(item -> (() -> processOne.accept(item)))
-            .toList());
+                .<ParallelzUtilz.ExplodyRunnable>map(item -> (() -> processOne.accept(item)))
+                .toList());
     }
 
     // "bonking" the files just involves changing their mirrorName, so that the updater

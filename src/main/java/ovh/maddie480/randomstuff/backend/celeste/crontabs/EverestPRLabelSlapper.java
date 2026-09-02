@@ -111,13 +111,13 @@ public class EverestPRLabelSlapper {
             if (!verdict.endOfLastCallWindow.equals(endOfLastCallWindowsOld.get(prNumber))) {
                 comment = "The pull request was approved and entered the " + LAST_CALL_WINDOW_DAYS + "-day last-call window."
                         + (verdict.delayedDueToRollingRelease ?
-                            (" Since no PR should be merged within " + RELEASE_FREEZE_PERIOD_DAYS
+                        (" Since no PR should be merged within " + RELEASE_FREEZE_PERIOD_DAYS
                                 + " days of the next rolling release, the last-call window is extended further.") : "")
                         + "\nIf no further reviews happen, it will end on **"
                         + verdict.endOfLastCallWindow
-                            .format(DateTimeFormatter
-                                    .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
-                                    .withLocale(Locale.ENGLISH))
+                        .format(DateTimeFormatter
+                                .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+                                .withLocale(Locale.ENGLISH))
                         + " UTC**, after which the pull request will be able to be merged.";
             }
             endOfLastCallWindowsNew.put(prNumber, verdict.endOfLastCallWindow);

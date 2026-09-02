@@ -142,7 +142,7 @@ public class GameBananaAutomatedChecks {
                                     int lines = 0;
 
                                     try (InputStream is = p.getInputStream();
-                                            BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
+                                         BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
 
                                         String line;
                                         while ((line = br.readLine()) != null) {

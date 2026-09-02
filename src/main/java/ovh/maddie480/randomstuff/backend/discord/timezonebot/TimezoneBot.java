@@ -43,13 +43,15 @@ public class TimezoneBot {
      * The timezone of a user in a particular server.
      * Timezones are server-specific, since you might want to only show your timezone to some servers.
      */
-    record UserTimezone(long serverId, long userId, String timezoneName) {}
+    record UserTimezone(long serverId, long userId, String timezoneName) {
+    }
 
     /**
      * A member in a server, with their current roles.
      * This allows to avoid having to retrieve all members at each time.
      */
-    record CachedMember(long serverId, long memberId, String discordTag, String nickname, ArrayList<Long> roleIds) {}
+    record CachedMember(long serverId, long memberId, String discordTag, String nickname, ArrayList<Long> roleIds) {
+    }
 
     static List<UserTimezone> userTimezones;
     static Set<Long> serversWithTime; // servers that want times in timezone roles

@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.Utils;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 public class PlayedCommand implements BotCommand {

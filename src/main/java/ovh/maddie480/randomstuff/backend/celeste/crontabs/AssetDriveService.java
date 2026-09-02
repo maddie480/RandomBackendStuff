@@ -11,9 +11,9 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -438,7 +438,8 @@ public class AssetDriveService {
         return result;
     }
 
-    private record Size(int width, int height) {}
+    private record Size(int width, int height) {
+    }
 
     private static Size getPngSize(Path file) {
         try (InputStream is = Files.newInputStream(file)) {
@@ -480,9 +481,9 @@ public class AssetDriveService {
         byte[] buf = new byte[4];
         if (is.read(buf) != 4) throw new IOException("Read fewer bytes than expected!");
         return (unsignedByteToInt(buf[0]) << 24)
-            + (unsignedByteToInt(buf[1]) << 16)
-            + (unsignedByteToInt(buf[2]) << 8)
-            + unsignedByteToInt(buf[3]);
+                + (unsignedByteToInt(buf[1]) << 16)
+                + (unsignedByteToInt(buf[2]) << 8)
+                + unsignedByteToInt(buf[3]);
     }
 
     private static int unsignedByteToInt(byte b) {

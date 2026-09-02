@@ -19,7 +19,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -133,14 +132,14 @@ public class BananaMirror {
             Path temp = Files.createTempFile("rpiconmirror_", ".tmp");
             try {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout(urlAndPath.getLeft());
-                    OutputStream os = Files.newOutputStream(temp)) {
+                     OutputStream os = Files.newOutputStream(temp)) {
 
                     IOUtils.copy(is, os);
                 }
 
                 try (ZipFile zip = ZipFileWithAutoEncoding.open(temp.toAbsolutePath().toString());
-                    InputStream is = zip.getInputStream(zip.getEntry(urlAndPath.getRight()));
-                    OutputStream os = Files.newOutputStream(path)) {
+                     InputStream is = zip.getInputStream(zip.getEntry(urlAndPath.getRight()));
+                     OutputStream os = Files.newOutputStream(path)) {
 
                     IOUtils.copy(is, os);
                 }

@@ -91,7 +91,7 @@ public class FileLister {
     }
 
     public static void extractAhornEntities(List<String> ahornEntities, List<String> ahornTriggers, List<String> ahornEffects,
-                                             String file, InputStream inputStream) throws IOException {
+                                            String file, InputStream inputStream) throws IOException {
 
         Pattern mapdefMatcher = Pattern.compile(".*@mapdef(?:data)? [A-Za-z]+ \"([^\"]+)\".*");
         Pattern pardefMatcher = Pattern.compile(".*Entity\\(\"([^\"]+)\".*");

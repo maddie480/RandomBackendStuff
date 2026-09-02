@@ -4,9 +4,9 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
+import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

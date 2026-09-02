@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
-import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 

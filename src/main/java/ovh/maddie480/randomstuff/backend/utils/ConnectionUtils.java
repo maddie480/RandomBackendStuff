@@ -113,9 +113,9 @@ public final class ConnectionUtils {
     /**
      * Runs a task (typically a network operation), retrying if it throws an IOException.
      *
-     * @param task The task to run and retry
+     * @param task  The task to run and retry
      * @param tries The amount of times to try before rethrowing
-     * @param <T>  The return type for the task
+     * @param <T>   The return type for the task
      * @return What the task returned
      * @throws IOException If the task failed <tries> times
      */
@@ -130,7 +130,7 @@ public final class ConnectionUtils {
                 // wait a bit before retrying
                 try {
                     logger.debug("Waiting {} seconds before next try.", i * 5);
-                    Thread.sleep(i * 5000);
+                    Thread.sleep(i * 5000L);
                 } catch (InterruptedException e2) {
                     logger.warn("Sleep interrupted", e2);
                 }

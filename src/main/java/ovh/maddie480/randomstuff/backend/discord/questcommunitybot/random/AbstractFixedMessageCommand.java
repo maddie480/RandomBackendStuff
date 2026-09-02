@@ -3,8 +3,6 @@ package ovh.maddie480.randomstuff.backend.discord.questcommunitybot.random;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.BotCommand;
 
-import java.io.IOException;
-
 public abstract class AbstractFixedMessageCommand implements BotCommand {
     @Override
     public String[] getCommandParameters() {
