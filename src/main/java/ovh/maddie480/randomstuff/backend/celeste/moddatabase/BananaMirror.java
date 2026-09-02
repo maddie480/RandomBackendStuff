@@ -86,7 +86,7 @@ public class BananaMirror {
                 .collect(Collectors.toMap(s -> s.mirrorName + ".png", s -> s.mainUrl, (a, _) -> a));
 
         rsync(bananaMirrorConfig.imagesDirectory, list, (path, url) -> ConnectionUtils.runWithRetry(() -> {
-            Path tmp = Files.createTempFile("/tmp/updater_image_to_read_", "");
+            Path tmp = Files.createTempFile("/tmp/updater_image_to_read_", ".tmp");
             Path tmp2 = Files.createTempFile("/tmp/updater_image_to_read2_", ".png");
             try {
                 try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp))) {
@@ -128,7 +128,7 @@ public class BananaMirror {
         list.put("list.json", Pair.of("ERROR", "ERROR"));
 
         rsync(bananaMirrorConfig.richPresenceIconsDirectory, list, (path, urlAndPath) -> ConnectionUtils.runWithRetry(() -> {
-            Path temp = Files.createTempFile("rpiconmirror_", "");
+            Path temp = Files.createTempFile("rpiconmirror_", ".tmp");
             try {
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout(urlAndPath.getLeft());
                     OutputStream os = Files.newOutputStream(temp)) {
@@ -174,7 +174,7 @@ public class BananaMirror {
             if (!existing.contains(entry.getKey())) {
                 tasks.add(() -> {
                     log.info("File {} is not currently mirrored! Doing that now.", entry.getKey());
-                    Path mirrorer = Files.createTempFile("/tmp/mirrorstfuf_", "");
+                    Path mirrorer = Files.createTempFile("/tmp/mirrorstfuf_", ".tmp");
                     try {
                         fileGen.accept(mirrorer, entry.getValue());
                         uploadFile(directory, mirrorer, entry.getKey());
