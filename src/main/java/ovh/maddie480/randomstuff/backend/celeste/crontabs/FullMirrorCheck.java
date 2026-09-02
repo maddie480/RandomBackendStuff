@@ -165,7 +165,7 @@ public class FullMirrorCheck {
 
     private static <T> void doTheParallelStuff(Collection<T> items, Consumer<T> processOne) {
         ParallelzUtilz.runInParallel(items.stream()
-            .map(item -> (() -> processOne.accept(item)))
+            .<ParallelzUtilz.ExplodyRunnable>map(item -> (() -> processOne.accept(item)))
             .toList());
     }
 

@@ -166,7 +166,7 @@ public class BananaMirror {
         Set<String> existing = new HashSet<>(listFiles(directory));
         Set<String> toDelete = new HashSet<>(existing);
 
-        List<ParralelzUtilz.ExplodyRunnable> tasks = new ArrayList<>();
+        List<ParallelzUtilz.ExplodyRunnable> tasks = new ArrayList<>();
 
         for (Map.Entry<String, T> entry : expected.entrySet()) {
             toDelete.remove(entry.getKey());
