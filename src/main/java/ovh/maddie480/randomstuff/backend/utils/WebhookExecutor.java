@@ -78,13 +78,17 @@ public class WebhookExecutor {
         executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), allowUserMentions, null, attachments, null, true);
     }
 
+    private static final Object sync = new Object();
+
     private static void executeWebhook(String webhookUrl, String avatar, String nickname, String body,
                                        Map<String, String> httpHeaders, boolean allowUserMentions, Long allowedUserMentionId,
                                        List<File> attachments, List<Map<String, Object>> embeds, boolean shouldLog) throws IOException {
 
         ConnectionUtils.runWithRetry(() -> {
             try {
-                executeWebhookInternal(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments, embeds, shouldLog);
+                synchronized (sync) {
+                    executeWebhookInternal(webhookUrl, avatar, nickname, body, httpHeaders, allowUserMentions, allowedUserMentionId, attachments, embeds, shouldLog);
+                }
             } catch (InterruptedException e) {
                 // this should never happen, so whatever. :p
                 throw new IOException(e);
