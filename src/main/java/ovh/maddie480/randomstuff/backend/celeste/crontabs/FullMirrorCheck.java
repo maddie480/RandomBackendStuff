@@ -92,9 +92,9 @@ public class FullMirrorCheck {
             }
 
             doTheParallelStuff(mirroredScreenshots, 25, popup, entry -> retryAndCatch(() -> compareStreams(() -> {
-                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror-images/" + entry + ".zip"));
-                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/banana-mirror-images/" + entry + ".zip"));
-                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-images.celestemods.com/" + entry + ".zip"))) {
+                try (InputStream i1 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-storage.0x0a.de/banana-mirror-images/" + entry + ".png"));
+                     InputStream i2 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://celestemodupdater-mirror.papyrus.0x0a.de/banana-mirror-images/" + entry + ".png"));
+                     InputStream i3 = new BufferedInputStream(ConnectionUtils.openStreamWithTimeout("https://banana-mirror-images.celestemods.com/" + entry + ".png"))) {
 
                     return compareStreams(Arrays.asList(i1, i2, i3));
                 }
