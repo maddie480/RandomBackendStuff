@@ -133,7 +133,7 @@
         <dependency>
             <groupId>com.github.twitch4j</groupId>
             <artifactId>twitch4j-chat</artifactId>
-            <version>1.26.0</version>
+            <version>1.27.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.java-websocket/Java-WebSocket -->
         <dependency>
