@@ -1383,7 +1383,7 @@ public class CelesteStuffHealthCheck {
         String expected;
         try (InputStream is = Files.newInputStream(Paths.get("/shared/celeste/celeste-news-network-subscribers.json"))) {
             int count = new JSONArray(new JSONTokener(is)).length();
-            expected = "<b>" + count + " " + (count == 1 ? "webhook" : "webhooks") + "</b>";
+            expected = "<b>" + count + " " + (count == 1 ? "webhook" : "webhooks");
         }
 
         if (!contents.contains(expected)) {
