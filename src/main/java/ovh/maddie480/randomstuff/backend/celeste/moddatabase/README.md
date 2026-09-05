@@ -171,7 +171,7 @@ This is the file used by Everest and Olympus to check for updates, by comparing 
 ```
 
 This is used by Olympus when the API mirror is enabled: instead of calling APIs that do the filtering/sorting/whatever, Olympus downloads the `mod_search_database.yaml`
-and does the same locally... because everestapi.github.io can only have static files. And maddie480.ovh is banned in Russia, or something.
+and does the same locally... because everestapi.github.io can only have static files.
 
 ### https://maddie480.ovh/celeste/mod_files_database.zip
 
