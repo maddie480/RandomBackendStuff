@@ -69,7 +69,7 @@ jobs:
 
     - name: Submit Dependency Snapshot
       if: github.ref == 'refs/heads/main'
-      uses: advanced-security/maven-dependency-submission-action@v5.0.0
+      uses: advanced-security/maven-dependency-submission-action@v6.0.1
 
     - name: Upload target folder as artifact
       if: always()
