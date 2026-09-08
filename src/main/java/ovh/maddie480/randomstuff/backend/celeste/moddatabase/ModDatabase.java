@@ -42,7 +42,7 @@ public class ModDatabase implements AutoCloseable {
         yaml = new Yaml(new Constructor(loaderOptions), new Representer(dumperOptions), dumperOptions, loaderOptions);
     }
 
-    private static final Path lockFile = Paths.get("/shared/celeste/database_lock");
+    private static final Path lockFile = Paths.get("database_lock");
     private static final Path databaseFile = Paths.get("/shared/celeste/mod-database.yaml");
     private static final Path tempDatabase = Paths.get("/tmp/mod_database_staging.yaml");
 

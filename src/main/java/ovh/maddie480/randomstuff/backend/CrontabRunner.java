@@ -34,9 +34,9 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -50,27 +50,32 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public class CrontabRunner {
     private static final Logger logger = LoggerFactory.getLogger(CrontabRunner.class);
+    private static Path statusFile = null;
 
     static void main(String[] args) {
         String arg = args != null && args.length > 0 ? args[0] : "";
 
         switch (arg) {
             case "--daily" -> {
+                statusFile = Paths.get("/shared/temp/status-daily-crontabs.txt");
                 runDailyProcesses();
                 sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Daily processes completed!");
                 System.exit(0);
                 return;
             }
             case "--hourly" -> {
+                statusFile = Paths.get("/shared/temp/status-hourly-crontabs.txt");
                 runHourlyProcesses();
                 return;
             }
             case "--updater" -> {
+                statusFile = Paths.get("/shared/temp/status-full-update-check.txt");
                 runUpdater(true);
                 return;
             }
             case "--mirrorcheck" -> {
                 try {
+                    statusFile = Paths.get("/shared/temp/status-mirror-consistency-check.txt");
                     FullMirrorCheck.main(null);
                     sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":tada: Full mirror check found no issues!");
                 } catch (Exception e) {
@@ -81,11 +86,10 @@ public class CrontabRunner {
             }
         }
 
+        statusFile = Paths.get("/shared/temp/status-backend-updater.txt");
+
         // redirect logs to a file
         redirectLogsToFile(args[0]);
-
-        // start the health checks
-        ContinuousHealthChecks.startChecking();
 
         // start communication channel with the frontend
         FrontendTaskReceiver.start();
@@ -105,7 +109,12 @@ public class CrontabRunner {
             // start the Timezone Bot, Mod Structure Verifier and Quest Community Bot
             TimezoneBot.main(null);
             ModStructureVerifier.main();
-            new QuestCommunityBot();
+
+            new QuestCommunityBot((jda, uptimeCommand) -> {
+                // start the health checks, and make them control the bot status
+                ContinuousHealthChecks.startChecking(jda, uptimeCommand::setBotStatus);
+            });
+
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":arrow_up: :desktop: The backend just started.");
         } catch (Exception e) {
             logger.error("Error while starting up the bots", e);
@@ -489,11 +498,11 @@ public class CrontabRunner {
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
         try {
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`", false);
-            sendCrontabStatusEvent(name);
+            Files.writeString(statusFile, name, UTF_8);
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
-            sendCrontabStatusEvent("");
+            Files.delete(statusFile);
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`", false);
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
@@ -524,25 +533,6 @@ public class CrontabRunner {
             Thread.sleep(delay);
         } catch (InterruptedException e) {
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Could not wait for lock: " + e);
-        }
-    }
-
-    private static void sendCrontabStatusEvent(String status) {
-        try {
-            JSONObject message = new JSONObject();
-            message.put("taskType", "crontabStatusChange");
-            message.put("newStatus", status);
-
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress("localhost", 44480));
-                try (OutputStream os = socket.getOutputStream();
-                     OutputStreamWriter bw = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
-
-                    message.write(bw);
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Error while sending update crontab status event", e);
         }
     }
 }

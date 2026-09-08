@@ -82,7 +82,7 @@ public class UptimeCommand implements BotCommand {
         if (remainingMinutes != 0) s += remainingMinutes + "m ";
         s = s.trim();
 
-        jda.getPresence().setPresence(OnlineStatus.IDLE, Activity.customStatus("!help | " + s));
+        jda.getPresence().setPresence(OnlineStatus.ONLINE, Activity.customStatus("!help | " + s));
     }
 
 

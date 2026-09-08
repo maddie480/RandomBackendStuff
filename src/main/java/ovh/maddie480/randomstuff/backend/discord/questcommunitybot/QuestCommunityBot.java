@@ -16,7 +16,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
-import ovh.maddie480.randomstuff.backend.celeste.FrontendTaskReceiver;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.admin.PingCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.admin.ShutdownCommand;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.admin.UptimeCommand;
@@ -37,6 +36,7 @@ import ovh.maddie480.randomstuff.backend.streams.features.CommandParser;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
@@ -46,7 +46,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
     private final Map<String, List<BotCommand>> commandCategories;
     private final PlagiatTatsumaki levelingManager;
 
-    public QuestCommunityBot() throws IOException {
+    public QuestCommunityBot(BiConsumer<JDA, UptimeCommand> onReady) throws IOException {
         JDA client;
 
         try {
@@ -144,7 +144,7 @@ public class QuestCommunityBot extends ListenerAdapter implements BotCommand {
                 "Plus d'infos", Collections.singletonList(this)
         );
 
-        FrontendTaskReceiver.setCrontabReporterParameters(client, uptimeCommand::setBotStatus);
+        onReady.accept(client, uptimeCommand);
     }
 
     @Override

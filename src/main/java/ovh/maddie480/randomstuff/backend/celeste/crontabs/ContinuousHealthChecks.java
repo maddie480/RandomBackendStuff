@@ -1,6 +1,9 @@
 package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.entities.Activity;
 import org.apache.commons.io.function.IOSupplier;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -23,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -37,11 +41,19 @@ public class ContinuousHealthChecks {
     private static final Map<String, Integer> servicesHealth = new HashMap<>();
     private static final Map<String, Boolean> servicesStatus = new HashMap<>();
 
-    public static String getDownServicesList() {
-        return servicesStatus.entrySet().stream()
+    private static void refreshBotStatus(JDA statusReporterBot, Consumer<JDA> setUptimeStatus) {
+        String badServices = servicesStatus.entrySet().stream()
                 .filter(e -> !e.getValue())
                 .map(Map.Entry::getKey)
                 .collect(Collectors.joining(", "));
+
+        if (!badServices.isEmpty()) {
+            badServices = "Services down! (" + badServices + ")";
+            badServices = badServices.length() > 128 ? badServices.substring(0, 125) + "..." : badServices;
+            statusReporterBot.getPresence().setPresence(OnlineStatus.DO_NOT_DISTURB, Activity.customStatus(badServices));
+        } else {
+            setUptimeStatus.accept(statusReporterBot);
+        }
     }
 
     private static final Map<String, Integer> servicesMaxHP = ImmutableMap.of(
@@ -58,7 +70,7 @@ public class ContinuousHealthChecks {
             "GameBanana File Server", 5
     );
 
-    public static void startChecking() {
+    public static void startChecking(JDA statusReporterBot, Consumer<JDA> setUptimeStatus) {
         new Thread("Continuous Health Checks") {
             @Override
             public void run() {
@@ -91,6 +103,8 @@ public class ContinuousHealthChecks {
                                 "Nextcloud", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
                         checkHealth(() -> Files.exists(Paths.get("/shared/temp/cert_renew_success")),
                                 "Certbot", Collections.singletonList(SecretConstants.UPDATE_CHECKER_LOGS_HOOK));
+
+                        refreshBotStatus(statusReporterBot, setUptimeStatus);
                     } catch (Exception e) {
                         // this shouldn't happen, unless we cannot communicate with Discord.
                         logger.error("Uncaught exception happened during health check!", e);

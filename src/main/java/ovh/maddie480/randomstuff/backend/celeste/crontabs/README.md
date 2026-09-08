@@ -1,32 +1,86 @@
 # Celeste-related backend scheduled tasks
 
-These classes have methods that are run periodically, and take part in the operations of [maddie480.ovh](https://github.com/maddie480/RandomStuffWebsite) and the [Update Checker server](https://github.com/maddie480/EverestUpdateCheckerServer). Everything I run that is related to Celeste is published here:
+These classes have methods that are run periodically, and take part in the operations
+of [maddie480.ovh](https://github.com/maddie480/RandomStuffWebsite) and
+the [Update Checker server](https://github.com/maddie480/EverestUpdateCheckerServer). Everything I run that is related
+to Celeste is published here:
 
-- `ArbitraryModAppCacher`: this makes a copy of the GameBanana API responses displayed by the ["Show Arbitrary Mods on Profile" app](https://gamebanana.com/apps/752), to copy those on Google Cloud Storage. This allows for faster (but slightly out-of-date) responses from the app, without relying on GameBanana response times. This is run once a day.
-- `AssetDriveService`: this lists all files present in the [Celeste Asset Drive](https://drive.google.com/drive/folders/13A0feEXS3kUHb_Q4K2w4xP8DEuBlgTip) recursively, and provides the listing to the frontend. This is run once a day.
-- `CelesteStuffHealthCheck`: a bunch of methods that are run hourly or daily to check everything is fine on [maddie480.ovh](https://github.com/maddie480/RandomStuffWebsite) and [Everest](https://everestapi.github.io). If one of those methods crashes, I'm notified through a Discord bot. Quite handy so that I don't have to monitor all of that myself. :sweat_smile: `check-gb.sh` goes with that as well.
-- `CollabAutoHider`: a process that runs hourly to hide automatically all collabs and contests that were not modified within the last 30 days, to make sure no silently abandoned collab/contest is on the list.
-- `ContinuousHealthChecks`: those are simple "call that URL and check that it contains text X" checks that are run every minute, and sends alerts to a few Discord webhooks when the result is not expected. This allows me and other people to be aware that something is wrong pretty quickly.
-- `CustomEntityCatalogGenerator`: run after `GameBananaAutomatedChecks`. It collects all information necessary to display the [Custom Entity Catalog](https://maddie480.ovh/celeste/custom-entity-catalog) from the update checker database, and writes it in JSON form for the website to pick up.
-- `EverestPRLabelSlapper`: Automatically slaps labels and posts comments on [Everest pull requests](https://github.com/EverestAPI/Everest/pulls).
-- `EverestVersionLister`: lists all versions of Everest available, based on [Azure builds](https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0) and [GitHub releases](https://api.github.com/repos/EverestAPI/Everest/releases). The generated JSON is made available through [an API on the website](https://maddie480.ovh/celeste/everest-versions).
-- `GameBananaAutomatedChecks`: ran once a day, at midnight French time. This runs some checks on all GameBanana submissions to help with moderation and detection of common issues:
-  - code mods that use `yield return orig(self)` are reported, because using that in a hook causes 1 or 2-frame delays that are only noticed by people TASing the game.
-  - code mods that use `GetFunctionPointer()` to get a pointer to a function and "skip" some parent classes (for example calling `ParentOfParentClass.Method()` instead of `ParentClass.Method()`) are reported, because those cause crashes on Mac only and with no error log, making troubleshooting quite tedious.
-  - code mods that use `readonly struct`s, as this (inexplicably) causes issues on macOS.
-  - mods that ship with files included with Celeste or Everest are reported, because this is unnecessary at best... or illegal at worst (in the case of Celeste.exe).
-  - files that have the same everest.yaml name as another file while being attached to a different mod are reported, because that probably means there is a mod name conflict. **If one of them is marked "Obsolete" on GameBanana, it will not raise an alert**, since it means one mod makes the other obsolete.
-  - the everest.yaml files of new mods that are in the updater database are also sent to the [everest.yaml validator](https://maddie480.ovh/celeste/everest-yaml-validator) and errors are reported.
-  - if a mod contains a PNG file with an invalid PNG signature, it will be reported: JPEG files renamed to PNG work on the XNA version of the game, but not on FNA, which makes it easy to miss that if the mod developer has XNA Celeste installed.
-  - if the updater database contains multiple mods associated with the same file, a warning is sent: this means this file contains multiple mods, which can cause weirdness when it gets updated (multiple entries for the same file appearing in the updater).
-  - existence of all categories is also checked, because categories not existing means they were not approved by site admins, and that requires sorting out.
-- `LoennVersionLister`: Mirrors the Lönn versions list API from GitHub once an hour. The GitHub API is severely rate-limited, which causes issues for users of shared networks.
-- `GameBananaProfileLink`: grabs some information that will be useful to generate embeds for GameBanana: category icon links, user profile links, and user avatar links.
-- `MastodonUpdateChecker`: a bot that checks every hour for new posts on several Mastodon accounts, and posts to various places through webhooks if it happens.
-- `ModCatalogDictionaryGenerator`: a utility that checks language files in entity plugins in order to build a dictionary (ID => name). It is used when the [Custom Entity Catalog](https://maddie480.ovh/celeste/custom-entity-catalog) is generated.
-- `OlympusNewsUpdateChecker`: checks the [Olympus](https://github.com/EverestAPI/Olympus) news feed (that comes from [the `olympusnews` folder of the EverestAPI.github.io repository](https://github.com/EverestAPI/EverestAPI.github.io/tree/main/olympusnews)), and posts new entries to Discord webhooks.
-- `OlympusVersionLister`: lists all versions of [Olympus](https://github.com/EverestAPI/Olympus) available, based on [Azure builds](https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds?statusFilter=completed&resultsFilter=succeeded&api-version=5.0), and pulls the changelog from each version by checking `changelog.txt` in the repository.
-- `OtobotMirror`: notifies [celestemods.com](https://celestemods.com) (website run by otobot1) when [0x0ade's mirror](https://celestemodupdater.0x0a.de) is updated, so that it can work as another mirror in the North America region.
-- `UpdateCheckerTracker`: this one is listening to anything that happens to the [Update Checker server](https://github.com/maddie480/EverestUpdateCheckerServer), and re-posts relevant lines to a Discord channel. It also calls some APIs on [maddie480.ovh](https://github.com/maddie480/RandomStuffWebsite) in order to refresh caches (and [the Lua Cutscenes documentation mirror](https://storage.googleapis.com/lua-cutscenes-documentation/index.html), if necessary) when the update check is over.
-- `UpdateOutgoingWebhooks`: this one notifies external services when the updates that happen every 15 minutes (updater database, Everest versions) ended, using webhooks. It currently only notifies a China-accessible mirror of the files, that updates them when the webhook is called.
-- `UsageStatsService`: a service that can output stats on HTTP requests, Discord bots usages, and Maddie's GitHub activity. These stats are posted on a private channel on Discord (daily stats), and written to a file for use by the frontend once an hour (weekly stats).
+- `ArbitraryModAppCacher`: this makes a copy of the GameBanana API responses displayed by
+  the ["Show Arbitrary Mods on Profile" app](https://gamebanana.com/apps/752), to copy those on Google Cloud Storage.
+  This allows for faster (but slightly out-of-date) responses from the app, without relying on GameBanana response
+  times. This is run once a day.
+- `AssetDriveService`: this lists all files present in
+  the [Celeste Asset Drive](https://drive.google.com/drive/folders/13A0feEXS3kUHb_Q4K2w4xP8DEuBlgTip) recursively, and
+  provides the listing to the frontend. This is run once a day.
+- `CelesteStuffHealthCheck`: a bunch of methods that are run hourly or daily to check everything is fine
+  on [maddie480.ovh](https://github.com/maddie480/RandomStuffWebsite) and [Everest](https://everestapi.github.io). If
+  one of those methods crashes, I'm notified through a Discord bot. Quite handy so that I don't have to monitor all of
+  that myself. :sweat_smile: `check-gb.sh` goes with that as well.
+- `CollabAutoHider`: a process that runs hourly to hide automatically all collabs and contests that were not modified
+  within the last 30 days, to make sure no silently abandoned collab/contest is on the list.
+- `ContinuousHealthChecks`: those are simple "call that URL and check that it contains text X" checks that are run every
+  minute, and sends alerts to a few Discord webhooks when the result is not expected. This allows me and other people to
+  be aware that something is wrong pretty quickly.
+- `CustomEntityCatalogGenerator`: run after `GameBananaAutomatedChecks`. It collects all information necessary to
+  display the [Custom Entity Catalog](https://maddie480.ovh/celeste/custom-entity-catalog) from the update checker
+  database, and writes it in JSON form for the website to pick up.
+- `EverestPRLabelSlapper`: Automatically slaps labels and posts comments
+  on [Everest pull requests](https://github.com/EverestAPI/Everest/pulls).
+- `EverestVersionLister`: lists all versions of Everest available, based
+  on [Azure builds](https://dev.azure.com/EverestAPI/Everest/_apis/build/builds?definitions=3&branchName=refs/heads/dev&statusFilter=completed&resultsFilter=succeeded&api-version=5.0)
+  and [GitHub releases](https://api.github.com/repos/EverestAPI/Everest/releases). The generated JSON is made available
+  through [an API on the website](https://maddie480.ovh/celeste/everest-versions).
+- `GameBananaAutomatedChecks`: ran once a day, at midnight French time. This runs some checks on all GameBanana
+  submissions to help with moderation and detection of common issues:
+    - code mods that use `yield return orig(self)` are reported, because using that in a hook causes 1 or 2-frame delays
+      that are only noticed by people TASing the game.
+    - code mods that use `GetFunctionPointer()` to get a pointer to a function and "skip" some parent classes (for
+      example calling `ParentOfParentClass.Method()` instead of `ParentClass.Method()`) are reported, because those
+      cause crashes on Mac only and with no error log, making troubleshooting quite tedious.
+    - code mods that use `readonly struct`s, as this (inexplicably) causes issues on macOS.
+    - mods that ship with files included with Celeste or Everest are reported, because this is unnecessary at best... or
+      illegal at worst (in the case of Celeste.exe).
+    - files that have the same everest.yaml name as another file while being attached to a different mod are reported,
+      because that probably means there is a mod name conflict. **If one of them is marked "Obsolete" on GameBanana, it
+      will not raise an alert**, since it means one mod makes the other obsolete.
+    - the everest.yaml files of new mods that are in the updater database are also sent to
+      the [everest.yaml validator](https://maddie480.ovh/celeste/everest-yaml-validator) and errors are reported.
+    - if a mod contains a PNG file with an invalid PNG signature, it will be reported: JPEG files renamed to PNG work on
+      the XNA version of the game, but not on FNA, which makes it easy to miss that if the mod developer has XNA Celeste
+      installed.
+    - if the updater database contains multiple mods associated with the same file, a warning is sent: this means this
+      file contains multiple mods, which can cause weirdness when it gets updated (multiple entries for the same file
+      appearing in the updater).
+    - existence of all categories is also checked, because categories not existing means they were not approved by site
+      admins, and that requires sorting out.
+- `LoennVersionLister`: Mirrors the Lönn versions list API from GitHub once an hour. The GitHub API is severely
+  rate-limited, which causes issues for users of shared networks.
+- `GameBananaProfileLink`: grabs some information that will be useful to generate embeds for GameBanana: category icon
+  links, user profile links, and user avatar links.
+- `MastodonUpdateChecker`: a bot that checks every hour for new posts on several Mastodon accounts, and posts to various
+  places through webhooks if it happens.
+- `ModCatalogDictionaryGenerator`: a utility that checks language files in entity plugins in order to build a dictionary
+  (ID => name). It is used when the [Custom Entity Catalog](https://maddie480.ovh/celeste/custom-entity-catalog) is
+  generated.
+- `OlympusNewsUpdateChecker`: checks the [Olympus](https://github.com/EverestAPI/Olympus) news feed (that comes
+  from [the
+  `olympusnews` folder of the EverestAPI.github.io repository](https://github.com/EverestAPI/EverestAPI.github.io/tree/main/olympusnews)),
+  and posts new entries to Discord webhooks.
+- `OlympusVersionLister`: lists all versions of [Olympus](https://github.com/EverestAPI/Olympus) available, based
+  on [Azure builds](https://dev.azure.com/EverestAPI/Olympus/_apis/build/builds?statusFilter=completed&resultsFilter=succeeded&api-version=5.0),
+  and pulls the changelog from each version by checking `changelog.txt` in the repository.
+- `OtobotMirror`: notifies [celestemods.com](https://celestemods.com) (website run by otobot1)
+  when [0x0ade's mirror](https://celestemodupdater.0x0a.de) is updated, so that it can work as another mirror in the
+  North America region.
+- `UpdateCheckerTracker`: this one is listening to anything that happens to
+  the [Update Checker server](https://github.com/maddie480/EverestUpdateCheckerServer), and re-posts relevant lines to a
+  Discord channel. It also calls some APIs on [maddie480.ovh](https://github.com/maddie480/RandomStuffWebsite) in order
+  to refresh caches
+  (and [the Lua Cutscenes documentation mirror](https://storage.googleapis.com/lua-cutscenes-documentation/index.html),
+  if necessary) when the update check is over.
+- `UpdateOutgoingWebhooks`: this one notifies external services when the updates that happen every 15 minutes (updater
+  database, Everest versions) ended, using webhooks. It currently only notifies a China-accessible mirror of the files,
+  that updates them when the webhook is called.
+- `UsageStatsService`: a service that can output stats on HTTP requests, Discord bots usages, and Maddie's GitHub
+  activity. These stats are posted on a private channel on Discord (daily stats), and written to a file for use by the
+  frontend once an hour (weekly stats).

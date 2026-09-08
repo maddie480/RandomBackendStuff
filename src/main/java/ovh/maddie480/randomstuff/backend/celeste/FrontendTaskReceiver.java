@@ -1,8 +1,5 @@
 package ovh.maddie480.randomstuff.backend.celeste;
 
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.OnlineStatus;
-import net.dv8tion.jda.api.entities.Activity;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
@@ -10,7 +7,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.celeste.crontabs.ContinuousHealthChecks;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.FontGenerator;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 
@@ -23,8 +19,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 /**
  * When a user asks for mod structure verifying or for font generating with BMFont on the website,
@@ -77,7 +71,6 @@ public class FrontendTaskReceiver {
                 case "fontGenerate" -> handleFontGenerateRequest(o.getString("fileName"), o.getString("language"));
                 case "customFontGenerate" -> handleCustomFontGenerateRequest(o.getString("textFileName"),
                         o.getString("fontFileName"), o.getString("resultFontFileName"));
-                case "crontabStatusChange" -> handleCrontabStatusChange(o.getString("newStatus"));
                 default -> log.error("Received invalid task type {}!", o.getString("taskType"));
             }
         } catch (JSONException e) {
@@ -174,50 +167,5 @@ public class FrontendTaskReceiver {
         Path target = Paths.get("/shared/temp/" + taskName + "-" + file.getName());
         Files.move(file.toPath(), target);
         return target.getFileName().toString();
-    }
-
-    private static JDA crontabReporterBot;
-    private static Consumer<JDA> setUptimeStatus;
-    private static final AtomicInteger lastMessageHandle = new AtomicInteger();
-
-    public static void setCrontabReporterParameters(JDA crontabReporterBot, Consumer<JDA> setUptimeStatus) {
-        FrontendTaskReceiver.crontabReporterBot = crontabReporterBot;
-        FrontendTaskReceiver.setUptimeStatus = setUptimeStatus;
-    }
-
-    private static void handleCrontabStatusChange(String newStatus) {
-        if (crontabReporterBot == null) {
-            log.warn("Cannot change crontab reporter status because the bot wasn't initialized");
-            return;
-        }
-
-        int myHandle = lastMessageHandle.incrementAndGet();
-        new Thread(() -> {
-            try {
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                log.warn("Sleep interrupted! Going on.", e);
-            }
-
-            if (lastMessageHandle.get() != myHandle) {
-                // Another message got queued up, give up
-                return;
-            }
-
-            String badServices = ContinuousHealthChecks.getDownServicesList();
-            if (!badServices.isEmpty()) {
-                log.debug("Services are down, changing status to: \"{}\"", badServices);
-                badServices = "Services down! (" + badServices + ")";
-                badServices = badServices.length() > 128 ? badServices.substring(0, 125) + "..." : badServices;
-                crontabReporterBot.getPresence().setPresence(OnlineStatus.DO_NOT_DISTURB, Activity.customStatus(badServices));
-            } else if (newStatus.isEmpty()) {
-                log.debug("Clearing status");
-                setUptimeStatus.accept(crontabReporterBot);
-            } else {
-                String setStatus = newStatus.length() > 128 ? newStatus.substring(0, 125) + "..." : newStatus;
-                log.debug("Changing status to: \"{}\"", setStatus);
-                crontabReporterBot.getPresence().setPresence(OnlineStatus.ONLINE, Activity.playing(setStatus));
-            }
-        }).start();
     }
 }
