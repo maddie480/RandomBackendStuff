@@ -502,7 +502,7 @@ public class CrontabRunner {
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
-            Files.delete(statusFile);
+            if (Files.exists(statusFile)) Files.delete(statusFile);
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`", false);
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
