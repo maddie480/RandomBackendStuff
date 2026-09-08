@@ -498,7 +498,7 @@ public class CrontabRunner {
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
         try {
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`", false);
-            Files.writeString(statusFile, name, UTF_8);
+            Files.writeString(statusFile, name + "\n", UTF_8);
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
