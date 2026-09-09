@@ -503,16 +503,24 @@ public class CrontabRunner {
     }
 
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
+        Path statusFile = null;
         try {
-            Path statusFile = Files.createTempFile(Paths.get("/shared/temp"), "status-", ".txt");
+            statusFile = Files.createTempFile(Paths.get("/shared/temp"), "status-", ".txt");
             Files.writeString(statusFile, name + "\n", UTF_8);
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
-            Files.delete(statusFile);
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `" + name + "`: " + e);
+        } finally {
+            if (statusFile != null && Files.exists(statusFile)) {
+                try {
+                    Files.delete(statusFile);
+                } catch (IOException e) {
+                    // oh well...
+                }
+            }
         }
     }
 
