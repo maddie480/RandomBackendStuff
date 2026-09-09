@@ -263,9 +263,11 @@ public class CrontabRunner {
                 new RunProcessParameters("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub),
                 new RunProcessParameters("[Hourly] CollabAutoHider", CollabAutoHider::run),
                 new RunProcessParameters("[Hourly] cleanUpFolder(/shared/temp)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, _ -> true)),
-                new RunProcessParameters("[Hourly] cleanUpFolder(/logs)", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log.gz"))),
-                new RunProcessParameters("[Hourly] cleanUpFolder(/logs, autodeploy)", () -> TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log"))),
-                new RunProcessParameters("[Hourly] zipUpOldFiles(/logs)", () -> TempFolderCleanup.zipUpOldFiles("/logs", 8, path -> path.getFileName().toString().endsWith(".backend.log"))),
+                new RunProcessParameters("[Hourly] cleanUpFolder(/logs)", () -> {
+                    TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log.gz"));
+                    TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log"));
+                    TempFolderCleanup.zipUpOldFiles("/logs", 8, path -> path.getFileName().toString().endsWith(".backend.log"));
+                }),
                 new RunProcessParameters("[Hourly] MastodonUpdateChecker", () -> {
                     MastodonUpdateChecker.loadFile();
                     MastodonUpdateChecker.checkForUpdates();
