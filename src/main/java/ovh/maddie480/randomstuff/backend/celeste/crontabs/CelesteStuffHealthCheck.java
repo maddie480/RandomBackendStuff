@@ -713,7 +713,13 @@ public class CelesteStuffHealthCheck {
         }
 
         // mod files database zip
-        try (ZipInputStream zis = new ZipInputStream(ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_files_database.zip"))) {
+        Path modFilesDatabaseTemp = Paths.get("/tmp/mod_files_database.zip");
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_files_database.zip");
+             OutputStream os = Files.newOutputStream(modFilesDatabaseTemp)) {
+
+            IOUtils.copy(is, os);
+        }
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(modFilesDatabaseTemp))) {
             Set<String> expectedFiles;
             try (ModDatabase database = new ModDatabase()) {
                 expectedFiles = database.allMods.stream()
@@ -736,6 +742,7 @@ public class CelesteStuffHealthCheck {
                 throw new IOException("The following files are missing from mod files database: " + String.join(", ", expectedFiles));
             }
         }
+        Files.delete(modFilesDatabaseTemp);
 
         // mod_dependency_graph.yaml
         final String modDependencyGraph = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/mod_dependency_graph.yaml", UTF_8);
