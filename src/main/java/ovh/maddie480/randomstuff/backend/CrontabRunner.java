@@ -35,7 +35,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.DayOfWeek;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -272,7 +271,6 @@ public class CrontabRunner {
                 }),
                 new RunProcessParameters("[Hourly] LoennVersionLister", LoennVersionLister::update),
                 new RunProcessParameters("[Hourly] TopGGCommunicator.refreshVotes", () -> TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message))),
-                new RunProcessParameters("[Hourly] PrivateDiscordJanitor", PrivateDiscordJanitor::runHourly),
                 new RunProcessParameters("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null)),
                 new RunProcessParameters("[Hourly] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods)
         ));
@@ -507,17 +505,14 @@ public class CrontabRunner {
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
         try {
             Path statusFile = Files.createTempFile(Paths.get("/shared/temp"), "status-", ".txt");
-            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`", false);
             Files.writeString(statusFile, name + "\n", UTF_8);
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
             Files.delete(statusFile);
-            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`", false);
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "Error while running `" + name + "`: " + e);
-            sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :x: Fail `" + name + "`", false);
         }
     }
 

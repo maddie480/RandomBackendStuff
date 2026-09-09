@@ -27,7 +27,7 @@ public class WebhookReposter {
     private static final Logger logger = LoggerFactory.getLogger(WebhookReposter.class);
 
     private static final long ACTIVE_IN_CHANNEL_ID = 445631337315958796L;
-    private static final long AVATAR_CHANNEL_ID = 1280617841980080158L;
+    private static final long AVATAR_CHANNEL_ID = 791795741919674388L;
 
     private static final Map<String, String> avatarUrls = new HashMap<>();
 

@@ -89,7 +89,6 @@ public class SecretConstants {
 
     // a webhook I'm using for personal notifications
     public static final String PERSONAL_NOTIFICATION_WEBHOOK_URL;
-    public static final String CRONTAB_LOGS_WEBHOOK_URL;
 
     // header used to authenticate to the bot account @maddie480-bot with the GitHub API
     public static final String GITHUB_BASIC_AUTH;
@@ -188,7 +187,6 @@ public class SecretConstants {
         SRC_UPDATE_CHECKER_HOOK = secrets.getString("SRC_UPDATE_CHECKER_HOOK");
 
         PERSONAL_NOTIFICATION_WEBHOOK_URL = secrets.getString("PERSONAL_NOTIFICATION_WEBHOOK_URL");
-        CRONTAB_LOGS_WEBHOOK_URL = secrets.getString("CRONTAB_LOGS_WEBHOOK_URL");
 
         GITHUB_BASIC_AUTH = secrets.getString("GITHUB_BASIC_AUTH");
 

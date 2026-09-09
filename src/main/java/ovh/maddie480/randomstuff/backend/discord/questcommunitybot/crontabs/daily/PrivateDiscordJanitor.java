@@ -38,15 +38,6 @@ public class PrivateDiscordJanitor {
         cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), false, true);
     }
 
-
-    public static void runHourly() {
-        try (DiscardableJDA questBot = new DiscardableJDA(SecretConstants.QUEST_COMMUNITY_BOT_TOKEN, GatewayIntent.GUILD_MESSAGES)) {
-            new PrivateDiscordJanitor(questBot)
-                    .cleanupChannel(1280617841980080158L, OffsetDateTime.now().minusDays(1), true, false);
-        }
-    }
-
-
     private void cleanupChannel(final long channelId, final OffsetDateTime delay, boolean useBulkDelete, boolean scanAll) {
         TextChannel channel = botClient.getGuildById(443390765826179072L).getTextChannelById(channelId);
 
