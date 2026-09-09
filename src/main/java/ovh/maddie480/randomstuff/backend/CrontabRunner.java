@@ -25,10 +25,7 @@ import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
-import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.EmbedBuilder;
-import ovh.maddie480.randomstuff.backend.utils.OutputStreamLogger;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
+import ovh.maddie480.randomstuff.backend.utils.*;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -41,6 +38,8 @@ import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -50,32 +49,27 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public class CrontabRunner {
     private static final Logger logger = LoggerFactory.getLogger(CrontabRunner.class);
-    private static Path statusFile = null;
 
     static void main(String[] args) {
         String arg = args != null && args.length > 0 ? args[0] : "";
 
         switch (arg) {
             case "--daily" -> {
-                statusFile = Paths.get("/shared/temp/status-daily-crontabs.txt");
                 runDailyProcesses();
                 sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Daily processes completed!");
                 System.exit(0);
                 return;
             }
             case "--hourly" -> {
-                statusFile = Paths.get("/shared/temp/status-hourly-crontabs.txt");
                 runHourlyProcesses();
                 return;
             }
             case "--updater" -> {
-                statusFile = Paths.get("/shared/temp/status-full-update-check.txt");
                 runUpdater(true);
                 return;
             }
             case "--mirrorcheck" -> {
                 try {
-                    statusFile = Paths.get("/shared/temp/status-mirror-consistency-check.txt");
                     FullMirrorCheck.main(null);
                     sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":tada: Full mirror check found no issues!");
                 } catch (Exception e) {
@@ -85,8 +79,6 @@ public class CrontabRunner {
                 return;
             }
         }
-
-        statusFile = Paths.get("/shared/temp/status-backend-updater.txt");
 
         // redirect logs to a file
         redirectLogsToFile(args[0]);
@@ -169,155 +161,172 @@ public class CrontabRunner {
     }
 
     private static void runDailyProcesses() {
-        // The YouTube bot is not approved by Google, so its authorization gets revoked after a week,
-        // so we need to reauthorize through the Authorization Code Flow: I allow the app,
-        // then Google gives me a token, and I paste it into youtube_auth_code.txt.
-        // This is referred to as the "Token Exchange Ritual", because it sounds more ~mysterious~.
-        // Live streams happen on Sunday, so Saturday evening is the right time to do this!
-        if (ZonedDateTime.now().getDayOfWeek() == DayOfWeek.SATURDAY) {
-            runProcessAndAlertOnException("[Daily] prepareYouTubeTokenExchangeRitual", () -> {
-                OutputStreamLogger.redirectAllOutput(logger,
-                        new ProcessBuilder("rm", "-rfv", "youtube_api_credentials").start()).waitFor();
-                OutputStreamLogger.redirectAllOutput(logger,
-                        new ProcessBuilder("touch", "youtube_auth_code.txt").start()).waitFor();
+        runInParallel("[Daily] Update tasks", Arrays.asList(
+                new RunProcessParameters("[Daily] checkChatProviderCanConnect(YouTube)", () -> {
+                    // The YouTube bot is not approved by Google, so its authorization gets revoked after a week,
+                    // so we need to reauthorize through the Authorization Code Flow: I allow the app,
+                    // then Google gives me a token, and I paste it into youtube_auth_code.txt.
+                    // This is referred to as the "Token Exchange Ritual", because it sounds more ~mysterious~.
+                    // Live streams happen on Sunday, so Saturday evening is the right time to do this!
+                    if (ZonedDateTime.now().getDayOfWeek() != DayOfWeek.SATURDAY) return;
 
-                sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "You have 5 minutes to execute the YouTube Token Exchange Ritual!");
-            });
+                    OutputStreamLogger.redirectAllOutput(logger,
+                            new ProcessBuilder("rm", "-rfv", "youtube_api_credentials").start()).waitFor();
+                    OutputStreamLogger.redirectAllOutput(logger,
+                            new ProcessBuilder("touch", "youtube_auth_code.txt").start()).waitFor();
 
-            try {
-                Thread.sleep(300000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+                    sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, "You have 5 minutes to execute the YouTube Token Exchange Ritual!");
 
-            runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(YouTube)", () ->
-                    checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!"))));
-        }
+                    unstoppableSleep(300000);
 
-        // Update tasks
-        runProcessAndAlertOnException("[Daily] Dependabork", () -> Dependabork.main(null));
-        runProcessAndAlertOnException("[Daily] MembershipNotifier", () -> MembershipNotifier.main(null));
-        runProcessAndAlertOnException("[Daily] TimezoneBot.leaveDeadServerIfNecessary", TimezoneBot::leaveDeadServerIfNecessary);
-        runProcessAndAlertOnException("[Daily] CustomSlashCommandsCleanup", CustomSlashCommandsCleanup::housekeep);
-        runProcessAndAlertOnException("[Daily] refreshArbitraryModAppCache", ArbitraryModAppCacher::refreshArbitraryModAppCache);
-        runProcessAndAlertOnException("[Daily] CustomEntityCatalogGenerator", CustomEntityCatalogGenerator::main);
-        runProcessAndAlertOnException("[Daily] ServerJanitorBot", () -> ServerJanitorBot.main(null));
-        runProcessAndAlertOnException("[Daily] housekeepArbitraryModApp", CrontabRunner::housekeepArbitraryModApp);
-        runProcessAndAlertOnException("[Daily] AssetDriveService.listAllFiles", AssetDriveService::listAllFiles);
-        runProcessAndAlertOnException("[Daily] AssetDriveService.rsyncFiles", AssetDriveService::rsyncFiles);
-        runProcessAndAlertOnException("[Daily] AssetDriveService.classifyAssets", AssetDriveService::classifyAssets);
-        runProcessAndAlertOnException("[Daily] ServerCountUploader", ServerCountUploader::run);
-        runProcessAndAlertOnException("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile);
-        runProcessAndAlertOnException("[Daily] TASCheckUpdate", TASCheckUpdate::main);
-        runProcessAndAlertOnException("[Daily] TranslationViewer.triggerRefresh", TranslationViewerCheck::triggerRefresh);
-        runProcessAndAlertOnException("[Daily] RefreshMapEditorVanillaEntities", RefreshMapEditorVanillaEntities::checkForAhornPlugins);
+                    checkChatProviderCanConnect(new YouTubeChatProvider(() -> logger.info("Giving up!")));
+                }),
+                new RunProcessParameters("[Daily] Dependabork", () -> Dependabork.main(null)),
+                new RunProcessParameters("[Daily] MembershipNotifier", () -> MembershipNotifier.main(null)),
+                new RunProcessParameters("[Daily] TimezoneBot.leaveDeadServerIfNecessary", TimezoneBot::leaveDeadServerIfNecessary),
+                new RunProcessParameters("[Daily] CustomSlashCommandsCleanup", CustomSlashCommandsCleanup::housekeep),
+                new RunProcessParameters("[Daily] refreshArbitraryModAppCache", ArbitraryModAppCacher::refreshArbitraryModAppCache),
+                new RunProcessParameters("[Daily] CustomEntityCatalogGenerator", CustomEntityCatalogGenerator::main),
+                new RunProcessParameters("[Daily] ServerJanitorBot", () -> ServerJanitorBot.main(null)),
+                new RunProcessParameters("[Daily] housekeepArbitraryModApp", CrontabRunner::housekeepArbitraryModApp),
+                new RunProcessParameters("[Daily] AssetDriveService", () -> {
+                    AssetDriveService.listAllFiles();
+                    AssetDriveService.rsyncFiles();
+                    AssetDriveService.classifyAssets();
+                }),
+                new RunProcessParameters("[Daily] ServerCountUploader", ServerCountUploader::run),
+                new RunProcessParameters("[Daily] writeWeeklyStatisticsToFile", UsageStatsService::writeWeeklyStatisticsToFile),
+                new RunProcessParameters("[Daily] TASCheckUpdate", TASCheckUpdate::main),
+                new RunProcessParameters("[Daily] TranslationViewer.triggerRefresh", TranslationViewerCheck::triggerRefresh),
+                new RunProcessParameters("[Daily] RefreshMapEditorVanillaEntities", RefreshMapEditorVanillaEntities::checkForAhornPlugins)
+        ));
 
-        // Health Checks
-        runProcessAndAlertOnException("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories);
-        runProcessAndAlertOnException("[Daily] WorldClockHealthCheck", () -> WorldClockHealthCheck.main(null));
-        runProcessAndAlertOnException("[Daily] checkEverestExists(daily: true)", () -> CelesteStuffHealthCheck.checkEverestExists(true));
-        runProcessAndAlertOnException("[Daily] checkOlympusExists(daily: true)", () -> CelesteStuffHealthCheck.checkOlympusExists(true));
-        runProcessAndAlertOnException("[Daily] checkLoennVersionsListAPI", CelesteStuffHealthCheck::checkLoennVersionsListAPI);
-        runProcessAndAlertOnException("[Daily] checkFontGeneratorBMFont", CelesteStuffHealthCheck::checkFontGeneratorBMFont);
-        runProcessAndAlertOnException("[Daily] checkFontGeneratorBMFontCustom", CelesteStuffHealthCheck::checkFontGeneratorBMFontCustom);
-        runProcessAndAlertOnException("[Daily] checkModStructureVerifier", CelesteStuffHealthCheck::checkModStructureVerifier);
-        runProcessAndAlertOnException("[Daily] checkMapTreeViewer", () -> {
-            CelesteStuffHealthCheck.checkMapTreeViewer();
-            CelesteStuffHealthCheck.checkMapTreeViewerWithWackyEncoding();
-        });
-        runProcessAndAlertOnException("[Daily] checkFileSearcher", CelesteStuffHealthCheck::checkFileSearcher);
-        runProcessAndAlertOnException("[Daily] checkDirectLinkService", CelesteStuffHealthCheck::checkDirectLinkService);
-        runProcessAndAlertOnException("[Daily] checkStaticPages", CelesteStuffHealthCheck::checkStaticPages);
-        runProcessAndAlertOnException("[Daily] checkGameBananaCategories", CelesteStuffHealthCheck::checkGameBananaCategories);
-        runProcessAndAlertOnException("[Daily] everestYamlValidatorHealthCheck", CelesteStuffHealthCheck::everestYamlValidatorHealthCheck);
-        runProcessAndAlertOnException("[Daily] checkSmallerGameBananaAPIs", CelesteStuffHealthCheck::checkSmallerGameBananaAPIs);
-        runProcessAndAlertOnException("[Daily] EmbedBuilder.integrityCheck()", EmbedBuilder::integrityCheck);
-        runProcessAndAlertOnException("[Daily] checkSrcModUpdateNotificationsPage", CelesteStuffHealthCheck::checkSrcModUpdateNotificationsPage);
-        runProcessAndAlertOnException("[Daily] checkDiscordBotsPage", CelesteStuffHealthCheck::checkDiscordBotsPage);
-        runProcessAndAlertOnException("[Daily] checkCelesteNewsNetworkSubscriptionService", CelesteStuffHealthCheck::checkCelesteNewsNetworkSubscriptionService);
-        runProcessAndAlertOnException("[Daily] checkCollabList", CelesteStuffHealthCheck::checkCollabList);
-        runProcessAndAlertOnException("[Daily] checkCustomEntityCatalog", CelesteStuffHealthCheck::checkCustomEntityCatalog);
-        runProcessAndAlertOnException("[Daily] checkOlympusNews", CelesteStuffHealthCheck::checkOlympusNews);
-        runProcessAndAlertOnException("[Daily] checkAssetDriveBrowser", CelesteStuffHealthCheck::checkAssetDriveBrowser);
-        runProcessAndAlertOnException("[Daily] checkWipeConverter", CelesteStuffHealthCheck::checkWipeConverter);
-        runProcessAndAlertOnException("[Daily] checkArbitraryModApp", CrontabRunner::checkArbitraryModApp);
-        runProcessAndAlertOnException("[Daily] GitHubActionsChecker", () -> GitHubActionsChecker.main(null));
-        runProcessAndAlertOnException("[Daily] BadCharactersChecker", BadCharactersChecker::main);
-        runProcessAndAlertOnException("[Daily] checkMilestoneIsInTheFuture", EverestRepositoriesRitualCheck::checkMilestoneIsInTheFuture);
-        runProcessAndAlertOnException("[Daily] checkLatestVersionsArePinned", EverestRepositoriesRitualCheck::checkLatestVersionsArePinned);
-        runProcessAndAlertOnException("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch);
-        runProcessAndAlertOnException("[Daily] checkEverestGitHubAPIMirrorMatch", CelesteStuffHealthCheck::checkEverestGitHubAPIMirrorMatch);
-        runProcessAndAlertOnException("[Daily] TimezoneBot.checkIfEnoughUsers", TimezoneBot::checkIfEnoughUsers);
-        runProcessAndAlertOnException("[Daily] TranslationViewer.check", TranslationViewerCheck::main);
+        runInParallel("[Daily] Health checks", Arrays.asList(
+                new RunProcessParameters("[Daily] checkUnapprovedCategories", GameBananaAutomatedChecks::checkUnapprovedCategories),
+                new RunProcessParameters("[Daily] WorldClockHealthCheck", () -> WorldClockHealthCheck.main(null)),
+                new RunProcessParameters("[Daily] checkEverestExists(daily: true)", () -> CelesteStuffHealthCheck.checkEverestExists(true)),
+                new RunProcessParameters("[Daily] checkOlympusExists(daily: true)", () -> CelesteStuffHealthCheck.checkOlympusExists(true)),
+                new RunProcessParameters("[Daily] checkLoennVersionsListAPI", CelesteStuffHealthCheck::checkLoennVersionsListAPI),
+                new RunProcessParameters("[Daily] checkFontGeneratorBMFont", CelesteStuffHealthCheck::checkFontGeneratorBMFont),
+                new RunProcessParameters("[Daily] checkFontGeneratorBMFontCustom", CelesteStuffHealthCheck::checkFontGeneratorBMFontCustom),
+                new RunProcessParameters("[Daily] checkModStructureVerifier", CelesteStuffHealthCheck::checkModStructureVerifier),
+                new RunProcessParameters("[Daily] checkMapTreeViewer", () -> {
+                    CelesteStuffHealthCheck.checkMapTreeViewer();
+                    CelesteStuffHealthCheck.checkMapTreeViewerWithWackyEncoding();
+                }),
+                new RunProcessParameters("[Daily] checkFileSearcher", CelesteStuffHealthCheck::checkFileSearcher),
+                new RunProcessParameters("[Daily] checkDirectLinkService", CelesteStuffHealthCheck::checkDirectLinkService),
+                new RunProcessParameters("[Daily] checkStaticPages", CelesteStuffHealthCheck::checkStaticPages),
+                new RunProcessParameters("[Daily] checkGameBananaCategories", CelesteStuffHealthCheck::checkGameBananaCategories),
+                new RunProcessParameters("[Daily] everestYamlValidatorHealthCheck", CelesteStuffHealthCheck::everestYamlValidatorHealthCheck),
+                new RunProcessParameters("[Daily] checkSmallerGameBananaAPIs", CelesteStuffHealthCheck::checkSmallerGameBananaAPIs),
+                new RunProcessParameters("[Daily] EmbedBuilder.integrityCheck()", EmbedBuilder::integrityCheck),
+                new RunProcessParameters("[Daily] checkSrcModUpdateNotificationsPage", CelesteStuffHealthCheck::checkSrcModUpdateNotificationsPage),
+                new RunProcessParameters("[Daily] checkDiscordBotsPage", CelesteStuffHealthCheck::checkDiscordBotsPage),
+                new RunProcessParameters("[Daily] checkCelesteNewsNetworkSubscriptionService", CelesteStuffHealthCheck::checkCelesteNewsNetworkSubscriptionService),
+                new RunProcessParameters("[Daily] checkCollabList", CelesteStuffHealthCheck::checkCollabList),
+                new RunProcessParameters("[Daily] checkCustomEntityCatalog", CelesteStuffHealthCheck::checkCustomEntityCatalog),
+                new RunProcessParameters("[Daily] checkOlympusNews", CelesteStuffHealthCheck::checkOlympusNews),
+                new RunProcessParameters("[Daily] checkAssetDriveBrowser", CelesteStuffHealthCheck::checkAssetDriveBrowser),
+                new RunProcessParameters("[Daily] checkWipeConverter", CelesteStuffHealthCheck::checkWipeConverter),
+                new RunProcessParameters("[Daily] checkArbitraryModApp", CrontabRunner::checkArbitraryModApp),
+                new RunProcessParameters("[Daily] GitHubActionsChecker", () -> GitHubActionsChecker.main(null)),
+                new RunProcessParameters("[Daily] BadCharactersChecker", BadCharactersChecker::main),
+                new RunProcessParameters("[Daily] checkMilestoneIsInTheFuture", EverestRepositoriesRitualCheck::checkMilestoneIsInTheFuture),
+                new RunProcessParameters("[Daily] checkLatestVersionsArePinned", EverestRepositoriesRitualCheck::checkLatestVersionsArePinned),
+                new RunProcessParameters("[Daily] checkBananaMirrorDatabaseMatch", CelesteStuffHealthCheck::checkBananaMirrorDatabaseMatch),
+                new RunProcessParameters("[Daily] checkEverestGitHubAPIMirrorMatch", CelesteStuffHealthCheck::checkEverestGitHubAPIMirrorMatch),
+                new RunProcessParameters("[Daily] TimezoneBot.checkIfEnoughUsers", TimezoneBot::checkIfEnoughUsers),
+                new RunProcessParameters("[Daily] TranslationViewer.check", TranslationViewerCheck::main)
+        ));
 
-        // Non-Celeste Stuff
-        runProcessAndAlertOnException("[Daily] LNJBot.healthCheck", LNJBot::healthCheck);
-        runProcessAndAlertOnException("[Daily] checkChatProviderCanConnect(Twitch)", () -> checkChatProviderCanConnect(new TwitchChatProvider()));
-        runProcessAndAlertOnException("[Daily] checkRadioLNJ", CrontabRunner::checkRadioLNJ);
-        runProcessAndAlertOnException("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes);
-        runProcessAndAlertOnException("[Daily] checkEnhancedBananaEmbeds()", CrontabRunner::checkEnhancedBananaEmbeds);
-        runProcessAndAlertOnException("[Daily] ChangeBGToRandom", ChangeBGToRandom::run);
-        runProcessAndAlertOnException("[Daily] PurgePosts", PurgePosts::run);
-        runProcessAndAlertOnException("[Daily] QuestCommunityWebsiteHealthCheck", QuestCommunityWebsiteHealthCheck::run);
-        runProcessAndAlertOnException("[Daily] PlatformBackup", PlatformBackup::run);
-        runProcessAndAlertOnException("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily);
+        runInParallel("[Daily] Non-Celeste stuff", Arrays.asList(
+                new RunProcessParameters("[Daily] LNJBot.healthCheck", LNJBot::healthCheck),
+                new RunProcessParameters("[Daily] checkChatProviderCanConnect(Twitch)", () -> checkChatProviderCanConnect(new TwitchChatProvider())),
+                new RunProcessParameters("[Daily] checkRadioLNJ", CrontabRunner::checkRadioLNJ),
+                new RunProcessParameters("[Daily] checkLNJEmotes()", CrontabRunner::checkLNJEmotes),
+                new RunProcessParameters("[Daily] checkEnhancedBananaEmbeds()", CrontabRunner::checkEnhancedBananaEmbeds),
+                new RunProcessParameters("[Daily] ChangeBGToRandom", ChangeBGToRandom::run),
+                new RunProcessParameters("[Daily] PurgePosts", PurgePosts::run),
+                new RunProcessParameters("[Daily] QuestCommunityWebsiteHealthCheck", QuestCommunityWebsiteHealthCheck::run),
+                new RunProcessParameters("[Daily] PlatformBackup", PlatformBackup::run),
+                new RunProcessParameters("[Daily] PrivateDiscordJanitor", PrivateDiscordJanitor::runDaily)
+        ));
     }
 
     private static void runHourlyProcesses() {
-        // Update tasks
-        runProcessAndAlertOnException("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub);
-        runProcessAndAlertOnException("[Hourly] CollabAutoHider", CollabAutoHider::run);
-        runProcessAndAlertOnException("[Hourly] cleanUpFolder(/shared/temp)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, _ -> true));
-        runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs)", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log.gz")));
-        runProcessAndAlertOnException("[Hourly] cleanUpFolder(/logs, autodeploy)", () -> TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log")));
-        runProcessAndAlertOnException("[Hourly] zipUpOldFiles(/logs)", () -> TempFolderCleanup.zipUpOldFiles("/logs", 8, path -> path.getFileName().toString().endsWith(".backend.log")));
-        runProcessAndAlertOnException("[Hourly] MastodonUpdateChecker", () -> {
-            MastodonUpdateChecker.loadFile();
-            MastodonUpdateChecker.checkForUpdates();
-        });
-        runProcessAndAlertOnException("[Hourly] OlympusNewsUpdateChecker", () -> {
-            OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
-            OlympusNewsUpdateChecker.checkForUpdates();
-        });
-        runProcessAndAlertOnException("[Hourly] LoennVersionLister", LoennVersionLister::update);
-        runProcessAndAlertOnException("[Hourly] TopGGCommunicator.refreshVotes", () -> TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message)));
-        runProcessAndAlertOnException("[Hourly] PrivateDiscordJanitor", PrivateDiscordJanitor::runHourly);
-        runProcessAndAlertOnException("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null));
-        runProcessAndAlertOnException("[Hourly] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
+        runInParallel("[Hourly] Update tasks", Arrays.asList(
+                new RunProcessParameters("[Hourly] updatePrivateHelpersFromGitHub", UpdateCheckerTracker::updatePrivateHelpersFromGitHub),
+                new RunProcessParameters("[Hourly] CollabAutoHider", CollabAutoHider::run),
+                new RunProcessParameters("[Hourly] cleanUpFolder(/shared/temp)", () -> TempFolderCleanup.cleanUpFolder("/shared/temp", 1, _ -> true)),
+                new RunProcessParameters("[Hourly] cleanUpFolder(/logs)", () -> TempFolderCleanup.cleanUpFolder("/logs", 30, path -> path.getFileName().toString().endsWith(".backend.log.gz"))),
+                new RunProcessParameters("[Hourly] cleanUpFolder(/logs, autodeploy)", () -> TempFolderCleanup.cleanUpFolder("/logs", 1, path -> path.getFileName().toString().endsWith(".autodeploy.log"))),
+                new RunProcessParameters("[Hourly] zipUpOldFiles(/logs)", () -> TempFolderCleanup.zipUpOldFiles("/logs", 8, path -> path.getFileName().toString().endsWith(".backend.log"))),
+                new RunProcessParameters("[Hourly] MastodonUpdateChecker", () -> {
+                    MastodonUpdateChecker.loadFile();
+                    MastodonUpdateChecker.checkForUpdates();
+                }),
+                new RunProcessParameters("[Hourly] OlympusNewsUpdateChecker", () -> {
+                    OlympusNewsUpdateChecker.loadPreviouslyPostedNews();
+                    OlympusNewsUpdateChecker.checkForUpdates();
+                }),
+                new RunProcessParameters("[Hourly] LoennVersionLister", LoennVersionLister::update),
+                new RunProcessParameters("[Hourly] TopGGCommunicator.refreshVotes", () -> TopGGCommunicator.refreshVotes(message -> CrontabRunner.sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, message))),
+                new RunProcessParameters("[Hourly] PrivateDiscordJanitor", PrivateDiscordJanitor::runHourly),
+                new RunProcessParameters("[Hourly] EverestPRLabelSlapper", () -> EverestPRLabelSlapper.main(null)),
+                new RunProcessParameters("[Hourly] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods)
+        ));
 
-        // GameBanana automated checks
         runProcessAndAlertOnException("[Hourly] new ModDatabase()", () -> {
             try (ModDatabase database = new ModDatabase()) {
-                runProcessAndAlertOnException("[Hourly] checkYieldReturnOrigAndIntPtrTrick", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick(database));
-                runProcessAndAlertOnException("[Hourly] checkForForbiddenFiles", () -> GameBananaAutomatedChecks.checkForForbiddenFiles(database));
-                runProcessAndAlertOnException("[Hourly] checkAllModsWithEverestYamlValidator", () -> GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator(database));
-                runProcessAndAlertOnException("[Hourly] checkPngFilesArePngFiles", () -> GameBananaAutomatedChecks.checkPngFilesArePngFiles(database));
-                runProcessAndAlertOnException("[Hourly] checkDuplicateModIdsCaseInsensitive", () -> GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive(database));
-                runProcessAndAlertOnException("[Hourly] checkForBananaServingTheWrongFile", () -> GameBananaAutomatedChecks.checkForBananaGettingDrunkAndServingTheWrongFile(database));
+                runInParallel("[Hourly] GameBanana automated checks", Arrays.asList(
+                        new RunProcessParameters("[Hourly] checkYieldReturnOrigAndIntPtrTrick", () -> GameBananaAutomatedChecks.checkYieldReturnOrigAndIntPtrTrick(database)),
+                        new RunProcessParameters("[Hourly] checkForForbiddenFiles", () -> GameBananaAutomatedChecks.checkForForbiddenFiles(database)),
+                        new RunProcessParameters("[Hourly] checkAllModsWithEverestYamlValidator", () -> GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator(database)),
+                        new RunProcessParameters("[Hourly] checkPngFilesArePngFiles", () -> GameBananaAutomatedChecks.checkPngFilesArePngFiles(database)),
+                        new RunProcessParameters("[Hourly] checkDuplicateModIdsCaseInsensitive", () -> GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive(database)),
+                        new RunProcessParameters("[Hourly] checkForBananaServingTheWrongFile", () -> GameBananaAutomatedChecks.checkForBananaGettingDrunkAndServingTheWrongFile(database))
+                ));
             }
         });
 
-        // Health checks
-        runProcessAndAlertOnException("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck);
-        runProcessAndAlertOnException("[Hourly] checkEverestExists(daily: false)", () -> CelesteStuffHealthCheck.checkEverestExists(false));
-        runProcessAndAlertOnException("[Hourly] checkOlympusExists(daily: false)", () -> CelesteStuffHealthCheck.checkOlympusExists(false));
-        runProcessAndAlertOnException("[Hourly] checkOlympusAPIs", CelesteStuffHealthCheck::checkOlympusAPIs);
+        runInParallel("[Hourly] Health checks", Arrays.asList(
+                new RunProcessParameters("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck),
+                new RunProcessParameters("[Hourly] checkEverestExists(daily: false)", () -> CelesteStuffHealthCheck.checkEverestExists(false)),
+                new RunProcessParameters("[Hourly] checkOlympusExists(daily: false)", () -> CelesteStuffHealthCheck.checkOlympusExists(false)),
+                new RunProcessParameters("[Hourly] checkOlympusAPIs", CelesteStuffHealthCheck::checkOlympusAPIs)
+        ));
 
-        // Quest Community Bot stuff
-        runProcessAndAlertOnException("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates());
-        runProcessAndAlertOnException("[Hourly] TwitchUpdateChecker", () -> new TwitchUpdateChecker().checkForUpdates());
+        runInParallel("[Hourly] Quest Community Bot stuff", Arrays.asList(
+                new RunProcessParameters("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates()),
+                new RunProcessParameters("[Hourly] TwitchUpdateChecker", () -> new TwitchUpdateChecker().checkForUpdates())
+        ));
     }
 
     private static void runUpdater(boolean fullUpdateCheck) {
         if (fullUpdateCheck) {
-            runProcessAndAlertOnException("[Updater] ModUpdater::fullUpdate", ModUpdater::fullUpdate);
-            runProcessAndAlertOnException("[Updater] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
+            new RunProcessParameters("[Updater] ModUpdater::fullUpdate", ModUpdater::fullUpdate);
+            new RunProcessParameters("[Updater] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
             return;
         }
 
-        runProcessAndAlertOnException("[Updater] checkEverestVersions", EverestVersionLister::checkEverestVersions);
-        runProcessAndAlertOnException("[Updater] checkOlympusVersions", OlympusVersionLister::checkOlympusVersions);
-        runProcessAndAlertOnException("[Updater] ModUpdater::incrementalUpdate", ModUpdater::incrementalUpdate);
+        runInParallel("[Updater] Update tasks", Arrays.asList(
+                new RunProcessParameters("[Updater] checkEverestVersions", EverestVersionLister::checkEverestVersions),
+                new RunProcessParameters("[Updater] checkOlympusVersions", OlympusVersionLister::checkOlympusVersions),
+                new RunProcessParameters("[Updater] ModUpdater::incrementalUpdate", ModUpdater::incrementalUpdate)
+        ));
+    }
+
+    private record RunProcessParameters(String name, ExplodyMethod process) {
+    }
+
+    private static void runInParallel(String batchName, List<RunProcessParameters> toRun) {
+        runProcessAndAlertOnException(batchName, () -> {
+            List<ParallelzUtilz.ExplodyRunnable> tasks = toRun.stream()
+                    .<ParallelzUtilz.ExplodyRunnable>map(r -> (() -> runProcessAndAlertOnException(r.name, r.process)))
+                    .toList();
+            ParallelzUtilz.runInParallel(tasks);
+        });
     }
 
     private static void housekeepArbitraryModApp() throws IOException {
@@ -497,12 +506,13 @@ public class CrontabRunner {
 
     private static void runProcessAndAlertOnException(String name, ExplodyMethod process) {
         try {
+            Path statusFile = Files.createTempFile(Paths.get("/shared/temp"), "status-", ".txt");
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :arrow_right: Start `" + name + "`", false);
             Files.writeString(statusFile, name + "\n", UTF_8);
             logger.info("Starting {}", name);
             process.run();
             logger.info("Ended {}", name);
-            if (Files.exists(statusFile)) Files.delete(statusFile);
+            Files.delete(statusFile);
             sendMessageToWebhook(SecretConstants.CRONTAB_LOGS_WEBHOOK_URL, "[" + ZonedDateTime.now(ZoneId.of("Europe/Paris")).format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] :white_check_mark: End `" + name + "`", false);
         } catch (Exception e) {
             logger.error("Error while running {}", name, e);
