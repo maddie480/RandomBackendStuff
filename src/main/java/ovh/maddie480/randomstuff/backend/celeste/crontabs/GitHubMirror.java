@@ -28,24 +28,26 @@ public class GitHubMirror {
     private static final Logger log = LoggerFactory.getLogger(GitHubMirror.class);
 
     public static void main(String[] args) throws IOException {
-        GitOperator.init("git@github.com:EverestAPI/EverestAPI.github.io.git", "main", null);
+        synchronized (GitOperator.theLock) {
+            GitOperator.init("git@github.com:EverestAPI/EverestAPI.github.io.git", "main", null);
 
-        mirror("https://maddie480.ovh/celeste/everest_update.yaml", "everest_update.yaml", GitHubMirror::leaveAsIs);
-        mirror("https://maddie480.ovh/celeste/mod_search_database.yaml", "mod_search_database.yaml", GitHubMirror::leaveAsIs);
-        mirror("https://maddie480.ovh/celeste/mod_dependency_graph.yaml", "mod_dependency_graph.yaml", GitHubMirror::leaveAsIs);
-        mirror("https://maddie480.ovh/celeste/gamebanana-categories", "gamebanana_categories.yaml", GitHubMirror::leaveAsIs);
-        mirror("https://maddie480.ovh/celeste/gamebanana-subcategories", "gamebanana_subcategories.yaml", GitHubMirror::leaveAsIs);
-        mirror("https://maddie480.ovh/celeste/gamebanana-featured", "gamebanana_featured.json", GitHubMirror::prettyPrintJSONArray);
-        mirror("https://maddie480.ovh/celeste/everest-versions", "everest_versions.json", GitHubMirror::prettyPrintJSONArray);
-        mirror("https://maddie480.ovh/celeste/olympus-versions", "olympus_versions.json", GitHubMirror::prettyPrintJSONArray);
-        mirror("https://maddie480.ovh/celeste/loenn-versions", "loenn_versions.json", GitHubMirror::prettyPrintJSONObject);
-        mirror("https://maddie480.ovh/celeste/mod_ids_to_names.json", "mod_ids_to_names.json", GitHubMirror::prettyPrintJSONObject);
-        mirror("https://maddie480.ovh/celeste/mod_ids_to_categories.json", "mod_ids_to_categories.json", GitHubMirror::prettyPrintJSONObject);
+            mirror("https://maddie480.ovh/celeste/everest_update.yaml", "everest_update.yaml", GitHubMirror::leaveAsIs);
+            mirror("https://maddie480.ovh/celeste/mod_search_database.yaml", "mod_search_database.yaml", GitHubMirror::leaveAsIs);
+            mirror("https://maddie480.ovh/celeste/mod_dependency_graph.yaml", "mod_dependency_graph.yaml", GitHubMirror::leaveAsIs);
+            mirror("https://maddie480.ovh/celeste/gamebanana-categories", "gamebanana_categories.yaml", GitHubMirror::leaveAsIs);
+            mirror("https://maddie480.ovh/celeste/gamebanana-subcategories", "gamebanana_subcategories.yaml", GitHubMirror::leaveAsIs);
+            mirror("https://maddie480.ovh/celeste/gamebanana-featured", "gamebanana_featured.json", GitHubMirror::prettyPrintJSONArray);
+            mirror("https://maddie480.ovh/celeste/everest-versions", "everest_versions.json", GitHubMirror::prettyPrintJSONArray);
+            mirror("https://maddie480.ovh/celeste/olympus-versions", "olympus_versions.json", GitHubMirror::prettyPrintJSONArray);
+            mirror("https://maddie480.ovh/celeste/loenn-versions", "loenn_versions.json", GitHubMirror::prettyPrintJSONObject);
+            mirror("https://maddie480.ovh/celeste/mod_ids_to_names.json", "mod_ids_to_names.json", GitHubMirror::prettyPrintJSONObject);
+            mirror("https://maddie480.ovh/celeste/mod_ids_to_categories.json", "mod_ids_to_categories.json", GitHubMirror::prettyPrintJSONObject);
 
-        updateHomePage();
+            updateHomePage();
 
-        GitOperator.commitChanges(".", "Update files mirrored from maddie480.ovh", "origin");
-        FileUtils.deleteDirectory(new File("/tmp/Everest"));
+            GitOperator.commitChanges(".", "Update files mirrored from maddie480.ovh", "origin");
+            FileUtils.deleteDirectory(new File("/tmp/Everest"));
+        }
     }
 
     private static void mirror(String url, String target, IOBiConsumer<InputStream, BufferedWriter> formatter) throws IOException {

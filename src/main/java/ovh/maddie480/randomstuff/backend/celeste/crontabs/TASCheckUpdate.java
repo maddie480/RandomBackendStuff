@@ -204,56 +204,58 @@ fi
             }
         }
 
-        try {
-            if (fields.get("{{compare:StrawberryJamBundle-CRC}}").equals("updated :arrow_up:")) {
-                log.debug("Uploading new version of the Strawberry Jam bundle...");
-                String filename = "StrawberryJam2021-Bundle-" + fields.get("{{StrawberryJamBundle-CRC}}") + ".zip";
-                new BananaMirror().uploadFile("pinned-mods", SJ_BUNDLE, filename);
-            }
-
-            log.debug("Preparing git repository...");
-            GitOperator.init("git@github.com:EverestAPI/Everest.git", "dev", "git@github.com:maddie480-bot/Everest.git");
-
-            log.debug("Applying changes...");
-            for (int i = 0; i < FILE_TEMPLATES.length; i++) {
-                Path file = FILE_PATHS[i];
-                String content = FILE_TEMPLATES[i];
-
-                for (Map.Entry<String, String> field : fields.entrySet()) {
-                    content = content.replace(field.getKey(), field.getValue());
+        synchronized (GitOperator.theLock) {
+            try {
+                if (fields.get("{{compare:StrawberryJamBundle-CRC}}").equals("updated :arrow_up:")) {
+                    log.debug("Uploading new version of the Strawberry Jam bundle...");
+                    String filename = "StrawberryJam2021-Bundle-" + fields.get("{{StrawberryJamBundle-CRC}}") + ".zip";
+                    new BananaMirror().uploadFile("pinned-mods", SJ_BUNDLE, filename);
                 }
-                Files.writeString(file, content, StandardCharsets.UTF_8);
+
+                log.debug("Preparing git repository...");
+                GitOperator.init("git@github.com:EverestAPI/Everest.git", "dev", "git@github.com:maddie480-bot/Everest.git");
+
+                log.debug("Applying changes...");
+                for (int i = 0; i < FILE_TEMPLATES.length; i++) {
+                    Path file = FILE_PATHS[i];
+                    String content = FILE_TEMPLATES[i];
+
+                    for (Map.Entry<String, String> field : fields.entrySet()) {
+                        content = content.replace(field.getKey(), field.getValue());
+                    }
+                    Files.writeString(file, content, StandardCharsets.UTF_8);
+                }
+
+                log.debug("Committing changes...");
+                GitOperator.commitChanges(".github", "Bump TAS Check dependencies", "mine");
+
+                log.debug("Opening pull request...");
+                String prDescription = """
+                        - CelesteTAS: {{compare:CelesteTAS-Ver}} @ [{{CelesteTAS-Ver}}](https://github.com/EverestAPI/CelesteTAS-EverestInterop/releases/tag/{{CelesteTAS-Ver}})
+                        - Celeste TAS files: {{compare:CelesteTAS-SHA}} @ https://github.com/VampireFlower/CelesteTAS/commit/{{CelesteTAS-SHA}}
+                        - Strawberry Jam TAS files: {{compare:StrawberryJamTAS-SHA}} @ https://github.com/VampireFlower/StrawberryJamTAS/commit/{{StrawberryJamTAS-SHA}}
+                        - Strawberry Jam bundle: {{compare:StrawberryJamBundle-CRC}} @ [{{StrawberryJamBundle-CRC}}](https://celestemodupdater.0x0a.de/pinned-mods/StrawberryJam2021-Bundle-{{StrawberryJamBundle-CRC}}.zip) (crc32 of the zip)
+                        """;
+                for (Map.Entry<String, String> field : fields.entrySet()) {
+                    prDescription = prDescription.replace(field.getKey(), field.getValue());
+                }
+                openPullRequest("EverestAPI/Everest", "dev", "Bump TAS Check dependencies", prDescription);
+
+                fields.remove("{{compare:CelesteTAS-SHA}}");
+                fields.remove("{{compare:StrawberryJamTAS-SHA}}");
+                fields.remove("{{compare:CelesteTAS-Ver}}");
+                fields.remove("{{compare:StrawberryJamBundle-CRC}}");
+                try (OutputStream os = Files.newOutputStream(stateFile);
+                     ObjectOutputStream oos = new ObjectOutputStream(os)) {
+
+                    oos.writeObject(fields);
+                }
+
+                log.info("Done!");
+            } finally {
+                log.debug("Cleaning up temporary files...");
+                cleanup();
             }
-
-            log.debug("Committing changes...");
-            GitOperator.commitChanges(".github", "Bump TAS Check dependencies", "mine");
-
-            log.debug("Opening pull request...");
-            String prDescription = """
-                    - CelesteTAS: {{compare:CelesteTAS-Ver}} @ [{{CelesteTAS-Ver}}](https://github.com/EverestAPI/CelesteTAS-EverestInterop/releases/tag/{{CelesteTAS-Ver}})
-                    - Celeste TAS files: {{compare:CelesteTAS-SHA}} @ https://github.com/VampireFlower/CelesteTAS/commit/{{CelesteTAS-SHA}}
-                    - Strawberry Jam TAS files: {{compare:StrawberryJamTAS-SHA}} @ https://github.com/VampireFlower/StrawberryJamTAS/commit/{{StrawberryJamTAS-SHA}}
-                    - Strawberry Jam bundle: {{compare:StrawberryJamBundle-CRC}} @ [{{StrawberryJamBundle-CRC}}](https://celestemodupdater.0x0a.de/pinned-mods/StrawberryJam2021-Bundle-{{StrawberryJamBundle-CRC}}.zip) (crc32 of the zip)
-                    """;
-            for (Map.Entry<String, String> field : fields.entrySet()) {
-                prDescription = prDescription.replace(field.getKey(), field.getValue());
-            }
-            openPullRequest("EverestAPI/Everest", "dev", "Bump TAS Check dependencies", prDescription);
-
-            fields.remove("{{compare:CelesteTAS-SHA}}");
-            fields.remove("{{compare:StrawberryJamTAS-SHA}}");
-            fields.remove("{{compare:CelesteTAS-Ver}}");
-            fields.remove("{{compare:StrawberryJamBundle-CRC}}");
-            try (OutputStream os = Files.newOutputStream(stateFile);
-                 ObjectOutputStream oos = new ObjectOutputStream(os)) {
-
-                oos.writeObject(fields);
-            }
-
-            log.info("Done!");
-        } finally {
-            log.debug("Cleaning up temporary files...");
-            cleanup();
         }
     }
 

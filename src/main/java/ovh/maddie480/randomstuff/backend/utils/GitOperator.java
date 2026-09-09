@@ -21,6 +21,8 @@ import java.nio.file.Paths;
 public final class GitOperator {
     private static final Logger log = LoggerFactory.getLogger(GitOperator.class);
 
+    public static final Object theLock = new Object();
+
     private static final Path gitDirectory = Paths.get("/tmp/Everest");
     private static Git gitRepository;
 

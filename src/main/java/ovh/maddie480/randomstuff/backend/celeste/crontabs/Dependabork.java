@@ -67,68 +67,70 @@ public class Dependabork {
         Path tempdir = Paths.get("/tmp/Everest");
         if (Files.exists(tempdir)) FileUtils.deleteDirectory(tempdir.toFile());
 
-        log.debug("Preparing git repository...");
-        GitOperator.init("git@github.com:" + org + "/" + repo + ".git", branch, "git@github.com:maddie480-bot/" + repo + ".git");
+        synchronized (GitOperator.theLock) {
+            log.debug("Preparing git repository...");
+            GitOperator.init("git@github.com:" + org + "/" + repo + ".git", branch, "git@github.com:maddie480-bot/" + repo + ".git");
 
-        log.debug("Downloading latest lib-stripped...");
-        description.append("Updated DLLs in the `lib-stripped` folder:\n");
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(libStrippedUrl);
-             ZipInputStream zis = new ZipInputStream(is)) {
+            log.debug("Downloading latest lib-stripped...");
+            description.append("Updated DLLs in the `lib-stripped` folder:\n");
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(libStrippedUrl);
+                 ZipInputStream zis = new ZipInputStream(is)) {
 
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                Path target = tempdir.resolve(entry.getName());
-                if (!entry.isDirectory() && Files.exists(target)) {
-                    log.debug("Updating {}", entry.getName());
-                    description.append("- `").append(target.getFileName()).append("`\n");
-                    try (OutputStream os = Files.newOutputStream(target)) {
-                        IOUtils.copy(zis, os);
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    Path target = tempdir.resolve(entry.getName());
+                    if (!entry.isDirectory() && Files.exists(target)) {
+                        log.debug("Updating {}", entry.getName());
+                        description.append("- `").append(target.getFileName()).append("`\n");
+                        try (OutputStream os = Files.newOutputStream(target)) {
+                            IOUtils.copy(zis, os);
+                        }
                     }
                 }
             }
-        }
-        description.append('\n');
+            description.append('\n');
 
-        Path csproj = tempdir.resolve(pathToCsproj);
-        String csprojContents = FileUtils.readFileToString(csproj.toFile(), StandardCharsets.UTF_8);
+            Path csproj = tempdir.resolve(pathToCsproj);
+            String csprojContents = FileUtils.readFileToString(csproj.toFile(), StandardCharsets.UTF_8);
 
-        log.debug("Loading used dependency versions...");
-        description.append("Updated dependency versions in `").append(csproj.getFileName()).append("`:\n");
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout(mainUrl);
-             ZipInputStream zis = new ZipInputStream(is)) {
+            log.debug("Loading used dependency versions...");
+            description.append("Updated dependency versions in `").append(csproj.getFileName()).append("`:\n");
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(mainUrl);
+                 ZipInputStream zis = new ZipInputStream(is)) {
 
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                if (!entry.getName().matches("main/[^/]+.dll")) continue;
-                String assemblyName = entry.getName().substring(5, entry.getName().length() - 4);
-                String regex = "Include=\"" + assemblyName.replace(".", "\\.") + "\" Version=\"[^\"]*\"";
-                if (assemblyName.equals("MonoMod.Patcher")) continue;
-                if (!Pattern.compile(regex).matcher(csprojContents).find()) continue;
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    if (!entry.getName().matches("main/[^/]+.dll")) continue;
+                    String assemblyName = entry.getName().substring(5, entry.getName().length() - 4);
+                    String regex = "Include=\"" + assemblyName.replace(".", "\\.") + "\" Version=\"[^\"]*\"";
+                    if (assemblyName.equals("MonoMod.Patcher")) continue;
+                    if (!Pattern.compile(regex).matcher(csprojContents).find()) continue;
 
-                Path assemblyTemp = Paths.get("/tmp/" + assemblyName + ".dll");
-                try (OutputStream os = Files.newOutputStream(assemblyTemp)) {
-                    IOUtils.copy(zis, os);
+                    Path assemblyTemp = Paths.get("/tmp/" + assemblyName + ".dll");
+                    try (OutputStream os = Files.newOutputStream(assemblyTemp)) {
+                        IOUtils.copy(zis, os);
+                    }
+                    String version = extractDllVersion(assemblyTemp);
+                    Files.delete(assemblyTemp);
+
+                    csprojContents = csprojContents.replaceAll(regex, "Include=\"" + assemblyName + "\" Version=\"" + version + "\"");
+
+                    log.debug("Set version of {} to {}", assemblyName, version);
+                    description.append("- `").append(assemblyName).append("` set to version **").append(version).append("**\n");
                 }
-                String version = extractDllVersion(assemblyTemp);
-                Files.delete(assemblyTemp);
-
-                csprojContents = csprojContents.replaceAll(regex, "Include=\"" + assemblyName + "\" Version=\"" + version + "\"");
-
-                log.debug("Set version of {} to {}", assemblyName, version);
-                description.append("- `").append(assemblyName).append("` set to version **").append(version).append("**\n");
             }
+
+            FileUtils.writeStringToFile(csproj.toFile(), csprojContents, StandardCharsets.UTF_8);
+
+            String everestYaml = FileUtils.readFileToString(tempdir.resolve("everest.yaml").toFile(), StandardCharsets.UTF_8);
+            everestYaml = everestYaml.replaceAll("1\\.[0-9][0-9][0-9][0-9]+\\.0", "1." + stableVersion + ".0");
+            FileUtils.writeStringToFile(tempdir.resolve("everest.yaml").toFile(), everestYaml, StandardCharsets.UTF_8);
+
+            GitOperator.commitChanges(".", "Bump Everest dependency", "mine");
+            TASCheckUpdate.openPullRequest(org + "/" + repo, branch, "Bump Everest dependency", description.toString().trim());
+
+            FileUtils.deleteDirectory(tempdir.toFile());
         }
-
-        FileUtils.writeStringToFile(csproj.toFile(), csprojContents, StandardCharsets.UTF_8);
-
-        String everestYaml = FileUtils.readFileToString(tempdir.resolve("everest.yaml").toFile(), StandardCharsets.UTF_8);
-        everestYaml = everestYaml.replaceAll("1\\.[0-9][0-9][0-9][0-9]+\\.0", "1." + stableVersion + ".0");
-        FileUtils.writeStringToFile(tempdir.resolve("everest.yaml").toFile(), everestYaml, StandardCharsets.UTF_8);
-
-        GitOperator.commitChanges(".", "Bump Everest dependency", "mine");
-        TASCheckUpdate.openPullRequest(org + "/" + repo, branch, "Bump Everest dependency", description.toString().trim());
-
-        FileUtils.deleteDirectory(tempdir.toFile());
 
         return Integer.toString(stableVersion);
     }
