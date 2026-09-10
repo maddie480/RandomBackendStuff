@@ -311,6 +311,7 @@ public class CrontabRunner {
         if (fullUpdateCheck) {
             runProcessAndAlertOnException("[Updater] ModUpdater::fullUpdate", ModUpdater::fullUpdate);
             runProcessAndAlertOnException("[Updater] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
+            sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Full update check completed!");
             return;
         }
 
