@@ -12,9 +12,9 @@ import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.utils.DiscardableJDA;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class PrivateDiscordJanitor {
     private static final Logger logger = LoggerFactory.getLogger(PrivateDiscordJanitor.class);
@@ -32,13 +32,20 @@ public class PrivateDiscordJanitor {
     }
 
     private void run() {
-        cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1), false, false);
-        cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1), false, false);
-        cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), false, true);
-        cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), false, true);
+        cleanupChannel(791795741919674388L, OffsetDateTime.now().minusMonths(1), _ -> true);
+        cleanupChannel(551822297573490749L, OffsetDateTime.now().minusMonths(1), _ -> true);
+        cleanupChannel(445236692136230943L, OffsetDateTime.now().minusMonths(1), _ -> true);
+        cleanupChannel(445631337315958796L, OffsetDateTime.now().minusMonths(1), _ -> true);
+
+        cleanupChannel(445631337315958796L, OffsetDateTime.now(),
+                message -> Arrays.asList("H", "J").contains(message.getAuthor().getEffectiveName().substring(0, 1)));
+        cleanupChannel(791795741919674388L, OffsetDateTime.now().minusDays(1),
+                message -> message.getAuthor().getIdLong() == 497138464316325889L);
+        cleanupChannel(791795741919674388L, OffsetDateTime.now(),
+                message -> message.getContentRaw().equals(":tada: Update Checker data was refreshed."));
     }
 
-    private void cleanupChannel(final long channelId, final OffsetDateTime delay, boolean useBulkDelete, boolean scanAll) {
+    private void cleanupChannel(final long channelId, final OffsetDateTime delay, Predicate<Message> filter) {
         TextChannel channel = botClient.getGuildById(443390765826179072L).getTextChannelById(channelId);
 
         logger.debug("Récupération des messages à supprimer dans {}...", channel);
@@ -46,35 +53,20 @@ public class PrivateDiscordJanitor {
         List<PinnedMessagePaginationAction.PinnedMessage> pins = channel.retrievePinnedMessages().stream().toList();
 
         long[] messagesToDelete = channel.getIterableHistory()
-                .skipTo(TimeUtil.getDiscordTimestamp((scanAll ? OffsetDateTime.now() : delay)
-                        .toInstant().toEpochMilli()))
+                .skipTo(TimeUtil.getDiscordTimestamp(delay.toInstant().toEpochMilli()))
                 .stream()
-                .filter(message -> shouldPurge(message, pins, delay))
+                .filter(message -> {
+                    boolean pinned = pins.stream().anyMatch(pin -> pin.getMessage().getIdLong() == message.getIdLong());
+                    return !pinned && filter.test(message);
+                })
                 .mapToLong(Message::getIdLong)
                 .toArray();
 
         logger.debug("{} messages seront supprimés dans {}", messagesToDelete.length, channel);
 
-        if (useBulkDelete) {
-            List<String> idsToDelete = new ArrayList<>(Arrays.stream(messagesToDelete).mapToObj(Long::toString).toList());
-            while (!idsToDelete.isEmpty()) {
-                List<String> chunk = idsToDelete.stream().limit(100).toList();
-                logger.trace("Deleting messages from {}: {}", channel, chunk);
-                (chunk.size() == 1 ? channel.deleteMessageById(chunk.getFirst()) : channel.deleteMessagesByIds(chunk)).complete();
-                idsToDelete.removeAll(chunk);
-            }
-        } else {
-            for (long messageId : messagesToDelete) {
-                logger.trace("Deleting message from {}: {}", channel, messageId);
-                channel.deleteMessageById(messageId).complete();
-            }
+        for (long messageId : messagesToDelete) {
+            logger.trace("Deleting message from {}: {}", channel, messageId);
+            channel.deleteMessageById(messageId).complete();
         }
-    }
-
-    private boolean shouldPurge(Message message, List<PinnedMessagePaginationAction.PinnedMessage> pins, OffsetDateTime delay) {
-        boolean old = message.getTimeCreated().isBefore(delay);
-        boolean spammy = (message.getChannel().getIdLong() == 445631337315958796L && Arrays.asList("H", "J").contains(message.getAuthor().getEffectiveName().substring(0, 1)));
-        boolean pinned = pins.stream().anyMatch(pin -> pin.getMessage().getIdLong() == message.getIdLong());
-        return (old || spammy) && !pinned;
     }
 }
