@@ -406,10 +406,15 @@ public class ModUpdater {
     private static void checkFileIsStillLost(ModRecord mod, FileRecord file) {
         try {
             ConnectionUtils.runWithRetry(() -> {
+                long actualSize;
                 try (InputStream is = ConnectionUtils.openStreamWithTimeout(file.mainUrl)) {
-                    IOUtils.consume(is);
-                    return null;
+                    actualSize = IOUtils.consume(is);
                 }
+                if (file.size != actualSize) {
+                    throw new IOException("The announced file size (" + file.size + ") does not match what we got (" + actualSize + ")" +
+                            " for file " + file.mainUrl);
+                }
+                return null;
             });
             logger.info("File {} isn't lost, deleting it from the database for it to be loaded again.", file.id);
 
