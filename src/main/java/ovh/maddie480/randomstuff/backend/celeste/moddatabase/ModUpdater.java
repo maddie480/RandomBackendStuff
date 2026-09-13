@@ -232,14 +232,14 @@ public class ModUpdater {
                      OutputStream os = new BufferedOutputStream(Files.newOutputStream(target))) {
 
                     IOUtils.copy(is, os);
-
-                    long actualSize = Files.size(target);
-                    if (file.size != actualSize) {
-                        throw new IOException("The announced file size (" + file.size + ") does not match what we got (" + actualSize + ")" +
-                                " for file " + file.mainUrl);
-                    }
-                    return null;
                 }
+
+                long actualSize = Files.size(target);
+                if (file.size != actualSize) {
+                    throw new IOException("The announced file size (" + file.size + ") does not match what we got (" + actualSize + ")" +
+                            " for file " + file.mainUrl);
+                }
+                return null;
             }, 10);
         } catch (IOException e) {
             logger.warn("We still couldn't get the file after 10 attempts! Considering it to be lost...");
