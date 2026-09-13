@@ -13,8 +13,10 @@ import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.ParallelzUtilz;
 import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
-import java.io.*;
-import java.net.HttpURLConnection;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -92,6 +94,22 @@ public class ModUpdater {
         } catch (Exception e) {
             logger.error("Uncaught exception during featured mods update", e);
             new UpdateCheckerTracker(null).uncaughtError(e);
+        }
+    }
+
+    public static void recheckLostFiles() throws IOException {
+        try (ModDatabase database = new ModDatabase()) {
+            // Retry downloading all files that don't have an xxHash (= we didn't manage to download them before),
+            // and if we succeed, delete them from the database so the next full update properly picks them up.
+            ParallelzUtilz.runInParallel(database.allMods.stream()
+                    .map(m -> Arrays.stream(m.files)
+                            .filter(f -> f.xxHash == null)
+                            .<ParallelzUtilz.ExplodyRunnable>map(f -> (() -> checkFileIsStillLost(m, f)))
+                            .toList())
+                    .flatMap(List::stream)
+                    .toList());
+
+            database.commit();
         }
     }
 
@@ -208,41 +226,25 @@ public class ModUpdater {
 
         logger.debug("Starting download of {}", file.mainUrl);
 
-        for (int i = 1; i <= 10; i++) {
-            boolean nonTimeoutHappened = false;
-
-            try {
-                HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(file.mainUrl);
-                connection.setInstanceFollowRedirects(true);
-                connection.getResponseCode();
-                nonTimeoutHappened = true; // ... well, we got a response code, at least.
-
-                try (InputStream is = new BufferedInputStream(ConnectionUtils.connectionToInputStream(connection));
+        try {
+            ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(file.mainUrl);
                      OutputStream os = new BufferedOutputStream(Files.newOutputStream(target))) {
 
                     IOUtils.copy(is, os);
-                }
 
-                long actualSize = Files.size(target);
-                if (file.size != actualSize) {
-                    throw new IOException("The announced file size (" + file.size + ") does not match what we got (" + actualSize + ")" +
-                            " for file " + file.mainUrl);
-                }
-                break;
-            } catch (IOException e) {
-                logger.warn("I/O exception (try {}/10). Server responded at least once: {}", i, nonTimeoutHappened, e);
-
-                if (i == 10) {
-                    if (nonTimeoutHappened) {
-                        logger.warn("The server responded at least once and we still couldn't get the file! Considering it to be lost...");
-                        tracker.fileDownloadError(mod, file, e);
-                        return;
+                    long actualSize = Files.size(target);
+                    if (file.size != actualSize) {
+                        throw new IOException("The announced file size (" + file.size + ") does not match what we got (" + actualSize + ")" +
+                                " for file " + file.mainUrl);
                     }
-                    throw e;
-                } else {
-                    ModDatabase.unstoppableSleep(i * 5000);
+                    return null;
                 }
-            }
+            }, 10);
+        } catch (IOException e) {
+            logger.warn("We still couldn't get the file after 10 attempts! Considering it to be lost...");
+            tracker.fileDownloadError(mod, file, e);
+            return;
         }
 
         try (InputStream is = Files.newInputStream(target)) {
@@ -399,5 +401,25 @@ public class ModUpdater {
         String[] result = new String[strings.size()];
         strings.toArray(result);
         return result;
+    }
+
+    private static void checkFileIsStillLost(ModRecord mod, FileRecord file) {
+        try {
+            ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(file.mainUrl)) {
+                    IOUtils.consume(is);
+                    return null;
+                }
+            });
+            logger.info("File {} isn't lost, deleting it from the database for it to be loaded again.", file.id);
+
+            synchronized (mod) {
+                mod.files = Arrays.stream(mod.files)
+                        .filter(f -> !f.id.equals(file.id))
+                        .toArray(FileRecord[]::new);
+            }
+        } catch (IOException e) {
+            logger.warn("File {} seems to be still lost...", file.id, e);
+        }
     }
 }

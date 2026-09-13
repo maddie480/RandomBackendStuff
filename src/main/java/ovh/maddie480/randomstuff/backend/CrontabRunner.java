@@ -309,6 +309,7 @@ public class CrontabRunner {
 
     private static void runUpdater(boolean fullUpdateCheck) {
         if (fullUpdateCheck) {
+            runProcessAndAlertOnException("[Updater] ModUpdater::recheckLostFiles", ModUpdater::recheckLostFiles);
             runProcessAndAlertOnException("[Updater] ModUpdater::fullUpdate", ModUpdater::fullUpdate);
             runProcessAndAlertOnException("[Updater] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Full update check completed!");
