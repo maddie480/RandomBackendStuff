@@ -240,6 +240,7 @@ public class CrontabRunner {
                 new RunProcessParameters("[Daily] checkEverestGitHubAPIMirrorMatch", CelesteStuffHealthCheck::checkEverestGitHubAPIMirrorMatch),
                 new RunProcessParameters("[Daily] TimezoneBot.checkIfEnoughUsers", TimezoneBot::checkIfEnoughUsers),
                 new RunProcessParameters("[Daily] TranslationViewer.check", TranslationViewerCheck::main),
+                new RunProcessParameters("[Daily] checkHasEverestYamlConsistency", CelesteStuffHealthCheck::checkHasEverestYamlConsistency),
 
                 // Non-Celeste stuff
                 new RunProcessParameters("[Daily] LNJBot.healthCheck", LNJBot::healthCheck),

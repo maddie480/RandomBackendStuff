@@ -17,6 +17,8 @@ import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModUpdater;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.UpdateCheckerTracker;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 import ovh.maddie480.randomstuff.backend.utils.*;
 
 import java.io.*;
@@ -1657,6 +1659,21 @@ public class CelesteStuffHealthCheck {
                 log.debug("Check {}/60 failed", i);
                 // 60 tries = 5 minutes
                 if (i == 60) throw e;
+            }
+        }
+    }
+
+    public static void checkHasEverestYamlConsistency() throws IOException {
+        try (ModDatabase database = new ModDatabase()) {
+            for (ModRecord mod : database.allMods) {
+                for (FileRecord file : mod.files) {
+                    boolean shouldHasEverestYaml = Arrays.stream(file.fileListing).anyMatch(
+                            f -> f.equals("everest.yaml") || f.equals("everest.yml"));
+
+                    if (shouldHasEverestYaml != file.hasEverestYaml) {
+                        throw new IOException("File " + file.id + " has an incorrect hasEverestYaml property!");
+                    }
+                }
             }
         }
     }
