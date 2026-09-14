@@ -285,13 +285,14 @@ public class GameBananaAutomatedChecks {
                     }
 
                     // check against the bad file list (tm)
+                    filelisting:
                     for (String entry : file.fileListing) {
                         for (String illegalFile : BAD_FILE_LIST) {
                             if (entry.equalsIgnoreCase(illegalFile) || entry.toLowerCase(Locale.ROOT).endsWith("/" + illegalFile.toLowerCase(Locale.ROOT))) {
                                 // this file is illegal!
                                 sendAlertToWebhook(database, ":warning: The mod called **" + mod.name + "** contains a file called `" + illegalFile + "`! " +
                                         "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file));
-                                break;
+                                break filelisting;
                             }
                         }
 
@@ -299,6 +300,7 @@ public class GameBananaAutomatedChecks {
                         if (objDirectoryMatcher.matches()) {
                             sendAlertToWebhook(database, ":warning: The mod called **" + mod.name + "** contains a `" + objDirectoryMatcher.group(1) + "` folder! " +
                                     "You generally don't need to ship this folder with your mod, it makes the zip bigger for no reason <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file));
+                            break;
                         }
                     }
                 }
