@@ -291,7 +291,7 @@ public class GameBananaAutomatedChecks {
                                 // this file is illegal!
                                 sendAlertToWebhook(database, ":warning: The mod called **" + mod.name + "** contains a file called `" + illegalFile + "`! " +
                                         "It already ships with Everest <:destareline:935372132102311986>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file));
-                                return;
+                                break;
                             }
                         }
 
@@ -299,7 +299,6 @@ public class GameBananaAutomatedChecks {
                         if (objDirectoryMatcher.matches()) {
                             sendAlertToWebhook(database, ":warning: The mod called **" + mod.name + "** contains a `" + objDirectoryMatcher.group(1) + "` folder! " +
                                     "You generally don't need to ship this folder with your mod, it makes the zip bigger for no reason <:pausefrogelineatthephone:946115556073934898>\n:arrow_right: " + getMaskedEnhancedEmbedLink(mod, file));
-                            return;
                         }
                     }
                 }
