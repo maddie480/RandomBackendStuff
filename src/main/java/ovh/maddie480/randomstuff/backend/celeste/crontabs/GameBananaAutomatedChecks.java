@@ -295,7 +295,10 @@ public class GameBananaAutomatedChecks {
                                 break filelisting;
                             }
                         }
+                    }
 
+                    // check for an evil obj folder
+                    for (String entry : file.fileListing) {
                         Matcher objDirectoryMatcher = objDirectoryRegex.matcher(entry);
                         if (objDirectoryMatcher.matches()) {
                             sendAlertToWebhook(database, ":warning: The mod called **" + mod.name + "** contains a `" + objDirectoryMatcher.group(1) + "` folder! " +
