@@ -25,6 +25,7 @@ import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.TwitchChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.apis.YouTubeChatProvider;
 import ovh.maddie480.randomstuff.backend.streams.features.LNJBot;
+import ovh.maddie480.randomstuff.backend.teamsix.Team6Server;
 import ovh.maddie480.randomstuff.backend.utils.*;
 
 import javax.imageio.ImageIO;
@@ -105,6 +106,14 @@ public class CrontabRunner {
                 // start the health checks, and make them control the bot status
                 ContinuousHealthChecks.startChecking(jda, uptimeCommand::setBotStatus);
             });
+
+            new Thread(() -> {
+                try {
+                    Team6Server.main();
+                } catch (IOException e) {
+                    logger.error("Team 6 Server crashed", e);
+                }
+            }).start();
 
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":arrow_up: :desktop: The backend just started.");
         } catch (Exception e) {
