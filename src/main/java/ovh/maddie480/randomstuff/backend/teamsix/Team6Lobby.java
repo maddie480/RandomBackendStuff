@@ -1,49 +1,45 @@
 package ovh.maddie480.randomstuff.backend.teamsix;
 
+import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
+import static ovh.maddie480.randomstuff.backend.teamsix.Team6Server.assignIdAndAdd;
 import static ovh.maddie480.randomstuff.backend.teamsix.Team6Server.attemptClosing;
 
 public class Team6Lobby {
     private static final Logger log = LoggerFactory.getLogger(Team6Lobby.class);
 
-    private static final Object idLock = new Object();
-    private static int nextId = 2;
-
-    private final Socket server;
     private final String name;
-    private final int id;
-    private final List<Socket> clients = new ArrayList<>();
+    private final byte id;
+    private final Map<Byte, Socket> server;
+    private final Map<Byte, Socket> clients = new HashMap<>();
 
-    public Team6Lobby(Socket server, String name, Consumer<Team6Lobby> onDeath) {
-        this.server = server;
+    public Team6Lobby(Socket server, String name, Function<Team6Lobby, Byte> idProvider, Consumer<Team6Lobby> onDeath) {
+        this.server = ImmutableMap.of((byte) 0, server);
         this.name = name;
+        this.id = idProvider.apply(this);
 
-        synchronized (idLock) {
-            this.id = nextId++;
-            if (nextId == 256) nextId = 2;
-        }
-
-        log.info("Opening a new server with id #{} (name: {}) for client {}", id, name, server.getInetAddress());
+        log.info("SPAWN #{} (name: {}, ip: {})", id, name, server.getInetAddress());
 
         new Thread(() -> {
             try {
-                tunnel(server, clients);
+                tunnel(server, (byte) 0, clients);
             } catch (Exception e) {
-                log.warn("Server #{} died", id, e);
+                log.warn("ERROR #{}", id, e);
             } finally {
-                log.info("Tearing down server #{}", id);
+                log.info("CLOSE #{}", id);
                 attemptClosing(server);
                 synchronized (clients) {
-                    for (Socket client : clients) attemptClosing(client);
+                    for (Socket client : clients.values()) attemptClosing(client);
                 }
                 onDeath.accept(this);
             }
@@ -51,55 +47,78 @@ public class Team6Lobby {
     }
 
     public void joinServer(Socket client) {
-        log.info("Client {} is joining server #{}", client.getInetAddress(), id);
-
-        synchronized (clients) {
-            clients.add(client);
-        }
+        byte clientId = assignIdAndAdd(client, clients);
+        log.info("SPAWN #{} ${}", id, clientId);
 
         new Thread(() -> {
             try {
-                tunnel(client, Collections.singletonList(server));
+                tunnel(client, clientId, server);
             } catch (Exception e) {
-                log.warn("Client {} (on server #{}) died", client.getInetAddress(), id, e);
+                log.warn("ERROR #{} ${}", id, clientId, e);
             } finally {
-                log.info("Client {} leaves server #{}", client.getInetAddress(), id);
+                log.info("CLOSE #{} ${}", id, clientId);
                 attemptClosing(client);
                 synchronized (clients) {
-                    clients.remove(client);
+                    clients.remove(clientId);
                 }
+                notifyServer(false, clientId);
             }
         }).start();
+
+        notifyServer(true, clientId);
     }
 
-    private void tunnel(Socket from, List<Socket> to) throws Exception {
+    private void notifyServer(boolean join, byte clientId) {
+        try {
+            synchronized (server) {
+                OutputStream os = server.get((byte) 0).getOutputStream();
+                os.write(join ? 0 : 1);
+                os.write(clientId);
+                os.flush();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Could not notify server of client join/leave", e);
+        }
+    }
+
+    private void tunnel(Socket from, byte fromId, Map<Byte, Socket> to) throws Exception {
+        // "sometimes I feel like reinventing TCP/IP you know"
         while (true) {
+            // format: [recipient id, size, content...]
+            byte recipient;
             byte[] bytes;
+            { // read recipient id
+                int recipientI = from.getInputStream().read();
+                if (recipientI == -1) break;
+                recipient = (byte) recipientI;
+            }
             {
+                // read size
                 int size = from.getInputStream().read();
                 if (size == -1) break;
 
-                bytes = new byte[size + 1];
-                bytes[0] = (byte) size;
-                int received = from.getInputStream().read(bytes, 1, size);
+                // prepare the outgoing packet with [sender id, size, content]
+                bytes = new byte[size + 2];
+                bytes[0] = fromId;
+                bytes[1] = (byte) size;
+
+                // read content
+                int received = from.getInputStream().read(bytes, 2, size);
                 if (received < size) {
                     throw new IOException("Expected " + size + " bytes, received" + received);
                 }
             }
 
             synchronized (to) {
-                List<Socket> deadSockets = new ArrayList<>();
-                for (Socket singleTo : to) {
-                    try {
-                        singleTo.getOutputStream().write(bytes);
-                        singleTo.getOutputStream().flush();
-                    } catch (Exception e) {
-                        log.warn("Client {} (on server #{}) died", singleTo.getInetAddress(), id, e);
-                        attemptClosing(singleTo);
-                        deadSockets.add(singleTo);
-                    }
+                if (!to.containsKey(recipient)) {
+                    log.info("DROP  #{} ${}", id, recipient);
+                    return;
                 }
-                to.removeAll(deadSockets);
+
+                // send out the packet to the recipient
+                OutputStream os = to.get(recipient).getOutputStream();
+                os.write(bytes);
+                os.flush();
             }
         }
     }
@@ -108,7 +127,7 @@ public class Team6Lobby {
         return name;
     }
 
-    public int getId() {
+    public byte getId() {
         return id;
     }
 
