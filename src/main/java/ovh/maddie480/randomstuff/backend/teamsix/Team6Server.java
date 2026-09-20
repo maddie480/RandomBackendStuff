@@ -62,8 +62,7 @@ public class Team6Server {
         InputStream is = socket.getInputStream();
         OutputStream os = socket.getOutputStream();
 
-        int request = is.read();
-        if (request == -1) throw new IOException("Unexpected end of stream");
+        int request = readSingleByte(is);
 
         if (request == 0) {
             // list servers
@@ -86,12 +85,8 @@ public class Team6Server {
             // input: [name size, name...]
             String name;
             {
-                int nameSize = is.read();
-                byte[] rawName = new byte[nameSize];
-                int readBytes = is.read(rawName);
-                if (readBytes != nameSize) {
-                    throw new IOException("Expected " + nameSize + " bytes for the server name, got " + readBytes + " instead");
-                }
+                byte[] rawName = new byte[readSingleByte(is)];
+                unstoppableRead(is, rawName);
                 name = new String(rawName, StandardCharsets.UTF_8);
             }
 
@@ -144,6 +139,25 @@ public class Team6Server {
 
             existing.put(b, toAdd);
             return b;
+        }
+    }
+
+    static int readSingleByte(InputStream is) throws IOException {
+        int i = is.read();
+        if (i == -1) throw new IOException("Connection closed");
+        return i;
+    }
+
+    static void unstoppableRead(InputStream is, byte[] dest) throws IOException {
+        unstoppableRead(is, dest, 0, dest.length);
+    }
+
+    static void unstoppableRead(InputStream is, byte[] dest, int offset, int count) throws IOException {
+        while (count > 0) {
+            int readCount = is.read(dest, offset, count);
+            if (readCount == -1) throw new IOException("Connection closed");
+            offset += readCount;
+            count -= readCount;
         }
     }
 }
