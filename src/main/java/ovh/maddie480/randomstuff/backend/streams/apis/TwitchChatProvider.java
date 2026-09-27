@@ -225,7 +225,10 @@ public class TwitchChatProvider implements IChatProvider<TwitchMessageID> {
 
     public void makeClip(ChatMessage<?> triggeredByMessage) {
         try {
-            JSONObject clipData = authenticatedHelixRequest("POST", "/clips?broadcaster_id=" + channelId);
+            // YouTube has terrible latency (~30 seconds), so we need to extend the clip to have a chance
+            // to capture the moment the user ran !clip for...
+            int duration = triggeredByMessage.provider() instanceof YouTubeChatProvider ? 60 : 30;
+            JSONObject clipData = authenticatedHelixRequest("POST", "/clips?broadcaster_id=" + channelId + "&duration=" + duration);
             String clipLink = clipData.getJSONArray("data").getJSONObject(0).getString("edit_url");
             if (clipLink.endsWith("/edit")) clipLink = clipLink.substring(0, clipLink.length() - 5);
             triggeredByMessage.respond("Le clip a été créé : " + clipLink);
