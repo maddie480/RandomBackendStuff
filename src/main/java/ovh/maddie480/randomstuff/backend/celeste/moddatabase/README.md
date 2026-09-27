@@ -5,7 +5,9 @@ and [Olympus](https://github.com/EverestAPI/Olympus) lives.
 It aims to centralize all information about [Celeste](https://celestegame.com) mods in one **huge** YAML file.
 This is massively inefficient to load and save, but eh, at least it all fits in memory when it's loaded, and it can be
 used to go quickly through all mods.
-Also, to back it up, you just copy-paste it. (I plan to provide a download link to it eventually.)
+Also, to back it up, you just copy-paste it. And you can download it in its entirety
+from [https://maddie480.ovh/celeste/mod_database.yaml](https://maddie480.ovh/celeste/mod_database.yaml) (don't hit it
+too hard though, and pass the `Accept-Encoding: gzip` header to significantly decrease the download size).
 
 ## The model of the mighty YAML file
 
@@ -137,14 +139,14 @@ on [everestapi.github.io](https://github.com/EverestAPI/EverestAPI.github.io/blo
 ### https://maddie480.ovh/celeste/everest_update.yaml
 
 ```yaml
-{leaderFile.modId}:
-  Version: {leaderFile.modVersion}
-  LastUpdate: {leaderFile.createdDate}
-  MirrorName: {leaderFile.mirrorName}
-  URL: {leaderFile.mainUrl}
-  xxHash:
-  - {leaderFile.xxHash}
-  Size: {leaderFile.size}
+{ leaderFile.modId }:
+Version: { leaderFile.modVersion }
+LastUpdate: { leaderFile.createdDate }
+MirrorName: { leaderFile.mirrorName }
+URL: { leaderFile.mainUrl }
+xxHash:
+  - { leaderFile.xxHash }
+Size: { leaderFile.size }
 ```
 
 This is the file used by Everest and Olympus to check for updates, by comparing the `xxHash` with the one that the user
@@ -153,37 +155,37 @@ has installed.
 ### https://maddie480.ovh/celeste/mod_search_database.yaml
 
 ```yaml
-- Author: {author.name}
+- Author: { author.name }
   Category:
-    ID: {category.id}
-    Name: {category.name}
-    Parent: {category.parent}
-  CreatedDate: {createdDate}
-  Description: {summary}
-  Downloads: {downloads}
-  FeaturedTier: {featuredTier}
+    ID: { category.id }
+    Name: { category.name }
+    Parent: { category.parent }
+  CreatedDate: { createdDate }
+  Description: { summary }
+  Downloads: { downloads }
+  FeaturedTier: { featuredTier }
   Files:
-  - Description: {file.description}
-    HasEverestYaml: {file.hasEverestYaml}
-    Size: {file.size}
-    CreatedDate: {file.createdDate}
-    Downloads: {file.downloads}
-    URL: {file.mainUrl}
-    Name: {file.name}
-    MirrorName: {file.mirrorName}
-    ID: {file.id}
-    IsLatestVersion: {file.isLeader}
-  Likes: {likes}
+    - Description: { file.description }
+      HasEverestYaml: { file.hasEverestYaml }
+      Size: { file.size }
+      CreatedDate: { file.createdDate }
+      Downloads: { file.downloads }
+      URL: { file.mainUrl }
+      Name: { file.name }
+      MirrorName: { file.mirrorName }
+      ID: { file.id }
+      IsLatestVersion: { file.isLeader }
+  Likes: { likes }
   MirroredScreenshots:
-  - https://celestemodupdater.0x0a.de/banana-mirror-images/{screenshot.mirrorName}.png
-  ModifiedDate: {modifiedDate}
-  Name: {name}
-  PageURL: {pageUrl}
+    - https://celestemodupdater.0x0a.de/banana-mirror-images/{screenshot.mirrorName}.png
+  ModifiedDate: { modifiedDate }
+  Name: { name }
+  PageURL: { pageUrl }
   Screenshots:
-  - {screenshot.mainUrl}
-  Text: {description}
-  UpdatedDate: {updatedDate}
-  Views: {views}
+    - { screenshot.mainUrl }
+  Text: { description }
+  UpdatedDate: { updatedDate }
+  Views: { views }
 ```
 
 This is used by Olympus when the API mirror is enabled: instead of calling APIs that do the filtering/sorting/whatever,
