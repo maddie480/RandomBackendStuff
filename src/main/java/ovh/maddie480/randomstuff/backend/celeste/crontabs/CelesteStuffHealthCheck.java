@@ -714,6 +714,19 @@ public class CelesteStuffHealthCheck {
             throw new IOException("mod_search_database.yaml check failed");
         }
 
+        // mod database API
+        boolean foundInDb = false;
+        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_database.yaml");
+             BufferedReader br = new BufferedReader(new InputStreamReader(is, UTF_8))) {
+            String s;
+            while ((s = br.readLine()) != null) {
+                if (s.equals("  name: The 2020 Celeste Spring Community Collab")) foundInDb = true;
+            }
+        }
+        if (!foundInDb) {
+            throw new IOException("Did not find expected line in mod_database.yaml");
+        }
+
         // mod files database zip
         Path modFilesDatabaseTemp = Paths.get("/tmp/mod_files_database.zip");
         try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://maddie480.ovh/celeste/mod_files_database.zip");
@@ -1411,11 +1424,7 @@ public class CelesteStuffHealthCheck {
                 "https://maddie480.ovh/discord-bots/timezone-bot/detect-timezone",
                 "https://maddie480.ovh/discord-bots/timezone-bot/timezone-dropdown-help",
                 "https://maddie480.ovh/discord-bots/terms-and-privacy",
-                "https://maddie480.ovh/celeste/mod-structure-verifier-help?collabName=CollabName&collabMapName=CollabMapName&assets&xmls&nomap&multiplemaps&badmappath&badenglish&misplacedyaml&noyaml&yamlinvalid&multiyaml&missingassets&missingentities&missingfonts&badpngs",
-                "https://maddie480.ovh/static/unicode-mirror/emoji/charts/index.html",
-                "https://maddie480.ovh/static/unicode-mirror/emoji/charts/emoji-list.html",
-                "https://maddie480.ovh/static/unicode-mirror/emoji/charts/full-emoji-list.html",
-                "https://maddie480.ovh/static/unicode-mirror/emoji/charts/emoji-zwj-sequences.html"
+                "https://maddie480.ovh/celeste/mod-structure-verifier-help?collabName=CollabName&collabMapName=CollabMapName&assets&xmls&nomap&multiplemaps&badmappath&badenglish&misplacedyaml&noyaml&yamlinvalid&multiyaml&missingassets&missingentities&missingfonts&badpngs"
         )) {
             log.debug("Checking response code of {}", url);
             HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout(url);
