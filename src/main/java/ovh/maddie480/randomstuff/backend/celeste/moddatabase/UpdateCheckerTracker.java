@@ -306,16 +306,9 @@ public class UpdateCheckerTracker {
             long postProcessingStart = System.currentTimeMillis();
 
             mapToTheGoodOldFiles();
-
-            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/everest-update-reload?key="
-                    + SecretConstants.RELOAD_SHARED_SECRET);
-            if (conn.getResponseCode() != 200) {
-                throw new IOException("Everest Update Reload API sent non 200 code: " + conn.getResponseCode());
-            }
-
             updateModStructureVerifierMaps();
 
-            conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/gamebanana-search-reload?key="
+            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/gamebanana-search-reload?key="
                     + SecretConstants.RELOAD_SHARED_SECRET);
             if (conn.getResponseCode() != 200) {
                 throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
