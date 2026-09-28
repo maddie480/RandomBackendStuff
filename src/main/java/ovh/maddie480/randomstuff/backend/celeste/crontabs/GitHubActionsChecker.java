@@ -38,12 +38,10 @@ public class GitHubActionsChecker {
                 "maddie480/ExtendedVariantMode",
                 "maddie480/JungleHelper",
                 "maddie480/MaddieHelpingHand",
-                "maddie480/MergeRequestReportGenerator",
                 "maddie480/RandomBackendStuff",
                 "maddie480/RandomStuffWebsite",
                 "maddie480/SaveFilePortraits",
                 "maddie480/SmallCelesteModCollection",
-                "maddie480/SpamKick",
                 // the Wiki Quality Checks scheduled actions
                 "EverestAPI/Resources",
                 "EverestAPI/ModResources")) {
