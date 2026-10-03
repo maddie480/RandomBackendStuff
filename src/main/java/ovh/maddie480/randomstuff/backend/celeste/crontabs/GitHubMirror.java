@@ -42,6 +42,7 @@ public class GitHubMirror {
             mirror("https://maddie480.ovh/celeste/loenn-versions", "loenn_versions.json", GitHubMirror::prettyPrintJSONObject);
             mirror("https://maddie480.ovh/celeste/mod_ids_to_names.json", "mod_ids_to_names.json", GitHubMirror::prettyPrintJSONObject);
             mirror("https://maddie480.ovh/celeste/mod_ids_to_categories.json", "mod_ids_to_categories.json", GitHubMirror::prettyPrintJSONObject);
+            mirror("https://maddie480.ovh/celeste/mod_ids_to_descriptions.json", "mod_ids_to_descriptions.json", GitHubMirror::prettyPrintJSONObject);
 
             updateHomePage();
 

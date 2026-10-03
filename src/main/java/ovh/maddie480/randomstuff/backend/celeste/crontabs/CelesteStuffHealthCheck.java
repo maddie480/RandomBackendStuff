@@ -474,12 +474,14 @@ public class CelesteStuffHealthCheck {
                 "olympus-versions",
                 "loenn-versions",
                 "mod_ids_to_names.json",
-                "mod_ids_to_categories.json"
+                "mod_ids_to_categories.json",
+                "mod_ids_to_descriptions.json"
         );
         List<Function<JSONTokener, Object>> getJavaObject = Arrays.asList(
                 t -> new JSONArray(t).toList(),
                 t -> new JSONArray(t).toList(),
                 t -> new JSONArray(t).toList(),
+                t -> new JSONObject(t).toMap(),
                 t -> new JSONObject(t).toMap(),
                 t -> new JSONObject(t).toMap(),
                 t -> new JSONObject(t).toMap()
@@ -792,6 +794,12 @@ public class CelesteStuffHealthCheck {
         final String modIdToCategories = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/mod_ids_to_categories.json", UTF_8);
         if (!modIdToCategories.contains("\"MaxHelpingHand\":\"Helpers\"")) {
             throw new IOException("mod_ids_to_categories.json check failed");
+        }
+
+        // mod IDs to descriptions API
+        final String modIdToDescriptions = ConnectionUtils.toStringWithTimeout("https://maddie480.ovh/celeste/mod_ids_to_descriptions.json", UTF_8);
+        if (!modIdToDescriptions.contains("\"MaxHelpingHand\":\"A grab bag of requests\"")) {
+            throw new IOException("mod_ids_to_descriptions.json check failed");
         }
     }
 
