@@ -2,8 +2,11 @@ package ovh.maddie480.randomstuff.backend.utils;
 
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
+import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.ssh.jsch.JschConfigSessionFactory;
@@ -17,6 +20,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 public final class GitOperator {
     private static final Logger log = LoggerFactory.getLogger(GitOperator.class);
@@ -50,16 +54,20 @@ public final class GitOperator {
     }
 
     public static void init(String originUrl, String branch, String mineUrl) throws IOException {
+        init(originUrl, branch, mineUrl, true);
+    }
+
+    public static void init(String originUrl, String branch, String mineUrl, boolean shallow) throws IOException {
         try {
-            log.info("Cloning git repository...");
+            log.info("Cloning git repository (shallow = {})...", shallow);
             sshInit();
-            gitRepository = Git.cloneRepository()
+            CloneCommand command = Git.cloneRepository()
                     .setDirectory(gitDirectory.toFile())
                     .setBranch(branch)
-                    .setDepth(1)
                     .setURI(originUrl)
-                    .setCloneSubmodules(true)
-                    .call();
+                    .setCloneSubmodules(true);
+            if (shallow) command.setDepth(1);
+            gitRepository = command.call();
 
             if (mineUrl != null) {
                 gitRepository.remoteAdd()
@@ -79,6 +87,10 @@ public final class GitOperator {
     }
 
     public static void commitChanges(String files, String commitMessage, String remote) throws IOException {
+        commitChanges(files, commitMessage, remote, false);
+    }
+
+    public static void commitChanges(String files, String commitMessage, String remote, boolean allowAmend) throws IOException {
         try {
             log.info("Adding");
             gitRepository.add()
@@ -90,17 +102,27 @@ public final class GitOperator {
                 return;
             }
 
-            log.info("Committing");
+            boolean amend = false;
+            if (allowAmend) {
+                RevCommit latestCommit = gitRepository.log()
+                        .add(gitRepository.getRepository().resolve(Constants.HEAD))
+                        .setMaxCount(1).call().iterator().next();
+                amend = Arrays.asList(commitMessage, commitMessage + " (squashed)")
+                        .contains(latestCommit.getFirstMessageLine());
+            }
+
+            log.info("Committing (amend = {})", amend);
             gitRepository.commit()
                     .setAll(true)
+                    .setAmend(amend)
                     .setAuthor("maddie480-bot", "212421949+maddie480-bot@users.noreply.github.com")
                     .setCommitter("maddie480-bot", "212421949+maddie480-bot@users.noreply.github.com")
-                    .setMessage(commitMessage)
+                    .setMessage(commitMessage + (amend ? " (squashed)" : ""))
                     .call();
 
-            log.info("Pushing");
+            log.info("Pushing (force = {})", amend);
             sshInit();
-            gitRepository.push().setRemote(remote).call();
+            gitRepository.push().setRemote(remote).setForce(amend).call();
         } catch (GitAPIException e) {
             throw new IOException(e);
         }

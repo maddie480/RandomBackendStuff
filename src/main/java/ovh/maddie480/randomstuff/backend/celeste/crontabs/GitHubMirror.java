@@ -29,7 +29,7 @@ public class GitHubMirror {
 
     public static void main(String[] args) throws IOException {
         synchronized (GitOperator.theLock) {
-            GitOperator.init("git@github.com:EverestAPI/EverestAPI.github.io.git", "main", null);
+            GitOperator.init("git@github.com:EverestAPI/EverestAPI.github.io.git", "main", null, false);
 
             mirror("https://maddie480.ovh/celeste/everest_update.yaml", "everest_update.yaml", GitHubMirror::leaveAsIs);
             mirror("https://maddie480.ovh/celeste/mod_search_database.yaml", "mod_search_database.yaml", GitHubMirror::leaveAsIs);
@@ -46,7 +46,7 @@ public class GitHubMirror {
 
             updateHomePage();
 
-            GitOperator.commitChanges(".", "Update files mirrored from maddie480.ovh", "origin");
+            GitOperator.commitChanges(".", "Update files mirrored from maddie480.ovh", "origin", true);
             FileUtils.deleteDirectory(new File("/tmp/Everest"));
         }
     }
