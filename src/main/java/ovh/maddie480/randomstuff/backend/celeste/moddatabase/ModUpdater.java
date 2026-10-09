@@ -195,6 +195,7 @@ public class ModUpdater {
 
             OtobotMirror.run(database);
             tracker.updateUpdateCheckerStatusInformation(System.currentTimeMillis() - start);
+            tracker.postEndOfUpdateMessage();
         }
     }
 
