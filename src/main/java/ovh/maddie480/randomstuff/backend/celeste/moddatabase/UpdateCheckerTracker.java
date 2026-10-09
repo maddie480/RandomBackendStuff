@@ -624,7 +624,9 @@ public class UpdateCheckerTracker {
 
         log.info("Uploading new Update Checker status: {}", result);
         Files.writeString(Paths.get("/shared/celeste/updater/status.json"), result.toString(), UTF_8);
+    }
 
+    public void postEndOfUpdateMessage() throws IOException {
         for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
             WebhookExecutor.executeWebhook(
                     webhook,
