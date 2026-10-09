@@ -27,12 +27,19 @@ public class OtobotMirror {
     private static final Logger log = LoggerFactory.getLogger(OtobotMirror.class);
     private static OtobotMirror instance;
 
-    public static OtobotMirror getInstance() throws IOException {
+    private static OtobotMirror getInstance() throws IOException {
         if (instance == null) instance = new OtobotMirror();
         return instance;
     }
 
     private final Signature signature;
+
+    public static void run(ModDatabase database) throws IOException {
+        ConnectionUtils.runWithRetry(() -> {
+            getInstance().update(database);
+            return null; // method signature
+        });
+    }
 
     private OtobotMirror() throws IOException {
         try {
@@ -52,7 +59,7 @@ public class OtobotMirror {
         }
     }
 
-    public void update(ModDatabase database) throws IOException {
+    private void update(ModDatabase database) throws IOException {
         log.debug("Building file list to submit...");
         JSONObject request = new JSONObject();
         request.put("mods", getMirroredMods(database));

@@ -301,28 +301,6 @@ public class UpdateCheckerTracker {
         return "**" + number + "** " + (number == 1 ? singular : plural);
     }
 
-    public void endedSearchingForUpdates(long timeTakenMilliseconds) {
-        try {
-            long postProcessingStart = System.currentTimeMillis();
-
-            mapToTheGoodOldFiles();
-            updateModStructureVerifierMaps();
-
-            HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/gamebanana-search-reload?key="
-                    + SecretConstants.RELOAD_SHARED_SECRET);
-            conn.setReadTimeout(300000);
-            if (conn.getResponseCode() != 200) {
-                throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
-            }
-
-            updateUpdateCheckerStatusInformation(System.currentTimeMillis() - postProcessingStart + timeTakenMilliseconds);
-
-        } catch (IOException e) {
-            log.error("Error during a call to frontend to refresh databases", e);
-            executeWebhookAsUpdateChecker(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":x: Frontend call failed: " + e);
-        }
-    }
-
     /**
      * Executes a webhook with the "Everest Update Checker" header, profile picture and name.
      *
@@ -369,6 +347,17 @@ public class UpdateCheckerTracker {
             WebhookExecutor.executeWebhook(url, avatar, nickname, message, ImmutableMap.of("X-Everest-Log", "true"));
         } catch (IOException e) {
             log.error("Error while sending log message", e);
+        }
+    }
+
+    public void refreshFrontendDatabases() throws IOException {
+        mapToTheGoodOldFiles();
+
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout("https://maddie480.ovh/celeste/gamebanana-search-reload?key="
+                + SecretConstants.RELOAD_SHARED_SECRET);
+        conn.setReadTimeout(300000);
+        if (conn.getResponseCode() != 200) {
+            throw new IOException("Mod Search Reload API sent non 200 code: " + conn.getResponseCode());
         }
     }
 
@@ -525,7 +514,7 @@ public class UpdateCheckerTracker {
      * Updates the maps used by the Mod Structure Verifier to see in which mod each asset is.
      * Called on startup and each time everest_update.yaml is modified.
      */
-    public void updateModStructureVerifierMaps() throws IOException {
+    public void updateModStructureVerifierMaps() {
         log.info("Updating Mod Structure Verifier entity maps...");
 
         Map<String, String> assets = getElementMap(file -> Arrays.stream(file.fileListing)
@@ -635,5 +624,14 @@ public class UpdateCheckerTracker {
 
         log.info("Uploading new Update Checker status: {}", result);
         Files.writeString(Paths.get("/shared/celeste/updater/status.json"), result.toString(), UTF_8);
+
+        for (String webhook : SecretConstants.UPDATE_CHECKER_HOOKS) {
+            WebhookExecutor.executeWebhook(
+                    webhook,
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
+                    "Everest Update Checker",
+                    ":tada: Update Checker data was refreshed.",
+                    ImmutableMap.of("X-Everest-Log", "true"));
+        }
     }
 }

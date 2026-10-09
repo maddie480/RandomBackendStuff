@@ -6,7 +6,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.celeste.crontabs.UpdateOutgoingWebhooks;
+import ovh.maddie480.randomstuff.backend.celeste.crontabs.GitHubMirror;
+import ovh.maddie480.randomstuff.backend.celeste.crontabs.OtobotMirror;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.*;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBananaModProvider;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
@@ -88,8 +89,8 @@ public class ModUpdater {
                 database.allMods.forEach(mod -> mod.featuredTier = featuredMods.getOrDefault(mod.id, 0));
                 database.commit();
 
-                tracker.endedSearchingForUpdates(System.currentTimeMillis() - time);
-                UpdateOutgoingWebhooks.notifyUpdate(database);
+                tracker.refreshFrontendDatabases();
+                GitHubMirror.main(null);
             }
         } catch (Exception e) {
             logger.error("Uncaught exception during featured mods update", e);
@@ -180,13 +181,21 @@ public class ModUpdater {
             newestModificationInDatabase = 0;
             database.commit();
 
-            tracker.endedSearchingForUpdates(System.currentTimeMillis() - start);
-
             BananaMirror banan = new BananaMirror();
-            banan.synchronizeFiles(database, tracker);
-            banan.synchronizeImages(database, tracker);
-            banan.synchronizeRichPresenceIcons(database, tracker);
-            UpdateOutgoingWebhooks.notifyUpdate(database);
+
+            ParallelzUtilz.runInParallel(Arrays.asList(
+                    () -> {
+                        tracker.refreshFrontendDatabases();
+                        GitHubMirror.main(null);
+                    },
+                    tracker::updateModStructureVerifierMaps,
+                    () -> banan.synchronizeFiles(database, tracker),
+                    () -> banan.synchronizeImages(database, tracker),
+                    () -> banan.synchronizeRichPresenceIcons(database, tracker)
+            ));
+
+            OtobotMirror.run(database);
+            tracker.updateUpdateCheckerStatusInformation(System.currentTimeMillis() - start);
         }
     }
 

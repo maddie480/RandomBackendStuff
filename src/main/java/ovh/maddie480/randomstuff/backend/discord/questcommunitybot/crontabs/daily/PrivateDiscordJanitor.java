@@ -41,8 +41,6 @@ public class PrivateDiscordJanitor {
                 message -> Arrays.asList("H", "J").contains(message.getAuthor().getEffectiveName().substring(0, 1)));
         cleanupChannel(791795741919674388L, OffsetDateTime.now().minusDays(1),
                 message -> message.getAuthor().getIdLong() == 497138464316325889L);
-        cleanupChannel(791795741919674388L, OffsetDateTime.now(),
-                message -> message.getContentRaw().equals(":tada: Update Checker data was refreshed."));
         cleanupChannel(551822297573490749L, OffsetDateTime.now(),
                 message -> message.getAuthor().getEffectiveName().equals("Bot Membership Notifier"));
     }
