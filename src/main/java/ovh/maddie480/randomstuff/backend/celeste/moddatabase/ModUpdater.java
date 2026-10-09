@@ -84,7 +84,6 @@ public class ModUpdater {
             try (ModDatabase database = new ModDatabase()) {
                 UpdateCheckerTracker tracker = new UpdateCheckerTracker(database);
                 tracker.startedSearchingForUpdates(false);
-                long time = System.currentTimeMillis();
 
                 database.allMods.forEach(mod -> mod.featuredTier = featuredMods.getOrDefault(mod.id, 0));
                 database.commit();
