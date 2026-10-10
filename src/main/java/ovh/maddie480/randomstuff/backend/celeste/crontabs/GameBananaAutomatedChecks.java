@@ -163,7 +163,6 @@ public class GameBananaAutomatedChecks {
                                                     && !"Head2Head".equals(record.file().modId) // Open Control Panel option
                                                     && !"ConsistencyTracker".equals(record.file().modId) // Opens stuff in browser
                                                     && !"girlhell1999".equals(record.file().modId) // other Open URL Trigger that causes debates in banana-watch
-                                                    && !"DaxHelper".equals(record.file().modId) // Open URL Trigger (AGAIN)
                                                     && !"MiaoNet".equals(record.file().modId) // "open emote files" button
                                             ) {
                                                 logger.warn("Mod {} contains Process usage", record.file().modId);
