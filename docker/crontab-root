@@ -24,6 +24,7 @@
 @reboot bash -c 'sleep 60 && /usr/sbin/swapon /swapfile'
 
 # m    h  dom mon dow   command
+  *    *    *   *   *   cd /home/debian && ./scan2ban.sh > /dev/null 2>&1
   0 0,12    *   *   *   /home/debian/cert-renew-with-logging.sh > /dev/null 2>&1
   0    4    *   *   *   journalctl --rotate --vacuum-time=7days > /dev/null 2>&1
   0    4    *   *   *   rm -f /root/.bash_history
