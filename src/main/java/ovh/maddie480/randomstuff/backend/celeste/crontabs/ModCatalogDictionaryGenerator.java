@@ -28,8 +28,7 @@ public class ModCatalogDictionaryGenerator {
             toCheck = database.allMods.stream()
                     .map(m -> Arrays.stream(m.files)
                             .filter(f -> f.isLeader && Arrays.asList(f.fileListing).contains("Loenn/lang/en_gb.lang"))
-                            // some mods are missing, for example Aiden Helper, so go for the 0x0a.de mirror instead of f.mainUrl
-                            .map(f -> "https://celestemodupdater-storage.0x0a.de/banana-mirror/" + f.mirrorName + ".zip")
+                            .map(f -> f.mainUrl)
                             .toList())
                     .flatMap(List::stream)
                     .toList();
