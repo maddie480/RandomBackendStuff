@@ -60,7 +60,7 @@ public class ModUpdater {
         }
     }
 
-    public static void fullUpdate() {
+    public static boolean fullUpdate() {
         try {
             long start = System.currentTimeMillis();
 
@@ -69,9 +69,11 @@ public class ModUpdater {
                 mods.addAll(modProvider.fullUpdate());
             }
             update(mods, true, start);
+            return true;
         } catch (Exception e) {
             logger.error("Uncaught exception during full update", e);
             new UpdateCheckerTracker(null).uncaughtError(e);
+            return false;
         }
     }
 

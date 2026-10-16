@@ -321,17 +321,12 @@ public class CrontabRunner {
     private static void runUpdater(boolean fullUpdateCheck) {
         if (fullUpdateCheck) {
             runProcessAndAlertOnException("[Updater] ModUpdater::recheckLostFiles", ModUpdater::recheckLostFiles);
-            while (true) {
-                AtomicBoolean success = new AtomicBoolean(false);
-                runProcessAndAlertOnException("[Updater] ModUpdater::fullUpdate", () -> {
-                    ModUpdater.fullUpdate();
-                    success.set(true);
-                });
-                if (success.get()) break;
-
-                // wait for an hour, because that's the TTL of the GameBanana cache.
-                unstoppableSleep(3_600_000);
-            }
+            runProcessAndAlertOnException("[Updater] ModUpdater::fullUpdate", () -> {
+                while (!ModUpdater.fullUpdate()) {
+                    // wait for an hour, because that's the TTL of the GameBanana cache.
+                    unstoppableSleep(3_600_000);
+                }
+            });
             runProcessAndAlertOnException("[Updater] ModUpdater::updateFeaturedMods", ModUpdater::updateFeaturedMods);
             sendMessageToWebhook(SecretConstants.UPDATE_CHECKER_LOGS_HOOK, ":white_check_mark: Full update check completed!");
             return;
