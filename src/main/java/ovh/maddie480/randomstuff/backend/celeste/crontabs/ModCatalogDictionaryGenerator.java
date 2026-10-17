@@ -39,11 +39,14 @@ public class ModCatalogDictionaryGenerator {
 
         for (String url : toCheck) {
             logger.debug("Scanning {}", url);
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url);
-                 OutputStream os = Files.newOutputStream(tempZip)) {
+            ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout(url);
+                     OutputStream os = Files.newOutputStream(tempZip)) {
 
-                IOUtils.copy(is, os);
-            }
+                    IOUtils.copy(is, os);
+                    return null;
+                }
+            });
 
             try (ZipFile file = ZipFileWithAutoEncoding.open(tempZip.toString())) {
                 ZipEntry entry = file.getEntry("Loenn/lang/en_gb.lang");
