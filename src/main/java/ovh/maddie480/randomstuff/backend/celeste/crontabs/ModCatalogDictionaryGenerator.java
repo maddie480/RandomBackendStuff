@@ -5,13 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.ParallelzUtilz;
 import ovh.maddie480.randomstuff.backend.utils.ZipFileWithAutoEncoding;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,41 +35,54 @@ public class ModCatalogDictionaryGenerator {
         }
 
         Map<String, Map<String, String>> dictionary = new TreeMap<>();
-        Path tempZip = Paths.get("/tmp/catalogscanner.zip");
+        ParallelzUtilz.runInParallel(toCheck.stream()
+                .<ParallelzUtilz.ExplodyRunnable>map(url -> (() -> {
+                    Path tempZip = Files.createTempFile("catalogscan-", ".zip");
+                    try {
+                        scanFile(dictionary, tempZip, url);
+                    } finally {
+                        if (Files.exists(tempZip)) Files.delete(tempZip);
+                    }
+                }))
+                .toList());
 
-        for (String url : toCheck) {
-            logger.debug("Scanning {}", url);
-            ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout(url);
-                     OutputStream os = Files.newOutputStream(tempZip)) {
+        return dictionary;
+    }
 
-                    IOUtils.copy(is, os);
-                    return null;
-                }
-            });
+    private static void scanFile(Map<String, Map<String, String>> dictionary, Path tempZip, String url) throws IOException {
+        logger.debug("Scanning {}", url);
+        ConnectionUtils.runWithRetry(() -> {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout(url);
+                 OutputStream os = Files.newOutputStream(tempZip)) {
 
-            try (ZipFile file = ZipFileWithAutoEncoding.open(tempZip.toString())) {
-                ZipEntry entry = file.getEntry("Loenn/lang/en_gb.lang");
-                if (entry == null) continue;
+                IOUtils.copy(is, os);
+                return null;
+            }
+        });
 
-                try (InputStream is = file.getInputStream(entry)) {
-                    Matcher matcher = regex.matcher(IOUtils.toString(is, StandardCharsets.UTF_8));
-                    while (matcher.find()) {
-                        String descriptionKey = matcher.group();
-                        descriptionKey = descriptionKey.substring(0, descriptionKey.indexOf("=") + 1).replaceFirst("\\.name\\.", ".description.");
-                        String description = null;
-                        try (InputStream is2 = file.getInputStream(entry);
-                             BufferedReader br2 = new BufferedReader(new InputStreamReader(is2, StandardCharsets.UTF_8))) {
+        try (ZipFile file = ZipFileWithAutoEncoding.open(tempZip.toString())) {
+            ZipEntry entry = file.getEntry("Loenn/lang/en_gb.lang");
+            if (entry == null) return;
 
-                            String s;
-                            while ((s = br2.readLine()) != null) {
-                                if (s.toLowerCase().startsWith(descriptionKey.toLowerCase())) {
-                                    description = s.substring(descriptionKey.length()).trim();
-                                    break;
-                                }
+            try (InputStream is = file.getInputStream(entry)) {
+                Matcher matcher = regex.matcher(IOUtils.toString(is, StandardCharsets.UTF_8));
+                while (matcher.find()) {
+                    String descriptionKey = matcher.group();
+                    descriptionKey = descriptionKey.substring(0, descriptionKey.indexOf("=") + 1).replaceFirst("\\.name\\.", ".description.");
+                    String description = null;
+                    try (InputStream is2 = file.getInputStream(entry);
+                         BufferedReader br2 = new BufferedReader(new InputStreamReader(is2, StandardCharsets.UTF_8))) {
+
+                        String s;
+                        while ((s = br2.readLine()) != null) {
+                            if (s.toLowerCase().startsWith(descriptionKey.toLowerCase())) {
+                                description = s.substring(descriptionKey.length()).trim();
+                                break;
                             }
                         }
+                    }
 
+                    synchronized (dictionary) {
                         if (dictionary.containsKey(matcher.group(1))) {
                             logger.debug("Adding {} => {} / {}", matcher.group(1), matcher.group(2).trim(), description);
                         } else {
@@ -81,8 +94,5 @@ public class ModCatalogDictionaryGenerator {
                 }
             }
         }
-
-        Files.delete(tempZip);
-        return dictionary;
     }
 }
