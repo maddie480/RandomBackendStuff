@@ -48,6 +48,7 @@ public class YouTubeEmoteDatabase {
         emotes.put(":sanitizer:", "https://yt3.ggpht.com/EJ_8vc4Gl-WxCWBurHwwWROAHrPzxgePodoNfkRY1U_I8L1O2zlqf7-wfUtTeyzq2qHNnocZ=w24-h24-c-k-nd");
         emotes.put(":face-fuchsia-wide-eyes:", "https://yt3.ggpht.com/zdcOC1SMmyXJOAddl9DYeEFN9YYcn5mHemJCdRFQMtDuS0V-IyE-5YjNUL1tduX1zs17tQ=w24-h24-c-k-nd");
         emotes.put(":face-red-heart-shape:", "https://yt3.ggpht.com/I0Mem9dU_IZ4a9cQPzR0pUJ8bH-882Eg0sDQjBmPcHA6Oq0uXOZcsjPvPbtormx91Ha2eRA=w24-h24-c-k-nd");
+        emotes.put(":joker:", "https://yt3.ggpht.com/SikaWZxPLV7mFxs1I6UrXBGEfpwuzPx7WLElm0uJa7YwhX8tv1gCnHlyU4xw1lOYvvdGUyjs10ZPAp2GKk0=w24-h24-c-k-nd");
         emotes.put(":pride-person-heart-lesbian:", "https://yt3.ggpht.com/tKVZ2TfK5tMLvF88cnz2YNVwuHNgr0eDR9Ef8J0OCkZEHXLFUtH3f6-xSHhqhwd2sL3Tu4I=w24-h24-c-k-nd");
         emotes.put(":card-red-penalty:", "https://yt3.ggpht.com/uRDUMIeAHnNsaIaShtRkQ6hO0vycbNH_BQT7i3PWetFJb09q88RTjxwzToBy9Cez20D7hA=w24-h24-c-k-nd");
         emotes.put(":thanksdoc:", "https://yt3.ggpht.com/bUnO_VwXW2hDf-Da8D64KKv6nBJDYUBuo13RrOg141g2da8pi9-KClJYlUDuqIwyPBfvOO8=w24-h24-c-k-nd");
