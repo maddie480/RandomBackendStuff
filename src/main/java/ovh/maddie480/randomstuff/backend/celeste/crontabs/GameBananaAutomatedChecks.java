@@ -11,8 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.EverestYamlDependencyRecord;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.EverestYamlEntryRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBananaModProvider;
@@ -387,10 +385,9 @@ public class GameBananaAutomatedChecks {
 
                     logger.debug("Checking result");
                     if (resultBody.has("parseError")) {
-                        handleEverestYamlInvalidSyntax(database, destination, resultBody.getString("parseError"),
-                                ":warning: The mod called **" + record.file().modId + "** has an everest.yaml file with invalid syntax:\n```\n"
-                                        + resultBody.getString("parseError")
-                                        + "\n```\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
+                        sendAlertToWebhook(database, ":warning: The mod called **" + record.file().modId + "** has an everest.yaml file with invalid syntax:\n```\n"
+                                + resultBody.getString("parseError")
+                                + "\n```\n:arrow_right: " + getMaskedEnhancedEmbedLink(record));
                     } else if (resultBody.has("validationErrors")) {
                         List<String> allErrors = new ArrayList<>();
                         for (Object o : resultBody.getJSONArray("validationErrors")) {
@@ -438,84 +435,6 @@ public class GameBananaAutomatedChecks {
         try (OutputStream os = new FileOutputStream("already_validated_yaml_files.yaml")) {
             YamlUtil.dump(newAlreadyChecked, os);
         }
-    }
-
-    private static void handleEverestYamlInvalidSyntax(ModDatabase database, Path yaml, String error, String message) throws IOException {
-        sendAlertToWebhook(database, message);
-
-        if (!error.matches("^Cannot parse Dependencies for .*: No Version is specified for Everest$")) return;
-
-        // I might be able to help! First, let's figure out which version we should add.
-        int latestEverestStable;
-        try (BufferedReader br = Files.newBufferedReader(Paths.get("/shared/celeste/latest-everest-versions.json"))) {
-            latestEverestStable = new JSONObject(new JSONTokener(br)).getInt("stable");
-        }
-
-        // create a new folder, so that the file can just be called everest.yaml for simplicity's sake
-        Path fixedFile = Paths.get("/tmp/banana_watch_helps_out/everest.yaml");
-        Files.createDirectories(fixedFile.getParent());
-
-        try {
-            List<EverestYamlEntryRecord> yamlFile;
-            try (InputStream is = Files.newInputStream(yaml)) {
-                yamlFile = YamlUtil.loadEverestYaml(is);
-            }
-
-            // look for mods that have a Dependencies entry with Name: Everest and no Version, and add it
-            boolean changed = false;
-            for (EverestYamlEntryRecord mod : yamlFile) {
-                for (EverestYamlDependencyRecord dependency : mod.Dependencies) {
-                    if ("Everest".equals(dependency.Name) && dependency.Version == null) {
-                        dependency.Version = "1." + latestEverestStable + ".0";
-                        changed = true;
-                    }
-                }
-            }
-            if (!changed) return;
-
-            // write back the file to be used for the webhook
-            List<Map<String, Object>> serializedMess = yamlFile.stream()
-                    .map(mod -> {
-                        Map<String, Object> result = serializeDependency(mod);
-                        if (mod.DLL != null) result.put("DLL", mod.DLL);
-                        if (!mod.Dependencies.isEmpty())
-                            result.put("Dependencies", mod.Dependencies.stream()
-                                    .map(GameBananaAutomatedChecks::serializeDependency)
-                                    .toList());
-                        if (!mod.OptionalDependencies.isEmpty())
-                            result.put("OptionalDependencies", mod.Dependencies.stream()
-                                    .map(GameBananaAutomatedChecks::serializeDependency)
-                                    .toList());
-                        return result;
-                    })
-                    .toList();
-            try (OutputStream os = Files.newOutputStream(fixedFile)) {
-                YamlUtil.dump(serializedMess, os);
-            }
-        } catch (Exception e) {
-            logger.warn("I tried to help with the Everest version error, but it didn't work!!!", e);
-            return;
-        }
-
-        for (String webhook : SecretConstants.GAMEBANANA_ISSUES_ALERT_HOOKS) {
-            if (!webhook.startsWith("https://discord.com/")) continue;
-
-            WebhookExecutor.executeWebhook(webhook,
-                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/gamebanana.png",
-                    "Banana Watch",
-                    "Here is a fixed file with the Everest version added:",
-                    false,
-                    Collections.singletonList(fixedFile.toFile()));
-        }
-
-        FileUtils.deleteDirectory(fixedFile.getParent().toFile());
-    }
-
-    private static Map<String, Object> serializeDependency(EverestYamlDependencyRecord r) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        if (r.Name != null) result.put("Name", r.Name);
-        if (r.Version != null) result.put("Version", r.Version);
-        return result;
     }
 
     public static void checkUnapprovedCategories() throws IOException {
