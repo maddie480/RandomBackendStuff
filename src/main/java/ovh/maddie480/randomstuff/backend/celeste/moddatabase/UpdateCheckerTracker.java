@@ -369,8 +369,7 @@ public class UpdateCheckerTracker {
                             e.file().modId, ImmutableMap.of(
                                     "Version", e.file().modVersion,
                                     "LastUpdate", e.file().createdDate,
-                                    "GameBananaFileId", e.file().mirrorName, // old
-                                    "MirrorName", e.file().mirrorName, // new
+                                    "MirrorName", e.file().mirrorName,
                                     "URL", e.file().mainUrl,
                                     "xxHash", Collections.singletonList(e.file().xxHash),
                                     "Size", e.file().size
@@ -438,23 +437,6 @@ public class UpdateCheckerTracker {
                             recurseItem = newRecurseItem;
                         }
 
-                        // jank GameBanana-dependent mapping I need to get rid of
-                        CategoryRecord category = m.category, subcategory = m.category;
-                        while (category.parent != null && !category.parent.id.endsWith("/Root")) {
-                            category = category.parent;
-                        }
-
-                        contents.putAll(ImmutableMap.of(
-                                "GameBananaType", "Obsolete",
-                                "CategoryId", category.id,
-                                "CategoryName", category.name
-                        ));
-                        if (!category.equals(subcategory)) {
-                            contents.putAll(ImmutableMap.of(
-                                    "SubcategoryId", subcategory.id,
-                                    "SubcategoryName", subcategory.name
-                            ));
-                        }
                         return contents;
                     })
                     .toList();
