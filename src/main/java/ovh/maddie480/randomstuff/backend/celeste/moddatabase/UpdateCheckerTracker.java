@@ -471,16 +471,20 @@ public class UpdateCheckerTracker {
                             "URL", m.file().mainUrl,
                             "MirrorName", m.file().mirrorName,
                             "Dependencies", Arrays.stream(m.file().dependencies)
-                                    .map(d -> ImmutableMap.of(
-                                            "Name", d.name,
-                                            "Version", d.version
-                                    ))
+                                    .map(d -> {
+                                        Map<String, String> r = new LinkedHashMap<>();
+                                        r.put("Name", d.name);
+                                        r.put("Version", d.version);
+                                        return r;
+                                    })
                                     .collect(Collectors.toCollection(ArrayList::new)),
                             "OptionalDependencies", Arrays.stream(m.file().optionalDependencies)
-                                    .map(d -> ImmutableMap.of(
-                                            "Name", d.name,
-                                            "Version", d.version
-                                    ))
+                                    .map(d -> {
+                                        Map<String, String> r = new LinkedHashMap<>();
+                                        r.put("Name", d.name);
+                                        r.put("Version", d.version);
+                                        return r;
+                                    })
                                     .collect(Collectors.toCollection(ArrayList::new))
                     )))
                     .forEach(p -> graph.put(p.getKey(), p.getValue()));
