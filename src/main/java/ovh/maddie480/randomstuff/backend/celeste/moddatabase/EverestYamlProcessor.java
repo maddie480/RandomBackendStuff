@@ -2,11 +2,10 @@ package ovh.maddie480.randomstuff.backend.celeste.moddatabase;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.DependencyRecord;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
-import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.*;
 import ovh.maddie480.randomstuff.backend.utils.YamlUtil;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
@@ -26,37 +25,34 @@ public class EverestYamlProcessor {
 
     public static void parseEverestYamlFromZipFile(InputStream yamlInputStream, ModRecord modRecord, FileRecord fileRecord, UpdateCheckerTracker tracker) {
         try {
-            List<Map<String, Object>> info = YamlUtil.loadNoFloats(yamlInputStream);
+            List<EverestYamlEntryRecord> info = YamlUtil.loadEverestYaml(yamlInputStream);
 
-            for (Map<String, Object> infoMod : info) {
-                String modName = infoMod.get("Name").toString();
-                String modVersion = infoMod.get("Version").toString();
+            for (EverestYamlEntryRecord infoMod : info) {
+                if (infoMod.Name == null) {
+                    throw new IOException("One of the entries in the everest.yaml file has no Name");
+                }
+
+                if (blacklistedMods.contains(infoMod.Name)) {
+                    logger.warn("Skipping mod {} because it is in the blacklist.", infoMod.Name);
+                    tracker.modIsExcludedByName(infoMod.Name);
+                    continue;
+                }
 
                 List<DependencyRecord> dependencies = new ArrayList<>();
                 List<DependencyRecord> optionalDependencies = new ArrayList<>();
 
                 // merge the Dependencies and OptionalDependencies of all mods defined in the everest.yaml
-                for (Map<String, Object> yamlEntry : info) {
-                    if (yamlEntry.containsKey("Dependencies")) {
-                        addDependenciesFromList(dependencies, (List<Map<String, Object>>) yamlEntry.get("Dependencies"), info);
-                    }
-                    if (yamlEntry.containsKey("OptionalDependencies")) {
-                        addDependenciesFromList(optionalDependencies, (List<Map<String, Object>>) yamlEntry.get("OptionalDependencies"), info);
-                    }
-                }
-
-                if (blacklistedMods.contains(modName)) {
-                    logger.warn("Skipping mod {} because it is in the blacklist.", modName);
-                    tracker.modIsExcludedByName(modName);
-                    continue;
+                for (EverestYamlEntryRecord yamlEntry : info) {
+                    addDependenciesFromList(dependencies, yamlEntry.Dependencies, info);
+                    addDependenciesFromList(optionalDependencies, yamlEntry.OptionalDependencies, info);
                 }
 
                 logger.info("Reading everest.yaml of file {} finished: name {}, version {}, {} dependencies, {} optional dependencies.",
-                        fileRecord.id, modName, modVersion, dependencies.size(), optionalDependencies.size());
-                tracker.scannedModDependencies(modName, dependencies.size(), optionalDependencies.size());
+                        fileRecord.id, infoMod.Name, infoMod.Version, dependencies.size(), optionalDependencies.size());
+                tracker.scannedModDependencies(infoMod.Name, dependencies.size(), optionalDependencies.size());
 
-                fileRecord.modId = modName;
-                fileRecord.modVersion = modVersion;
+                fileRecord.modId = infoMod.Name;
+                fileRecord.modVersion = infoMod.Version;
                 fileRecord.dependencies = toArray(dependencies);
                 fileRecord.optionalDependencies = toArray(optionalDependencies);
                 break;
@@ -71,14 +67,14 @@ public class EverestYamlProcessor {
         }
     }
 
-    private static void addDependenciesFromList(List<DependencyRecord> addTo, List<Map<String, Object>> toAdd, List<Map<String, Object>> everestYamlContents) {
-        for (Map<String, Object> dependencyEntry : toAdd) {
+    private static void addDependenciesFromList(List<DependencyRecord> addTo, List<EverestYamlDependencyRecord> toAdd, List<EverestYamlEntryRecord> everestYamlContents) {
+        for (EverestYamlDependencyRecord dependencyEntry : toAdd) {
             DependencyRecord record = new DependencyRecord();
-            record.name = dependencyEntry.get("Name").toString();
-            record.version = dependencyEntry.getOrDefault("Version", "NoVersion").toString();
+            record.name = dependencyEntry.Name;
+            record.version = dependencyEntry.Version;
 
             // only keep the dependencies if they weren't already added, and they aren't defined in the same yaml file.
-            if (!addTo.contains(record) && everestYamlContents.stream().noneMatch(entry -> record.name.equals(entry.get("Name").toString()))) {
+            if (!addTo.contains(record) && everestYamlContents.stream().noneMatch(entry -> record.name.equals(entry.Name))) {
                 addTo.add(record);
             }
         }
