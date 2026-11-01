@@ -1,5 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModProvider;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.*;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.ParallelzUtilz;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -157,6 +159,48 @@ public class GameBananaModProvider implements ModProvider {
                     + StringEscapeUtils.escapeHtml4(String.join(", ", contentWarnings)) + "</b><br><br>";
         }
 
+        String aiUsagePrefix = "";
+        boolean hasAiNotices = false;
+
+        { // retrieve AI notices, which can only be done for a single mod at a time, through apiv13
+            JSONObject modProfile = ConnectionUtils.runWithRetry(() -> {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv13/" + itemtype + "/" + mod.getInt("_idRow") + "/ProfilePage")) {
+                    return new JSONObject(new JSONTokener(is));
+                }
+            });
+
+            Map<String, String> formattedCategories = ImmutableMap.of(
+                    "art", "Art/Visuals",
+                    "code", "Code/Logic",
+                    "audio", "Audio",
+                    "concept", "Concept/Planning/Design",
+                    "profile", "Submission Elements"
+            );
+            Map<String, String> formattedLevels = ImmutableMap.of(
+                    "na", "", // "N/A", do not display
+                    "no", "", // "None", do not display
+                    "mi", "Minor",
+                    "mo", "Moderate",
+                    "ma", "Major"
+            );
+
+            List<String> formattedAiUsageEntries = new ArrayList<>();
+            for (Map.Entry<String, Object> aiUsageEntry : modProfile.getJSONObject("_aAiUsage").toMap().entrySet()) {
+                String category = formattedCategories.get(aiUsageEntry.getKey());
+                if (category == null) throw new IOException("Unknown AI usage category: " + aiUsageEntry.getKey());
+
+                String level = formattedLevels.get((String) aiUsageEntry.getValue());
+                if (level == null) throw new IOException("Unknown AI usage level: " + aiUsageEntry.getValue());
+                if (level.isEmpty()) continue;
+
+                formattedAiUsageEntries.add(category + " (" + level + ")");
+                hasAiNotices = true;
+            }
+
+            aiUsagePrefix = "<b>AI was used for: "
+                    + StringEscapeUtils.escapeHtml4(String.join(", ", formattedAiUsageEntries)) + "</b><br><br>";
+        }
+
         // parse screenshots and determine their URLs.
         List<String> screenshots;
 
@@ -260,13 +304,15 @@ public class GameBananaModProvider implements ModProvider {
         modRecord.pageUrl = mod.getString("_sProfileUrl");
         modRecord.name = mod.getString("_sName");
         modRecord.summary = mod.getString("_sDescription");
-        modRecord.description = contentWarningPrefix + mod.getString("_sText");
+        modRecord.description = contentWarningPrefix + aiUsagePrefix + mod.getString("_sText");
         modRecord.createdDate = mod.getLong("_tsDateAdded");
         modRecord.modifiedDate = mod.getLong("_tsDateModified");
         modRecord.updatedDate = mod.getLong("_tsDateUpdated");
         modRecord.likes = mod.getInt("_nLikeCount");
         modRecord.views = mod.getInt("_nViewCount");
         modRecord.downloads = mod.getInt("_nDownloadCount");
+        modRecord.isNSFW = redactScreenshots;
+        modRecord.madeWithAI = hasAiNotices;
         modRecord.author = author;
         modRecord.category = category;
         modRecord.screenshots = new ScreenshotRecord[screenshotRecords.size()];
