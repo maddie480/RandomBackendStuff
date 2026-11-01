@@ -119,9 +119,7 @@ public class GameBananaModProvider implements ModProvider {
                 });
 
                 // process it.
-                for (Object item : pageContents) {
-                    results.add(createModRecord(category, (JSONObject) item));
-                }
+                results.addAll(processPageElementsInParallel(category, pageContents));
 
                 // if we just got an empty page, this means we reached the end of the list!
                 if (pageContents.isEmpty()) {
@@ -134,6 +132,23 @@ public class GameBananaModProvider implements ModProvider {
         }
 
         return results;
+    }
+
+    private List<ModRecord> processPageElementsInParallel(String category, JSONArray pageContents) throws IOException {
+        Map<Integer, ModRecord> resolvedPageContents = new TreeMap<>();
+        List<ParallelzUtilz.ExplodyRunnable> tasks = new ArrayList<>();
+        int index = 0;
+        for (Object item : pageContents) {
+            int currentIndex = index++;
+            tasks.add(() -> {
+                ModRecord mr = createModRecord(category, (JSONObject) item);
+                synchronized (resolvedPageContents) {
+                    resolvedPageContents.put(currentIndex, mr);
+                }
+            });
+        }
+        ParallelzUtilz.runInParallel(tasks);
+        return new ArrayList<>(resolvedPageContents.values());
     }
 
     private ModRecord createModRecord(String itemtype, JSONObject mod) throws IOException {
@@ -169,36 +184,40 @@ public class GameBananaModProvider implements ModProvider {
                 }
             });
 
-            Map<String, String> formattedCategories = ImmutableMap.of(
-                    "art", "Art/Visuals",
-                    "code", "Code/Logic",
-                    "audio", "Audio",
-                    "concept", "Concept/Planning/Design",
-                    "profile", "Submission Elements"
-            );
-            Map<String, String> formattedLevels = ImmutableMap.of(
-                    "na", "", // "N/A", do not display
-                    "no", "", // "None", do not display
-                    "mi", "Minor",
-                    "mo", "Moderate",
-                    "ma", "Major"
-            );
+            if (modProfile.has("_aAiUsage")) {
+                Map<String, String> formattedCategories = ImmutableMap.of(
+                        "art", "Art/Visuals",
+                        "code", "Code/Logic",
+                        "audio", "Audio",
+                        "concept", "Concept/Planning/Design",
+                        "profile", "Submission Elements"
+                );
+                Map<String, String> formattedLevels = ImmutableMap.of(
+                        "na", "", // "N/A", do not display
+                        "no", "", // "None", do not display
+                        "mi", "Minor",
+                        "mo", "Moderate",
+                        "ma", "Major"
+                );
 
-            List<String> formattedAiUsageEntries = new ArrayList<>();
-            for (Map.Entry<String, Object> aiUsageEntry : modProfile.getJSONObject("_aAiUsage").toMap().entrySet()) {
-                String category = formattedCategories.get(aiUsageEntry.getKey());
-                if (category == null) throw new IOException("Unknown AI usage category: " + aiUsageEntry.getKey());
+                List<String> formattedAiUsageEntries = new ArrayList<>();
+                for (Map.Entry<String, Object> aiUsageEntry : modProfile.getJSONObject("_aAiUsage").toMap().entrySet()) {
+                    String category = formattedCategories.get(aiUsageEntry.getKey());
+                    if (category == null) throw new IOException("Unknown AI usage category: " + aiUsageEntry.getKey());
 
-                String level = formattedLevels.get((String) aiUsageEntry.getValue());
-                if (level == null) throw new IOException("Unknown AI usage level: " + aiUsageEntry.getValue());
-                if (level.isEmpty()) continue;
+                    String level = formattedLevels.get((String) aiUsageEntry.getValue());
+                    if (level == null) throw new IOException("Unknown AI usage level: " + aiUsageEntry.getValue());
+                    if (level.isEmpty()) continue;
 
-                formattedAiUsageEntries.add(category + " (" + level + ")");
-                hasAiNotices = true;
+                    formattedAiUsageEntries.add(category + " (" + level + ")");
+                    hasAiNotices = true;
+                }
+
+                if (hasAiNotices) {
+                    aiUsagePrefix = "<b>AI was used for: "
+                            + StringEscapeUtils.escapeHtml4(String.join(", ", formattedAiUsageEntries)) + "</b><br><br>";
+                }
             }
-
-            aiUsagePrefix = "<b>AI was used for: "
-                    + StringEscapeUtils.escapeHtml4(String.join(", ", formattedAiUsageEntries)) + "</b><br><br>";
         }
 
         // parse screenshots and determine their URLs.
