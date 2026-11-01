@@ -24,6 +24,8 @@ too hard though, and pass the `Accept-Encoding: gzip` header to significantly de
   views: (int) the amount of views
   downloads: (int) the amount of downloads
   featuredTier: (int) the (non-unique) ranking of the mods in the Featured section (1 is the best), 0 if it's not featured
+  isNSFW: (boolean) whether the mod is rated 18+, which also causes its thumbnail to be replaced
+  madeWithAI: (boolean) whether the submitter declared having used AI for any aspect of the mod
   author:
     id: (string) a unique id for the author
     name: (string) the username of the author
