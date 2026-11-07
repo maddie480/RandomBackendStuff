@@ -341,6 +341,16 @@ public class ModStructureVerifier extends ListenerAdapter {
     private static void analyzeZipFile(MessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
                                        String expectedCollabMapsPrefix, File file, Long responseChannelId, BiConsumer<String, List<File>> sendResultToFrontend) {
 
+        try (ModDatabase database = new ModDatabase()) {
+            analyzeZipFile(database, event, attachment, expectedCollabAssetPrefix, expectedCollabMapsPrefix, file, responseChannelId, sendResultToFrontend);
+        } catch (IOException e) {
+            logger.error("Could not load mod database and start the zip file analysis", e);
+        }
+    }
+
+    private static void analyzeZipFile(ModDatabase database, MessageReceivedEvent event, Message.Attachment attachment, String expectedCollabAssetPrefix,
+                                       String expectedCollabMapsPrefix, File file, Long responseChannelId, BiConsumer<String, List<File>> sendResultToFrontend) {
+
         if (event != null) {
             analyzedZipCount++;
             int serverCount = event.getJDA().getGuilds().size();
@@ -522,12 +532,10 @@ public class ModStructureVerifier extends ListenerAdapter {
                 }
             }
 
-            try (ModDatabase database = new ModDatabase()) {
-                if (shouldScanMapContents && dependencies != null) {
-                    for (String mapPath : maps) {
-                        // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
-                        searchForMissingComponents(database, problemList, websiteProblemList, missingDependencies, fileListing, zipFile, mapPath, dependencies, isHtml);
-                    }
+            if (shouldScanMapContents && dependencies != null) {
+                for (String mapPath : maps) {
+                    // if the map exists and has a proper everest.yaml, then we can check if it contains everything that is needed for the map.
+                    searchForMissingComponents(database, problemList, websiteProblemList, missingDependencies, fileListing, zipFile, mapPath, dependencies, isHtml);
                 }
             }
 
@@ -647,23 +655,21 @@ public class ModStructureVerifier extends ListenerAdapter {
                         yamlContents.getFirst().put("Dependencies", modDependencies);
                     }
 
-                    try (ModDatabase database = new ModDatabase()) {
-                        for (String dependency : missingDependencies) {
-                            String version = database.allMods.stream()
-                                    .map(m -> Arrays.stream(m.files)
-                                            .filter(f -> f.isLeader && f.modId.equals(dependency))
-                                            .map(f -> f.modVersion)
-                                            .findFirst()
-                                            .orElse(null))
-                                    .filter(Objects::nonNull)
-                                    .findFirst()
-                                    .orElseThrow();
+                    for (String dependency : missingDependencies) {
+                        String version = database.allMods.stream()
+                                .map(m -> Arrays.stream(m.files)
+                                        .filter(f -> f.isLeader && f.modId.equals(dependency))
+                                        .map(f -> f.modVersion)
+                                        .findFirst()
+                                        .orElse(null))
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .orElseThrow();
 
-                            modDependencies.add(ImmutableMap.of(
-                                    "Name", dependency,
-                                    "Version", version
-                            ));
-                        }
+                        modDependencies.add(ImmutableMap.of(
+                                "Name", dependency,
+                                "Version", version
+                        ));
                     }
 
                     dependenciesList += pickFormat(isHtml,

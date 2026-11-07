@@ -756,7 +756,7 @@ public class BotEventListener extends ListenerAdapter {
             ZoneId zone = ZoneId.of(member.getKey().timezoneName());
             ZonedDateTime now = ZonedDateTime.now(zone);
             int offset = now.getOffset().getTotalSeconds() / 60;
-            Set<String> peopleInUtcOffset = peopleByUtcOffset.computeIfAbsent(offset, _ -> new TreeSet<>(Comparator.<String, String>comparing(s -> s.toLowerCase(Locale.ROOT))));
+            Set<String> peopleInUtcOffset = peopleByUtcOffset.computeIfAbsent(offset, _ -> new TreeSet<>(Comparator.comparing(s -> s.toLowerCase(Locale.ROOT))));
             peopleInUtcOffset.add(getUserName(member.getValue(), namesToUse));
         }
 
