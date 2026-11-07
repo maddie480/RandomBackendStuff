@@ -14,8 +14,8 @@ public class ModRecord {
     public int likes;
     public int views;
     public int downloads;
-    public boolean isNSFW;
-    public boolean madeWithAI;
+    public ContentWarningRecord[] contentWarnings;
+    public ContentWarningRecord[] aiWarnings;
     public int featuredTier;
     public AuthorRecord author;
     public CategoryRecord category;

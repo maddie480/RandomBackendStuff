@@ -39,7 +39,9 @@ public class ModDatabase implements AutoCloseable {
         DumperOptions dumperOptions = new DumperOptions();
         dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 
-        yaml = new Yaml(new Constructor(loaderOptions), new Representer(dumperOptions), dumperOptions, loaderOptions);
+        Constructor c = new Constructor(loaderOptions);
+        yaml = new Yaml(c, new Representer(dumperOptions), dumperOptions, loaderOptions);
+        c.getPropertyUtils().setSkipMissingProperties(true);
     }
 
     private static final Path lockFile = Paths.get("database_lock");
@@ -106,6 +108,8 @@ public class ModDatabase implements AutoCloseable {
         // share as many references as possible
         optimizeForMods(m -> m.author, (m, v) -> m.author = v);
         optimizeForMods(m -> m.category, (m, v) -> m.category = v);
+        optimizeForMods(m -> m.contentWarnings, (m, v) -> m.contentWarnings = v);
+        optimizeForMods(m -> m.aiWarnings, (m, v) -> m.aiWarnings = v);
         optimizeForFiles(f -> f.dependencies, (f, v) -> f.dependencies = v);
         optimizeForFiles(f -> f.optionalDependencies, (f, v) -> f.optionalDependencies = v);
         optimizeForFiles(f -> f.fileListing, (f, v) -> f.fileListing = v);

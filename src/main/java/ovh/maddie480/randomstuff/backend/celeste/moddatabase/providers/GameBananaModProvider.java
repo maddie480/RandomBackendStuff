@@ -1,7 +1,6 @@
 package ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,6 +26,53 @@ public class GameBananaModProvider implements ModProvider {
     public static final String[] VALID_CATEGORIES = new String[]{"Mod", "Tool", "Wip"};
 
     private static final Logger log = LoggerFactory.getLogger(GameBananaModProvider.class);
+
+    private static final Map<String, String> formattedAiWarningCategories = ImmutableMap.of(
+            "art", "Art/Visuals",
+            "code", "Code/Logic",
+            "audio", "Audio",
+            "concept", "Concept/Planning/Design",
+            "profile", "Submission Elements"
+    );
+    private static final Map<String, Pair<String, Integer>> formattedAiWarningLevels = ImmutableMap.of(
+            "na", Pair.of("", 0), // "N/A", do not display
+            "no", Pair.of("", 0), // "None", do not display
+            "mi", Pair.of("Minor", 1),
+            "mo", Pair.of("Moderate", 2),
+            "ma", Pair.of("Major", 3)
+    );
+
+    private static final Map<String, Pair<String, Integer>> contentWarningSeverities;
+
+    static {
+        // taken straight from https://gamebanana.com/apiv13/Member/UiConfig -> _aContentRatingBehaviors while logged out
+        Map<String, String> severities = new HashMap<>();
+        severities.put("cp", "show");
+        severities.put("st", "warn");
+        severities.put("sc", "warn");
+        severities.put("bg", "show");
+        severities.put("au", "show");
+        severities.put("tu", "show");
+        severities.put("du", "show");
+        severities.put("ps", "show");
+        severities.put("sa", "warn");
+        severities.put("lp", "warn");
+        severities.put("pn", "hide");
+        severities.put("nu", "hide");
+        severities.put("iv", "hide");
+        severities.put("ft", "hide");
+        severities.put("rp", "hide");
+
+        contentWarningSeverities = new HashMap<>();
+        for (Map.Entry<String, String> severity : severities.entrySet()) {
+            contentWarningSeverities.put(severity.getKey(), switch (severity.getValue()) {
+                case "show" -> Pair.of("Mild", 1);
+                case "warn" -> Pair.of("Discretion Advised", 2);
+                case "hide" -> Pair.of("18+", 3);
+                default -> Pair.of("WHAT?", 0);
+            });
+        }
+    }
 
     @Override
     public List<ModRecord> incrementalUpdate(long since) throws IOException {
@@ -152,7 +198,7 @@ public class GameBananaModProvider implements ModProvider {
     }
 
     private ModRecord createModRecord(String itemtype, JSONObject mod) throws IOException {
-        String contentWarningPrefix = "";
+        ContentWarningRecord[] contentRatings = new ContentWarningRecord[0];
         boolean redactScreenshots = false;
 
         if (mod.getBoolean("_bIsNsfw")) {
@@ -165,17 +211,25 @@ public class GameBananaModProvider implements ModProvider {
 
             redactScreenshots = !"show".equals(o.getString("_sInitialVisibility"));
 
-            List<String> contentWarnings = new ArrayList<>();
+            List<ContentWarningRecord> contentWarnings = new ArrayList<>();
             for (String key : o.getJSONObject("_aContentRatings").keySet()) {
-                contentWarnings.add(o.getJSONObject("_aContentRatings").getString(key));
+                if (!contentWarningSeverities.containsKey(key)) {
+                    throw new IOException("Unknown content warning: " + key);
+                }
+                ContentWarningRecord record = new ContentWarningRecord();
+                record.name = o.getJSONObject("_aContentRatings").getString(key);
+                record.severity = contentWarningSeverities.get(key).getRight();
+                record.severityLabel = contentWarningSeverities.get(key).getLeft();
+                contentWarnings.add(record);
             }
 
-            contentWarningPrefix = "<b>Content Warning" + (contentWarnings.size() == 1 ? "" : "s") + ": "
-                    + StringEscapeUtils.escapeHtml4(String.join(", ", contentWarnings)) + "</b><br><br>";
+            contentRatings = contentWarnings.stream()
+                    .sorted(Comparator.<ContentWarningRecord, Integer>comparing(w -> w.severity).reversed()
+                            .thenComparing(w -> w.name))
+                    .toArray(ContentWarningRecord[]::new);
         }
 
-        String aiUsagePrefix = "";
-        boolean hasAiNotices = false;
+        ContentWarningRecord[] aiNotices = new ContentWarningRecord[0];
 
         { // retrieve AI notices, which can only be done for a single mod at a time, through apiv13
             JSONObject modProfile = ConnectionUtils.runWithRetry(() -> {
@@ -185,38 +239,25 @@ public class GameBananaModProvider implements ModProvider {
             });
 
             if (modProfile.has("_aAiUsage")) {
-                Map<String, String> formattedCategories = ImmutableMap.of(
-                        "art", "Art/Visuals",
-                        "code", "Code/Logic",
-                        "audio", "Audio",
-                        "concept", "Concept/Planning/Design",
-                        "profile", "Submission Elements"
-                );
-                Map<String, String> formattedLevels = ImmutableMap.of(
-                        "na", "", // "N/A", do not display
-                        "no", "", // "None", do not display
-                        "mi", "Minor",
-                        "mo", "Moderate",
-                        "ma", "Major"
-                );
-
-                List<String> formattedAiUsageEntries = new ArrayList<>();
+                List<ContentWarningRecord> aiUsageWarnings = new ArrayList<>();
                 for (Map.Entry<String, Object> aiUsageEntry : modProfile.getJSONObject("_aAiUsage").toMap().entrySet()) {
-                    String category = formattedCategories.get(aiUsageEntry.getKey());
+                    String category = formattedAiWarningCategories.get(aiUsageEntry.getKey());
                     if (category == null) throw new IOException("Unknown AI usage category: " + aiUsageEntry.getKey());
 
-                    String level = formattedLevels.get((String) aiUsageEntry.getValue());
+                    Pair<String, Integer> level = formattedAiWarningLevels.get((String) aiUsageEntry.getValue());
                     if (level == null) throw new IOException("Unknown AI usage level: " + aiUsageEntry.getValue());
-                    if (level.isEmpty()) continue;
+                    if (level.getRight() == 0) continue;
 
-                    formattedAiUsageEntries.add(category + " (" + level + ")");
-                    hasAiNotices = true;
+                    ContentWarningRecord record = new ContentWarningRecord();
+                    record.name = category;
+                    record.severity = level.getRight();
+                    record.severityLabel = level.getLeft();
+                    aiUsageWarnings.add(record);
                 }
-
-                if (hasAiNotices) {
-                    aiUsagePrefix = "<b>AI was used for: "
-                            + StringEscapeUtils.escapeHtml4(String.join(", ", formattedAiUsageEntries)) + "</b><br><br>";
-                }
+                aiNotices = aiUsageWarnings.stream()
+                        .sorted(Comparator.<ContentWarningRecord, Integer>comparing(w -> w.severity).reversed()
+                                .thenComparing(w -> w.name))
+                        .toArray(ContentWarningRecord[]::new);
             }
         }
 
@@ -323,15 +364,15 @@ public class GameBananaModProvider implements ModProvider {
         modRecord.pageUrl = mod.getString("_sProfileUrl");
         modRecord.name = mod.getString("_sName");
         modRecord.summary = mod.getString("_sDescription");
-        modRecord.description = contentWarningPrefix + aiUsagePrefix + mod.getString("_sText");
+        modRecord.description = mod.getString("_sText");
         modRecord.createdDate = mod.getLong("_tsDateAdded");
         modRecord.modifiedDate = mod.getLong("_tsDateModified");
         modRecord.updatedDate = mod.getLong("_tsDateUpdated");
         modRecord.likes = mod.getInt("_nLikeCount");
         modRecord.views = mod.getInt("_nViewCount");
         modRecord.downloads = mod.getInt("_nDownloadCount");
-        modRecord.isNSFW = redactScreenshots;
-        modRecord.madeWithAI = hasAiNotices;
+        modRecord.contentWarnings = contentRatings;
+        modRecord.aiWarnings = aiNotices;
         modRecord.author = author;
         modRecord.category = category;
         modRecord.screenshots = new ScreenshotRecord[screenshotRecords.size()];
