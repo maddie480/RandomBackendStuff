@@ -39,9 +39,7 @@ public class ModDatabase implements AutoCloseable {
         DumperOptions dumperOptions = new DumperOptions();
         dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 
-        Constructor c = new Constructor(loaderOptions);
-        yaml = new Yaml(c, new Representer(dumperOptions), dumperOptions, loaderOptions);
-        c.getPropertyUtils().setSkipMissingProperties(true);
+        yaml = new Yaml(new Constructor(loaderOptions), new Representer(dumperOptions), dumperOptions, loaderOptions);
     }
 
     private static final Path lockFile = Paths.get("database_lock");
