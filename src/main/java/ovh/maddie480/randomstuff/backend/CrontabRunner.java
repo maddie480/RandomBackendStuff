@@ -312,8 +312,7 @@ public class CrontabRunner {
                 new RunProcessParameters("[Hourly] checkOlympusAPIs", CelesteStuffHealthCheck::checkOlympusAPIs),
 
                 // Quest Community Bot stuff
-                new RunProcessParameters("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates()),
-                new RunProcessParameters("[Hourly] TwitchUpdateChecker", () -> new TwitchUpdateChecker().checkForUpdates())
+                new RunProcessParameters("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates())
         ));
     }
 
