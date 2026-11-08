@@ -23,7 +23,6 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -64,15 +63,13 @@ public class MastodonUpdateChecker {
 
     /**
      * Checks for new statuses and notifies about any updates.
-     * Run every 15 minutes.
+     * Run every hour.
      *
      * @throws IOException In case of issues when fetching statuses or notifying about them
      */
     public static void checkForUpdates() throws IOException {
-        try (Stream<String> linkList = Files.lines(Paths.get("followed_mastodon_accounts.txt"))) {
-            for (String link : linkList.toList()) {
-                checkForUpdates(link);
-            }
+        for (String link : ACCOUNTS_TO_FORWARD_TO_CELESTE_NEWS_NETWORK) {
+            checkForUpdates(link);
         }
     }
 
@@ -160,13 +157,8 @@ public class MastodonUpdateChecker {
                     final String finalVideoUrl = videoUrl;
                     IOConsumer<String> postAction = webhook -> postStatusToWebhook(webhook, date, finalLink, profilePictureUrl, finalUsername, embed, finalVideoUrl, linksInStatus);
 
-                    if (ACCOUNTS_TO_FORWARD_TO_CELESTE_NEWS_NETWORK.contains(feed)) {
-                        // post it to #celeste_news_network
-                        sendToCelesteNewsNetwork(postAction, "mastodon");
-                    } else {
-                        // post it to the personal notifications channel
-                        postAction.accept(SecretConstants.PERSONAL_NOTIFICATION_WEBHOOK_URL);
-                    }
+                    // post it to #celeste_news_network
+                    sendToCelesteNewsNetwork(postAction, "mastodon");
 
                     if (videoFile != null) {
                         videoFile.delete();
