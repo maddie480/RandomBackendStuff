@@ -4,7 +4,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
@@ -373,11 +372,10 @@ public class CrontabRunner {
         int elementCount;
 
         try {
-            elementCount = Integer.parseInt(Jsoup.connect("https://maddie480.ovh/radio-lnj")
-                    .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
-                    .get()
-                    .select(".header b")
-                    .getFirst().text());
+            elementCount = Integer.parseInt(
+                    ConnectionUtils.jsoupGetWithRetry("https://maddie480.ovh/radio-lnj")
+                            .select(".header b")
+                            .getFirst().text());
         } catch (NumberFormatException e) {
             throw new IOException("Did not find the amount of songs where it was expected!");
         }
@@ -429,7 +427,7 @@ public class CrontabRunner {
 
     private static void checkLNJEmotes() throws IOException {
         logger.debug("Checking LNJ emotes...");
-        Elements emotes = Jsoup.connect("https://maddie480.ovh/lnj-emotes").get().select("table img");
+        Elements emotes = ConnectionUtils.jsoupGetWithRetry("https://maddie480.ovh/lnj-emotes").select("table img");
         if (emotes.size() != 29) {
             throw new IOException("Expected 29 LNJ emotes!");
         }

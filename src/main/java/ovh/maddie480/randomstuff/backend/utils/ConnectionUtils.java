@@ -149,8 +149,13 @@ public final class ConnectionUtils {
      * @throws IOException If an exception occurred three times while reading the contents
      */
     public static Document jsoupGetWithRetry(String url) throws IOException {
+        return jsoupGetWithRetry(url, 2 * 1024 * 1024);
+    }
+
+    public static Document jsoupGetWithRetry(String url, int maxBodySize) throws IOException {
         return runWithRetry(() -> Jsoup.connect(url)
                 .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
+                .maxBodySize(maxBodySize)
                 .get());
     }
 }

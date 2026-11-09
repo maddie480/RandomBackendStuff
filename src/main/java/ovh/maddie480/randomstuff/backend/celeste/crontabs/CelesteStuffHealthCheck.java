@@ -9,7 +9,6 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -349,7 +348,7 @@ public class CelesteStuffHealthCheck {
                         .map(item -> mirror + "/banana-mirror/" + item + ".zip")
                         .toList();
 
-                List<String> bananaMirror = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror/")
+                List<String> bananaMirror = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror/", 4 * 1024 * 1024)
                         .select("td.indexcolname a")
                         .stream()
                         .map(a -> mirror + "/banana-mirror/" + a.attr("href"))
@@ -374,10 +373,7 @@ public class CelesteStuffHealthCheck {
                         .map(i -> mirror + "/banana-mirror-images/" + i + ".png")
                         .toList();
 
-                List<String> bananaMirrorImages = ConnectionUtils.runWithRetry(() -> Jsoup.connect(mirror + "/banana-mirror-images/")
-                                .userAgent("Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)")
-                                .maxBodySize(4 * 1024 * 1024) // 4 MB
-                                .get())
+                List<String> bananaMirrorImages = ConnectionUtils.jsoupGetWithRetry(mirror + "/banana-mirror-images/", 8 * 1024 * 1024)
                         .select("td.indexcolname a")
                         .stream()
                         .map(a -> mirror + "/banana-mirror-images/" + a.attr("href"))
@@ -408,7 +404,7 @@ public class CelesteStuffHealthCheck {
                         .map(a -> mirror + "/rich-presence-icons/" + a + ".png")
                         .toList();
 
-                List<String> richPresenceIcons = ConnectionUtils.jsoupGetWithRetry(mirror + "/rich-presence-icons/")
+                List<String> richPresenceIcons = ConnectionUtils.jsoupGetWithRetry(mirror + "/rich-presence-icons/", 4 * 1024 * 1024)
                         .select("td.indexcolname a")
                         .stream()
                         .map(a -> mirror + "/rich-presence-icons/" + a.attr("href"))
