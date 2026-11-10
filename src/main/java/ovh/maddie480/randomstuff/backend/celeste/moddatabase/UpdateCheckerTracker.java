@@ -456,7 +456,7 @@ public class UpdateCheckerTracker {
                                     .map(d -> {
                                         Map<String, String> r = new LinkedHashMap<>();
                                         r.put("Name", d.name);
-                                        r.put("Version", d.version);
+                                        r.put("Version", d.version == null ? "NoVersion" : d.version);
                                         return r;
                                     })
                                     .collect(Collectors.toCollection(ArrayList::new)),
@@ -464,7 +464,7 @@ public class UpdateCheckerTracker {
                                     .map(d -> {
                                         Map<String, String> r = new LinkedHashMap<>();
                                         r.put("Name", d.name);
-                                        r.put("Version", d.version);
+                                        r.put("Version", d.version == null ? "NoVersion" : d.version);
                                         return r;
                                     })
                                     .collect(Collectors.toCollection(ArrayList::new))
