@@ -163,11 +163,17 @@ has installed.
 ### https://maddie480.ovh/celeste/mod_search_database.yaml
 
 ```yaml
-- Author: { author.name }
+- AIWarnings:
+    Name: { contentWarning.name } ({ contentWarning.severityLabel })
+    Severity: { contentWarning.severity }
+  Author: { author.name }
   Category:
     ID: { category.id }
     Name: { category.name }
     Parent: { category.parent }
+  ContentWarnings:
+    Name: { contentWarning.name }
+    Severity: { contentWarning.severity }
   CreatedDate: { createdDate }
   Description: { summary }
   Downloads: { downloads }
@@ -207,16 +213,16 @@ really used, but it is provided just in case...
 
 ### https://maddie480.ovh/celeste/mod_dependency_graph.yaml
 
-```
-{leaderFile.modId}:
-  URL: {leaderFile.mainUrl}
-  MirrorName: {leaderFile.mirrorName}
-  Dependencies:
-  - Name: {dependency.name}
-    Version: {dependency.version}
-  OptionalDependencies:
-  - Name: {dependency.name}
-    Version: {dependency.version}
+```yaml
+{ leaderFile.modId }:
+URL: { leaderFile.mainUrl }
+MirrorName: { leaderFile.mirrorName }
+Dependencies:
+  - Name: { dependency.name }
+    Version: { dependency.version }
+OptionalDependencies:
+  - Name: { dependency.name }
+    Version: { dependency.version }
 ```
 
 This is used by Everest to figure out which are the dependencies to install for a given mod, recursively (including the
