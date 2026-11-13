@@ -195,7 +195,7 @@ public class ModUpdater {
                     () -> banan.synchronizeRichPresenceIcons(database, tracker)
             ));
 
-            OtobotMirror.run(database);
+            // OtobotMirror.run(database);
             tracker.updateUpdateCheckerStatusInformation(System.currentTimeMillis() - start);
             tracker.postEndOfUpdateMessage();
         }
