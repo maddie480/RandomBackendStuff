@@ -17,7 +17,6 @@ import ovh.maddie480.randomstuff.backend.discord.crontabs.*;
 import ovh.maddie480.randomstuff.backend.discord.modstructureverifier.ModStructureVerifier;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.QuestCommunityBot;
 import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.daily.*;
-import ovh.maddie480.randomstuff.backend.discord.questcommunitybot.crontabs.hourly.TemperatureChecker;
 import ovh.maddie480.randomstuff.backend.discord.serverjanitor.ServerJanitorBot;
 import ovh.maddie480.randomstuff.backend.discord.timezonebot.TimezoneBot;
 import ovh.maddie480.randomstuff.backend.streams.apis.IChatProvider;
@@ -308,10 +307,7 @@ public class CrontabRunner {
                 new RunProcessParameters("[Hourly] updateCheckerHealthCheck", CelesteStuffHealthCheck::updateCheckerHealthCheck),
                 new RunProcessParameters("[Hourly] checkEverestExists(daily: false)", () -> CelesteStuffHealthCheck.checkEverestExists(false)),
                 new RunProcessParameters("[Hourly] checkOlympusExists(daily: false)", () -> CelesteStuffHealthCheck.checkOlympusExists(false)),
-                new RunProcessParameters("[Hourly] checkOlympusAPIs", CelesteStuffHealthCheck::checkOlympusAPIs),
-
-                // Quest Community Bot stuff
-                new RunProcessParameters("[Hourly] TemperatureChecker", () -> new TemperatureChecker().checkForUpdates())
+                new RunProcessParameters("[Hourly] checkOlympusAPIs", CelesteStuffHealthCheck::checkOlympusAPIs)
         ));
     }
 
