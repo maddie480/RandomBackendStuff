@@ -145,7 +145,10 @@ public class OtobotMirror {
         ))) {
             String s;
             while ((s = br.readLine()) != null) {
-                if (!s.startsWith("data: ")) continue;
+                if (!s.startsWith("data: ")) {
+                    if (!s.trim().isEmpty()) log.debug("Ignored line: {}", s);
+                    continue;
+                }
                 JSONObject message = new JSONObject(s.substring(6));
 
                 switch (message.getString("status")) {
