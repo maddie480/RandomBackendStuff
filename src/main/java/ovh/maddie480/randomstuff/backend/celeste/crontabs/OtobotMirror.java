@@ -120,7 +120,7 @@ public class OtobotMirror {
         }
 
         HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://celestemods.com/api/gamebanana-mirror/update-webhook");
-        connection.setReadTimeout(60000);
+        connection.setReadTimeout(600000);
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setRequestProperty("Authorization", authorizationHeader);
