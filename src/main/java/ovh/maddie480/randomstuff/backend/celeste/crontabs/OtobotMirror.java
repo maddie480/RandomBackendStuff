@@ -37,10 +37,7 @@ public class OtobotMirror {
     private final Signature signature;
 
     public static void run(ModDatabase database) throws IOException {
-        ConnectionUtils.runWithRetry(() -> {
-            getInstance().update(database);
-            return null; // method signature
-        });
+        getInstance().update(database);
     }
 
     private OtobotMirror() throws IOException {
