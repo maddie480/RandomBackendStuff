@@ -204,7 +204,7 @@ public class GameBananaModProvider implements ModProvider {
         if (mod.getBoolean("_bIsNsfw")) {
             // mod has content warnings! we need to check which ones.
             JSONObject o = ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv11/" + itemtype + "/" + mod.getInt("_idRow") + "/ProfilePage")) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv11/" + itemtype + "/" + mod.getInt("_idRow") + "/ProfilePage?ts=" + System.currentTimeMillis())) {
                     return new JSONObject(new JSONTokener(is));
                 }
             });
@@ -233,7 +233,7 @@ public class GameBananaModProvider implements ModProvider {
 
         { // retrieve AI notices, which can only be done for a single mod at a time, through apiv13
             JSONObject modProfile = ConnectionUtils.runWithRetry(() -> {
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv13/" + itemtype + "/" + mod.getInt("_idRow") + "/ProfilePage")) {
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv13/" + itemtype + "/" + mod.getInt("_idRow") + "/ProfilePage?ts=" + System.currentTimeMillis())) {
                     return new JSONObject(new JSONTokener(is));
                 }
             });
@@ -397,7 +397,7 @@ public class GameBananaModProvider implements ModProvider {
     public Map<String, Integer> retrieveFeaturedMods() throws IOException {
         log.debug("Getting list of featured mods...");
         JSONArray featured = ConnectionUtils.runWithRetry(() -> {
-            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv11/Game/6460/TopSubs")) {
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://gamebanana.com/apiv11/Game/6460/TopSubs?ts=" + System.currentTimeMillis())) {
                 return new JSONArray(new JSONTokener(is));
             } catch (JSONException e) {
                 // turn JSON parse errors into IOExceptions to trigger a retry.
