@@ -8,7 +8,9 @@ import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
@@ -127,12 +129,40 @@ public class OtobotMirror {
         try (OutputStream os = connection.getOutputStream()) {
             os.write(bodyRaw);
         }
-
-        int responseCode = connection.getResponseCode();
-        if (responseCode != 200) {
-            throw new IOException("otobot mirror returned response code " + responseCode);
-        }
+        sseHandoff(connection);
 
         log.debug("Done!");
+    }
+
+    public static String getWithSSE(String url) throws IOException {
+        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout(url);
+        conn.setReadTimeout(600000);
+        return sseHandoff(conn);
+    }
+
+    private static String sseHandoff(HttpURLConnection conn) throws IOException {
+        // I almost pulled in a library, but eh, server-sent events seem simple enough to parse for my purposes.
+        // It's just an input stream, right?
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                ConnectionUtils.connectionToInputStream(conn), StandardCharsets.UTF_8
+        ))) {
+            String s;
+            while ((s = br.readLine()) != null) {
+                if (!s.startsWith("data: ")) continue;
+                JSONObject message = new JSONObject(s.substring(6));
+
+                switch (message.getString("status")) {
+                    case "complete":
+                        log.info("otobot sse is done!");
+                        return message.getString("message");
+                    case "error":
+                        throw new IOException("otobot sse failed!\n```json\n" + message.toString(4) + "\n```");
+                    default:
+                        log.debug("Non-final message received: {}", message);
+                }
+            }
+
+            throw new IOException("Unexpected end of otobot sse stream");
+        }
     }
 }

@@ -506,11 +506,9 @@ public class CelesteStuffHealthCheck {
 
     private static List<String> fetchFileListFromOtobotMirror(String category, String prefix) throws IOException {
         List<String> bananaMirror = new ArrayList<>();
-        try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemods.com/api/gamebanana-mirror/mirror-contents/" + category)) {
-            JSONArray modList = new JSONArray(new JSONTokener(is));
-            for (Object o : modList) {
-                bananaMirror.add(prefix + o);
-            }
+        JSONArray modList = new JSONArray(OtobotMirror.getWithSSE("https://celestemods.com/api/gamebanana-mirror/mirror-contents/" + category));
+        for (Object o : modList) {
+            bananaMirror.add(prefix + o);
         }
         bananaMirror.sort(Comparator.naturalOrder());
         return bananaMirror;
