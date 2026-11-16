@@ -63,7 +63,7 @@ public class OtobotMirror {
         request.put("mods", getMirroredMods(database));
         request.put("screenshots", getMirroredScreenshots(database));
         request.put("richPresenceIcons", getMirroredRichPresenceIcons(database));
-        request.put("isModSearchDatabaseUpdate", true);
+        request.put("isModSearchDatabaseUpdate", false);
         request.put("timestamp", System.currentTimeMillis() / 1000);
 
         log.debug("Calling mirror update endpoint with {} mods, {} screenshots and {} Rich Presence icons",
