@@ -2,16 +2,15 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
+import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -117,7 +116,6 @@ public class OtobotMirror {
         }
 
         HttpURLConnection connection = ConnectionUtils.openConnectionWithTimeout("https://celestemods.com/api/gamebanana-mirror/update-webhook");
-        connection.setReadTimeout(600000);
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setRequestProperty("Authorization", authorizationHeader);
@@ -126,22 +124,68 @@ public class OtobotMirror {
         try (OutputStream os = connection.getOutputStream()) {
             os.write(bodyRaw);
         }
-        sseHandoff(connection);
 
+        int responseCode = connection.getResponseCode();
+        if (responseCode != 200) {
+            throw new IOException("otobot mirror returned response code " + responseCode);
+        }
+
+        new Thread(OtobotMirror::trackMirrorUpdate).start();
         log.debug("Done!");
     }
 
-    public static String getWithSSE(String url) throws IOException {
-        HttpURLConnection conn = ConnectionUtils.openConnectionWithTimeout(url);
-        conn.setReadTimeout(600000);
-        return sseHandoff(conn);
+    private static void trackMirrorUpdate() {
+        try {
+            while (true) {
+                Thread.sleep(10000);
+
+                JSONObject status;
+                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemods.com/api/gamebanana-mirror/update-webhook")) {
+                    status = new JSONObject(new JSONTokener(is));
+                }
+
+                switch (status.getString("status")) {
+                    case "Not Started":
+                        executeWebhook(":warning: The otobot mirroring didn't start!");
+                        return;
+                    case "In Progress":
+                        log.debug("The otobot mirror update is still in progress: {}", status.getString("message"));
+                        break;
+                    case "Succeeded":
+                        log.debug("otobot mirror update done: {}", status.getString("message"));
+                        executeWebhook(":white_check_mark: otobot mirror updated.");
+                        return;
+                    case "Failed":
+                        executeWebhook(":x: otobot mirror update failed: " + status.getString("message"));
+                        return;
+                    default:
+                        executeWebhook(":x: otobot mirror ended up in an unknown status: " + status.getString("status"));
+                        return;
+                }
+            }
+        } catch (Exception e) {
+            log.error("otobot mirror status check thread died", e);
+            executeWebhook(":x: otobot mirror status check thread died! " + e);
+        }
     }
 
-    private static String sseHandoff(HttpURLConnection conn) throws IOException {
+    private static void executeWebhook(String message) {
+        try {
+            WebhookExecutor.executeWebhook(
+                    SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
+                    "Everest Update Checker",
+                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
+                    message);
+        } catch (IOException e) {
+            log.info("Couldn't post webhook message, going on", e);
+        }
+    }
+
+    public static String getWithSSE(String url) throws IOException {
         // I almost pulled in a library, but eh, server-sent events seem simple enough to parse for my purposes.
         // It's just an input stream, right?
         try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                ConnectionUtils.connectionToInputStream(conn), StandardCharsets.UTF_8
+                ConnectionUtils.openStreamWithTimeout(url), StandardCharsets.UTF_8
         ))) {
             String s;
             while ((s = br.readLine()) != null) {
