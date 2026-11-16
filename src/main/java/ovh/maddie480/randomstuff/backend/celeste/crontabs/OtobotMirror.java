@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
-import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -130,54 +129,37 @@ public class OtobotMirror {
             throw new IOException("otobot mirror returned response code " + responseCode);
         }
 
-        new Thread(OtobotMirror::trackMirrorUpdate).start();
+        trackMirrorUpdate();
         log.debug("Done!");
     }
 
-    private static void trackMirrorUpdate() {
-        try {
-            while (true) {
-                Thread.sleep(10000);
-
-                JSONObject status;
-                try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemods.com/api/gamebanana-mirror/update-webhook")) {
-                    status = new JSONObject(new JSONTokener(is));
-                }
-
-                switch (status.getString("status")) {
-                    case "Not Started":
-                        executeWebhook(":warning: The otobot mirroring didn't start!");
-                        return;
-                    case "In Progress":
-                        log.debug("The otobot mirror update is still in progress: {}", status.getString("message"));
-                        break;
-                    case "Succeeded":
-                        log.debug("otobot mirror update done: {}", status.getString("message"));
-                        executeWebhook(":white_check_mark: otobot mirror updated.");
-                        return;
-                    case "Failed":
-                        executeWebhook(":x: otobot mirror update failed: " + status.getString("message"));
-                        return;
-                    default:
-                        executeWebhook(":x: otobot mirror ended up in an unknown status: " + status.getString("status"));
-                        return;
-                }
+    private static void trackMirrorUpdate() throws IOException {
+        while (true) {
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                throw new IOException(e);
             }
-        } catch (Exception e) {
-            log.error("otobot mirror status check thread died", e);
-            executeWebhook(":x: otobot mirror status check thread died! " + e);
-        }
-    }
 
-    private static void executeWebhook(String message) {
-        try {
-            WebhookExecutor.executeWebhook(
-                    SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                    "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
-                    "Everest Update Checker",
-                    message);
-        } catch (IOException e) {
-            log.info("Couldn't post webhook message, going on", e);
+            JSONObject status;
+            try (InputStream is = ConnectionUtils.openStreamWithTimeout("https://celestemods.com/api/gamebanana-mirror/update-webhook")) {
+                status = new JSONObject(new JSONTokener(is));
+            }
+
+            switch (status.getString("status")) {
+                case "Not Started":
+                    throw new IOException("The otobot mirroring didn't start!");
+                case "In Progress":
+                    log.debug("The otobot mirror update is still in progress: {}", status.getString("message"));
+                    break;
+                case "Succeeded":
+                    log.debug("otobot mirror update done: {}", status.getString("message"));
+                    return;
+                case "Failed":
+                    throw new IOException("otobot mirror update failed: " + status.getString("message"));
+                default:
+                    throw new IOException("otobot mirror ended up in an unknown status: " + status.getString("status"));
+            }
         }
     }
 
