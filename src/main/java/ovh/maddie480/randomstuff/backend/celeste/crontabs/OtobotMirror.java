@@ -173,8 +173,8 @@ public class OtobotMirror {
         try {
             WebhookExecutor.executeWebhook(
                     SecretConstants.UPDATE_CHECKER_LOGS_HOOK,
-                    "Everest Update Checker",
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/update-checker.png",
+                    "Everest Update Checker",
                     message);
         } catch (IOException e) {
             log.info("Couldn't post webhook message, going on", e);
