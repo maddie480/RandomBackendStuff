@@ -126,7 +126,7 @@ public class OtobotMirror {
         }
 
         int responseCode = connection.getResponseCode();
-        if (responseCode != 200) {
+        if (responseCode != 202) {
             throw new IOException("otobot mirror returned response code " + responseCode);
         }
 
