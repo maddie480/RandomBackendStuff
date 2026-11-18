@@ -56,6 +56,7 @@ public class GameBananaAutomatedChecks {
             String link = mod.pageUrl.replace("https://", "");
             maskedLink = "[" + link + "](https://maddie480.ovh/" + link + ")";
         }
+        if (file == null) return maskedLink;
         return maskedLink + " (<" + file.mainUrl + ">)";
     }
 

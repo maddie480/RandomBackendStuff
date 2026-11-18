@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ContentWarningRecord;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 import ovh.maddie480.randomstuff.backend.utils.ConnectionUtils;
 import ovh.maddie480.randomstuff.backend.utils.WebhookExecutor;
 
@@ -15,11 +16,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static ovh.maddie480.randomstuff.backend.celeste.crontabs.GameBananaAutomatedChecks.enhanceYourWebhook;
+import static ovh.maddie480.randomstuff.backend.celeste.crontabs.GameBananaAutomatedChecks.getMaskedEnhancedEmbedLink;
 
 public class AIPolice {
     private static final Logger log = LoggerFactory.getLogger(AIPolice.class);
 
-    private record TinyModInfo(String name, String pageUrl, ContentWarningRecord[] aiWarnings) {
+    private record TinyModInfo(String id, String name, String pageUrl, ContentWarningRecord[] aiWarnings) {
     }
 
     private final Map<String, TinyModInfo> initialState;
@@ -28,7 +30,7 @@ public class AIPolice {
         return database.allMods.stream()
                 .collect(Collectors.toMap(
                         m -> m.id,
-                        m -> new TinyModInfo(m.name, m.pageUrl, m.aiWarnings)));
+                        m -> new TinyModInfo(m.id, m.name, m.pageUrl, m.aiWarnings)));
     }
 
     public AIPolice(ModDatabase database) {
@@ -55,9 +57,16 @@ public class AIPolice {
         }
     }
 
+    private String getEnhancedLink(TinyModInfo info) {
+        ModRecord m = new ModRecord();
+        m.id = info.id;
+        m.pageUrl = info.pageUrl;
+        return getMaskedEnhancedEmbedLink(m, null);
+    }
+
     private void yell(ModDatabase database, String message, ContentWarningRecord[] oldAIWarnings, TinyModInfo newModInfo) {
         final String realMessage = message + "\n"
-                + "**" + newModInfo.name + "** - " + newModInfo.pageUrl + "\n"
+                + "**" + newModInfo.name + "** - " + getEnhancedLink(newModInfo) + "\n"
                 + (oldAIWarnings == null ? "" : ("_Old values:_ " + formatAIWarnings(oldAIWarnings) + "\n"))
                 + "_New values:_ " + formatAIWarnings(newModInfo.aiWarnings);
 
