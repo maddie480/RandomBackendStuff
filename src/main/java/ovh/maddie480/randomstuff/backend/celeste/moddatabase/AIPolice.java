@@ -74,7 +74,7 @@ public class AIPolice {
             for (String webhook : Arrays.asList(SecretConstants.BANANA_ILLUMINATI_HOOK, SecretConstants.UPDATE_CHECKER_LOGS_HOOK)) {
                 ConnectionUtils.runWithRetry(() -> {
                     Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(database, realMessage);
-    
+
                     WebhookExecutor.executeWebhook(
                             webhook,
                             "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/red-ai-icon.png",
