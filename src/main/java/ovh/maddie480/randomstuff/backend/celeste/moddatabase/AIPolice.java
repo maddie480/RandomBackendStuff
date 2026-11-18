@@ -67,22 +67,24 @@ public class AIPolice {
     private void yell(ModDatabase database, String message, ContentWarningRecord[] oldAIWarnings, TinyModInfo newModInfo) {
         final String realMessage = message + "\n"
                 + "**" + newModInfo.name + "** - " + getEnhancedLink(newModInfo) + "\n"
-                + (oldAIWarnings == null ? "" : ("_Old values:_ " + formatAIWarnings(oldAIWarnings) + "\n"))
-                + "_New values:_ " + formatAIWarnings(newModInfo.aiWarnings);
+                + (oldAIWarnings == null ? "" : ("- Old values: " + formatAIWarnings(oldAIWarnings) + "\n"))
+                + "- New values: " + formatAIWarnings(newModInfo.aiWarnings);
 
         try {
-            ConnectionUtils.runWithRetry(() -> {
-                Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(database, realMessage);
-
-                WebhookExecutor.executeWebhook(
-                        SecretConstants.BANANA_ILLUMINATI_HOOK,
-                        "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/red-ai-icon.png",
-                        "Ominous Red Icon Alert",
-                        enhanced.getLeft(),
-                        enhanced.getRight().isEmpty() ? null : enhanced.getRight()
-                );
-                return null;
-            });
+            for (String webhook : Arrays.asList(SecretConstants.BANANA_ILLUMINATI_HOOK, SecretConstants.UPDATE_CHECKER_LOGS_HOOK)) {
+                ConnectionUtils.runWithRetry(() -> {
+                    Pair<String, List<Map<String, Object>>> enhanced = enhanceYourWebhook(database, realMessage);
+    
+                    WebhookExecutor.executeWebhook(
+                            webhook,
+                            "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/red-ai-icon.png",
+                            "Ominous Red Icon Alert",
+                            enhanced.getLeft(),
+                            enhanced.getRight().isEmpty() ? null : enhanced.getRight()
+                    );
+                    return null;
+                });
+            }
         } catch (IOException e) {
             log.warn("Couldn't invoke the AI police, skipping", e);
         }
