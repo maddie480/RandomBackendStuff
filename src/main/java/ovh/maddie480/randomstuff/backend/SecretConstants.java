@@ -78,6 +78,9 @@ public class SecretConstants {
     // hook to call for update checker technical logs
     public static final String UPDATE_CHECKER_LOGS_HOOK;
 
+    // Banana Watch Secret Edition (that's where the AI alerts and more contentious stuff go)
+    public static final String BANANA_ILLUMINATI_HOOK;
+
     // hooks to call in case of issues with 0x0a.de
     public static final List<String> JADE_PLATFORM_HEALTHCHECK_HOOKS;
 
@@ -120,10 +123,6 @@ public class SecretConstants {
     public static final String GOOGLE_CUSTOM_SEARCH_API_KEY;
     public static final String STEAM_WEB_API_KEY;
     public static final String REPOST_WEBHOOK_URL;
-
-    // Quest Community Bot crontabs
-    public static final String WEATHER_WARNING_DOMAIN;
-    public static final String WEATHER_PLACE;
 
     // Nextcloud URL to upload backups to
     public static final String NEXTCLOUD_LOGIN;
@@ -181,6 +180,7 @@ public class SecretConstants {
         COLLAB_AUTO_HIDDEN_ALERT_HOOK = secrets.getString("COLLAB_AUTO_HIDDEN_ALERT_HOOK");
         UPDATE_CHECKER_HOOKS = getListOfStrings(secrets.getJSONArray("UPDATE_CHECKER_HOOKS"));
         UPDATE_CHECKER_LOGS_HOOK = secrets.getString("UPDATE_CHECKER_LOGS_HOOK");
+        BANANA_ILLUMINATI_HOOK = secrets.getString("BANANA_ILLUMINATI_HOOK");
         JADE_PLATFORM_HEALTHCHECK_HOOKS = getListOfStrings(secrets.getJSONArray("JADE_PLATFORM_HEALTHCHECK_HOOKS"));
         NON_JADE_PLATFORM_HEALTHCHECK_HOOKS = getListOfStrings(secrets.getJSONArray("NON_JADE_PLATFORM_HEALTHCHECK_HOOKS"));
 
@@ -211,9 +211,6 @@ public class SecretConstants {
         GOOGLE_CUSTOM_SEARCH_API_KEY = secrets.getString("GOOGLE_CUSTOM_SEARCH_API_KEY");
         STEAM_WEB_API_KEY = secrets.getString("STEAM_WEB_API_KEY");
         REPOST_WEBHOOK_URL = secrets.getString("REPOST_WEBHOOK_URL");
-
-        WEATHER_WARNING_DOMAIN = secrets.getString("WEATHER_WARNING_DOMAIN");
-        WEATHER_PLACE = secrets.getString("WEATHER_PLACE");
 
         NEXTCLOUD_LOGIN = secrets.getString("NEXTCLOUD_LOGIN");
         NEXTCLOUD_UPLOAD_TARGET = secrets.getString("NEXTCLOUD_UPLOAD_TARGET");
