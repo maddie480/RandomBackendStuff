@@ -53,7 +53,7 @@ public class AIPolice {
             ContentWarningRecord[] oldAIWarnings = initialState.get(id).aiWarnings;
             if (Arrays.equals(oldAIWarnings, newAIWarnings)) continue;
 
-            yell(database, ":control_knobs: A mod has changed its AI warning settings.", oldAIWarnings, newInfo);
+            yell(database, ":control_knobs: The AI warnings of a mod were changed.", oldAIWarnings, newInfo);
         }
     }
 
