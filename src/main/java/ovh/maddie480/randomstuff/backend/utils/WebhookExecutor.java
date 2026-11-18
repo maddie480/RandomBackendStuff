@@ -34,13 +34,6 @@ public class WebhookExecutor {
     }
 
     /**
-     * Calls a Discord webhook without enabling mentions, with a logging toggle.
-     */
-    public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, boolean shouldLog) throws IOException {
-        executeWebhook(webhookUrl, avatar, nickname, body, Collections.emptyMap(), false, null, Collections.emptyList(), null, shouldLog);
-    }
-
-    /**
      * Calls a Discord webhook without enabling mentions, with embeds.
      */
     public static void executeWebhook(String webhookUrl, String avatar, String nickname, String body, List<Map<String, Object>> embeds) throws IOException {

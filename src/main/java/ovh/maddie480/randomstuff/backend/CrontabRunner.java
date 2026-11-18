@@ -541,17 +541,12 @@ public class CrontabRunner {
     }
 
     private static void sendMessageToWebhook(String url, String message) {
-        sendMessageToWebhook(url, message, true);
-    }
-
-    private static void sendMessageToWebhook(String url, String message, boolean shouldLog) {
         try {
             WebhookExecutor.executeWebhook(
                     url,
                     "https://raw.githubusercontent.com/maddie480/RandomBackendStuff/main/webhook-avatars/compute-engine.png",
                     "Crontab Runner",
-                    message,
-                    shouldLog);
+                    message);
         } catch (IOException e) {
             logger.error("Error while sending message \"{}\"", message, e);
         }

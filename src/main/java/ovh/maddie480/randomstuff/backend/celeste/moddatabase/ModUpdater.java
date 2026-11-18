@@ -118,6 +118,7 @@ public class ModUpdater {
     private static void update(List<ModRecord> incomingMods, boolean replace, long start) throws IOException {
         try (ModDatabase database = new ModDatabase()) {
             UpdateCheckerTracker tracker = new UpdateCheckerTracker(database);
+            AIPolice aiPolice = new AIPolice(database);
             tracker.startedSearchingForUpdates(replace);
 
             if (!replace) for (ModRecord r : incomingMods) tracker.modUpdatedIncrementally(r.name, r.pageUrl);
@@ -192,7 +193,8 @@ public class ModUpdater {
                     tracker::updateModStructureVerifierMaps,
                     () -> banan.synchronizeFiles(database, tracker),
                     () -> banan.synchronizeImages(database, tracker),
-                    () -> banan.synchronizeRichPresenceIcons(database, tracker)
+                    () -> banan.synchronizeRichPresenceIcons(database, tracker),
+                    () -> aiPolice.checkForChanges(database)
             ));
 
             OtobotMirror.run(database);
