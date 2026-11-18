@@ -67,8 +67,8 @@ public class AIPolice {
     private void yell(ModDatabase database, String message, ContentWarningRecord[] oldAIWarnings, TinyModInfo newModInfo) {
         final String realMessage = message + "\n"
                 + "**" + newModInfo.name + "** - " + getEnhancedLink(newModInfo) + "\n"
-                + (oldAIWarnings == null ? "" : ("- Old values: " + formatAIWarnings(oldAIWarnings) + "\n"))
-                + "- New values: " + formatAIWarnings(newModInfo.aiWarnings);
+                + (oldAIWarnings == null ? "" : (":clock: _Old values:_ " + formatAIWarnings(oldAIWarnings) + "\n"))
+                + ":arrow_right: _New values:_ " + formatAIWarnings(newModInfo.aiWarnings);
 
         try {
             for (String webhook : Arrays.asList(SecretConstants.BANANA_ILLUMINATI_HOOK, SecretConstants.UPDATE_CHECKER_LOGS_HOOK)) {
