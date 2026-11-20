@@ -2,6 +2,7 @@ package ovh.maddie480.randomstuff.backend.celeste.crontabs;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONArray;
@@ -11,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ovh.maddie480.randomstuff.backend.SecretConstants;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.ModDatabase;
+import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.DependencyRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.FileRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.model.ModRecord;
 import ovh.maddie480.randomstuff.backend.celeste.moddatabase.providers.GameBananaModProvider;
@@ -22,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -687,6 +690,80 @@ public class GameBananaAutomatedChecks {
         try (OutputStream os = Files.newOutputStream(statusFile)) {
             YamlUtil.dump(fileIds, os);
         }
+    }
+
+    public static void checkForCircularDependencies(ModDatabase database) throws IOException {
+        checkForCircularDependenciesButPrivate(database, f -> f.dependencies, "dependency");
+        checkForCircularDependenciesButPrivate(database, f -> f.optionalDependencies, "optional dependency");
+    }
+
+    private static void checkForCircularDependenciesButPrivate(ModDatabase database, Function<FileRecord, DependencyRecord[]> dependencyGetter, String label) throws IOException {
+        Map<String, FileRecord> modsById = database.listLatestVersions().stream()
+                .collect(Collectors.toMap(m -> m.file().modId, ModDatabase.ModLatestVersion::file));
+
+        Set<String> issues = new TreeSet<>();
+
+        for (Map.Entry<String, FileRecord> startingMod : modsById.entrySet()) {
+            Queue<Pair<List<String>, FileRecord>> modsToCheck = new ArrayDeque<>();
+            modsToCheck.add(Pair.of(List.of(startingMod.getKey()), startingMod.getValue()));
+
+            Set<String> modIdsAlreadyChecked = new HashSet<>();
+
+            Pair<List<String>, FileRecord> mod;
+            while ((mod = modsToCheck.poll()) != null) {
+                for (DependencyRecord depRecord : dependencyGetter.apply(mod.getValue())) {
+                    if (modIdsAlreadyChecked.contains(depRecord.name)) continue;
+
+                    FileRecord dependency = modsById.get(depRecord.name);
+                    if (dependency == null) continue;
+
+                    if (dependency.equals(startingMod.getValue())) {
+                        // we stumbled upon the original mod, yikes, this is a cycle
+                        issues.add(formatLoop(mod.getKey()));
+                    }
+
+                    List<String> newnew = new ArrayList<>(mod.getKey());
+                    newnew.add(depRecord.name);
+                    modsToCheck.offer(Pair.of(newnew, dependency));
+
+                    modIdsAlreadyChecked.add(depRecord.name);
+                }
+            }
+        }
+
+        Path alreadyKnownFile = Paths.get("already_known_circular_" + label.replace(" ", "_") + ".txt");
+
+        Set<String> knownIssues;
+        try (Stream<String> lines = Files.lines(alreadyKnownFile)) {
+            knownIssues = lines.collect(Collectors.toSet());
+        }
+
+        for (String issue : issues) {
+            if (!knownIssues.contains(issue)) {
+                // time to :a:
+                sendAlertToWebhook(database, ":warning: A circular " + label + " loop has been detected: **" + issue + "**");
+            }
+        }
+        try (OutputStream os = Files.newOutputStream(alreadyKnownFile)) {
+            IOUtils.write(String.join("\n", issues), os, UTF_8);
+        }
+    }
+
+    private static String formatLoop(List<String> key) {
+        // if there's an A > B > C loop, we're also bound to find B > C > A and C > A > B.
+        // so just move the first mod in the alphabetical order first in the loop.
+        String first = key.stream().sorted().findFirst().orElseThrow();
+        int firstIndex = key.indexOf(first);
+
+        List<String> newList = new ArrayList<>(key.size() + 1);
+        int index = firstIndex;
+        do {
+            newList.add(key.get(index));
+            index = (index + 1) % key.size();
+        } while (index != firstIndex);
+        newList.add(key.get(firstIndex));
+
+        return String.join(" > ", newList);
     }
 
     public static void executeEnhancedWebhook(ModDatabase database, String webhookUrl, String body, List<File> attachments) throws IOException {

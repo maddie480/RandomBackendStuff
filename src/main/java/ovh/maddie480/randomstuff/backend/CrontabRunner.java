@@ -298,7 +298,8 @@ public class CrontabRunner {
                                 new RunProcessParameters("[Hourly] checkAllModsWithEverestYamlValidator", () -> GameBananaAutomatedChecks.checkAllModsWithEverestYamlValidator(database)),
                                 new RunProcessParameters("[Hourly] checkPngFilesArePngFiles", () -> GameBananaAutomatedChecks.checkPngFilesArePngFiles(database)),
                                 new RunProcessParameters("[Hourly] checkDuplicateModIdsCaseInsensitive", () -> GameBananaAutomatedChecks.checkDuplicateModIdsCaseInsensitive(database)),
-                                new RunProcessParameters("[Hourly] checkForBananaServingTheWrongFile", () -> GameBananaAutomatedChecks.checkForBananaGettingDrunkAndServingTheWrongFile(database))
+                                new RunProcessParameters("[Hourly] checkForBananaServingTheWrongFile", () -> GameBananaAutomatedChecks.checkForBananaGettingDrunkAndServingTheWrongFile(database)),
+                                new RunProcessParameters("[Hourly] checkForCircularDependencies", () -> GameBananaAutomatedChecks.checkForCircularDependencies(database))
                         ));
                     }
                 }),
