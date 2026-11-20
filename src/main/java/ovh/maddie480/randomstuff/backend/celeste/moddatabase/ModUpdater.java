@@ -87,7 +87,20 @@ public class ModUpdater {
                 UpdateCheckerTracker tracker = new UpdateCheckerTracker(database);
                 tracker.startedSearchingForUpdates(false);
 
-                database.allMods.forEach(mod -> mod.featuredTier = featuredMods.getOrDefault(mod.id, 0));
+                boolean anythingChanged = database.allMods.stream()
+                        .map(mod -> {
+                            int expectedFeatureTier = featuredMods.getOrDefault(mod.id, 0);
+                            boolean changed = (mod.featuredTier != expectedFeatureTier);
+                            mod.featuredTier = expectedFeatureTier;
+                            return changed;
+                        })
+                        .reduce((a, b) -> a || b)
+                        .orElse(false);
+                if (!anythingChanged) {
+                    logger.debug("No change in featured mods was detected");
+                    return;
+                }
+
                 database.commit();
 
                 tracker.refreshFrontendDatabases();
