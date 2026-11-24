@@ -146,6 +146,7 @@ public class UsageStatsService {
                             return lines
                                     .filter(l -> frontendLogIsRecentEnough(l, after))
                                     .filter(l -> !l.contains("\"Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)\""))
+                                    .filter(l -> !l.contains("\"darkvador-update-moddb\""))
                                     .map(l -> {
                                         Matcher m = frontendLogPatternStatusCode.matcher(l);
                                         if (!m.matches())
