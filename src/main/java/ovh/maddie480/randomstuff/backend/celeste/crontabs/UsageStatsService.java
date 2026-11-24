@@ -145,6 +145,7 @@ public class UsageStatsService {
                         try (Stream<String> lines = Files.lines(p)) {
                             return lines
                                     .filter(l -> frontendLogIsRecentEnough(l, after))
+                                    .filter(l -> !l.contains("\"Maddie-Random-Stuff-Backend/1.0.0 (+https://github.com/maddie480/RandomBackendStuff)\""))
                                     .map(l -> {
                                         Matcher m = frontendLogPatternStatusCode.matcher(l);
                                         if (!m.matches())
